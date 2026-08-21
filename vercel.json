@@ -1,0 +1,29 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/healthcare-training-alerts",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/alerts",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/digest?type=daily",
+      "schedule": "0 7 * * 1-5"
+    },
+    {
+      "path": "/api/cron/digest?type=weekly",
+      "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/cron/hms-tavle-expiry",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/tavle-gjest-sla",
+      "schedule": "0 * * * *"
+    }
+  ]
+}
+

@@ -1,0 +1,47 @@
+---
+description: UK HSE law must be checked before any new field or module in HSEQ Nova
+alwaysApply: true
+---
+
+# HSEQ Nova — law-first development
+
+## Ground rule
+
+Before any new function, field or module is implemented, check what UK law and HSE guidance actually require. Do not assume or guess — find the legal basis.
+
+## Primary sources
+
+| Law / guidance | Area | Notes |
+|---|---|---|
+| Health and Safety at Work etc. Act 1974 (HSWA) s.2 | Employer duties, written policy (≥5 employees) | Statement + organisation + arrangements |
+| Management of Health and Safety at Work Regulations 1999 (MHSWR) | Suitable and sufficient risk assessments | Competent person |
+| RIDDOR 2013 | Reportable deaths, specified injuries, over-7-day, disease, dangerous occurrences | Immediate / 10-day / 15-day |
+| Social Security (Claims and Payments) Regulations 1979 | Accident book (≥10 employees; digital is lawful) | Keep 3 years |
+| COSHH 2002 | Hazardous substances assessments and health records | Health records 40 years |
+| CDM 2015 | Construction duty holders, CPP, F10, H&S File | Client, PD, PC |
+| Regulatory Reform (Fire Safety) Order 2005 | Responsible person, drills, fire risk assessment | |
+| PIDA 1998 | Whistleblowing | |
+| SRSCWR 1977 / HSCER 1996 | Safety representatives and consultation | |
+| UK GDPR / DPA 2018 | Personal data, accident records | ICO |
+| ISO 45001 / 14001 / 9001 | Management systems | International |
+
+## How to add features
+
+1. Identify the legal area.
+2. Look up the concrete duty on HSE.gov.uk or legislation.gov.uk.
+3. Define mandatory fields from the duty.
+4. Define optional fields.
+5. Implement validation that mirrors the duty. Cite the section in comments.
+
+## Incident types (RIDDOR, not AML)
+
+- Death — report without delay
+- Specified injury — 10 days
+- Over-seven-day injury — 15 days
+- Occupational disease
+- Dangerous occurrence
+- Near miss (not RIDDOR; keep in accident book / incident module)
+
+## When unsure
+
+Search `hse.gov.uk` and `legislation.gov.uk`. Always cite the regulation in field descriptions that are legally required.

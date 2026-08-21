@@ -1,0 +1,18 @@
+---
+description: Talk to Supabase with URL + anon/service role — never a Postgres DATABASE_URL
+alwaysApply: true
+---
+
+# Supabase access
+
+HSEQ Nova talks to Supabase **only** through:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` (browser, RLS, user session)
+- `SUPABASE_SERVICE_ROLE_KEY` (server, bypasses RLS)
+
+Do **not** use `DATABASE_URL`, `DIRECT_URL`, `postgres://`, or the pooler host (`*.pooler.supabase.com`) against this project.
+
+- Browser / user-scoped server: `createClient()` from `@/lib/supabase/client` or `@/lib/supabase/server` (anon).
+- Server actions, webhooks, admin: `getAdminDb()` from `@/lib/supabase/admin` (service role).
+- Prisma schema is types only. Never `prisma db push` against Supabase. Apply SQL from `supabase/migrations/` in the Supabase SQL editor.
