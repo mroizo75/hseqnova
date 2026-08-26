@@ -82,7 +82,7 @@ export default async function EmployeeLayout({
               <div className="flex items-center gap-3">
                 <div className="text-right hidden sm:block">
                   <p className="text-sm font-medium text-gray-900">{session.user.name}</p>
-                  <p className="text-xs text-gray-500">Ansatt</p>
+                  <p className="text-xs text-gray-500">Employee</p>
                 </div>
 
                 <NotificationBell />
@@ -123,7 +123,7 @@ export default async function EmployeeLayout({
               className="flex min-h-11 flex-1 flex-col items-center justify-center h-full hover:bg-gray-50 transition-colors"
             >
               <Home className="h-5 w-5 text-gray-600" />
-              <span className="text-xs mt-1 text-gray-600">Hjem</span>
+              <span className="text-xs mt-1 text-gray-600">Home</span>
             </Link>
 
             {bottomNavItems.map((item) => (

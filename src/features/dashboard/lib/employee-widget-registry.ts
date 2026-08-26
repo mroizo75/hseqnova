@@ -7,6 +7,12 @@ import {
   Eye,
   Flame,
   Headphones,
+  ListChecks,
+  ShieldCheck,
+  BookOpen,
+  LayoutDashboard,
+  ClipboardList,
+  ShieldAlert,
   type LucideIcon,
 } from "lucide-react";
 
@@ -19,9 +25,9 @@ export interface EmployeeWidgetDefinition {
   color: string;
   bgColor: string;
   borderColor: string;
-  /** Admin widget-ID som denne ansatt-widgeten mapper til */
+  /** Admin widget-ID this employee widget maps to */
   adminWidgetId?: string;
-  /** Om widgeten skal vises i bunnnavigasjonen */
+  /** Whether this widget appears in the bottom navigation */
   showInBottomNav?: boolean;
 }
 
@@ -51,6 +57,17 @@ export const EMPLOYEE_WIDGET_REGISTRY: EmployeeWidgetDefinition[] = [
     showInBottomNav: true,
   },
   {
+    id: "emp-actions",
+    label: "My actions",
+    description: "Actions assigned to you from incidents and audits",
+    icon: ListChecks,
+    href: "/ansatt/tiltak",
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-100",
+    borderColor: "border-emerald-300",
+    adminWidgetId: "actions",
+  },
+  {
     id: "emp-sja",
     label: "RAMS",
     description: "Risk assessment and method statement",
@@ -60,6 +77,17 @@ export const EMPLOYEE_WIDGET_REGISTRY: EmployeeWidgetDefinition[] = [
     bgColor: "bg-orange-100",
     borderColor: "border-orange-300",
     adminWidgetId: "sja",
+  },
+  {
+    id: "emp-risks",
+    label: "Risk assessments",
+    description: "View workplace risk assessments",
+    icon: ShieldCheck,
+    href: "/ansatt/risikovurderinger",
+    color: "text-sky-600",
+    bgColor: "bg-sky-100",
+    borderColor: "border-sky-300",
+    adminWidgetId: "risks",
   },
   {
     id: "emp-chemicals",
@@ -108,6 +136,50 @@ export const EMPLOYEE_WIDGET_REGISTRY: EmployeeWidgetDefinition[] = [
     adminWidgetId: "inspections",
   },
   {
+    id: "emp-procedures",
+    label: "Procedures",
+    description: "Company procedures and work arrangements",
+    icon: ClipboardList,
+    href: "/ansatt/rutiner",
+    color: "text-indigo-600",
+    bgColor: "bg-indigo-100",
+    borderColor: "border-indigo-300",
+    adminWidgetId: "routines",
+  },
+  {
+    id: "emp-hs-policy",
+    label: "H&S Policy",
+    description: "Health and safety policy and organisation",
+    icon: BookOpen,
+    href: "/ansatt/hms-handbok",
+    color: "text-teal-600",
+    bgColor: "bg-teal-100",
+    borderColor: "border-teal-300",
+    adminWidgetId: "hms-handbok",
+  },
+  {
+    id: "emp-safety-board",
+    label: "Safety board",
+    description: "Digital safety information board",
+    icon: LayoutDashboard,
+    href: "/ansatt/hms-tavle",
+    color: "text-cyan-600",
+    bgColor: "bg-cyan-100",
+    borderColor: "border-cyan-300",
+    adminWidgetId: "hms-tavle",
+  },
+  {
+    id: "emp-whistleblowing",
+    label: "Whistleblowing",
+    description: "Report concerns confidentially (PIDA 1998)",
+    icon: ShieldAlert,
+    href: "/ansatt/varsling",
+    color: "text-amber-600",
+    bgColor: "bg-amber-100",
+    borderColor: "border-amber-300",
+    adminWidgetId: "whistleblowing",
+  },
+  {
     id: "emp-support",
     label: "Help",
     description: "Chat with the HSEQ team",
@@ -123,10 +195,10 @@ export const EMPLOYEE_WIDGET_REGISTRY: EmployeeWidgetDefinition[] = [
 export const DEFAULT_EMPLOYEE_WIDGET_IDS = EMPLOYEE_WIDGET_REGISTRY.map((w) => w.id);
 
 /**
- * Filtrerer ansatt-widgets basert på admin-dashboardets lockedDashboardConfig.
+ * Filter employee widgets based on the admin dashboard's lockedDashboardConfig.
  */
 export function getEmployeeWidgetsFromLockedConfig(
-  lockedConfig: Array<{ id: string }> | null | undefined
+  lockedConfig: Array<{ id: string }> | null | undefined,
 ): EmployeeWidgetDefinition[] {
   if (!lockedConfig || lockedConfig.length === 0) {
     return EMPLOYEE_WIDGET_REGISTRY;
@@ -141,7 +213,7 @@ export function getEmployeeWidgetsFromLockedConfig(
 }
 
 export function getEmployeeBottomNavItems(
-  widgets: EmployeeWidgetDefinition[]
+  widgets: EmployeeWidgetDefinition[],
 ): EmployeeWidgetDefinition[] {
   return widgets.filter((w) => w.showInBottomNav);
 }
