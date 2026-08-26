@@ -2,7 +2,6 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import AzureADProvider from "next-auth/providers/azure-ad";
 import {
-  countOverdueInvoices,
   getAuthMembership,
   getAuthUserByEmail,
   getAuthUserById,
@@ -115,13 +114,10 @@ export const authOptions: NextAuthOptions = {
             throw new Error("This account has no valid company membership.");
           }
 
-          if (tenant.status === "SUSPENDED") {
-            const overdue = await countOverdueInvoices(tenant.id);
-            throw new Error(
-              overdue > 0
-                ? "This company is suspended because of an overdue invoice. Contact hello@hseqnova.co.uk."
-                : "This company is suspended. Contact hello@hseqnova.co.uk.",
-            );
+          // SUSPENDED tenants are allowed to sign in but redirected to /suspended
+          // CANCELLED tenants cannot sign in at all
+          if (tenant.status === "CANCELLED") {
+            throw new Error("This company account has been permanently closed.");
           }
         }
 

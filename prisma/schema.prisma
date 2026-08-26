@@ -179,6 +179,8 @@ model Tenant {
   slug           String       @unique
   status         TenantStatus @default(TRIAL)
   trialEndsAt    DateTime?
+  suspendedAt    DateTime?
+  deletedAt      DateTime?
   contactEmail   String?
   contactPhone   String?
   address        String?
@@ -393,6 +395,7 @@ model TenantModule {
 enum TenantModuleStatus {
   ACTIVE
   TRIAL
+  PENDING_CANCEL
   CANCELLED
   PAST_DUE
 }

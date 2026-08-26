@@ -143,5 +143,51 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  if (event.type === "customer.subscription.deleted") {
+    const subscription = event.data.object as Stripe.Subscription;
+    const customerId = stripeRefId(subscription.customer);
+    if (customerId) {
+      const now = new Date().toISOString();
+      await db
+        .from("Tenant")
+        .update({ status: "SUSPENDED", suspendedAt: now, updatedAt: now })
+        .eq("stripeCustomerId", customerId)
+        .in("status", ["ACTIVE", "TRIAL"]);
+    }
+  }
+
+  if (event.type === "invoice.payment_failed") {
+    const invoice = event.data.object as Stripe.Invoice;
+    const customerId = stripeRefId(invoice.customer);
+    if (customerId) {
+      const now = new Date().toISOString();
+      const { data: tenant } = await db
+        .from("Tenant")
+        .select("id, status")
+        .eq("stripeCustomerId", customerId)
+        .maybeSingle();
+      if (tenant && tenant.status !== "SUSPENDED" && tenant.status !== "CANCELLED") {
+        await db
+          .from("Tenant")
+          .update({ status: "SUSPENDED", suspendedAt: now, updatedAt: now })
+          .eq("id", tenant.id);
+      }
+    }
+  }
+
+  // Reactivate tenant if invoice is paid while suspended
+  if (event.type === "invoice.paid") {
+    const invoice = event.data.object as Stripe.Invoice;
+    const customerId = stripeRefId(invoice.customer);
+    if (customerId) {
+      const now = new Date().toISOString();
+      await db
+        .from("Tenant")
+        .update({ status: "ACTIVE", suspendedAt: null, updatedAt: now })
+        .eq("stripeCustomerId", customerId)
+        .eq("status", "SUSPENDED");
+    }
+  }
+
   return NextResponse.json({ received: true });
 }

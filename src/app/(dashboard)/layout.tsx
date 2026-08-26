@@ -39,9 +39,12 @@ export default async function DashboardLayout({
   if (tenantId) {
     const { data: tenant } = await getAdminDb()
       .from("Tenant")
-      .select("isTavleOnly, onboardingStatus, stripeSubscriptionId")
+      .select("isTavleOnly, onboardingStatus, stripeSubscriptionId, status")
       .eq("id", tenantId)
       .maybeSingle();
+    if (tenant?.status === "SUSPENDED") {
+      redirect("/suspended");
+    }
     if (tenant && needsPaymentGate(tenant)) {
       redirect("/register?pay=1");
     }
