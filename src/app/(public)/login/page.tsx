@@ -102,7 +102,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           {/* <CardTitle className="text-2xl font-bold">HMS Nova logg inn</CardTitle> */}
-          <Image src="/logo-black.png" alt="HSEQ Nova" width={200} height={48} className="mx-auto h-10 w-auto" />
+          <Image src="/logo-black.png" alt="HSEQ Nova" width={200} height={48} className="mx-auto h-16 w-auto" />
           <CardDescription className="text-center text-xl md:text-lg">
             Sign in with your work email
           </CardDescription>

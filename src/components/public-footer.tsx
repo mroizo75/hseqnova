@@ -15,7 +15,7 @@ export function PublicFooter() {
                 alt="HSEQ Nova"
                 width={200}
                 height={48}
-                className="h-9 w-auto"
+                className="h-16 w-auto"
               />
             </Link>
             <p className="text-sm text-muted-foreground">

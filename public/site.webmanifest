@@ -1,25 +1,21 @@
 {
-  "name": "HSEQ Nova — Health and Safety Software",
-  "short_name": "HSEQ Nova",
-  "description": "Health and safety software for UK employers. Digital accident book, RIDDOR, living policy, inspections and training.",
+  "name": "MyWebSite",
+  "short_name": "MySite",
   "icons": [
     {
-      "src": "/android-chrome-192x192.png",
+      "src": "/web-app-manifest-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
-      "src": "/android-chrome-512x512.png",
+      "src": "/web-app-manifest-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "theme_color": "#0d1f18",
+  "theme_color": "#ffffff",
   "background_color": "#ffffff",
-  "display": "standalone",
-  "start_url": "/",
-  "scope": "/",
-  "lang": "en-GB",
-  "orientation": "portrait-primary",
-  "categories": ["business", "productivity", "safety"]
+  "display": "standalone"
 }

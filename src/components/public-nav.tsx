@@ -27,7 +27,7 @@ export function PublicNav() {
               alt="HSEQ Nova"
               width={200}
               height={48}
-              className="h-9 w-auto"
+              className="h-16 w-auto"
               priority
             />
           </Link>

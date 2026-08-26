@@ -157,7 +157,7 @@ export function MobileNav() {
     <div className="lg:hidden">
       <div className="sticky top-0 z-50 border-b bg-card pt-[env(safe-area-inset-top)]">
         <div className="flex items-center justify-between px-4 py-3">
-          <Image src="/logo-black.png" alt="HSEQ Nova" width={200} height={48} className="h-8 w-auto" />
+          <Image src="/logo-black.png" alt="HSEQ Nova" width={200} height={48} className="h-14 w-auto" />
           <div className="flex items-center gap-2">
             <NotificationBell />
             <Sheet open={open} onOpenChange={setOpen}>
@@ -172,7 +172,7 @@ export function MobileNav() {
               </VisuallyHidden.Root>
               <div className="flex h-full flex-col">
                 <div className="border-b p-6">
-                  <Image src="/logo-black.png" alt="HSEQ Nova" width={200} height={48} className="h-9 w-auto" />
+                  <Image src="/logo-black.png" alt="HSEQ Nova" width={200} height={48} className="h-16 w-auto" />
                   {role && (
                     <Badge variant="outline" className="mt-2 text-xs bg-transparent">
                       {getRoleDisplayName(role)}
