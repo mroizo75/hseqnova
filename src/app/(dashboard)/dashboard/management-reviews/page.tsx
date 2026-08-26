@@ -1,15 +1,13 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
-import { getPermissions } from "@/lib/permissions";
-import { db } from "@/lib/db";
+import { getAuthContext } from "@/lib/server-authorization";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { format } from "date-fns";
 import { enGB } from "date-fns/locale";
-import { Plus, Calendar, CheckCircle, Clock, FileText } from "lucide-react";
+import { Plus, Calendar, CheckCircle, FileText } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -21,43 +19,37 @@ import {
 import { PageHelpDialog } from "@/components/dashboard/page-help-dialog";
 import { helpContent } from "@/lib/help-content";
 
-async function getManagementReviews(tenantId: string) {
-  return await db.managementReview.findMany({
-    where: { tenantId },
-    orderBy: { reviewDate: "desc" },
-  });
+function getStatusBadge(status: string) {
+  const variants: Record<string, { label: string; color: string }> = {
+    PLANNED: { label: "Planned", color: "bg-blue-100 text-blue-900" },
+    IN_PROGRESS: { label: "In progress", color: "bg-yellow-100 text-yellow-900" },
+    COMPLETED: { label: "Completed", color: "bg-green-100 text-green-900" },
+    APPROVED: { label: "Approved", color: "bg-green-600 text-white" },
+  };
+  const info = variants[status] || variants.PLANNED;
+  return <Badge className={info.color}>{info.label}</Badge>;
 }
 
 export default async function ManagementReviewsPage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.role || !session.user.tenantId) {
-    return notFound();
-  }
-
-  const permissions = getPermissions(session.user.role);
-
-  if (!permissions.canReadManagementReviews) {
+  const auth = await getAuthContext();
+  if (!auth.permissions.canReadManagementReviews) {
     redirect("/dashboard");
   }
 
-  const reviews = await getManagementReviews(session.user.tenantId);
+  const db = getAdminDb();
+  const { data: reviews } = await db
+    .from("ManagementReview")
+    .select("*")
+    .eq("tenantId", auth.tenantId)
+    .order("reviewDate", { ascending: false });
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, { label: string; variant: "default" | "secondary" | "outline"; color: string }> = {
-      PLANNED: { label: "Planned", variant: "secondary", color: "bg-blue-100 text-blue-900" },
-      IN_PROGRESS: { label: "In progress", variant: "default", color: "bg-yellow-100 text-yellow-900" },
-      COMPLETED: { label: "Completed", variant: "outline", color: "bg-green-100 text-green-900" },
-      APPROVED: { label: "Approved", variant: "default", color: "bg-green-600 text-white" },
-    };
-    return variants[status] || variants.PLANNED;
-  };
+  const allReviews = reviews ?? [];
 
   const stats = {
-    total: reviews.length,
-    planned: reviews.filter(r => r.status === "PLANNED").length,
-    inProgress: reviews.filter(r => r.status === "IN_PROGRESS").length,
-    completed: reviews.filter(r => r.status === "COMPLETED" || r.status === "APPROVED").length,
+    total: allReviews.length,
+    planned: allReviews.filter((r) => r.status === "PLANNED").length,
+    inProgress: allReviews.filter((r) => r.status === "IN_PROGRESS").length,
+    completed: allReviews.filter((r) => r.status === "COMPLETED" || r.status === "APPROVED").length,
   };
 
   return (
@@ -72,7 +64,7 @@ export default async function ManagementReviewsPage() {
           </div>
           <PageHelpDialog content={helpContent["management-reviews"]} />
         </div>
-        {permissions.canCreateManagementReviews && (
+        {auth.permissions.canCreateManagementReviews && (
           <Link href="/dashboard/management-reviews/new">
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -82,7 +74,6 @@ export default async function ManagementReviewsPage() {
         )}
       </div>
 
-      {/* Statistics */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-3">
@@ -110,7 +101,6 @@ export default async function ManagementReviewsPage() {
         </Card>
       </div>
 
-      {/* Reviews Table */}
       <Card>
         <CardHeader>
           <CardTitle>All reviews</CardTitle>
@@ -119,11 +109,11 @@ export default async function ManagementReviewsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {reviews.length === 0 ? (
+          {allReviews.length === 0 ? (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground">No reviews recorded yet</p>
-              {permissions.canCreateManagementReviews && (
+              {auth.permissions.canCreateManagementReviews && (
                 <Link href="/dashboard/management-reviews/new">
                   <Button className="mt-4">
                     <Plus className="h-4 w-4 mr-2" />
@@ -134,13 +124,12 @@ export default async function ManagementReviewsPage() {
             </div>
           ) : (
             <>
-              {/* Desktop Table */}
               <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Tittel</TableHead>
-                      <TableHead>Periode</TableHead>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Period</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Approved</TableHead>
@@ -148,86 +137,75 @@ export default async function ManagementReviewsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {reviews.map((review) => {
-                      const statusInfo = getStatusBadge(review.status);
-                      return (
-                        <TableRow key={review.id}>
-                          <TableCell className="font-medium">{review.title}</TableCell>
-                          <TableCell>{review.period}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3 text-muted-foreground" />
-                              {format(new Date(review.reviewDate), "d. MMM yyyy", { locale: enGB })}
+                    {allReviews.map((review) => (
+                      <TableRow key={review.id}>
+                        <TableCell className="font-medium">{review.title}</TableCell>
+                        <TableCell>{review.period}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3 text-muted-foreground" />
+                            {format(new Date(review.reviewDate), "d MMM yyyy", { locale: enGB })}
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(review.status)}</TableCell>
+                        <TableCell>
+                          {review.approvedAt ? (
+                            <div className="flex items-center gap-1 text-green-600">
+                              <CheckCircle className="h-4 w-4" />
+                              <span className="text-sm">
+                                {format(new Date(review.approvedAt), "d MMM yyyy", { locale: enGB })}
+                              </span>
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={statusInfo.color}>{statusInfo.label}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            {review.approvedAt ? (
-                              <div className="flex items-center gap-1 text-green-600">
-                                <CheckCircle className="h-4 w-4" />
-                                <span className="text-sm">
-                                  {format(new Date(review.approvedAt), "d. MMM yyyy", { locale: enGB })}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Link href={`/dashboard/management-reviews/${review.id}`}>
-                              <Button variant="ghost" size="sm">
-                                Se detaljer
-                              </Button>
-                            </Link>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                          ) : (
+                            <span className="text-muted-foreground text-sm">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Link href={`/dashboard/management-reviews/${review.id}`}>
+                            <Button variant="ghost" size="sm">
+                              View
+                            </Button>
+                          </Link>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>
 
-              {/* Mobile Cards */}
               <div className="md:hidden space-y-3">
-                {reviews.map((review) => {
-                  const statusInfo = getStatusBadge(review.status);
-                  return (
-                    <Card key={review.id}>
-                      <CardContent className="p-4">
-                        <div className="space-y-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-medium line-clamp-1">{review.title}</h3>
-                              <p className="text-sm text-muted-foreground mt-1">{review.period}</p>
-                            </div>
-                            <Badge className={statusInfo.color}>{statusInfo.label}</Badge>
+                {allReviews.map((review) => (
+                  <Card key={review.id}>
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium line-clamp-1">{review.title}</h3>
+                            <p className="text-sm text-muted-foreground mt-1">{review.period}</p>
                           </div>
-
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {format(new Date(review.reviewDate), "d. MMM yyyy", { locale: enGB })}
-                            </div>
-                            {review.approvedAt && (
-                              <div className="flex items-center gap-1 text-green-600">
-                                <CheckCircle className="h-3 w-3" />
-                                Approved
-                              </div>
-                            )}
-                          </div>
-
-                          <Link href={`/dashboard/management-reviews/${review.id}`}>
-                            <Button variant="outline" size="sm" className="w-full">
-                              Se detaljer
-                            </Button>
-                          </Link>
+                          {getStatusBadge(review.status)}
                         </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {format(new Date(review.reviewDate), "d MMM yyyy", { locale: enGB })}
+                          </div>
+                          {review.approvedAt && (
+                            <div className="flex items-center gap-1 text-green-600">
+                              <CheckCircle className="h-3 w-3" />
+                              Approved
+                            </div>
+                          )}
+                        </div>
+                        <Link href={`/dashboard/management-reviews/${review.id}`}>
+                          <Button variant="outline" size="sm" className="w-full">
+                            View details
+                          </Button>
+                        </Link>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             </>
           )}
@@ -236,4 +214,3 @@ export default async function ManagementReviewsPage() {
     </div>
   );
 }
-

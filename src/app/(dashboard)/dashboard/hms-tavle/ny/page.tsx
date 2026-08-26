@@ -1,28 +1,43 @@
 import { redirect } from "next/navigation";
 import { getAuthContext } from "@/lib/server-authorization";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { NyTavleForm } from "@/features/hms-tavle/components/ny-tavle-form";
 
 export default async function NyTavlePage() {
   const auth = await getAuthContext();
   if (!auth.permissions.canManageHmsTavle) redirect("/dashboard/hms-tavle");
 
-  const [subscription, projects] = await Promise.all([
-    prisma.hmsTavleSubscription.findUnique({ where: { tenantId: auth.tenantId } }),
-    prisma.project.findMany({
-      where: {
-        tenantId: auth.tenantId,
-        status: { in: ["PLANNING", "ACTIVE"] },
-        hmsTavle: null, // Kun prosjekter uten tavle
-      },
-      select: { id: true, name: true, location: true },
-      orderBy: { name: "asc" },
-    }),
+  const db = getAdminDb();
+
+  const [subscriptionRes, projectsRes] = await Promise.all([
+    db
+      .from("HmsTavleSubscription")
+      .select("*")
+      .eq("tenantId", auth.tenantId)
+      .maybeSingle(),
+    db
+      .from("Project")
+      .select("id, name, location")
+      .eq("tenantId", auth.tenantId)
+      .in("status", ["PLANNING", "ACTIVE"])
+      .order("name", { ascending: true }),
   ]);
 
+  const subscription = subscriptionRes.data;
   if (!subscription || subscription.status === "EXPIRED" || subscription.status === "CANCELLED") {
     redirect("/dashboard/hms-tavle");
   }
+
+  // Filter out projects that already have a tavle
+  const projects = projectsRes.data ?? [];
+  const { data: existingTavleProjects } = await db
+    .from("HmsTavle")
+    .select("projectId")
+    .eq("tenantId", auth.tenantId)
+    .not("projectId", "is", null);
+
+  const usedProjectIds = new Set((existingTavleProjects ?? []).map((t) => t.projectId));
+  const availableProjects = projects.filter((p) => !usedProjectIds.has(p.id));
 
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">
@@ -32,7 +47,7 @@ export default async function NyTavlePage() {
           Create a new board for a project or construction site.
         </p>
       </div>
-      <NyTavleForm projects={projects} plan={subscription.plan} />
+      <NyTavleForm projects={availableProjects} plan={subscription.plan} />
     </div>
   );
 }

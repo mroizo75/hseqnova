@@ -1,8 +1,6 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
-import { getPermissions } from "@/lib/permissions";
-import { db } from "@/lib/db";
+import { getAuthContext } from "@/lib/server-authorization";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,55 +8,8 @@ import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import { format } from "date-fns";
 import { enGB } from "date-fns/locale";
-import { ArrowLeft, Edit, FileText, Calendar, Users, CheckCircle2, AlertCircle, Check } from "lucide-react";
+import { ArrowLeft, Edit, FileText, Calendar, CheckCircle2, Check } from "lucide-react";
 import { ApproveManagementReviewButton } from "@/components/management-review/approve-button";
-
-async function getManagementReview(id: string, tenantId: string) {
-  const review = await db.managementReview.findFirst({
-    where: {
-      id,
-      tenantId,
-    },
-  });
-
-  if (!review) return null;
-
-  // Hent bruker-navn for conductedBy og approvedBy
-  const conductedByUser = review.conductedBy
-    ? await db.user.findUnique({
-        where: { id: review.conductedBy },
-        select: { name: true, email: true },
-      })
-    : null;
-
-  const approvedByUser = review.approvedBy
-    ? await db.user.findUnique({
-        where: { id: review.approvedBy },
-        select: { name: true, email: true },
-      })
-    : null;
-
-  // Hent alle dokumenter som skulle vært gjennomgått innen denne datoen
-  const reviewDate = new Date(review.reviewDate);
-  const documentsToReview = await db.document.findMany({
-    where: {
-      tenantId,
-      nextReviewDate: {
-        lte: reviewDate,
-      },
-    },
-    orderBy: {
-      nextReviewDate: "asc",
-    },
-  });
-
-  return {
-    ...review,
-    conductedByName: conductedByUser?.name || conductedByUser?.email || "Ukjent",
-    approvedByName: approvedByUser?.name || approvedByUser?.email || null,
-    documentsToReview,
-  };
-}
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -81,27 +32,51 @@ export default async function ManagementReviewDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const session = await getServerSession(authOptions);
+  const auth = await getAuthContext();
 
-  if (!session?.user?.role || !session.user.tenantId) {
-    return notFound();
-  }
-
-  const permissions = getPermissions(session.user.role);
-
-  if (!permissions.canReadManagementReviews) {
+  if (!auth.permissions.canReadManagementReviews) {
     redirect("/dashboard");
   }
 
-  const review = await getManagementReview(id, session.user.tenantId);
+  const db = getAdminDb();
 
-  if (!review) {
-    return notFound();
+  const { data: review } = await db
+    .from("ManagementReview")
+    .select("*")
+    .eq("id", id)
+    .eq("tenantId", auth.tenantId)
+    .maybeSingle();
+
+  if (!review) notFound();
+
+  // Fetch user names for conductedBy and approvedBy
+  const userIds = [review.conductedBy, review.approvedBy].filter(Boolean) as string[];
+  let conductedByName = "Unknown";
+  let approvedByName: string | null = null;
+
+  if (userIds.length > 0) {
+    const { data: users } = await db
+      .from("User")
+      .select("id, name, email")
+      .in("id", userIds);
+
+    const userMap = new Map((users ?? []).map((u) => [u.id, u.name ?? u.email ?? "Unknown"]));
+    if (review.conductedBy) conductedByName = userMap.get(review.conductedBy) ?? "Unknown";
+    if (review.approvedBy) approvedByName = userMap.get(review.approvedBy) ?? null;
   }
+
+  // Documents due for review by this date
+  const { data: documentsToReview } = await db
+    .from("Document")
+    .select("id, title, status, version, nextReviewDate, approvedAt")
+    .eq("tenantId", auth.tenantId)
+    .lte("nextReviewDate", review.reviewDate)
+    .order("nextReviewDate", { ascending: true });
+
+  const docs = documentsToReview ?? [];
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/dashboard/management-reviews">
@@ -112,75 +87,74 @@ export default async function ManagementReviewDetailPage({
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{review.title}</h1>
             <p className="text-muted-foreground">
-              {format(new Date(review.reviewDate), "dd. MMMM yyyy", { locale: enGB })}
+              {format(new Date(review.reviewDate), "dd MMMM yyyy", { locale: enGB })}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {getStatusBadge(review.status)}
-          {permissions.canCreateManagementReviews && review.status !== "APPROVED" && (
+          {auth.permissions.canCreateManagementReviews && review.status !== "APPROVED" && (
             <>
               <ApproveManagementReviewButton
                 reviewId={review.id}
                 canApprove={review.status === "COMPLETED"}
-                documentsCount={review.documentsToReview.length}
+                documentsCount={docs.length}
               />
               <Button asChild>
                 <Link href={`/dashboard/management-reviews/${review.id}/edit`}>
                   <Edit className="mr-2 h-4 w-4" />
-                  Rediger
+                  Edit
                 </Link>
               </Button>
             </>
           )}
-          {review.status === "APPROVED" && permissions.canCreateManagementReviews && (
+          {review.status === "APPROVED" && auth.permissions.canCreateManagementReviews && (
             <Button asChild>
               <Link href={`/dashboard/management-reviews/${review.id}/edit`}>
                 <Edit className="mr-2 h-4 w-4" />
-                Rediger
+                Edit
               </Link>
             </Button>
           )}
         </div>
       </div>
 
-      {/* Grunnleggende informasjon */}
       <Card>
         <CardHeader>
-          <CardTitle>Grunnleggende informasjon</CardTitle>
+          <CardTitle>Overview</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-6 md:grid-cols-2">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Periode</p>
+              <p className="text-sm font-medium text-muted-foreground">Period</p>
               <p className="text-lg font-semibold">{review.period}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Conducted by</p>
-              <p className="text-lg">{review.conductedByName}</p>
+              <p className="text-lg">{conductedByName}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Created</p>
               <p className="text-lg">
-                {format(new Date(review.createdAt), "dd. MMM yyyy HH:mm", { locale: enGB })}
+                {format(new Date(review.createdAt), "dd MMM yyyy HH:mm", { locale: enGB })}
               </p>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Sist oppdatert</p>
+              <p className="text-sm font-medium text-muted-foreground">Last updated</p>
               <p className="text-lg">
-                {format(new Date(review.updatedAt), "dd. MMM yyyy HH:mm", { locale: enGB })}
+                {format(new Date(review.updatedAt), "dd MMM yyyy HH:mm", { locale: enGB })}
               </p>
             </div>
           </div>
 
-          {review.approvedAt && review.approvedByName && (
+          {review.approvedAt && approvedByName && (
             <>
               <Separator />
               <div className="flex items-center gap-2 rounded-lg bg-green-50 p-4 dark:bg-green-950">
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
                 <div>
                   <p className="font-medium text-green-900 dark:text-green-100">
-                    Approved by {review.approvedByName}
+                    Approved by {approvedByName}
                   </p>
                   <p className="text-sm text-green-700 dark:text-green-300">
                     {format(new Date(review.approvedAt), "dd MMMM yyyy HH:mm", { locale: enGB })}
@@ -200,7 +174,7 @@ export default async function ManagementReviewDetailPage({
                     Next review planned
                   </p>
                   <p className="text-sm text-blue-700 dark:text-blue-300">
-                    {format(new Date(review.nextReviewDate), "dd. MMMM yyyy", { locale: enGB })}
+                    {format(new Date(review.nextReviewDate), "dd MMMM yyyy", { locale: enGB })}
                   </p>
                 </div>
               </div>
@@ -209,21 +183,20 @@ export default async function ManagementReviewDetailPage({
         </CardContent>
       </Card>
 
-      {/* Dokumenter til gjennomgang */}
-      {review.documentsToReview.length > 0 && (
+      {docs.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Dokumenter til gjennomgang
+              Documents due for review
             </CardTitle>
             <CardDescription>
-              {review.documentsToReview.length} document(s) that should have been reviewed by this date
+              {docs.length} document(s) that should have been reviewed by this date
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {review.documentsToReview.map((doc) => (
+              {docs.map((doc) => (
                 <div
                   key={doc.id}
                   className="flex items-center justify-between p-3 rounded-lg border bg-muted/50"
@@ -238,19 +211,19 @@ export default async function ManagementReviewDetailPage({
                     <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                       <span>Version: {doc.version}</span>
                       <span>
-                        Should have been reviewed: {format(new Date(doc.nextReviewDate!), "dd. MMM yyyy", { locale: enGB })}
+                        Due: {format(new Date(doc.nextReviewDate!), "dd MMM yyyy", { locale: enGB })}
                       </span>
                       {doc.status === "APPROVED" && doc.approvedAt && (
                         <span className="text-green-600 flex items-center gap-1">
                           <Check className="h-3 w-3" />
-                          Approved {format(new Date(doc.approvedAt), "dd. MMM yyyy", { locale: enGB })}
+                          Approved {format(new Date(doc.approvedAt), "dd MMM yyyy", { locale: enGB })}
                         </span>
                       )}
                     </div>
                   </div>
                   <Link href={`/dashboard/documents/${doc.id}`}>
                     <Button variant="ghost" size="sm">
-                      Se dokument
+                      View
                     </Button>
                   </Link>
                 </div>
@@ -260,10 +233,9 @@ export default async function ManagementReviewDetailPage({
         </Card>
       )}
 
-      {/* HMS-gjennomgang */}
       <Card>
         <CardHeader>
-          <CardTitle>HMS-gjennomgang</CardTitle>
+          <CardTitle>HSEQ review</CardTitle>
           <CardDescription>Status and results from different HSEQ areas</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -341,7 +313,6 @@ export default async function ManagementReviewDetailPage({
         </CardContent>
       </Card>
 
-      {/* Conclusions and follow-up */}
       {(review.conclusions || review.notes) && (
         <Card>
           <CardHeader>
@@ -371,4 +342,3 @@ export default async function ManagementReviewDetailPage({
     </div>
   );
 }
-

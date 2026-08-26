@@ -1,11 +1,10 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getAuthContext } from "@/lib/server-authorization";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Monitor,
   Plus,
@@ -13,19 +12,18 @@ import {
   Users,
   Eye,
   Settings,
-  AlertTriangle,
   CheckCircle2,
-  Clock,
   ExternalLink,
 } from "lucide-react";
-import { PLAN_LABELS, PLAN_PRICES } from "@/features/hms-tavle/lib/tavle-plan-limits";
-import { HmsTavleSubscriptionStatus } from "@prisma/client";
+import { PLAN_LABELS } from "@/features/hms-tavle/lib/tavle-plan-limits";
 import { ActivateTavleAddonButton } from "@/features/hms-tavle/components/activate-addon-button";
 
-function statusBadge(status: HmsTavleSubscriptionStatus) {
-  const map: Record<HmsTavleSubscriptionStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+type SubscriptionStatus = "TRIAL" | "ACTIVE" | "EXPIRING_SOON" | "EXPIRED" | "CANCELLED";
+
+function statusBadge(status: SubscriptionStatus) {
+  const map: Record<SubscriptionStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
     TRIAL: { label: "Trial", variant: "secondary" },
-    ACTIVE: { label: "Aktiv", variant: "default" },
+    ACTIVE: { label: "Active", variant: "default" },
     EXPIRING_SOON: { label: "Expires soon", variant: "outline" },
     EXPIRED: { label: "Expired", variant: "destructive" },
     CANCELLED: { label: "Cancelled", variant: "destructive" },
@@ -38,31 +36,79 @@ export default async function HmsTavleOversiktPage() {
   const auth = await getAuthContext();
   if (!auth.permissions.canViewHmsTavle) redirect("/dashboard");
 
-  const [tavler, subscription, tenant] = await Promise.all([
-    prisma.hmsTavle.findMany({
-      where: { tenantId: auth.tenantId },
-      include: {
-        sections: { select: { id: true, type: true, isVisible: true } },
-        subcontractorPortal: { select: { id: true, portalToken: true } },
-        project: { select: { id: true, name: true } },
-        _count: { select: { checkins: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.hmsTavleSubscription.findUnique({ where: { tenantId: auth.tenantId } }),
-    prisma.tenant.findUnique({ where: { id: auth.tenantId }, select: { isTavleOnly: true, name: true } }),
+  const db = getAdminDb();
+
+  const [tavlerRes, subscriptionRes, tenantRes] = await Promise.all([
+    db
+      .from("HmsTavle")
+      .select("id, name, isPublic, publicToken, brandColor, createdAt, projectId, Project:projectId(id, name)")
+      .eq("tenantId", auth.tenantId)
+      .order("createdAt", { ascending: false }),
+    db
+      .from("HmsTavleSubscription")
+      .select("*")
+      .eq("tenantId", auth.tenantId)
+      .maybeSingle(),
+    db
+      .from("Tenant")
+      .select("isTavleOnly, name")
+      .eq("id", auth.tenantId)
+      .maybeSingle(),
   ]);
 
+  const tavler = tavlerRes.data ?? [];
+  const subscription = subscriptionRes.data;
+
   const hasActiveSub =
-    subscription && subscription.status !== "EXPIRED" && subscription.status !== "CANCELLED";
+    subscription &&
+    subscription.status !== "EXPIRED" &&
+    subscription.status !== "CANCELLED";
 
   const today = new Date().toISOString().slice(0, 10);
-  const todayCheckins = await prisma.tavleCheckin.count({
-    where: {
-      tavle: { tenantId: auth.tenantId },
-      date: today,
-    },
-  });
+  const tavleIds = tavler.map((t) => t.id);
+  let todayCheckins = 0;
+  if (tavleIds.length > 0) {
+    const { count } = await db
+      .from("TavleCheckin")
+      .select("id", { count: "exact", head: true })
+      .in("tavleId", tavleIds)
+      .eq("date", today);
+    todayCheckins = count ?? 0;
+  }
+
+  // Fetch sections and checkin counts per tavle
+  const [sectionsRes, checkinsRes, portalRes] = await Promise.all([
+    tavleIds.length > 0
+      ? db.from("HmsTavleSection").select("id, tavleId, type, isVisible").in("tavleId", tavleIds)
+      : Promise.resolve({ data: [] as { id: string; tavleId: string; type: string; isVisible: boolean }[] }),
+    tavleIds.length > 0
+      ? db.from("TavleCheckin").select("tavleId").in("tavleId", tavleIds)
+      : Promise.resolve({ data: [] as { tavleId: string }[] }),
+    tavleIds.length > 0
+      ? db.from("SubcontractorPortal").select("id, tavleId, portalToken").in("tavleId", tavleIds)
+      : Promise.resolve({ data: [] as { id: string; tavleId: string; portalToken: string }[] }),
+  ]);
+
+  const sections = sectionsRes.data ?? [];
+  const checkins = checkinsRes.data ?? [];
+  const portals = portalRes.data ?? [];
+
+  const sectionsByTavle = new Map<string, typeof sections>();
+  for (const s of sections) {
+    const arr = sectionsByTavle.get(s.tavleId) ?? [];
+    arr.push(s);
+    sectionsByTavle.set(s.tavleId, arr);
+  }
+
+  const checkinCountByTavle = new Map<string, number>();
+  for (const c of checkins) {
+    checkinCountByTavle.set(c.tavleId, (checkinCountByTavle.get(c.tavleId) ?? 0) + 1);
+  }
+
+  const portalByTavle = new Map<string, (typeof portals)[0]>();
+  for (const p of portals) {
+    portalByTavle.set(p.tavleId, p);
+  }
 
   return (
     <div className="space-y-6">
@@ -86,7 +132,6 @@ export default async function HmsTavleOversiktPage() {
         )}
       </div>
 
-      {/* Subscriptionsstatus */}
       {subscription ? (
         <Card>
           <CardContent className="p-4">
@@ -94,12 +139,12 @@ export default async function HmsTavleOversiktPage() {
               <div className="flex items-center gap-3">
                 <div>
                   <p className="text-sm text-muted-foreground">Subscription</p>
-                  <p className="font-semibold">{PLAN_LABELS[subscription.plan]}</p>
+                  <p className="font-semibold">{PLAN_LABELS[subscription.plan as keyof typeof PLAN_LABELS]}</p>
                 </div>
-                {statusBadge(subscription.status)}
+                {statusBadge(subscription.status as SubscriptionStatus)}
                 {subscription.isAddon && (
                   <Badge variant="outline" className="text-xs">
-                    HSEQ Nova tillegg
+                    HSEQ Nova add-on
                   </Badge>
                 )}
               </div>
@@ -144,7 +189,6 @@ export default async function HmsTavleOversiktPage() {
         </Card>
       )}
 
-      {/* Tavle-liste */}
       {hasActiveSub && (
         <>
           {tavler.length === 0 ? (
@@ -169,80 +213,87 @@ export default async function HmsTavleOversiktPage() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {tavler.map((tavle) => (
-                <Card key={tavle.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: tavle.brandColor ?? "#2563eb" }}
-                        />
-                        <CardTitle className="text-base">{tavle.name}</CardTitle>
-                      </div>
-                      <Badge variant={tavle.isPublic ? "default" : "secondary"} className="text-xs">
-                        {tavle.isPublic ? "Public" : "Private"}
-                      </Badge>
-                    </div>
-                    {tavle.project && (
-                      <p className="text-xs text-muted-foreground">
-                        Project: {tavle.project.name}
-                      </p>
-                    )}
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex gap-4 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Monitor className="h-3.5 w-3.5" />
-                        {tavle.sections.filter((s) => s.isVisible).length} seksjoner
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="h-3.5 w-3.5" />
-                        {tavle._count.checkins} innsjekk
-                      </span>
-                      {tavle.subcontractorPortal && (
-                        <span className="flex items-center gap-1 text-green-600">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Subcontractor portal
-                        </span>
-                      )}
-                    </div>
+              {tavler.map((tavle) => {
+                const tavleSections = sectionsByTavle.get(tavle.id) ?? [];
+                const checkinCount = checkinCountByTavle.get(tavle.id) ?? 0;
+                const portal = portalByTavle.get(tavle.id);
+                const projectRaw = tavle.Project as unknown;
+                const project = Array.isArray(projectRaw) ? (projectRaw[0] as { id: string; name: string } | undefined) ?? null : (projectRaw as { id: string; name: string } | null);
 
-                    <div className="flex gap-2 flex-wrap">
-                      <Button size="sm" variant="outline" asChild>
-                        <Link href={`/dashboard/hms-tavle/${tavle.id}`}>
-                          <Settings className="h-3.5 w-3.5 mr-1" />
-                          Manage
-                        </Link>
-                      </Button>
-                      {tavle.isPublic && (
-                        <Button size="sm" variant="outline" asChild>
-                          <a
-                            href={`/tavle/${tavle.publicToken}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <Eye className="h-3.5 w-3.5 mr-1" />
-                            View board
-                          </a>
-                        </Button>
+                return (
+                  <Card key={tavle.id} className="hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="h-3 w-3 rounded-full"
+                            style={{ backgroundColor: (tavle.brandColor as string) ?? "#2563eb" }}
+                          />
+                          <CardTitle className="text-base">{tavle.name}</CardTitle>
+                        </div>
+                        <Badge variant={tavle.isPublic ? "default" : "secondary"} className="text-xs">
+                          {tavle.isPublic ? "Public" : "Private"}
+                        </Badge>
+                      </div>
+                      {project && (
+                        <p className="text-xs text-muted-foreground">
+                          Project: {project.name}
+                        </p>
                       )}
-                      <Button size="sm" variant="outline" asChild>
-                        <Link href={`/dashboard/hms-tavle/${tavle.id}?tab=qr`}>
-                          <QrCode className="h-3.5 w-3.5 mr-1" />
-                          QR code
-                        </Link>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex gap-4 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Monitor className="h-3.5 w-3.5" />
+                          {tavleSections.filter((s) => s.isVisible).length} sections
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Users className="h-3.5 w-3.5" />
+                          {checkinCount} check-ins
+                        </span>
+                        {portal && (
+                          <span className="flex items-center gap-1 text-green-600">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            Subcontractor portal
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2 flex-wrap">
+                        <Button size="sm" variant="outline" asChild>
+                          <Link href={`/dashboard/hms-tavle/${tavle.id}`}>
+                            <Settings className="h-3.5 w-3.5 mr-1" />
+                            Manage
+                          </Link>
+                        </Button>
+                        {tavle.isPublic && (
+                          <Button size="sm" variant="outline" asChild>
+                            <a
+                              href={`/tavle/${tavle.publicToken}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Eye className="h-3.5 w-3.5 mr-1" />
+                              View board
+                            </a>
+                          </Button>
+                        )}
+                        <Button size="sm" variant="outline" asChild>
+                          <Link href={`/dashboard/hms-tavle/${tavle.id}?tab=qr`}>
+                            <QrCode className="h-3.5 w-3.5 mr-1" />
+                            QR code
+                          </Link>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </>
       )}
 
-      {/* Hva er safety board */}
       {!subscription && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
