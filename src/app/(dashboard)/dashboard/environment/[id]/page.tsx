@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { getAuthContext } from "@/lib/server-authorization";
+import {
+  loadEnvironmentGoals,
+  loadEnvironmentUsers,
+  loadEnvironmentalAspect,
+} from "@/server/queries/environment.queries";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -12,23 +15,23 @@ import { EnvironmentMeasurementList } from "@/features/environment/components/en
 import { EnvironmentAspectForm } from "@/features/environment/components/environment-aspect-form";
 
 const getSignificanceMeta = (score: number) => {
-  if (score >= 20) return { label: "Kritisk", className: "bg-red-100 text-red-900 border-red-300" };
-  if (score >= 12) return { label: "Høy", className: "bg-orange-100 text-orange-900 border-orange-300" };
-  if (score >= 6) return { label: "Moderat", className: "bg-yellow-100 text-yellow-900 border-yellow-300" };
-  return { label: "Lav", className: "bg-green-100 text-green-900 border-green-300" };
+  if (score >= 20) return { label: "Critical", className: "bg-red-100 text-red-900 border-red-300" };
+  if (score >= 12) return { label: "High", className: "bg-orange-100 text-orange-900 border-orange-300" };
+  if (score >= 6) return { label: "Moderate", className: "bg-yellow-100 text-yellow-900 border-yellow-300" };
+  return { label: "Low", className: "bg-green-100 text-green-900 border-green-300" };
 };
 
 const statusLabels = {
-  ACTIVE: "Aktiv",
-  MONITORED: "Følges opp",
-  CLOSED: "Lukket",
+  ACTIVE: "Active",
+  MONITORED: "Monitored",
+  CLOSED: "Closed",
 };
 
 const formatDateTime = (value?: Date | string | null) => {
   if (!value) return "-";
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleString("nb-NO", {
+  return date.toLocaleString("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -43,67 +46,20 @@ export default async function EnvironmentAspectDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.email) {
+  const auth = await getAuthContext();
+  if (!auth) {
     redirect("/login");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { tenants: true },
-  });
-
-  if (!user || user.tenants.length === 0) {
-    return <div>Ingen tilgang til tenant</div>;
-  }
-
-  const selectedMembership = user.tenants.find(
-    (membership) => membership.tenantId === session.user.tenantId,
-  );
-  if (!selectedMembership) {
-    return <div>Ingen tilgang til tenant</div>;
-  }
-
-  const tenantId = selectedMembership.tenantId;
-
-  const aspect = await prisma.environmentalAspect.findUnique({
-    where: { id, tenantId },
-    include: {
-      owner: { select: { id: true, name: true, email: true } },
-      goal: { select: { id: true, title: true } },
-      measurements: {
-        orderBy: { measurementDate: "desc" },
-        include: {
-          responsible: { select: { id: true, name: true, email: true } },
-        },
-      },
-    },
-  });
-
+  const tenantId = auth.tenantId;
+  const aspect = await loadEnvironmentalAspect(id, tenantId);
   if (!aspect) {
-    return <div>Miljøaspekt ikke funnet</div>;
+    return <div>Environmental aspect not found</div>;
   }
 
   const [users, goals] = await Promise.all([
-    prisma.user.findMany({
-      where: {
-        tenants: {
-          some: { tenantId },
-        },
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-      },
-      orderBy: { name: "asc" },
-    }),
-    prisma.goal.findMany({
-      where: { tenantId },
-      select: { id: true, title: true },
-      orderBy: { title: "asc" },
-    }),
+    loadEnvironmentUsers(tenantId),
+    loadEnvironmentGoals(tenantId),
   ]);
 
   const significanceMeta = getSignificanceMeta(aspect.significanceScore);
@@ -123,7 +79,7 @@ export default async function EnvironmentAspectDetailPage({
             <div className="flex flex-wrap gap-2 mt-2">
               <Badge variant="outline">{aspect.category}</Badge>
               <Badge variant="outline" className={significanceMeta.className}>
-                Betydning: {aspect.significanceScore} · {significanceMeta.label}
+                Significance: {aspect.significanceScore} · {significanceMeta.label}
               </Badge>
               <Badge variant="outline">{statusLabels[aspect.status]}</Badge>
             </div>
@@ -133,71 +89,71 @@ export default async function EnvironmentAspectDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Detaljer</CardTitle>
-          <CardDescription>Oversikt over kontekst og ansvar</CardDescription>
+          <CardTitle>Details</CardTitle>
+          <CardDescription>Overview of context and responsibility</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <p className="text-xs text-muted-foreground">Prosess</p>
-              <p className="font-medium">{aspect.process || "Ikke satt"}</p>
+              <p className="text-xs text-muted-foreground">Process</p>
+              <p className="font-medium">{aspect.process || "Not set"}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Lokasjon</p>
-              <p className="font-medium">{aspect.location || "Ikke satt"}</p>
+              <p className="text-xs text-muted-foreground">Location</p>
+              <p className="font-medium">{aspect.location || "Not set"}</p>
             </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <p className="text-xs text-muted-foreground">Ansvarlig</p>
+              <p className="text-xs text-muted-foreground">Responsible person</p>
               <p className="font-medium">
-                {aspect.owner?.name || aspect.owner?.email || "Ikke satt"}
+                {aspect.owner?.name || aspect.owner?.email || "Not set"}
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Knyttet mål</p>
-              <p className="font-medium">{aspect.goal?.title || "Ingen"}</p>
+              <p className="text-xs text-muted-foreground">Linked goals</p>
+              <p className="font-medium">{aspect.goal?.title || "None"}</p>
             </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <p className="text-xs text-muted-foreground">Neste revisjon</p>
+              <p className="text-xs text-muted-foreground">Next review</p>
               <p className="font-medium">{formatDateTime(aspect.nextReviewDate)}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Siste måledato</p>
+              <p className="text-xs text-muted-foreground">Last measurement date</p>
               <p className="font-medium">{formatDateTime(aspect.lastMeasurementDate)}</p>
             </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <p className="text-xs text-muted-foreground">Myndighetskrav</p>
+              <p className="text-xs text-muted-foreground">Legal requirement</p>
               <p className="text-sm">
-                {aspect.legalRequirement || "Ikke dokumentert"}
+                {aspect.legalRequirement || "Not documented"}
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Kontrolltiltak</p>
+              <p className="text-xs text-muted-foreground">Control measures</p>
               <p className="text-sm">
-                {aspect.controlMeasures || "Ikke dokumentert"}
+                {aspect.controlMeasures || "Not documented"}
               </p>
             </div>
           </div>
 
           <div>
-            <p className="text-xs text-muted-foreground">Målemetode</p>
-            <p className="text-sm">{aspect.monitoringMethod || "Ikke definert"}</p>
+            <p className="text-xs text-muted-foreground">Measurement method</p>
+            <p className="text-sm">{aspect.monitoringMethod || "Not defined"}</p>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Målinger</CardTitle>
-          <CardDescription>Registrer miljødata og følg status</CardDescription>
+          <CardTitle>Measurements</CardTitle>
+          <CardDescription>Record environmental data and track status</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <EnvironmentMeasurementForm aspectId={aspect.id} users={users} />
@@ -207,8 +163,8 @@ export default async function EnvironmentAspectDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Rediger miljøaspekt</CardTitle>
-          <CardDescription>Oppdater klassifisering og ansvar</CardDescription>
+          <CardTitle>Edit environmental aspect</CardTitle>
+          <CardDescription>Update classification and responsibility</CardDescription>
         </CardHeader>
         <CardContent>
           <EnvironmentAspectForm

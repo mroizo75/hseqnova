@@ -23,7 +23,7 @@ import {
 import { Trash2, Eye, Download, Search, Filter, FileText } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { deleteChemical, verifyChemical } from "@/server/actions/chemical.actions";
+import { deleteChemical } from "@/server/actions/chemical.actions";
 import { useToast } from "@/hooks/use-toast";
 import type { Chemical } from "@prisma/client";
 import { normalizePpeFile } from "@/lib/pictograms";
@@ -47,19 +47,18 @@ export function ChemicalList({
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isocyanateFilter, setIsocyanateFilter] = useState<string>(
-    initialIsocyanateFilter ?? "all"
+    initialIsocyanateFilter ?? "all",
   );
   const [revisionFilter, setRevisionFilter] = useState<string>(
-    initialQuickFilter === "needsReview" ? "next30days" : initialQuickFilter === "overdue" ? "overdue" : "all"
+    initialQuickFilter === "needsReview" ? "next30days" : initialQuickFilter === "overdue" ? "overdue" : "all",
   );
   const [missingSdsFilter, setMissingSdsFilter] = useState<string>(
-    initialQuickFilter === "missingSds" ? "only" : "all"
+    initialQuickFilter === "missingSds" ? "only" : "all",
   );
   const [sortOption, setSortOption] = useState<string>("revisionAsc");
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
-  // Last lagret filter/paginering fra localStorage
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -101,11 +100,10 @@ export function ChemicalList({
         setPage(parsed.page);
       }
     } catch {
-      // Ignorer korrupte verdier
+      // Ignore corrupt saved filter state.
     }
   }, [initialIsocyanateFilter, initialQuickFilter]);
 
-  // Lagre filter/paginering slik at det huskes ved navigering
   useEffect(() => {
     if (typeof window === "undefined") return;
     const state = {
@@ -121,7 +119,7 @@ export function ChemicalList({
   }, [searchTerm, statusFilter, isocyanateFilter, missingSdsFilter, revisionFilter, sortOption, page]);
 
   const handleDelete = async (id: string, productName: string) => {
-    if (!confirm(`Er du sikker på at du vil slette "${productName}"?\n\nDette kan ikke angres.`)) {
+    if (!confirm(`Delete "${productName}" from the COSHH register?\n\nThis cannot be undone.`)) {
       return;
     }
 
@@ -129,15 +127,15 @@ export function ChemicalList({
     const result = await deleteChemical(id);
     if (result.success) {
       toast({
-        title: "🗑️ Kjemikalie slettet",
-        description: `"${productName}" er permanent fjernet`,
+        title: "Chemical deleted",
+        description: `"${productName}" has been removed from the COSHH register`,
       });
       router.refresh();
     } else {
       toast({
         variant: "destructive",
-        title: "Sletting feilet",
-        description: result.error || "Kunne ikke slette kjemikalie",
+        title: "Could not delete",
+        description: result.error || "Could not delete the chemical",
       });
     }
     setLoading(null);
@@ -147,41 +145,21 @@ export function ChemicalList({
     setLoading(id);
     window.open(`/api/chemicals/${id}/download-sds`, "_blank");
     toast({
-      title: "📄 Datablad lastet ned",
-      description: `Sikkerhetsdatablad for "${productName}"`,
+      title: "Safety data sheet",
+      description: `Downloading the SDS for "${productName}"`,
       className: "bg-green-50 border-green-200",
     });
-    setLoading(null);
-  };
-
-  const handleVerify = async (id: string, productName: string) => {
-    setLoading(id);
-    const result = await verifyChemical(id);
-    if (result.success) {
-      toast({
-        title: "✅ Kjemikalie verifisert",
-        description: `"${productName}" er verifisert`,
-        className: "bg-green-50 border-green-200",
-      });
-      router.refresh();
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Verifisering feilet",
-        description: result.error || "Kunne ikke verifisere",
-      });
-    }
     setLoading(null);
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "ACTIVE":
-        return <Badge className="bg-green-100 text-green-800 border-green-200">I bruk</Badge>;
+        return <Badge className="bg-green-100 text-green-800 border-green-200">In use</Badge>;
       case "PHASED_OUT":
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Utfases</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Being phased out</Badge>;
       case "ARCHIVED":
-        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Arkivert</Badge>;
+        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Archived</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -192,7 +170,6 @@ export function ChemicalList({
     return new Date(nextReviewDate) < new Date();
   };
 
-  // Filtering
   const filteredChemicals = chemicals.filter((chemical) => {
     const matchesSearch =
       chemical.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -237,29 +214,27 @@ export function ChemicalList({
     return true;
   });
 
-  // Sortering
   const sortedChemicals = [...filteredChemicals].sort((a, b) => {
     switch (sortOption) {
       case "productAsc":
-        return a.productName.localeCompare(b.productName, "nb");
+        return a.productName.localeCompare(b.productName, "en-GB");
       case "productDesc":
-        return b.productName.localeCompare(a.productName, "nb");
+        return b.productName.localeCompare(a.productName, "en-GB");
       case "supplierAsc": {
         const aSup = a.supplier || "";
         const bSup = b.supplier || "";
-        return aSup.localeCompare(bSup, "nb");
+        return aSup.localeCompare(bSup, "en-GB");
       }
       case "supplierDesc": {
         const aSup = a.supplier || "";
         const bSup = b.supplier || "";
-        return bSup.localeCompare(aSup, "nb");
+        return bSup.localeCompare(aSup, "en-GB");
       }
       case "revisionDesc":
       case "revisionAsc": {
         const aDate = a.nextReviewDate ? new Date(a.nextReviewDate).getTime() : null;
         const bDate = b.nextReviewDate ? new Date(b.nextReviewDate).getTime() : null;
 
-        // Manglende dato legges sist
         if (aDate === null && bDate === null) return 0;
         if (aDate === null) return 1;
         if (bDate === null) return -1;
@@ -280,21 +255,21 @@ export function ChemicalList({
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedChemicals = sortedChemicals.slice(
     startIndex,
-    startIndex + pageSize
+    startIndex + pageSize,
   );
 
   if (chemicals.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
         <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
-        <h3 className="text-xl font-semibold">Ingen kjemikalier funnet</h3>
+        <h3 className="text-xl font-semibold">No chemicals registered</h3>
         <p className="mb-4 text-muted-foreground">
-          Start med å registrere ditt første produkt i stoffkartoteket.
+          Start by adding the first product to the COSHH register.
         </p>
         <Link href="/dashboard/chemicals/new">
           <Button>
             <FileText className="mr-2 h-4 w-4" />
-            Registrer kjemikalie
+            Register a chemical
           </Button>
         </Link>
       </div>
@@ -303,12 +278,11 @@ export function ChemicalList({
 
   return (
     <div className="space-y-4 w-full max-w-full">
-      {/* Filters */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between w-full">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Søk etter produkt, leverandør eller CAS..."
+            placeholder="Search product, supplier or CAS..."
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
@@ -328,12 +302,12 @@ export function ChemicalList({
             }}
           >
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Isocyanater" />
+              <SelectValue placeholder="Diisocyanates" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Alle stoffer</SelectItem>
-              <SelectItem value="only">Kun diisocyanater</SelectItem>
-              <SelectItem value="exclude">Ekskl. diisocyanater</SelectItem>
+              <SelectItem value="all">All substances</SelectItem>
+              <SelectItem value="only">Diisocyanates only</SelectItem>
+              <SelectItem value="exclude">Exclude diisocyanates</SelectItem>
             </SelectContent>
           </Select>
           <Select
@@ -347,10 +321,10 @@ export function ChemicalList({
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Alle statuser</SelectItem>
-              <SelectItem value="ACTIVE">I bruk</SelectItem>
-              <SelectItem value="PHASED_OUT">Utfases</SelectItem>
-              <SelectItem value="ARCHIVED">Arkivert</SelectItem>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="ACTIVE">In use</SelectItem>
+              <SelectItem value="PHASED_OUT">Being phased out</SelectItem>
+              <SelectItem value="ARCHIVED">Archived</SelectItem>
             </SelectContent>
           </Select>
           <Select
@@ -361,11 +335,11 @@ export function ChemicalList({
             }}
           >
             <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Datablad" />
+              <SelectValue placeholder="SDS" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Alle</SelectItem>
-              <SelectItem value="only">Mangler datablad</SelectItem>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="only">Missing SDS</SelectItem>
             </SelectContent>
           </Select>
           <Select
@@ -376,14 +350,14 @@ export function ChemicalList({
             }}
           >
             <SelectTrigger className="w-[170px]">
-              <SelectValue placeholder="Revisjon" />
+              <SelectValue placeholder="Review" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Alle revisjoner</SelectItem>
-              <SelectItem value="overdue">Forfalt</SelectItem>
-              <SelectItem value="next30days">Neste 30 dager</SelectItem>
-              <SelectItem value="hasDate">Har dato</SelectItem>
-              <SelectItem value="noDate">Ingen dato</SelectItem>
+              <SelectItem value="all">All reviews</SelectItem>
+              <SelectItem value="overdue">Overdue</SelectItem>
+              <SelectItem value="next30days">Next 30 days</SelectItem>
+              <SelectItem value="hasDate">Has a date</SelectItem>
+              <SelectItem value="noDate">No date</SelectItem>
             </SelectContent>
           </Select>
           <Select
@@ -394,58 +368,56 @@ export function ChemicalList({
             }}
           >
             <SelectTrigger className="w-[190px]">
-              <SelectValue placeholder="Sorter etter" />
+              <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="revisionAsc">Revisjon (eldst først)</SelectItem>
-              <SelectItem value="revisionDesc">Revisjon (nyest først)</SelectItem>
-              <SelectItem value="productAsc">Produkt (A–Å)</SelectItem>
-              <SelectItem value="productDesc">Produkt (Å–A)</SelectItem>
-              <SelectItem value="supplierAsc">Leverandør (A–Å)</SelectItem>
-              <SelectItem value="supplierDesc">Leverandør (Å–A)</SelectItem>
+              <SelectItem value="revisionAsc">Review (oldest first)</SelectItem>
+              <SelectItem value="revisionDesc">Review (newest first)</SelectItem>
+              <SelectItem value="productAsc">Product (A–Z)</SelectItem>
+              <SelectItem value="productDesc">Product (Z–A)</SelectItem>
+              <SelectItem value="supplierAsc">Supplier (A–Z)</SelectItem>
+              <SelectItem value="supplierDesc">Supplier (Z–A)</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      {/* Results count */}
       <div className="text-sm text-muted-foreground">
-        Viser {paginatedChemicals.length} av {totalFiltered} filtrerte kjemikalier
-        {totalFiltered !== chemicals.length ? ` (totalt ${chemicals.length})` : ""} –{" "}
-        {pageSize} per side
+        Showing {paginatedChemicals.length} of {totalFiltered} filtered chemicals
+        {totalFiltered !== chemicals.length ? ` (${chemicals.length} in total)` : ""} —{" "}
+        {pageSize} per page
       </div>
 
-      {/* Table – får plass uten horisontal scroll (table-fixed + truncate) */}
       <div className="w-full min-w-0 overflow-hidden">
         <Table className="table-fixed">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[16%] min-w-0 px-2">Produkt</TableHead>
-              <TableHead className="hidden w-[11%] min-w-0 px-2 lg:table-cell">Leverandør</TableHead>
+              <TableHead className="w-[16%] min-w-0 px-2">Product</TableHead>
+              <TableHead className="hidden w-[11%] min-w-0 px-2 lg:table-cell">Supplier</TableHead>
               <TableHead className="hidden w-[7%] min-w-0 px-2 xl:table-cell">CAS</TableHead>
-              <TableHead className="hidden w-[12%] min-w-0 px-2 xl:table-cell">H-setninger</TableHead>
-              <TableHead className="w-[9%] min-w-0 px-2">Fare</TableHead>
+              <TableHead className="hidden w-[12%] min-w-0 px-2 xl:table-cell">H-statements</TableHead>
+              <TableHead className="w-[9%] min-w-0 px-2">Hazard</TableHead>
               <TableHead className="hidden w-[9%] min-w-0 px-2 lg:table-cell">PPE</TableHead>
               <TableHead className="hidden w-[5%] min-w-0 px-2 md:table-cell">SDS</TableHead>
-              <TableHead className="hidden w-[8%] min-w-0 px-2 md:table-cell">Revisjon</TableHead>
+              <TableHead className="hidden w-[8%] min-w-0 px-2 md:table-cell">Review</TableHead>
               <TableHead className="w-[13%] min-w-0 px-2">Status</TableHead>
-              <TableHead className="w-[10%] min-w-0 px-2 text-right">Handlinger</TableHead>
+              <TableHead className="w-[10%] min-w-0 px-2 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedChemicals.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={10} className="text-center text-muted-foreground">
-                  Ingen kjemikalier funnet
+                  No chemicals match the filters
                 </TableCell>
               </TableRow>
             ) : (
               paginatedChemicals.map((chemical) => {
                 const pictograms = chemical.warningPictograms
-                  ? (() => { try { return JSON.parse(chemical.warningPictograms); } catch { return []; } })()
+                  ? (() => { try { return JSON.parse(chemical.warningPictograms) as string[]; } catch { return []; } })()
                   : [];
                 const ppeList = chemical.requiredPPE
-                  ? (() => { try { return JSON.parse(chemical.requiredPPE); } catch { return []; } })()
+                  ? (() => { try { return JSON.parse(chemical.requiredPPE) as string[]; } catch { return []; } })()
                   : [];
 
                 return (
@@ -482,7 +454,7 @@ export function ChemicalList({
                       <>
                         <div className="lg:hidden">
                           <Badge variant="outline" className="bg-orange-50 text-orange-800 border-orange-300 text-xs">
-                            {pictograms.length} fare
+                            {pictograms.length} hazard
                           </Badge>
                         </div>
                         <div className="hidden lg:flex gap-0.5 flex-wrap max-w-full">
@@ -490,7 +462,7 @@ export function ChemicalList({
                             <div key={idx} className="relative w-6 h-6 flex-shrink-0 border border-orange-200 rounded p-0.5">
                               <Image
                                 src={`/faremerker/${file}`}
-                                alt="Faresymbol"
+                                alt="Hazard pictogram"
                                 width={24}
                                 height={24}
                                 className="object-contain"
@@ -552,10 +524,10 @@ export function ChemicalList({
                     {chemical.nextReviewDate ? (
                       <div>
                         <div className={isOverdue(chemical.nextReviewDate) ? "text-red-600 font-medium" : ""}>
-                          {new Date(chemical.nextReviewDate).toLocaleDateString("nb-NO", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+                          {new Date(chemical.nextReviewDate).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" })}
                         </div>
                         {isOverdue(chemical.nextReviewDate) && (
-                          <div className="text-xs text-red-600">Forfalt!</div>
+                          <div className="text-xs text-red-600">Overdue</div>
                         )}
                       </div>
                     ) : (
@@ -592,11 +564,10 @@ export function ChemicalList({
           </TableBody>
         </Table>
       </div>
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-2 text-xs text-muted-foreground">
           <div>
-            Side {currentPage} av {totalPages}
+            Page {currentPage} of {totalPages}
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -606,7 +577,7 @@ export function ChemicalList({
               disabled={currentPage <= 1}
               onClick={() => setPage((prev) => Math.max(1, prev - 1))}
             >
-              Forrige
+              Previous
             </Button>
             <Button
               variant="outline"
@@ -615,7 +586,7 @@ export function ChemicalList({
               disabled={currentPage >= totalPages}
               onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
             >
-              Neste
+              Next
             </Button>
           </div>
         </div>
@@ -623,4 +594,3 @@ export function ChemicalList({
     </div>
   );
 }
-

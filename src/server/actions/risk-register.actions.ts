@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { createId } from "@/lib/ids";
 import { z } from "zod";
 import {
   ControlFrequency,
@@ -19,11 +20,11 @@ const sanitizeText = (value?: string | null) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const parseOptionalDate = (value: string | null | undefined) => {
-  if (!value) return undefined;
+const parseOptionalDateIso = (value: string | null | undefined) => {
+  if (!value) return null;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return undefined;
-  return date;
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
 };
 
 const baseRevalidate = (riskId: string) => {
@@ -31,6 +32,23 @@ const baseRevalidate = (riskId: string) => {
   revalidatePath(`/dashboard/risks/${riskId}`);
   revalidatePath("/dashboard/risk-register");
 };
+
+async function insertAuditLog(input: {
+  tenantId: string;
+  userId: string;
+  action: string;
+  resource: string;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  await getAdminDb().from("AuditLog").insert({
+    id: createId(),
+    tenantId: input.tenantId,
+    userId: input.userId,
+    action: input.action,
+    resource: input.resource,
+    metadata: input.metadata ? JSON.stringify(input.metadata) : null,
+  });
+}
 
 const controlSchema = z.object({
   riskId: z.string().cuid(),
@@ -81,43 +99,47 @@ export async function createRiskControl(input: z.infer<typeof controlSchema>) {
   try {
     const { tenantId, user } = await getActionContext();
     const validated = controlSchema.parse(input);
+    const now = new Date().toISOString();
 
-    const control = await prisma.riskControl.create({
-      data: {
+    const { data: control, error } = await getAdminDb()
+      .from("RiskControl")
+      .insert({
+        id: createId(),
         tenantId,
         riskId: validated.riskId,
         title: validated.title,
         description: sanitizeText(validated.description),
         controlType: validated.controlType,
-        ownerId: validated.ownerId,
+        ownerId: validated.ownerId ?? null,
         frequency: validated.frequency ?? null,
         effectiveness: validated.effectiveness,
         status: validated.status,
         monitoringMethod: sanitizeText(validated.monitoringMethod),
         evidenceDocumentId: validated.evidenceDocumentId ?? null,
-        nextTestDate: parseOptionalDate(validated.nextTestDate) ?? null,
-        lastTestedAt: parseOptionalDate(validated.lastTestedAt) ?? null,
-      },
-    });
+        nextTestDate: parseOptionalDateIso(validated.nextTestDate),
+        lastTestedAt: parseOptionalDateIso(validated.lastTestedAt),
+        createdAt: now,
+        updatedAt: now,
+      })
+      .select("*")
+      .single();
 
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "RISK_CONTROL_CREATED",
-        resource: `RiskControl:${control.id}`,
-        metadata: JSON.stringify({
-          title: control.title,
-          riskId: control.riskId,
-        }),
-      },
+    if (error || !control) {
+      throw { code: "RISK_CONTROL_CREATE_FAILED", message: error?.message || "Could not create control" };
+    }
+
+    await insertAuditLog({
+      tenantId,
+      userId: user.id,
+      action: "RISK_CONTROL_CREATED",
+      resource: `RiskControl:${control.id}`,
+      metadata: { title: control.title, riskId: control.riskId },
     });
 
     baseRevalidate(validated.riskId);
     return { success: true, data: control };
   } catch (error: any) {
-    console.error("Create risk control error:", error);
-    return { success: false, error: error.message || "Kunne ikke opprette kontroll" };
+    return { success: false, error: error.message || "Could not create control" };
   }
 }
 
@@ -126,15 +148,18 @@ export async function updateRiskControl(input: z.infer<typeof updateControlSchem
     const { tenantId, user } = await getActionContext();
     const validated = updateControlSchema.parse(input);
 
-    const existing = await prisma.riskControl.findFirst({
-      where: { id: validated.id, tenantId },
-    });
+    const { data: existing } = await getAdminDb()
+      .from("RiskControl")
+      .select("*")
+      .eq("id", validated.id)
+      .eq("tenantId", tenantId)
+      .maybeSingle();
 
     if (!existing) {
-      return { success: false, error: "Kontrollen finnes ikke" };
+      return { success: false, error: "Control not found" };
     }
 
-    const data: Record<string, any> = {};
+    const data: Record<string, unknown> = { updatedAt: new Date().toISOString() };
     if (validated.title) data.title = validated.title;
     if (validated.description !== undefined) data.description = sanitizeText(validated.description);
     if (validated.controlType) data.controlType = validated.controlType;
@@ -149,69 +174,74 @@ export async function updateRiskControl(input: z.infer<typeof updateControlSchem
       data.evidenceDocumentId = validated.evidenceDocumentId ?? null;
     }
     if (validated.nextTestDate !== undefined) {
-      data.nextTestDate = parseOptionalDate(validated.nextTestDate) ?? null;
+      data.nextTestDate = parseOptionalDateIso(validated.nextTestDate);
     }
     if (validated.lastTestedAt !== undefined) {
-      data.lastTestedAt = parseOptionalDate(validated.lastTestedAt) ?? null;
+      data.lastTestedAt = parseOptionalDateIso(validated.lastTestedAt);
     }
 
-    const control = await prisma.riskControl.update({
-      where: { id: validated.id },
-      data,
-    });
+    const { data: control, error } = await getAdminDb()
+      .from("RiskControl")
+      .update(data)
+      .eq("id", validated.id)
+      .eq("tenantId", tenantId)
+      .select("*")
+      .single();
 
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "RISK_CONTROL_UPDATED",
-        resource: `RiskControl:${control.id}`,
-        metadata: JSON.stringify({
-          title: control.title,
-          riskId: control.riskId,
-          status: control.status,
-        }),
-      },
+    if (error || !control) {
+      throw { code: "RISK_CONTROL_UPDATE_FAILED", message: error?.message || "Could not update control" };
+    }
+
+    await insertAuditLog({
+      tenantId,
+      userId: user.id,
+      action: "RISK_CONTROL_UPDATED",
+      resource: `RiskControl:${control.id}`,
+      metadata: { title: control.title, riskId: control.riskId, status: control.status },
     });
 
     baseRevalidate(control.riskId);
     return { success: true, data: control };
   } catch (error: any) {
-    console.error("Update risk control error:", error);
-    return { success: false, error: error.message || "Kunne ikke oppdatere kontroll" };
+    return { success: false, error: error.message || "Could not update control" };
   }
 }
 
 export async function deleteRiskControl(controlId: string) {
   try {
     const { tenantId, user } = await getActionContext();
-    const control = await prisma.riskControl.findFirst({
-      where: { id: controlId, tenantId },
-    });
+    const { data: control } = await getAdminDb()
+      .from("RiskControl")
+      .select("id, riskId")
+      .eq("id", controlId)
+      .eq("tenantId", tenantId)
+      .maybeSingle();
 
     if (!control) {
-      return { success: false, error: "Kontrollen finnes ikke" };
+      return { success: false, error: "Control not found" };
     }
 
-    await prisma.riskControl.delete({
-      where: { id: controlId },
-    });
+    const { error } = await getAdminDb()
+      .from("RiskControl")
+      .delete()
+      .eq("id", controlId)
+      .eq("tenantId", tenantId);
+    if (error) {
+      throw { code: "RISK_CONTROL_DELETE_FAILED", message: error.message };
+    }
 
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "RISK_CONTROL_DELETED",
-        resource: `RiskControl:${controlId}`,
-        metadata: JSON.stringify({ riskId: control.riskId }),
-      },
+    await insertAuditLog({
+      tenantId,
+      userId: user.id,
+      action: "RISK_CONTROL_DELETED",
+      resource: `RiskControl:${controlId}`,
+      metadata: { riskId: control.riskId },
     });
 
     baseRevalidate(control.riskId);
     return { success: true };
   } catch (error: any) {
-    console.error("Delete risk control error:", error);
-    return { success: false, error: error.message || "Kunne ikke slette kontroll" };
+    return { success: false, error: error.message || "Could not delete control" };
   }
 }
 
@@ -220,71 +250,88 @@ export async function linkDocumentToRisk(input: z.infer<typeof documentLinkSchem
     const { tenantId, user } = await getActionContext();
     const validated = documentLinkSchema.parse(input);
 
-    const document = await prisma.document.findFirst({
-      where: { id: validated.documentId, tenantId },
-    });
+    const { data: document } = await getAdminDb()
+      .from("Document")
+      .select("id")
+      .eq("id", validated.documentId)
+      .eq("tenantId", tenantId)
+      .maybeSingle();
 
     if (!document) {
-      throw new Error("Dokumentet finnes ikke");
+      throw { code: "DOCUMENT_NOT_FOUND", message: "Document not found" };
     }
 
-    const link = await prisma.riskDocumentLink.upsert({
-      where: {
-        riskId_documentId: {
-          riskId: validated.riskId,
-          documentId: validated.documentId,
-        },
-      },
-      update: {
-        relation: validated.relation,
-        note: sanitizeText(validated.note),
-      },
-      create: {
-        tenantId,
-        riskId: validated.riskId,
-        documentId: validated.documentId,
-        relation: validated.relation,
-        note: sanitizeText(validated.note),
-      },
-    });
+    const { data: existing } = await getAdminDb()
+      .from("RiskDocumentLink")
+      .select("id")
+      .eq("riskId", validated.riskId)
+      .eq("documentId", validated.documentId)
+      .maybeSingle();
 
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "RISK_DOCUMENT_LINKED",
-        resource: `Risk:${validated.riskId}`,
-        metadata: JSON.stringify({
-          documentId: validated.documentId,
-          relation: validated.relation,
-        }),
-      },
+    const payload = {
+      relation: validated.relation,
+      note: sanitizeText(validated.note),
+    };
+
+    const { data: link, error } = existing
+      ? await getAdminDb()
+          .from("RiskDocumentLink")
+          .update(payload)
+          .eq("id", existing.id)
+          .select("*")
+          .single()
+      : await getAdminDb()
+          .from("RiskDocumentLink")
+          .insert({
+            id: createId(),
+            tenantId,
+            riskId: validated.riskId,
+            documentId: validated.documentId,
+            ...payload,
+          })
+          .select("*")
+          .single();
+
+    if (error || !link) {
+      throw { code: "RISK_DOCUMENT_LINK_FAILED", message: error?.message || "Could not link document" };
+    }
+
+    await insertAuditLog({
+      tenantId,
+      userId: user.id,
+      action: "RISK_DOCUMENT_LINKED",
+      resource: `Risk:${validated.riskId}`,
+      metadata: { documentId: validated.documentId, relation: validated.relation },
     });
 
     baseRevalidate(validated.riskId);
     return { success: true, data: link };
   } catch (error: any) {
-    console.error("Link document error:", error);
-    return { success: false, error: error.message || "Kunne ikke koble dokument" };
+    return { success: false, error: error.message || "Could not link document" };
   }
 }
 
 export async function unlinkDocumentFromRisk(linkId: string) {
   try {
     const { tenantId } = await getActionContext();
-    const link = await prisma.riskDocumentLink.findFirst({
-      where: { id: linkId, tenantId },
-    });
+    const { data: link } = await getAdminDb()
+      .from("RiskDocumentLink")
+      .select("id, riskId")
+      .eq("id", linkId)
+      .eq("tenantId", tenantId)
+      .maybeSingle();
     if (!link) {
-      return { success: false, error: "Dokumentkoblingen finnes ikke" };
+      return { success: false, error: "Document link not found" };
     }
 
-    await prisma.riskDocumentLink.delete({ where: { id: linkId } });
+    const { error } = await getAdminDb().from("RiskDocumentLink").delete().eq("id", linkId).eq("tenantId", tenantId);
+    if (error) {
+      throw { code: "RISK_DOCUMENT_UNLINK_FAILED", message: error.message };
+    }
     baseRevalidate(link.riskId);
     return { success: true };
   } catch (error: any) {
-    console.error("Unlink document error:", error);
-    return { success: false, error: error.message || "Kunne ikke fjerne kobling" };
+    return { success: false, error: error.message || "Could not remove link" };
   }
 }
 
@@ -293,72 +340,88 @@ export async function linkAuditToRisk(input: z.infer<typeof auditLinkSchema>) {
     const { tenantId, user } = await getActionContext();
     const validated = auditLinkSchema.parse(input);
 
-    const audit = await prisma.audit.findFirst({
-      where: { id: validated.auditId, tenantId },
-    });
+    const { data: audit } = await getAdminDb()
+      .from("Audit")
+      .select("id")
+      .eq("id", validated.auditId)
+      .eq("tenantId", tenantId)
+      .maybeSingle();
 
     if (!audit) {
-      throw new Error("Revisjonen finnes ikke");
+      throw { code: "AUDIT_NOT_FOUND", message: "Audit not found" };
     }
 
-    const link = await prisma.riskAuditLink.upsert({
-      where: {
-        riskId_auditId: {
-          riskId: validated.riskId,
-          auditId: validated.auditId,
-        },
-      },
-      update: {
-        relation: validated.relation,
-        summary: sanitizeText(validated.summary),
-      },
-      create: {
-        tenantId,
-        riskId: validated.riskId,
-        auditId: validated.auditId,
-        relation: validated.relation,
-        summary: sanitizeText(validated.summary),
-      },
-    });
+    const { data: existing } = await getAdminDb()
+      .from("RiskAuditLink")
+      .select("id")
+      .eq("riskId", validated.riskId)
+      .eq("auditId", validated.auditId)
+      .maybeSingle();
 
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "RISK_AUDIT_LINKED",
-        resource: `Risk:${validated.riskId}`,
-        metadata: JSON.stringify({
-          auditId: validated.auditId,
-          relation: validated.relation,
-        }),
-      },
+    const payload = {
+      relation: validated.relation,
+      summary: sanitizeText(validated.summary),
+    };
+
+    const { data: link, error } = existing
+      ? await getAdminDb()
+          .from("RiskAuditLink")
+          .update(payload)
+          .eq("id", existing.id)
+          .select("*")
+          .single()
+      : await getAdminDb()
+          .from("RiskAuditLink")
+          .insert({
+            id: createId(),
+            tenantId,
+            riskId: validated.riskId,
+            auditId: validated.auditId,
+            ...payload,
+          })
+          .select("*")
+          .single();
+
+    if (error || !link) {
+      throw { code: "RISK_AUDIT_LINK_FAILED", message: error?.message || "Could not link audit" };
+    }
+
+    await insertAuditLog({
+      tenantId,
+      userId: user.id,
+      action: "RISK_AUDIT_LINKED",
+      resource: `Risk:${validated.riskId}`,
+      metadata: { auditId: validated.auditId, relation: validated.relation },
     });
 
     baseRevalidate(validated.riskId);
     return { success: true, data: link };
   } catch (error: any) {
-    console.error("Link audit error:", error);
-    return { success: false, error: error.message || "Kunne ikke koble revisjon" };
+    return { success: false, error: error.message || "Could not link audit" };
   }
 }
 
 export async function unlinkAuditFromRisk(linkId: string) {
   try {
     const { tenantId } = await getActionContext();
-    const link = await prisma.riskAuditLink.findFirst({
-      where: { id: linkId, tenantId },
-    });
+    const { data: link } = await getAdminDb()
+      .from("RiskAuditLink")
+      .select("id, riskId")
+      .eq("id", linkId)
+      .eq("tenantId", tenantId)
+      .maybeSingle();
 
     if (!link) {
-      return { success: false, error: "Revisjonskoblingen finnes ikke" };
+      return { success: false, error: "Audit link not found" };
     }
 
-    await prisma.riskAuditLink.delete({ where: { id: linkId } });
+    const { error } = await getAdminDb().from("RiskAuditLink").delete().eq("id", linkId).eq("tenantId", tenantId);
+    if (error) {
+      throw { code: "RISK_AUDIT_UNLINK_FAILED", message: error.message };
+    }
     baseRevalidate(link.riskId);
     return { success: true };
   } catch (error: any) {
-    console.error("Unlink audit error:", error);
-    return { success: false, error: error.message || "Kunne ikke fjerne kobling" };
+    return { success: false, error: error.message || "Could not remove link" };
   }
 }
-

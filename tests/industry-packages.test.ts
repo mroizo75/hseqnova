@@ -12,7 +12,7 @@ test("getIndustryPackage returnerer landbrukspakke med mobilfokus", () => {
   const industryPackage = getIndustryPackage("agriculture");
 
   assert.ok(industryPackage);
-  assert.equal(industryPackage?.displayName, "Landbruk");
+  assert.equal(industryPackage?.displayName, "Agriculture");
   assert.deepEqual(industryPackage?.simpleMenuHrefs, [
     "/dashboard/incidents",
     "/dashboard/inspections",

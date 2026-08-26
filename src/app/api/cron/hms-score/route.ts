@@ -1,61 +1,26 @@
-import { NextResponse } from "next/server"
-import { prisma } from "@/lib/db"
-import { calculateScoreForTenant } from "@/features/hms-ai/lib/score-calculator"
+import { NextResponse } from "next/server";
 
-/**
- * Daglig cron: beregn HMS-score for alle aktive tenants.
- * Kjøres via Vercel Cron eller ekstern scheduler.
- * GET /api/cron/hms-score?key=CRON_SECRET
- */
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url)
-  const key = searchParams.get("key")
+/** Not offered in the UK product. */
+function notAvailable() {
+  return NextResponse.json({ error: "Not available" }, { status: 404 });
+}
 
-  if (key !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+export async function GET() {
+  return notAvailable();
+}
 
-  const tenants = await prisma.tenant.findMany({
-    where: { status: { in: ["ACTIVE", "TRIAL"] } },
-    select: { id: true },
-  })
+export async function POST() {
+  return notAvailable();
+}
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+export async function PUT() {
+  return notAvailable();
+}
 
-  let processed = 0
-  let errors = 0
+export async function PATCH() {
+  return notAvailable();
+}
 
-  for (const tenant of tenants) {
-    try {
-      const { score, context } = await calculateScoreForTenant(tenant.id)
-
-      await prisma.tenantHmsScore.upsert({
-        where: {
-          tenantId_scoreDate: { tenantId: tenant.id, scoreDate: today },
-        },
-        create: {
-          tenantId: tenant.id,
-          scoreDate: today,
-          ...score,
-          ...context,
-        },
-        update: {
-          ...score,
-          ...context,
-        },
-      })
-
-      processed++
-    } catch {
-      errors++
-    }
-  }
-
-  return NextResponse.json({
-    success: true,
-    processed,
-    errors,
-    total: tenants.length,
-  })
+export async function DELETE() {
+  return notAvailable();
 }

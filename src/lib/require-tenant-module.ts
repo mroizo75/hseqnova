@@ -1,5 +1,5 @@
 import { getRequiredTenantContext } from "@/lib/tenant-context";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { isCoreModule, tenantHasModule } from "@/lib/tenant-modules";
 
 export class ModuleNotEntitledError extends Error {
@@ -10,26 +10,30 @@ export class ModuleNotEntitledError extends Error {
   }
 }
 
+async function loadEnabledModuleKeys(tenantId: string): Promise<string[]> {
+  const { data, error } = await getAdminDb()
+    .from("TenantModule")
+    .select("moduleKey")
+    .eq("tenantId", tenantId)
+    .in("status", ["ACTIVE", "TRIAL"]);
+  if (error) {
+    throw { code: "MODULE_LOOKUP_FAILED", message: error.message };
+  }
+  return (data ?? []).map((row) => String(row.moduleKey));
+}
+
 export async function requireTenantModule(moduleKey: string): Promise<void> {
   if (isCoreModule(moduleKey)) {
     return;
   }
 
   const { tenantId } = await getRequiredTenantContext();
-  const rows = await prisma.tenantModule.findMany({
-    where: { tenantId, status: { in: ["ACTIVE", "TRIAL"] } },
-    select: { moduleKey: true },
-  });
-  const enabled = rows.map((row) => row.moduleKey);
+  const enabled = await loadEnabledModuleKeys(tenantId);
   if (!tenantHasModule(enabled, moduleKey)) {
     throw new ModuleNotEntitledError(moduleKey);
   }
 }
 
 export async function getEnabledModuleKeys(tenantId: string): Promise<string[]> {
-  const rows = await prisma.tenantModule.findMany({
-    where: { tenantId, status: { in: ["ACTIVE", "TRIAL"] } },
-    select: { moduleKey: true },
-  });
-  return rows.map((row) => row.moduleKey);
+  return loadEnabledModuleKeys(tenantId);
 }

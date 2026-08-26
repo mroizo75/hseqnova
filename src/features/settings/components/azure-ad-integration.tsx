@@ -10,28 +10,28 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Cloud, CheckCircle2, AlertCircle, Info, Sparkles, ShieldCheck } from "lucide-react";
+import { Cloud, CheckCircle2, AlertCircle, ShieldCheck } from "lucide-react";
 import type { Tenant } from "@prisma/client";
 import { updateAzureAdSettings } from "@/server/actions/azure-ad.actions";
 import type { MicrosoftConsentResult } from "@/lib/microsoft-admin-consent";
+import { SITE_CONFIG } from "@/lib/seo-config";
 
-const LOGIN_URL = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://www.hmsnova.no"}/login`;
+const LOGIN_URL = `${process.env.NEXT_PUBLIC_APP_URL ?? SITE_CONFIG.url}/login`;
 
 const CONSENT_FEEDBACK: Record<MicrosoftConsentResult, { className: string; message: string }> = {
   granted: {
     className: "border-green-200 bg-green-50 text-green-900",
     message:
-      "✅ HMS Nova er godkjent for hele bedriften. Alle ansatte kan nå logge inn med Microsoft uten å bli spurt om tilgang.",
+      "HSEQ Nova is approved for this organisation. People can sign in with Microsoft without an extra consent prompt.",
   },
   denied: {
     className: "border-yellow-200 bg-yellow-50 text-yellow-900",
     message:
-      "Godkjenningen ble avbrutt. Ansatte kan fortsatt bli stoppet av Microsoft ved innlogging. Prøv igjen når du er logget inn som global administrator.",
+      "Admin consent was cancelled. Staff may still be blocked by Microsoft. Try again while signed in as a Microsoft 365 global administrator.",
   },
   failed: {
     className: "border-red-200 bg-red-50 text-red-900",
-    message:
-      "Godkjenningen feilet hos Microsoft. Kontroller at du bruker en konto med global administrator-rolle, eller kontakt post@hmsnova.no.",
+    message: `Consent failed at Microsoft. Use a global administrator account, or email ${SITE_CONFIG.contactEmail}.`,
   },
 };
 
@@ -65,8 +65,8 @@ export function AzureAdIntegration({
     if (!isAdmin) {
       toast({
         variant: "destructive",
-        title: "Ingen tilgang",
-        description: "Kun administratorer kan endre Azure AD-innstillinger",
+        title: "No access",
+        description: "Only administrators can change Microsoft 365 sign-in",
       });
       return;
     }
@@ -76,31 +76,34 @@ export function AzureAdIntegration({
     const formData = new FormData(e.currentTarget);
     const data = {
       azureAdEnabled: enabled,
-      azureAdDomain: formData.get("azureAdDomain") as string || undefined,
-      azureAdAutoRole: formData.get("azureAdAutoRole") as string || undefined,
+      azureAdDomain: (formData.get("azureAdDomain") as string) || undefined,
+      azureAdAutoRole: (formData.get("azureAdAutoRole") as string) || undefined,
     };
 
     const result = await updateAzureAdSettings(data);
 
     if (result.success) {
       toast({
-        title: "✅ Office 365 SSO aktivert!",
-        description: "Ansatte kan nå logge inn med sine Microsoft-kontoer",
+        title: enabled ? "Microsoft sign-in saved" : "Settings saved",
+        description: enabled
+          ? "Staff can sign in with their Microsoft 365 work accounts"
+          : "Microsoft sign-in is off until you turn it on",
         className: "bg-green-50 border-green-200",
       });
       router.refresh();
     } else {
       toast({
         variant: "destructive",
-        title: "Feil",
-        description: result.error || "Kunne ikke lagre innstillinger",
+        title: "Could not save",
+        description: result.error || "Could not save Microsoft 365 settings",
       });
     }
 
     setLoading(false);
   };
 
-  const isConfigured = !!tenant.azureAdDomain && tenant.azureAdEnabled;
+  const isConfigured = Boolean(tenant.azureAdDomain && tenant.azureAdEnabled);
+  const domainHint = tenant.azureAdDomain || "company.co.uk";
 
   return (
     <div className="space-y-6">
@@ -110,178 +113,141 @@ export function AzureAdIntegration({
         </div>
       )}
 
-      {/* Status Card */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Cloud className="h-6 w-6 text-blue-600" />
               <div>
-                <CardTitle>Microsoft Azure AD / Office 365</CardTitle>
+                <CardTitle>Microsoft 365 sign-in</CardTitle>
                 <CardDescription>
-                  Koble bedriftens Office 365-kontoer til HMS Nova
+                  Let staff use their work Microsoft accounts (Azure AD / Entra ID). No extra licence.
                 </CardDescription>
               </div>
             </div>
             {isConfigured ? (
               <Badge variant="default" className="gap-1">
                 <CheckCircle2 className="h-3 w-3" />
-                Aktiv
+                On
               </Badge>
             ) : (
               <Badge variant="secondary" className="gap-1">
                 <AlertCircle className="h-3 w-3" />
-                Ikke konfigurert
+                Off
               </Badge>
             )}
           </div>
         </CardHeader>
-        <CardContent>
-          {tenant.azureAdLastSync && (
+        {tenant.azureAdLastSync ? (
+          <CardContent>
             <p className="text-sm text-muted-foreground">
-              Sist synkronisert: {new Date(tenant.azureAdLastSync).toLocaleString("nb-NO")}
+              Last sync: {new Date(tenant.azureAdLastSync).toLocaleString("en-GB")}
             </p>
-          )}
-        </CardContent>
+          </CardContent>
+        ) : null}
       </Card>
 
-      {/* Info Card */}
       <Card className="border-green-200 bg-green-50/50">
         <CardContent className="pt-6">
-          <div className="flex gap-3">
-            <Sparkles className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-            <div className="space-y-2 text-sm">
-              <p className="font-medium text-green-900">
-                ✨ Så enkelt er det!
-              </p>
-              <ol className="list-decimal list-inside space-y-2 text-green-800">
-                <li className="font-medium">Skriv inn ditt e-postdomene (f.eks. "bedrift.no")</li>
-                <li>Velg standard rolle for nye ansatte</li>
-                <li>Aktiver SSO med én klikk</li>
-                <li>Godkjenn HMS Nova for bedriften (se steget under)</li>
-                <li className="text-green-900 font-semibold">✅ FERDIG! Alle ansatte kan nå logge inn!</li>
-              </ol>
-              <div className="bg-white rounded-md p-3 mt-3 border border-green-200">
-                <p className="text-green-900 font-medium mb-1">🔐 Hvordan fungerer det?</p>
-                <p className="text-green-700 text-xs">
-                  Når en ansatt logger inn med Microsoft for første gang, opprettes kontoen deres automatisk i HMS Nova.
-                  Du trenger ikke registrere noe i Azure Portal — men de fleste bedrifter må godkjenne HMS Nova én gang,
-                  og det gjør du med knappen under.
-                </p>
-              </div>
-            </div>
-          </div>
+          <ol className="list-decimal space-y-2 pl-5 text-sm text-green-800">
+            <li>Enter the email domain (for example company.co.uk).</li>
+            <li>Choose the default role for first-time sign-in.</li>
+            <li>Turn Microsoft sign-in on and save.</li>
+            <li>A Microsoft 365 global administrator grants admin consent once (button below).</li>
+          </ol>
+          <p className="mt-3 text-xs text-green-700">
+            The first Microsoft sign-in creates the HSEQ Nova user automatically. HSEQ Nova only
+            reads name, email and profile of the person signing in.
+          </p>
         </CardContent>
       </Card>
 
-      {/* Admin Consent */}
       {isAdmin && adminConsentUrl && (
         <Card className="border-blue-200">
           <CardHeader>
             <div className="flex items-center gap-3">
               <ShieldCheck className="h-6 w-6 text-blue-600" />
               <div>
-                <CardTitle className="text-base">Godkjenn HMS Nova for bedriften</CardTitle>
+                <CardTitle className="text-base">Grant admin consent</CardTitle>
                 <CardDescription>
-                  Ett klikk, én gang — gjøres av en global administrator i Microsoft 365
+                  Once, by a Microsoft 365 global administrator. Stops AADSTS65001 / “Need admin approval”.
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              De fleste bedrifter har slått på at nye apper må godkjennes av IT-avdelingen. Er det
-              tilfellet hos dere, blir den første ansatte som prøver Microsoft-innlogging stoppet
-              med feilkoden <code className="bg-muted px-1 rounded">AADSTS65001</code>. Godkjenner
-              du HMS Nova her, slipper alle ansatte den meldingen.
+              Most organisations require IT to approve new apps. Without this step the first person
+              to sign in with Microsoft is blocked.
             </p>
-            <Button
-              asChild
-              variant="outline"
-              className="bg-transparent text-foreground hover:bg-muted"
-            >
+            <Button asChild variant="outline" className="bg-transparent text-foreground hover:bg-muted">
               <a href={adminConsentUrl} target="_blank" rel="noopener noreferrer">
-                Godkjenn HMS Nova i Microsoft 365
+                Approve HSEQ Nova in Microsoft 365
               </a>
             </Button>
             <p className="text-xs text-muted-foreground">
-              HMS Nova ber kun om å lese navn, e-postadresse og profil for den som logger inn. Er du
-              ikke global administrator, send denne siden videre til den som er det.
+              If you are not a global administrator, send this page to whoever is.
             </p>
           </CardContent>
         </Card>
       )}
 
-      {/* Configuration Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Office 365 / Microsoft 365 SSO</CardTitle>
+            <CardTitle>Domain and default role</CardTitle>
             <CardDescription>
-              La alle ansatte logge inn med sine eksisterende Microsoft-kontoer
+              Only people whose email is on this domain can use Microsoft sign-in for this company.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Primary Domain */}
             <div className="space-y-2">
-              <Label htmlFor="azureAdDomain" className="text-base">
-                E-postdomene for bedriften *
-              </Label>
+              <Label htmlFor="azureAdDomain">Work email domain *</Label>
               <Input
                 id="azureAdDomain"
                 name="azureAdDomain"
-                placeholder="bedrift.no"
+                placeholder="company.co.uk"
                 defaultValue={tenant.azureAdDomain || ""}
                 disabled={!isAdmin || loading}
                 required
-                className="text-lg"
               />
-              <div className="bg-blue-50 p-3 rounded-md border border-blue-200 mt-2">
-                <p className="text-sm text-blue-900">
-                  💡 <strong>Eksempel:</strong> Hvis ansatte har e-poster som <code className="bg-blue-100 px-1 rounded">ansatt@bedrift.no</code>, 
-                  skriv kun <code className="bg-blue-100 px-1 rounded">bedrift.no</code> (uten @)
-                </p>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                If staff use jane@company.co.uk, enter company.co.uk (no @).
+              </p>
             </div>
 
-            {/* Default Role for new users */}
             <div className="space-y-2">
-              <Label htmlFor="azureAdAutoRole" className="text-base">
-                Standard rolle for nye ansatte
-              </Label>
+              <Label htmlFor="azureAdAutoRole">Default role for first sign-in</Label>
               <Select
                 name="azureAdAutoRole"
                 defaultValue={tenant.azureAdAutoRole || "ANSATT"}
                 disabled={!isAdmin || loading}
               >
-                <SelectTrigger className="text-base">
+                <SelectTrigger id="azureAdAutoRole">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ANSATT">👤 Ansatt</SelectItem>
-                  <SelectItem value="LEDER">👔 Leder</SelectItem>
-                  <SelectItem value="HMS">🦺 HMS-ansvarlig</SelectItem>
-                  <SelectItem value="VERNEOMBUD">🛡️ Verneombud</SelectItem>
-                  <SelectItem value="BHT">🩺 Bedriftshelsetjeneste</SelectItem>
-                  <SelectItem value="REVISOR">📋 Revisor</SelectItem>
-                  <SelectItem value="ADMIN">⚙️ Administrator</SelectItem>
+                  <SelectItem value="ANSATT">Employee</SelectItem>
+                  <SelectItem value="LEDER">Line manager</SelectItem>
+                  <SelectItem value="HMS">HSE manager</SelectItem>
+                  <SelectItem value="VERNEOMBUD">Safety representative</SelectItem>
+                  <SelectItem value="BHT">Occupational health</SelectItem>
+                  <SelectItem value="REVISOR">Auditor</SelectItem>
+                  <SelectItem value="ADMIN">Administrator</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">
-                Hvilken rolle skal ansatte få automatisk når de logger inn første gang?
-                <br />
-                <span className="text-xs">💡 Du kan endre roller manuelt senere under "Brukere"</span>
+                Change roles later under Users. Do not default to Administrator.
               </p>
             </div>
 
-            {/* Enable SSO */}
-            <div className="flex items-center justify-between rounded-lg border-2 border-green-200 bg-green-50/50 p-4">
+            <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-1">
-                <Label htmlFor="azureAdEnabled" className="text-base font-semibold text-green-900">
-                  ✨ Aktiver Microsoft SSO
+                <Label htmlFor="azureAdEnabled" className="text-base font-semibold">
+                  Allow Microsoft sign-in
                 </Label>
-                <p className="text-sm text-green-700">
-                  La alle ansatte logge inn med sine @{tenant.azureAdDomain || "bedrift.no"} kontoer
+                <p className="text-sm text-muted-foreground">
+                  Staff can use @{domainHint} accounts on the login page.
                 </p>
               </div>
               <Switch
@@ -289,38 +255,35 @@ export function AzureAdIntegration({
                 checked={enabled}
                 onCheckedChange={setEnabled}
                 disabled={!isAdmin || loading}
-                className="data-[state=checked]:bg-green-600"
               />
             </div>
 
             {!isAdmin && (
-              <p className="text-sm text-yellow-600 bg-yellow-50 p-3 rounded-md border border-yellow-200">
-                ⚠️ Kun administratorer kan endre Azure AD-innstillinger
+              <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                Only administrators can change Microsoft 365 sign-in.
               </p>
             )}
           </CardContent>
         </Card>
 
-        {/* Actions */}
         {isAdmin && (
           <div className="flex flex-col gap-3">
-            <Button type="submit" disabled={loading} size="lg" className="bg-green-600 hover:bg-green-700">
-              {loading ? "Lagrer..." : enabled ? "✅ Lagre og aktiver SSO" : "Lagre innstillinger"}
+            <Button type="submit" disabled={loading}>
+              {loading ? "Saving…" : enabled ? "Save and turn on Microsoft sign-in" : "Save settings"}
             </Button>
-            
+
             {isConfigured && (
-              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4">
                 <div className="flex items-start gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 text-green-600" />
                   <div className="text-sm">
-                    <p className="font-medium text-green-900">Microsoft SSO er aktivert!</p>
-                    <p className="text-green-700 mt-1">
-                      Ansatte kan nå gå til{" "}
+                    <p className="font-medium text-green-900">Microsoft sign-in is on</p>
+                    <p className="mt-1 text-green-700">
+                      Staff go to{" "}
                       <a href={LOGIN_URL} className="font-semibold underline">
                         {LOGIN_URL}
                       </a>{" "}
-                      og klikke
-                      <strong> "Logg inn med Microsoft"</strong> for å logge inn automatisk.
+                      and choose Sign in with Microsoft. Password sign-in still works.
                     </p>
                   </div>
                 </div>
@@ -330,61 +293,44 @@ export function AzureAdIntegration({
         )}
       </form>
 
-      {/* FAQ Card */}
-      <Card className="border-gray-200">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base">❓ Vanlige spørsmål</CardTitle>
+          <CardTitle className="text-base">Questions</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
           <div>
-            <p className="font-medium text-gray-900 mb-1">Må vi gjøre noe i Azure Portal eller Microsoft 365 Admin?</p>
-            <p className="text-gray-600">
-              Du trenger ikke registrere eller konfigurere noe. Det eneste som kan kreves, er at en
-              global administrator godkjenner HMS Nova én gang — bruk knappen «Godkjenn HMS Nova i
-              Microsoft 365» over. Tillater bedriften deres at ansatte godkjenner apper selv, skjer
-              det automatisk ved første innlogging.
+            <p className="mb-1 font-medium">Do we need to register an app in Azure Portal?</p>
+            <p className="text-muted-foreground">
+              No. The only extra step, for most IT policies, is admin consent with the button above.
             </p>
           </div>
-
           <div>
-            <p className="font-medium text-gray-900 mb-1">
-              En ansatt får «Need admin approval» eller feilkode AADSTS65001. Hva gjør vi?
-            </p>
-            <p className="text-gray-600">
-              Da mangler godkjenningen fra IT-avdelingen. En global administrator klikker «Godkjenn
-              HMS Nova i Microsoft 365» over, så fungerer innloggingen for alle med én gang.
+            <p className="mb-1 font-medium">Someone sees “Need admin approval” or AADSTS65001</p>
+            <p className="text-muted-foreground">
+              A global administrator must grant consent. After that, sign-in works for everyone on the domain.
             </p>
           </div>
-          
           <div>
-            <p className="font-medium text-gray-900 mb-1">Hva skjer når en ansatt logger inn første gang?</p>
-            <p className="text-gray-600">
-              Kontoen deres opprettes automatisk i HMS Nova med rollen du har valgt. 
-              De får umiddelbar tilgang til systemet.
+            <p className="mb-1 font-medium">What happens on first sign-in?</p>
+            <p className="text-muted-foreground">
+              A HSEQ Nova user is created with the default role. You can change the role under Users.
             </p>
           </div>
-          
           <div>
-            <p className="font-medium text-gray-900 mb-1">Kan ansatte fortsatt bruke passord?</p>
-            <p className="text-gray-600">
-              Ja! SSO er et tillegg. Ansatte kan velge mellom Microsoft-innlogging eller vanlig passord.
-            </p>
+            <p className="mb-1 font-medium">Can people still use a password?</p>
+            <p className="text-muted-foreground">Yes. Microsoft sign-in is optional alongside email and password.</p>
           </div>
-          
           <div>
-            <p className="font-medium text-gray-900 mb-1">Hva hvis en ansatt slutter?</p>
-            <p className="text-gray-600">
-              Deaktiver eller slett brukeren under "Brukere" i HMS Nova. 
-              Hvis de deaktiveres i Microsoft 365, kan de heller ikke logge inn via SSO.
+            <p className="mb-1 font-medium">When someone leaves</p>
+            <p className="text-muted-foreground">
+              Disable them under Users. If their Microsoft 365 account is disabled, they cannot use SSO either.
             </p>
           </div>
-
-          <p className="text-muted-foreground mt-4 pt-4 border-t">
-            💡 Trenger du hjelp? Kontakt <strong>post@hmsnova.no</strong>
+          <p className="border-t pt-4 text-muted-foreground">
+            Help: {SITE_CONFIG.contactEmail}
           </p>
         </CardContent>
       </Card>
     </div>
   );
 }
-

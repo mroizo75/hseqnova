@@ -2,36 +2,36 @@ import ExcelJS from "exceljs";
 
 export async function GET() {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "HMS Nova";
+  workbook.creator = "HSEQ Nova";
   workbook.created = new Date();
 
-  const sheet = workbook.addWorksheet("Brukere", {
+  const sheet = workbook.addWorksheet("Users", {
     headerFooter: {
-      firstHeader: "Brukerimport – Last ned, fyll ut og importer",
+      firstHeader: "User import — download, complete and import",
     },
   });
 
   sheet.columns = [
-    { header: "email", key: "email", width: 30 },
-    { header: "navn", key: "navn", width: 25 },
-    { header: "rolle", key: "rolle", width: 18 },
-    { header: "stilling", key: "stilling", width: 22 },
-    { header: "leder", key: "leder", width: 30 },
+    { header: "email", key: "email", width: 32 },
+    { header: "name", key: "name", width: 25 },
+    { header: "role", key: "role", width: 22 },
+    { header: "job title", key: "jobTitle", width: 22 },
+    { header: "manager", key: "manager", width: 32 },
   ];
 
   sheet.addRow({
-    email: "ola.nordmann@example.com",
-    navn: "Ola Nordmann",
-    rolle: "ANSATT",
-    stilling: "Tømrer",
-    leder: "kari.leder@example.com",
+    email: "alex.site@example.co.uk",
+    name: "Alex Site",
+    role: "Employee",
+    jobTitle: "Joiner",
+    manager: "sam.manager@example.co.uk",
   });
   sheet.addRow({
-    email: "kari.leder@example.com",
-    navn: "Kari Leder",
-    rolle: "LEDER",
-    stilling: "Prosjektleder",
-    leder: "",
+    email: "sam.manager@example.co.uk",
+    name: "Sam Manager",
+    role: "Line manager",
+    jobTitle: "Site supervisor",
+    manager: "",
   });
 
   sheet.getRow(1).font = { bold: true };
@@ -43,8 +43,7 @@ export async function GET() {
     headers: {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition":
-        'attachment; filename="bruker-import-eksempel.xlsx"',
+      "Content-Disposition": 'attachment; filename="hseq-nova-user-import.xlsx"',
       "Cache-Control": "no-cache",
     },
   });

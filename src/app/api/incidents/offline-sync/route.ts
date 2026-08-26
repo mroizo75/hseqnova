@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     if (!result.success) {
       return NextResponse.json(
-        { error: result.error || "Kunne ikke synkronisere avvik" },
+        { error: result.error || "Could not sync incident" },
         { status: 400 },
       );
     }
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, data: result.data });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error?.message || "Intern feil ved synkronisering" },
+      { error: error?.message || "Internal error while syncing" },
       { status: 500 },
     );
   }

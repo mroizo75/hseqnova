@@ -174,9 +174,14 @@ export function handleApiError(error: unknown): NextResponse {
     return createErrorResponse("INTERNAL_ERROR", message, 500);
   }
 
+  if (error && typeof error === "object" && "message" in error && typeof (error as { message: unknown }).message === "string") {
+    const err = error as { code?: string; message: string };
+    return createErrorResponse(err.code || "INTERNAL_ERROR", err.message, 500);
+  }
+
   return createErrorResponse(
     "UNKNOWN_ERROR",
-    "En ukjent feil oppstod",
+    "An unexpected error occurred",
     500
   );
 }

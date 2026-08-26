@@ -418,7 +418,7 @@ export async function GET(
 
     const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(pdfBuffer as unknown as BodyInit, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${form.title.replace(/[^a-z0-9æøå]/gi, "_")}_${submission.createdAt.toISOString().split("T")[0]}.pdf"`,

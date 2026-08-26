@@ -30,10 +30,17 @@ export function TenantLogoUpload({ currentLogoUrl, isAdmin }: TenantLogoUploadPr
     setUploading(false);
     if (data.success) {
       setPreviewUrl(data.logoUrl);
-      toast({ title: "Logo lastet opp", description: "Logoen vises nå i dine PDF-rapporter." });
+      toast({
+        title: "Logo uploaded",
+        description: "It will appear on the health and safety policy and other PDFs.",
+      });
       router.refresh();
     } else {
-      toast({ title: "Feil", description: data.error ?? "Kunne ikke laste opp logo", variant: "destructive" });
+      toast({
+        title: "Upload failed",
+        description: data.error ?? "Could not upload the logo",
+        variant: "destructive",
+      });
     }
   }
 
@@ -43,10 +50,10 @@ export function TenantLogoUpload({ currentLogoUrl, isAdmin }: TenantLogoUploadPr
     setRemoving(false);
     if (res.ok) {
       setPreviewUrl(null);
-      toast({ title: "Logo fjernet" });
+      toast({ title: "Logo removed" });
       router.refresh();
     } else {
-      toast({ title: "Feil", description: "Kunne ikke fjerne logo", variant: "destructive" });
+      toast({ title: "Could not remove logo", variant: "destructive" });
     }
   }
 
@@ -55,21 +62,20 @@ export function TenantLogoUpload({ currentLogoUrl, isAdmin }: TenantLogoUploadPr
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ImageIcon className="h-5 w-5 text-primary" />
-          Bedriftslogo
+          Company logo
         </CardTitle>
         <CardDescription>
-          Logoen vises i alle PDF-rapporter (HMS Håndbok, vernerunder, revisjoner m.m.).
-          Anbefalt: PNG eller SVG med transparent bakgrunn, maks 2 MB.
+          Shown on the written health and safety policy, inspection reports and other PDFs. PNG or
+          SVG with a transparent background, max 2 MB.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap items-center gap-4">
-          {/* Preview */}
           <div className="flex h-20 w-40 items-center justify-center rounded-lg border bg-muted/30">
             {previewUrl ? (
               <img
                 src={previewUrl}
-                alt="Bedriftslogo"
+                alt="Company logo"
                 className="max-h-16 max-w-36 object-contain"
               />
             ) : (
@@ -96,10 +102,10 @@ export function TenantLogoUpload({ currentLogoUrl, isAdmin }: TenantLogoUploadPr
                 size="sm"
                 onClick={() => inputRef.current?.click()}
                 disabled={uploading}
-                className="gap-2"
+                className="gap-2 bg-transparent"
               >
                 {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                {previewUrl ? "Endre logo" : "Last opp logo"}
+                {previewUrl ? "Replace logo" : "Upload logo"}
               </Button>
 
               {previewUrl && (
@@ -112,7 +118,7 @@ export function TenantLogoUpload({ currentLogoUrl, isAdmin }: TenantLogoUploadPr
                   className="gap-2 text-destructive hover:text-destructive"
                 >
                   {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                  Fjern logo
+                  Remove logo
                 </Button>
               )}
             </div>

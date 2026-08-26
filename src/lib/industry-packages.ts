@@ -67,22 +67,22 @@ export interface IndustryPackage {
 }
 
 export const SUPPORTED_INDUSTRIES: ReadonlyArray<SupportedIndustryOption> = [
-  { value: "construction", label: "Bygg og anlegg", templates: 25 },
-  { value: "elektro", label: "Elektro og energi", templates: 28 },
-  { value: "offshore", label: "Offshore og petroleum", templates: 32 },
-  { value: "marine", label: "Maritime og sjøfart", templates: 26 },
-  { value: "oil_gas", label: "Olje og gass", templates: 30 },
-  { value: "fiskeri", label: "Fiskeri og havbruk", templates: 22 },
-  { value: "bergverk", label: "Bergverk og gruvedrift", templates: 24 },
-  { value: "healthcare", label: "Helsevesen", templates: 20 },
-  { value: "manufacturing", label: "Industri og produksjon", templates: 30 },
-  { value: "retail", label: "Handel og service", templates: 15 },
-  { value: "transport", label: "Transport og logistikk", templates: 22 },
-  { value: "hospitality", label: "Hotell og restaurant", templates: 18 },
-  { value: "education", label: "Utdanning", templates: 12 },
-  { value: "technology", label: "Teknologi og IT", templates: 10 },
-  { value: "agriculture", label: "Landbruk", templates: 16 },
-  { value: "other", label: "Annet", templates: 8 },
+  { value: "construction", label: "Construction", templates: 25 },
+  { value: "elektro", label: "Electrical and energy", templates: 28 },
+  { value: "offshore", label: "Offshore and petroleum", templates: 32 },
+  { value: "marine", label: "Marine and shipping", templates: 26 },
+  { value: "oil_gas", label: "Oil and gas", templates: 30 },
+  { value: "fiskeri", label: "Fishing and aquaculture", templates: 22 },
+  { value: "bergverk", label: "Mining and quarrying", templates: 24 },
+  { value: "healthcare", label: "Healthcare", templates: 20 },
+  { value: "manufacturing", label: "Manufacturing", templates: 30 },
+  { value: "retail", label: "Retail and service", templates: 15 },
+  { value: "transport", label: "Transport and logistics", templates: 22 },
+  { value: "hospitality", label: "Hospitality", templates: 18 },
+  { value: "education", label: "Education", templates: 12 },
+  { value: "technology", label: "Technology and IT", templates: 10 },
+  { value: "agriculture", label: "Agriculture", templates: 16 },
+  { value: "other", label: "Other", templates: 8 },
 ];
 
 const INDUSTRY_ALIASES: Readonly<Record<string, string>> = {
@@ -131,7 +131,7 @@ export const AGRICULTURE_FARM_TYPES: ReadonlyArray<{ value: string; label: strin
 
 const agriculturePackage: IndustryPackage = {
   industry: "agriculture",
-  displayName: "Landbruk",
+  displayName: "Agriculture",
   farmTypes: AGRICULTURE_FARM_TYPES,
   simpleMenuHrefs: ["/dashboard/incidents", "/dashboard/inspections", "/dashboard/sja"],
   risks: [
@@ -366,34 +366,39 @@ const agriculturePackage: IndustryPackage = {
   ],
   legalReferences: [
     {
-      title: "Arbeidsmiljøloven",
-      paragraphRef: "§ 2-3",
-      description: "Arbeidstaker skal medvirke i HMS-arbeidet og melde fra om feil og farer.",
-      sourceUrl: "https://lovdata.no/dokument/NL/lov/2005-06-17-62",
+      title: "Health and Safety at Work etc. Act 1974",
+      paragraphRef: "s.2",
+      description:
+        "Employer duties to ensure, so far as is reasonably practicable, the health, safety and welfare of employees. A written health and safety policy is required where there are five or more employees.",
+      sourceUrl: "https://www.legislation.gov.uk/ukpga/1974/37",
     },
     {
-      title: "Arbeidsmiljøloven",
-      paragraphRef: "§ 3-1",
-      description: "Arbeidsgiver skal sikre systematisk HMS-arbeid og risikovurdering.",
-      sourceUrl: "https://lovdata.no/dokument/NL/lov/2005-06-17-62",
+      title: "Management of Health and Safety at Work Regulations 1999",
+      paragraphRef: "regs 3 and 7",
+      description:
+        "Duty to make a suitable and sufficient risk assessment of work activities and to appoint one or more competent persons to assist in complying with health and safety law.",
+      sourceUrl: "https://www.legislation.gov.uk/uksi/1999/3242",
     },
     {
-      title: "Arbeidsmiljøloven",
-      paragraphRef: "§ 5-2",
-      description: "Alvorlige arbeidsulykker skal varsles umiddelbart og meldes skriftlig.",
-      sourceUrl: "https://lovdata.no/dokument/NL/lov/2005-06-17-62",
+      title: "Reporting of Injuries, Diseases and Dangerous Occurrences Regulations 2013",
+      paragraphRef: "RIDDOR 2013",
+      description:
+        "Duty to report deaths, specified injuries, over-seven-day injuries, occupational diseases and dangerous occurrences to the HSE within the statutory timescales.",
+      sourceUrl: "https://www.hse.gov.uk/riddor/",
     },
     {
-      title: "Internkontrollforskriften",
-      paragraphRef: "§ 5",
-      description: "Virksomheten skal kartlegge farer, vurdere risiko og lage tilhørende tiltak.",
-      sourceUrl: "https://lovdata.no/dokument/SF/forskrift/1996-12-06-1127",
+      title: "Social Security (Claims and Payments) Regulations 1979",
+      paragraphRef: "reg. 25",
+      description:
+        "Duty to keep an accident book (or equivalent digital record). Entries must be retained for at least three years.",
+      sourceUrl: "https://www.legislation.gov.uk/uksi/1979/628",
     },
     {
-      title: "Forskrift om utførelse av arbeid",
-      paragraphRef: "Kapittel 3",
-      description: "Krav ved arbeid med kjemiske og biologiske risikofaktorer.",
-      sourceUrl: "https://lovdata.no/dokument/SF/forskrift/2011-12-06-1357/KAPITTEL_3",
+      title: "Control of Substances Hazardous to Health Regulations 2002",
+      paragraphRef: "COSHH 2002",
+      description:
+        "Duty to assess and control exposure to hazardous substances, including pesticides and other farm chemicals. Health records for specified exposures must be kept for 40 years.",
+      sourceUrl: "https://www.legislation.gov.uk/uksi/2002/2677",
     },
   ],
 };
@@ -402,14 +407,14 @@ const agriculturePackage: IndustryPackage = {
 
 const elektroPackage: IndustryPackage = {
   industry: "elektro",
-  displayName: "Elektro og energi",
+  displayName: "Electrical and energy",
   farmTypes: [],
   simpleMenuHrefs: [
     "/dashboard/incidents",
     "/dashboard/sja",
     "/dashboard/inspections",
     "/dashboard/documents",
-    "/dashboard/rutiner",
+    "/dashboard/risks",
   ],
   risks: [
     {
@@ -602,34 +607,39 @@ const elektroPackage: IndustryPackage = {
   ],
   legalReferences: [
     {
-      title: "Forskrift om sikkerhet ved arbeid i og drift av elektriske anlegg (FSE)",
-      paragraphRef: "§ 5 og § 10",
-      description: "Krav til kvalifikasjoner, risikovurdering og verneutstyr ved arbeid på elektriske anlegg.",
-      sourceUrl: "https://lovdata.no/dokument/SF/forskrift/2006-04-28-458",
+      title: "Health and Safety at Work etc. Act 1974",
+      paragraphRef: "s.2",
+      description:
+        "Employer duties to ensure, so far as is reasonably practicable, the health, safety and welfare of employees, including those carrying out electrical work. A written health and safety policy is required where there are five or more employees.",
+      sourceUrl: "https://www.legislation.gov.uk/ukpga/1974/37",
     },
     {
-      title: "Forskrift om elektriske lavspenningsanlegg (FEL)",
-      paragraphRef: "§ 7 og § 10",
-      description: "Krav til utførelse, kontroll og dokumentasjon av elektriske installasjoner.",
-      sourceUrl: "https://lovdata.no/dokument/SF/forskrift/1998-11-06-1060",
+      title: "Management of Health and Safety at Work Regulations 1999",
+      paragraphRef: "regs 3 and 7",
+      description:
+        "Duty to make a suitable and sufficient risk assessment of electrical work and to appoint a competent person to assist with health and safety compliance.",
+      sourceUrl: "https://www.legislation.gov.uk/uksi/1999/3242",
     },
     {
-      title: "Arbeidsmiljøloven",
-      paragraphRef: "§ 3-1 og § 3-2",
-      description: "Arbeidsgiver skal sørge for opplæring og tilpasse arbeidet til arbeidstakers kvalifikasjoner.",
-      sourceUrl: "https://lovdata.no/dokument/NL/lov/2005-06-17-62",
+      title: "Reporting of Injuries, Diseases and Dangerous Occurrences Regulations 2013",
+      paragraphRef: "RIDDOR 2013",
+      description:
+        "Duty to report deaths, specified injuries, over-seven-day injuries, occupational diseases and dangerous occurrences, including electrical incidents, to the HSE.",
+      sourceUrl: "https://www.hse.gov.uk/riddor/",
     },
     {
-      title: "Internkontrollforskriften",
-      paragraphRef: "§ 5",
-      description: "Virksomheten skal kartlegge farer og vurdere risiko, samt iverksette tiltak.",
-      sourceUrl: "https://lovdata.no/dokument/SF/forskrift/1996-12-06-1127",
+      title: "Construction (Design and Management) Regulations 2015",
+      paragraphRef: "CDM 2015",
+      description:
+        "Duty-holder duties for construction and electrical installation work, including client, principal designer and principal contractor roles, the construction phase plan and the health and safety file.",
+      sourceUrl: "https://www.hse.gov.uk/construction/cdm/2015/",
     },
     {
-      title: "NEK 400 – Elektriske lavspenningsinstallasjoner",
-      paragraphRef: "Del 6",
-      description: "Norsk standard for periodisk kontroll og verifikasjon av elektriske anlegg.",
-      sourceUrl: "https://www.standard.no/fagomrader/el-ikt-og-telekommunikasjon/elektriske-anlegg/",
+      title: "Work at Height Regulations 2005",
+      paragraphRef: "regs 4 to 6",
+      description:
+        "Duty to avoid work at height where reasonably practicable, and otherwise to plan, supervise and carry it out using suitable equipment so that persons do not fall a distance liable to cause injury.",
+      sourceUrl: "https://www.legislation.gov.uk/uksi/2005/735",
     },
   ],
 };
@@ -638,14 +648,14 @@ const elektroPackage: IndustryPackage = {
 
 const offshorePackage: IndustryPackage = {
   industry: "offshore",
-  displayName: "Offshore og petroleum",
+  displayName: "Offshore and petroleum",
   farmTypes: [],
   simpleMenuHrefs: [
     "/dashboard/incidents",
     "/dashboard/sja",
     "/dashboard/inspections",
     "/dashboard/documents",
-    "/dashboard/rutiner",
+    "/dashboard/risks",
     "/dashboard/chemicals",
   ],
   risks: [
@@ -859,34 +869,39 @@ const offshorePackage: IndustryPackage = {
   ],
   legalReferences: [
     {
-      title: "Rammeforskriften (petroleumsvirksomhet)",
-      paragraphRef: "§ 9 – Styringssystem",
-      description: "Krav til operatørens styringssystem for HMS i petroleumsvirksomheten.",
-      sourceUrl: "https://lovdata.no/dokument/SF/forskrift/2010-04-29-611",
+      title: "Health and Safety at Work etc. Act 1974",
+      paragraphRef: "s.2",
+      description:
+        "Employer duties to ensure, so far as is reasonably practicable, the health, safety and welfare of employees. A written health and safety policy is required where there are five or more employees.",
+      sourceUrl: "https://www.legislation.gov.uk/ukpga/1974/37",
     },
     {
-      title: "Aktivitetsforskriften",
-      paragraphRef: "§ 23 – Risikovurdering",
-      description: "Krav til risikovurdering av arbeidsprosesser og operasjoner offshore.",
-      sourceUrl: "https://lovdata.no/dokument/SF/forskrift/2010-04-29-613",
+      title: "Management of Health and Safety at Work Regulations 1999",
+      paragraphRef: "regs 3 and 7",
+      description:
+        "Duty to make a suitable and sufficient risk assessment of offshore work activities and to appoint a competent person to assist with health and safety compliance.",
+      sourceUrl: "https://www.legislation.gov.uk/uksi/1999/3242",
     },
     {
-      title: "Aktivitetsforskriften",
-      paragraphRef: "§ 99 – Beredskap",
-      description: "Krav til beredskapsanalyse og beredskapsplanlegging.",
-      sourceUrl: "https://lovdata.no/dokument/SF/forskrift/2010-04-29-613",
+      title: "Reporting of Injuries, Diseases and Dangerous Occurrences Regulations 2013",
+      paragraphRef: "RIDDOR 2013",
+      description:
+        "Duty to report deaths, specified injuries, over-seven-day injuries, occupational diseases and dangerous occurrences to the HSE within the statutory timescales.",
+      sourceUrl: "https://www.hse.gov.uk/riddor/",
     },
     {
-      title: "Innretningsforskriften",
-      paragraphRef: "§ 65 – Brannbeskyttelse",
-      description: "Krav til brannsikkerhet og passive og aktive brannsystemer.",
-      sourceUrl: "https://lovdata.no/dokument/SF/forskrift/2010-04-29-612",
+      title: "Regulatory Reform (Fire Safety) Order 2005",
+      paragraphRef: "arts 8 to 15",
+      description:
+        "Duty of the responsible person to take general fire precautions, carry out a fire risk assessment, maintain fire-fighting and detection equipment, and arrange fire drills and emergency procedures.",
+      sourceUrl: "https://www.legislation.gov.uk/uksi/2005/1541",
     },
     {
-      title: "Arbeidsmiljøloven",
-      paragraphRef: "§ 3-1 og § 5-2",
-      description: "Systematisk HMS og plikt til å melde alvorlige ulykker.",
-      sourceUrl: "https://lovdata.no/dokument/NL/lov/2005-06-17-62",
+      title: "Control of Substances Hazardous to Health Regulations 2002",
+      paragraphRef: "COSHH 2002",
+      description:
+        "Duty to assess and control exposure to hazardous substances, including hydrogen sulphide and other process chemicals. Health records for specified exposures must be kept for 40 years.",
+      sourceUrl: "https://www.legislation.gov.uk/uksi/2002/2677",
     },
   ],
 };
@@ -895,14 +910,14 @@ const offshorePackage: IndustryPackage = {
 
 const marinePackage: IndustryPackage = {
   industry: "marine",
-  displayName: "Maritime og sjøfart",
+  displayName: "Marine and shipping",
   farmTypes: [],
   simpleMenuHrefs: [
     "/dashboard/incidents",
     "/dashboard/sja",
     "/dashboard/inspections",
     "/dashboard/documents",
-    "/dashboard/rutiner",
+    "/dashboard/risks",
   ],
   risks: [
     {
@@ -1063,38 +1078,42 @@ const marinePackage: IndustryPackage = {
   ],
   legalReferences: [
     {
-      title: "ISM-koden (International Safety Management Code)",
-      paragraphRef: "Kapittel 12",
-      description: "Krav til intern revisjon og avvikshåndtering i ISM-systemet.",
-      sourceUrl: "https://www.sdir.no/regelverk/internasjonale-regler/ism-koden/",
+      title: "Health and Safety at Work etc. Act 1974",
+      paragraphRef: "s.2",
+      description:
+        "Employer duties to ensure, so far as is reasonably practicable, the health, safety and welfare of employees. A written health and safety policy is required where there are five or more employees.",
+      sourceUrl: "https://www.legislation.gov.uk/ukpga/1974/37",
     },
     {
-      title: "STCW-konvensjonen",
-      paragraphRef: "Kapittel VI – Nødsituasjoner",
-      description: "Krav til opplæring og sertifisering av sjøfolk.",
-      sourceUrl: "https://www.sdir.no/sjofart/opplaring-og-sertifikater/stcw-regelverk/",
+      title: "Management of Health and Safety at Work Regulations 1999",
+      paragraphRef: "regs 3 and 7",
+      description:
+        "Duty to make a suitable and sufficient risk assessment of marine work activities and to appoint a competent person to assist with health and safety compliance.",
+      sourceUrl: "https://www.legislation.gov.uk/uksi/1999/3242",
     },
     {
-      title: "Sjødyktighetsloven",
-      paragraphRef: "§ 2 – Sjødyktighet",
-      description: "Krav til skipets tilstand og utstyr for sjøsikkerhet.",
-      sourceUrl: "https://lovdata.no/dokument/NL/lov/1903-06-09-7",
+      title: "Reporting of Injuries, Diseases and Dangerous Occurrences Regulations 2013",
+      paragraphRef: "RIDDOR 2013",
+      description:
+        "Duty to report deaths, specified injuries, over-seven-day injuries, occupational diseases and dangerous occurrences to the HSE within the statutory timescales.",
+      sourceUrl: "https://www.hse.gov.uk/riddor/",
     },
     {
-      title: "Arbeidsmiljøloven",
-      paragraphRef: "§ 3-1 og § 5-2",
-      description: "Krav til HMS og varsling av ulykker.",
-      sourceUrl: "https://lovdata.no/dokument/NL/lov/2005-06-17-62",
+      title: "Social Security (Claims and Payments) Regulations 1979",
+      paragraphRef: "reg. 25",
+      description:
+        "Duty to keep an accident book (or equivalent digital record). Entries must be retained for at least three years.",
+      sourceUrl: "https://www.legislation.gov.uk/uksi/1979/628",
     },
   ],
 };
 
-// ─── Hospitality-pakke (Hotell og restaurant) ────────────────────────────────
-// Hjemmel: AML, IK-HMS, IK-mat, næringsmiddelhygieneforskriften,
-// BHT-forskriften kode 55.1/56.11/56.3
+// ─── Hospitality ─────────────────────────────────────────────────────────────
+// Legal basis: HSWA 1974, MHSWR 1999, RIDDOR 2013, accident book, UK GDPR / DPA 2018,
+// Fire Safety Order 2005, COSHH 2002, PIDA 1998, SRSCWR 1977 / HSCER 1996
 const hospitalityPackage: IndustryPackage = {
   industry: "hospitality",
-  displayName: "Hotell og restaurant",
+  displayName: "Hospitality",
   farmTypes: [],
   simpleMenuHrefs: ["/dashboard/incidents", "/dashboard/inspections", "/dashboard/chemicals"],
   risks: [
@@ -1377,15 +1396,69 @@ const hospitalityPackage: IndustryPackage = {
     { courseKey: "hospitality_onboarding", title: "Onboarding – HMS for sesongansatte", description: "Kort innføring i HMS, rutiner og beredskap for nye og sesongansatte.", isRequired: true, validityYears: null },
   ],
   legalReferences: [
-    { title: "Arbeidsmiljøloven – varsling og registrering av skader", paragraphRef: "AML § 5-1, § 5-2, § 5-3", description: "Plikt til å registrere yrkesskader og sykdommer, varsle Arbeidstilsynet og politiet ved alvorlig skade.", sourceUrl: "https://lovdata.no/dokument/NL/lov/2005-06-17-62/KAPITTEL_5" },
-    { title: "Internkontrollforskriften – systematisk HMS-arbeid", paragraphRef: "IK-HMS § 5", description: "Krav til skriftlige mål, dokumentert organisering, risikovurdering og avviksrutiner.", sourceUrl: "https://lovdata.no/dokument/SF/forskrift/1996-12-06-1127" },
-    { title: "BHT-plikt – hoteller og restauranter", paragraphRef: "Forskrift om org. ledelse § 1-1", description: "Næringskodene 55.1 (hoteller), 56.11 (restauranter) og 56.3 (barer) er BHT-pliktige.", sourceUrl: "https://lovdata.no/dokument/SF/forskrift/2011-12-06-1355/VEDLEGG_1" },
-    { title: "Næringsmiddelhygieneforskriften – HACCP-basert internkontroll", paragraphRef: "Forordning (EF) 852/2004 art. 5", description: "Alle serveringssteder skal ha internkontroll basert på HACCP-prinsippene.", sourceUrl: "https://lovdata.no/dokument/SF/forskrift/2008-12-22-1623" },
-    { title: "IK-mat – plikt til internkontroll for næringsmidler", paragraphRef: "IK-mat § 4 og § 5", description: "Virksomheter som omsetter næringsmidler skal ha dokumentert internkontroll, inkludert rutiner ved avvik og for å hindre gjentakelse.", sourceUrl: "https://lovdata.no/dokument/SF/forskrift/1994-12-15-1187" },
-    { title: "Allergeninformasjon for ikke-ferdigpakket mat", paragraphRef: "EU-forordning 1169/2011", description: "Skriftlig allergeninformasjon for de 14 EU-allergener er påkrevd for ikke-ferdigpakket mat.", sourceUrl: "https://lovdata.no/dokument/SF/forskrift/2014-10-28-1372" },
-    { title: "Alkoholloven – ansvarlig servering", paragraphRef: "Alkoholloven § 1-7c", description: "Krav om kompetansebevis i ansvarlig alkoholservering for serveringssteder.", sourceUrl: "https://lovdata.no/dokument/NL/lov/1989-06-02-27" },
-    { title: "Nattarbeid i reiseliv", paragraphRef: "AML § 10-11", description: "Nattarbeid er bare tillatt når arbeidets art gjør det nødvendig. Krav om helseundersøkelse.", sourceUrl: "https://lovdata.no/dokument/NL/lov/2005-06-17-62/KAPITTEL_10" },
-    { title: "Kjemikalier – stoffkartotek og sikkerhetsdatablad", paragraphRef: "AML § 4-5 + Kjemikalieforskriften", description: "Arbeidsgivere skal ha stoffkartotek og sørge for at sikkerhetsdatablad er tilgjengelig for farlige kjemikalier.", sourceUrl: "https://lovdata.no/dokument/SF/forskrift/2001-04-30-443" },
+    {
+      title: "Health and Safety at Work etc. Act 1974",
+      paragraphRef: "s.2",
+      description:
+        "Employer duties to ensure, so far as is reasonably practicable, the health, safety and welfare of employees. A written health and safety policy is required where there are five or more employees.",
+      sourceUrl: "https://www.legislation.gov.uk/ukpga/1974/37",
+    },
+    {
+      title: "Management of Health and Safety at Work Regulations 1999",
+      paragraphRef: "regs 3 and 7",
+      description:
+        "Duty to make a suitable and sufficient risk assessment of hospitality work and to appoint a competent person to assist with health and safety compliance.",
+      sourceUrl: "https://www.legislation.gov.uk/uksi/1999/3242",
+    },
+    {
+      title: "Reporting of Injuries, Diseases and Dangerous Occurrences Regulations 2013",
+      paragraphRef: "RIDDOR 2013",
+      description:
+        "Duty to report deaths, specified injuries, over-seven-day injuries, occupational diseases and dangerous occurrences to the HSE within the statutory timescales.",
+      sourceUrl: "https://www.hse.gov.uk/riddor/",
+    },
+    {
+      title: "Social Security (Claims and Payments) Regulations 1979",
+      paragraphRef: "reg. 25",
+      description:
+        "Duty to keep an accident book (or equivalent digital record). Entries must be retained for at least three years.",
+      sourceUrl: "https://www.legislation.gov.uk/uksi/1979/628",
+    },
+    {
+      title: "UK GDPR / Data Protection Act 2018",
+      paragraphRef: "DPA 2018",
+      description:
+        "Duty to process personal data in accident and incident records lawfully, fairly and securely, with appropriate retention and access controls.",
+      sourceUrl: "https://ico.org.uk",
+    },
+    {
+      title: "Regulatory Reform (Fire Safety) Order 2005",
+      paragraphRef: "arts 8 to 15",
+      description:
+        "Duty of the responsible person to take general fire precautions, complete a fire risk assessment, maintain detection and fire-fighting equipment, and arrange fire drills and guest evacuation procedures.",
+      sourceUrl: "https://www.legislation.gov.uk/uksi/2005/1541",
+    },
+    {
+      title: "Control of Substances Hazardous to Health Regulations 2002",
+      paragraphRef: "COSHH 2002",
+      description:
+        "Duty to assess and control exposure to hazardous substances such as cleaning and kitchen chemicals, and to keep safety data sheets available. Health records for specified exposures must be kept for 40 years.",
+      sourceUrl: "https://www.legislation.gov.uk/uksi/2002/2677",
+    },
+    {
+      title: "Public Interest Disclosure Act 1998",
+      paragraphRef: "PIDA 1998",
+      description:
+        "Protection for workers who make a qualifying disclosure of health and safety concerns. Workers must not suffer detriment for whistleblowing.",
+      sourceUrl: "https://www.legislation.gov.uk/ukpga/1998/23",
+    },
+    {
+      title: "Safety Representatives and Safety Committees Regulations 1977 / Health and Safety (Consultation with Employees) Regulations 1996",
+      paragraphRef: "SRSCWR 1977 / HSCER 1996",
+      description:
+        "Duty to consult recognised trade union safety representatives, or otherwise consult employees, on health and safety matters including risk assessments and the introduction of measures affecting health and safety.",
+      sourceUrl: "https://www.legislation.gov.uk/uksi/1996/1513",
+    },
   ],
 };
 

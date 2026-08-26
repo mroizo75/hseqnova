@@ -22,7 +22,6 @@ import {
   FileText,
   Sparkles,
   Loader2,
-  AlertTriangle,
   Package,
   FlaskConical,
   Shield,
@@ -37,6 +36,20 @@ interface ChemicalFormProps {
   chemical?: Chemical;
   mode?: "create" | "edit";
 }
+
+type AiExtractedFields = {
+  productName?: string;
+  supplier?: string;
+  casNumber?: string;
+  hazardClass?: string;
+  hazardStatements?: string;
+  precautionaryStatements?: string;
+  warningPictograms?: string;
+  requiredPPE?: string;
+  containsIsocyanates?: boolean;
+  isCMR?: boolean;
+  isSVHC?: boolean;
+};
 
 function SectionHeader({ icon: Icon, title, description }: {
   icon: React.ElementType;
@@ -142,7 +155,7 @@ export function ChemicalForm({ chemical, mode = "create" }: ChemicalFormProps) {
   const [loading, setLoading] = useState(false);
   const [sdsFile, setSdsFile] = useState<File | null>(null);
   const [parsing, setParsing] = useState(false);
-  const [aiData, setAiData] = useState<any>(null);
+  const [aiData, setAiData] = useState<AiExtractedFields | null>(null);
 
   const handleSDSUpload = async (file: File) => {
     setSdsFile(file);
@@ -151,10 +164,10 @@ export function ChemicalForm({ chemical, mode = "create" }: ChemicalFormProps) {
       const uploadFormData = new FormData();
       uploadFormData.append("file", file);
       const uploadRes = await fetch("/api/chemicals/upload", { method: "POST", body: uploadFormData });
-      if (!uploadRes.ok) throw new Error("Filopplasting feilet");
+      if (!uploadRes.ok) throw new Error("File upload failed");
       const { key } = await uploadRes.json();
 
-      toast({ title: "AI analyserer sikkerhetsdatablad", description: "Dette tar ca. 30–60 sekunder..." });
+      toast({ title: "AI is analysing the safety data sheet", description: "This usually takes 30–60 seconds." });
 
       const parseRes = await fetch("/api/chemicals/parse-sds", {
         method: "POST",
@@ -162,18 +175,19 @@ export function ChemicalForm({ chemical, mode = "create" }: ChemicalFormProps) {
         body: JSON.stringify({ sdsKey: key }),
       });
       if (!parseRes.ok) {
-        const err = await parseRes.json();
-        throw new Error(err.error || "AI-parsing feilet");
+        const err = await parseRes.json() as { error?: string };
+        throw new Error(err.error || "AI parsing failed");
       }
-      const { data } = await parseRes.json();
+      const { data } = await parseRes.json() as { data: AiExtractedFields };
       setAiData(data);
       toast({
-        title: "AI-analyse fullført",
-        description: "Feltene er fylt ut automatisk – sjekk og juster om nødvendig",
+        title: "AI analysis complete",
+        description: "Fields have been filled in automatically — check and adjust if needed",
         className: "bg-green-50 border-green-200",
       });
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Feil ved AI-parsing", description: error.message });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Could not parse the safety data sheet";
+      toast({ variant: "destructive", title: "AI parsing failed", description: message });
     } finally {
       setParsing(false);
     }
@@ -190,8 +204,8 @@ export function ChemicalForm({ chemical, mode = "create" }: ChemicalFormProps) {
         uploadFormData.append("file", sdsFile);
         const uploadRes = await fetch("/api/chemicals/upload", { method: "POST", body: uploadFormData });
         if (!uploadRes.ok) {
-          const err = await uploadRes.json();
-          throw new Error(err.error || "Filopplasting feilet");
+          const err = await uploadRes.json() as { error?: string };
+          throw new Error(err.error || "File upload failed");
         }
         sdsKey = (await uploadRes.json()).key;
       }
@@ -225,17 +239,18 @@ export function ChemicalForm({ chemical, mode = "create" }: ChemicalFormProps) {
 
       if (result.success) {
         toast({
-          title: mode === "edit" ? "Kjemikalie oppdatert" : "Kjemikalie registrert",
-          description: mode === "edit" ? "Endringene er lagret" : "Produktet er lagt til i stoffkartoteket",
+          title: mode === "edit" ? "Chemical updated" : "Chemical registered",
+          description: mode === "edit" ? "The changes have been saved" : "The product has been added to the COSHH register",
           className: "bg-green-50 border-green-200",
         });
         router.push("/dashboard/chemicals");
         router.refresh();
       } else {
-        toast({ variant: "destructive", title: "Feil", description: result.error || "Kunne ikke lagre" });
+        toast({ variant: "destructive", title: "Could not save", description: result.error || "Could not save" });
       }
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Feil", description: error.message || "Noe gikk galt" });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Something went wrong";
+      toast({ variant: "destructive", title: "Could not save", description: message });
     } finally {
       setLoading(false);
     }
@@ -245,34 +260,32 @@ export function ChemicalForm({ chemical, mode = "create" }: ChemicalFormProps) {
     <form onSubmit={handleSubmit} className="space-y-0">
       <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
 
-        {/* ── 1. Sikkerhetsdatablad ─────────────────────────────────────── */}
         <div className="p-6 space-y-5">
           <SectionHeader
             icon={Upload}
-            title="Sikkerhetsdatablad (SDS)"
-            description="Last opp PDF – AI analyserer og fyller ut feltene under automatisk"
+            title="Safety data sheet (SDS)"
+            description="Upload a PDF — AI analyses it and fills in the fields below"
           />
 
-          {/* AI-status */}
           {aiData && (
             <div className="flex items-center gap-2.5 px-3 py-2.5 bg-green-50 border border-green-200 rounded-lg">
               <Sparkles className="h-4 w-4 text-green-600 shrink-0" />
               <p className="text-sm text-green-800 font-medium">
-                AI har fylt ut feltene – sjekk og juster om nødvendig
+                AI has filled in the fields — check and adjust if needed
               </p>
             </div>
           )}
           {parsing && (
             <div className="flex items-center gap-2.5 px-3 py-2.5 bg-blue-50 border border-blue-200 rounded-lg">
               <Loader2 className="h-4 w-4 animate-spin text-blue-600 shrink-0" />
-              <p className="text-sm text-blue-800">AI analyserer sikkerhetsdatablad... ca. 30–60 sek</p>
+              <p className="text-sm text-blue-800">AI is analysing the safety data sheet... about 30–60 seconds</p>
             </div>
           )}
 
           <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
             <FieldRow
-              label={`Datablad (PDF)${mode === "create" ? " *" : ""}`}
-              hint={!chemical?.sdsKey && mode === "create" ? "AI fyller ut feltene automatisk ved opplasting" : undefined}
+              label={`Safety data sheet (PDF)${mode === "create" ? " *" : ""}`}
+              hint={!chemical?.sdsKey && mode === "create" ? "AI fills in the fields automatically on upload" : undefined}
             >
               <Input
                 id="sdsFile"
@@ -287,22 +300,22 @@ export function ChemicalForm({ chemical, mode = "create" }: ChemicalFormProps) {
               <div className="flex items-end pb-0.5">
                 <div className="flex items-center gap-1.5 text-sm text-muted-foreground border rounded-md px-3 py-2 bg-slate-50 whitespace-nowrap">
                   <FileText className="h-4 w-4" />
-                  Eksisterende datablad
+                  Existing SDS
                 </div>
               </div>
             )}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <FieldRow label="Versjon">
+            <FieldRow label="Version">
               <Input id="sdsVersion" name="sdsVersion" placeholder="3.2" disabled={loading}
                 defaultValue={chemical?.sdsVersion || ""} />
             </FieldRow>
-            <FieldRow label="Dato for datablad">
+            <FieldRow label="SDS date">
               <Input id="sdsDate" name="sdsDate" type="date" disabled={loading}
                 defaultValue={chemical?.sdsDate ? new Date(chemical.sdsDate).toISOString().split("T")[0] : ""} />
             </FieldRow>
-            <FieldRow label="Neste revisjon" hint="Anbefalt: Årlig gjennomgang">
+            <FieldRow label="Next review" hint="COSHH 2002: review when the assessment is no longer valid">
               <Input id="nextReviewDate" name="nextReviewDate" type="date" disabled={loading}
                 defaultValue={
                   chemical?.nextReviewDate
@@ -315,30 +328,29 @@ export function ChemicalForm({ chemical, mode = "create" }: ChemicalFormProps) {
 
         <div className="border-t" />
 
-        {/* ── 2. Produktinformasjon ─────────────────────────────────────── */}
         <div className="p-6 space-y-5">
           <SectionHeader
             icon={Package}
-            title="Produktinformasjon"
-            description="Grunnleggende data om kjemikaliet"
+            title="Product information"
+            description="Basic data about the hazardous substance"
           />
 
-          <FieldRow label="Produktnavn *" aiFilled={!!aiData?.productName}>
+          <FieldRow label="Product name *" aiFilled={!!aiData?.productName}>
             <Input
               id="productName" name="productName" required disabled={loading}
-              placeholder="F.eks. Rengjøringsmiddel XYZ"
+              placeholder="e.g. Cleaning agent XYZ"
               key={aiData?.productName || "pn"}
               defaultValue={aiData?.productName || chemical?.productName || ""}
             />
           </FieldRow>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <FieldRow label="Leverandør" aiFilled={!!aiData?.supplier}>
-              <Input id="supplier" name="supplier" disabled={loading} placeholder="Leverandørnavn"
+            <FieldRow label="Supplier" aiFilled={!!aiData?.supplier}>
+              <Input id="supplier" name="supplier" disabled={loading} placeholder="Supplier name"
                 key={aiData?.supplier || "sup"}
                 defaultValue={aiData?.supplier || chemical?.supplier || ""} />
             </FieldRow>
-            <FieldRow label="CAS-nummer" hint="Unikt identifikasjonsnummer for kjemisk stoff" aiFilled={!!aiData?.casNumber}>
+            <FieldRow label="CAS number" hint="Unique identifier for the chemical substance" aiFilled={!!aiData?.casNumber}>
               <Input id="casNumber" name="casNumber" disabled={loading} placeholder="000-00-0"
                 key={aiData?.casNumber || "cas"}
                 defaultValue={aiData?.casNumber || chemical?.casNumber || ""} />
@@ -346,35 +358,35 @@ export function ChemicalForm({ chemical, mode = "create" }: ChemicalFormProps) {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <FieldRow label="Lagringssted">
-              <Input id="location" name="location" disabled={loading} placeholder="F.eks. Lager A, hylle 3"
+            <FieldRow label="Storage location">
+              <Input id="location" name="location" disabled={loading} placeholder="e.g. Store A, shelf 3"
                 defaultValue={chemical?.location || ""} />
             </FieldRow>
             <FieldRow label="Status *">
               <Select name="status" required disabled={loading} defaultValue={chemical?.status || "ACTIVE"}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ACTIVE">I bruk</SelectItem>
-                  <SelectItem value="PHASED_OUT">Utfases</SelectItem>
-                  <SelectItem value="ARCHIVED">Arkivert</SelectItem>
+                  <SelectItem value="ACTIVE">In use</SelectItem>
+                  <SelectItem value="PHASED_OUT">Being phased out</SelectItem>
+                  <SelectItem value="ARCHIVED">Archived</SelectItem>
                 </SelectContent>
               </Select>
             </FieldRow>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <FieldRow label="Mengde">
+            <FieldRow label="Quantity">
               <Input id="quantity" name="quantity" type="number" step="0.01" disabled={loading}
                 placeholder="0" defaultValue={chemical?.quantity || ""} />
             </FieldRow>
-            <FieldRow label="Enhet">
+            <FieldRow label="Unit">
               <Select name="unit" disabled={loading} defaultValue={chemical?.unit || "liter"}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="liter">Liter</SelectItem>
+                  <SelectItem value="liter">Litre</SelectItem>
                   <SelectItem value="kg">Kilogram</SelectItem>
-                  <SelectItem value="stk">Stykk</SelectItem>
-                  <SelectItem value="m3">Kubikkmeter</SelectItem>
+                  <SelectItem value="stk">Each</SelectItem>
+                  <SelectItem value="m3">Cubic metre</SelectItem>
                 </SelectContent>
               </Select>
             </FieldRow>
@@ -383,29 +395,28 @@ export function ChemicalForm({ chemical, mode = "create" }: ChemicalFormProps) {
 
         <div className="border-t" />
 
-        {/* ── 3. Faremarkering ─────────────────────────────────────────── */}
         <div className="p-6 space-y-5">
           <SectionHeader
             icon={FlaskConical}
-            title="Faremarkering (GHS/CLP)"
-            description="Klassifisering, H/P-setninger og varslingspiktogrammer fra sikkerhetsdatabladet"
+            title="Hazard labelling (GHS/CLP)"
+            description="Classification, H/P-statements and pictograms from the safety data sheet"
           />
 
-          <FieldRow label="Fareklasse" hint="GHS/CLP-fareklasse, f.eks. Flam. Liq. 3, Acute Tox. 4" aiFilled={!!aiData?.hazardClass}>
+          <FieldRow label="Hazard class" hint="GHS/CLP hazard class, e.g. Flam. Liq. 3, Acute Tox. 4" aiFilled={!!aiData?.hazardClass}>
             <Input id="hazardClass" name="hazardClass" disabled={loading}
-              placeholder="F.eks. Flam. Liq. 3"
+              placeholder="e.g. Flam. Liq. 3"
               key={aiData?.hazardClass || "hc"}
               defaultValue={aiData?.hazardClass || chemical?.hazardClass || ""} />
           </FieldRow>
 
           <FieldRow
-            label="H-setninger (faresetninger)"
-            hint="H340 / H350 / H360 indikerer CMR-stoff → registreringsplikt i eksponeringsregisteret"
+            label="H-statements (hazard statements)"
+            hint="H340 / H350 / H360 indicate a CMR substance — keep health records for 40 years (COSHH 2002)"
             aiFilled={!!aiData?.hazardStatements}
           >
             <Textarea
               id="hazardStatements" name="hazardStatements" rows={4} disabled={loading}
-              placeholder={"H226 Brannfarlig væske og damp\nH315 Irriterer huden\nH350 Kan forårsake kreft"}
+              placeholder={"H226 Flammable liquid and vapour\nH315 Causes skin irritation\nH350 May cause cancer"}
               key={aiData?.hazardStatements || "hs"}
               defaultValue={aiData?.hazardStatements || chemical?.hazardStatements || ""}
               className="resize-y min-h-[80px]"
@@ -413,13 +424,13 @@ export function ChemicalForm({ chemical, mode = "create" }: ChemicalFormProps) {
           </FieldRow>
 
           <FieldRow
-            label="P-setninger (sikkerhetssetninger)"
-            hint="Precautionary statements fra avsnitt 2 i sikkerhetsdatabladet"
+            label="P-statements (precautionary statements)"
+            hint="Precautionary statements from section 2 of the safety data sheet"
             aiFilled={!!aiData?.precautionaryStatements}
           >
             <Textarea
               id="precautionaryStatements" name="precautionaryStatements" rows={4} disabled={loading}
-              placeholder={"P210 Holdes vekk fra varme og åpen flamme\nP260 Ikke innånd støv/røyk/damp\nP501 Innhold/beholder leveres til godkjent avfallsmottak"}
+              placeholder={"P210 Keep away from heat and open flames\nP260 Do not breathe dust/fume/vapours\nP501 Dispose of contents/container to an approved waste facility"}
               key={aiData?.precautionaryStatements || "ps"}
               defaultValue={aiData?.precautionaryStatements || chemical?.precautionaryStatements || ""}
               className="resize-y min-h-[80px]"
@@ -430,53 +441,51 @@ export function ChemicalForm({ chemical, mode = "create" }: ChemicalFormProps) {
             {aiData?.warningPictograms && (
               <div className="flex items-center gap-1.5 mb-2">
                 <Badge variant="secondary" className="text-xs">
-                  <Sparkles className="h-2.5 w-2.5 mr-0.5" />AI-fylt
+                  <Sparkles className="h-2.5 w-2.5 mr-0.5" />AI-filled
                 </Badge>
               </div>
             )}
-            <Label className="text-sm font-medium text-slate-700 block mb-2">Faresymboler (GHS)</Label>
+            <Label className="text-sm font-medium text-slate-700 block mb-2">Hazard pictograms (GHS)</Label>
             <HazardPictogramSelector
               key={aiData?.warningPictograms || "wp"}
               defaultValue={aiData?.warningPictograms || chemical?.warningPictograms || ""}
             />
           </div>
 
-          {/* Klassifiseringsflagg */}
           <div className="space-y-2.5">
-            <Label className="text-sm font-medium text-slate-700 block">Klassifiseringsflagg</Label>
+            <Label className="text-sm font-medium text-slate-700 block">Classification flags</Label>
             <FlagRow
               id="isCMR" name="isCMR" color="red" disabled={loading}
               checked={aiData?.isCMR ?? chemical?.isCMR ?? false}
-              label="CMR-stoff (Carc./Mut./Repr. kat. 1A eller 1B)"
-              description="Kreftfremkallende, mutagent eller reproduksjonstoksisk. Utløser registreringsplikt i eksponeringsregisteret (Arbeidstilsynet kap. 31)."
+              label="CMR substance (Carc./Muta./Repr. cat. 1A or 1B)"
+              description="Carcinogenic, mutagenic or toxic for reproduction. COSHH 2002 requires control of exposure and health records for 40 years where health surveillance applies."
             />
             <FlagRow
               id="isSVHC" name="isSVHC" color="purple" disabled={loading}
               checked={aiData?.isSVHC ?? chemical?.isSVHC ?? false}
-              label="SVHC – Substance of Very High Concern (REACH)"
-              description="Stoff med svært høy bekymring i henhold til REACH-forordningen. Kan kreve tillatelse for bruk."
+              label="SVHC — Substance of Very High Concern (UK REACH)"
+              description="Substance of very high concern under UK REACH. Authorisation may be required for continued use."
             />
             <FlagRow
               id="containsIsocyanates" name="containsIsocyanates" color="orange" disabled={loading}
               checked={aiData?.containsIsocyanates ?? chemical?.containsIsocyanates ?? false}
-              label="Inneholder diisocyanater"
-              description="Krever obligatorisk opplæring for brukere (EU-forordning 2020/1149). AI detekterer dette automatisk fra SDS."
+              label="Contains diisocyanates"
+              description="UK REACH restriction (retained EU 2020/1149): training is required for industrial and professional use at ≥0.1%. AI detects this from the SDS."
             />
           </div>
         </div>
 
         <div className="border-t" />
 
-        {/* ── 4. Verneutstyr ───────────────────────────────────────────── */}
         <div className="p-6 space-y-4">
           <SectionHeader
             icon={Shield}
-            title="Personlig verneutstyr (PPE)"
-            description="Påkrevd verneutstyr ved håndtering – ISO 7010-symboler"
+            title="Personal protective equipment (PPE)"
+            description="Required PPE when handling — ISO 7010 symbols"
           />
           {aiData?.requiredPPE && (
             <Badge variant="secondary" className="text-xs">
-              <Sparkles className="h-2.5 w-2.5 mr-0.5" />AI-foreslått
+              <Sparkles className="h-2.5 w-2.5 mr-0.5" />AI suggested
             </Badge>
           )}
           <PPESelector
@@ -487,30 +496,28 @@ export function ChemicalForm({ chemical, mode = "create" }: ChemicalFormProps) {
 
         <div className="border-t" />
 
-        {/* ── 5. Notater ───────────────────────────────────────────────── */}
         <div className="p-6 space-y-4">
           <SectionHeader
             icon={StickyNote}
-            title="Notater"
-            description="Spesielle håndteringsinstruksjoner, substitusjonsvurderinger eller andre kommentarer"
+            title="Notes"
+            description="Handling instructions, substitution reviews or other comments"
           />
           <Textarea
             id="notes" name="notes" rows={4} disabled={loading}
-            placeholder="F.eks. spesielle lagrings- eller håndteringskrav, planlagte erstatningsstoffer, etc."
+            placeholder="e.g. special storage or handling requirements, planned substitutes."
             defaultValue={chemical?.notes || ""}
             className="resize-y"
           />
         </div>
 
-        {/* ── Footer / actions ─────────────────────────────────────────── */}
         <div className="px-6 py-4 border-t bg-slate-50 flex items-center justify-between gap-3 flex-wrap">
           <p className="text-xs text-muted-foreground flex items-center gap-1.5">
             <ChevronRight className="h-3 w-3" />
-            Fødselsnummer lagres aldri i stoffkartoteket
+            National Insurance numbers are never stored in the COSHH register
           </p>
           <div className="flex gap-3">
             <Button type="button" variant="outline" disabled={loading} onClick={() => router.back()}>
-              Avbryt
+              Cancel
             </Button>
             <Button
               type="submit"
@@ -518,11 +525,11 @@ export function ChemicalForm({ chemical, mode = "create" }: ChemicalFormProps) {
               className="min-w-[140px]"
             >
               {loading ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Lagrer...</>
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
               ) : mode === "edit" ? (
-                "Lagre endringer"
+                "Save changes"
               ) : (
-                "Registrer kjemikalie"
+                "Register chemical"
               )}
             </Button>
           </div>

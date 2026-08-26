@@ -25,14 +25,16 @@ import Link from "next/link";
 import { deleteIncident } from "@/server/actions/incident.actions";
 import {
   getIncidentTypeColor,
+  getIncidentTypeLabel,
   getSeverityInfo,
   getIncidentStatusColor,
   getMainCategory,
   getMainCategoryColor,
+  getMainCategoryLabel,
 } from "@/features/incidents/schemas/incident.schema";
 import { useToast } from "@/hooks/use-toast";
 import type { Incident, Measure } from "@prisma/client";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
@@ -42,7 +44,6 @@ interface IncidentListProps {
 
 export function IncidentList({ incidents }: IncidentListProps) {
   const t = useTranslations("dashboardIncidentList");
-  const locale = useLocale();
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState<string | null>(null);
@@ -91,7 +92,7 @@ export function IncidentList({ incidents }: IncidentListProps) {
   };
 
   const formatDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString(locale === "en" ? "en-US" : "nb-NO", {
+    return new Date(date).toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -138,7 +139,7 @@ export function IncidentList({ incidents }: IncidentListProps) {
           {paginatedIncidents.map((incident) => {
             const mainCategory = getMainCategory(incident.type);
             const categoryColor = getMainCategoryColor(mainCategory);
-            const typeLabel = t(`types.${incident.type}`);
+            const typeLabel = getIncidentTypeLabel(incident.type);
             const typeColor = getIncidentTypeColor(incident.type);
             const { bgColor: severityColor, textColor: severityTextColor } = getSeverityInfo(incident.severity);
             const severityBadgeText =
@@ -152,8 +153,14 @@ export function IncidentList({ incidents }: IncidentListProps) {
             const completedMeasures = incident.measures.filter(m => m.status === "DONE").length;
             const totalMeasures = incident.measures.length;
 
+            const detailHref = `/dashboard/incidents/${incident.id}`;
+
             return (
-              <TableRow key={incident.id}>
+              <TableRow
+                key={incident.id}
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => router.push(detailHref)}
+              >
                 <TableCell className="font-mono text-sm text-muted-foreground">
                   {incident.avviksnummer || "–"}
                 </TableCell>
@@ -184,7 +191,7 @@ export function IncidentList({ incidents }: IncidentListProps) {
                 </TableCell>
                 <TableCell>
                   <Badge className={categoryColor}>
-                    {mainCategory === "RUH" ? "RUH" : t("categoryLabel.avvik")}
+                    {getMainCategoryLabel(mainCategory)}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -216,14 +223,17 @@ export function IncidentList({ incidents }: IncidentListProps) {
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button variant="ghost" size="sm" asChild>
-                      <Link href={`/dashboard/incidents/${incident.id}`}>
+                      <Link href={detailHref} onClick={(event) => event.stopPropagation()}>
                         <Eye className="h-4 w-4" />
                       </Link>
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleDelete(incident.id, incident.title)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleDelete(incident.id, incident.title);
+                      }}
                       disabled={loading === incident.id}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -242,7 +252,7 @@ export function IncidentList({ incidents }: IncidentListProps) {
         {paginatedIncidents.map((incident) => {
           const mainCategory = getMainCategory(incident.type);
           const categoryColor = getMainCategoryColor(mainCategory);
-          const typeLabel = t(`types.${incident.type}`);
+          const typeLabel = getIncidentTypeLabel(incident.type);
           const typeColor = getIncidentTypeColor(incident.type);
           const { bgColor: severityColor, textColor: severityTextColor } = getSeverityInfo(incident.severity);
           const statusLabel = t(`status.${incident.status}`);
@@ -252,13 +262,16 @@ export function IncidentList({ incidents }: IncidentListProps) {
           const completedMeasures = incident.measures.filter(m => m.status === "DONE").length;
           const totalMeasures = incident.measures.length;
 
+          const detailHref = `/dashboard/incidents/${incident.id}`;
+
           return (
             <Card
               key={incident.id}
-              className={mainCategory === "RUH"
+              className={`${mainCategory === "RUH"
                 ? "border-l-4 border-l-orange-400"
                 : "border-l-4 border-l-blue-400"
-              }
+              } cursor-pointer`}
+              onClick={() => router.push(detailHref)}
             >
               <CardContent className="p-4">
                 <div className="space-y-3">
@@ -286,7 +299,7 @@ export function IncidentList({ incidents }: IncidentListProps) {
 
                   <div className="flex flex-wrap gap-2">
                     <Badge className={categoryColor}>
-                      {mainCategory === "RUH" ? "RUH" : t("categoryLabel.avvik")}
+                      {getMainCategoryLabel(mainCategory)}
                     </Badge>
                     <Badge className={typeColor}>{typeLabel}</Badge>
                     <Badge className={statusColor}>{statusLabel}</Badge>
@@ -313,7 +326,7 @@ export function IncidentList({ incidents }: IncidentListProps) {
 
                   <div className="flex gap-2 pt-2 border-t">
                     <Button variant="outline" size="sm" className="flex-1" asChild>
-                      <Link href={`/dashboard/incidents/${incident.id}`}>
+                      <Link href={detailHref} onClick={(event) => event.stopPropagation()}>
                         <Eye className="h-4 w-4 mr-2" />
                         {t("actions.viewDetails")}
                       </Link>
@@ -321,7 +334,10 @@ export function IncidentList({ incidents }: IncidentListProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleDelete(incident.id, incident.title)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleDelete(incident.id, incident.title);
+                      }}
                       disabled={loading === incident.id}
                     >
                       <Trash2 className="h-4 w-4" />

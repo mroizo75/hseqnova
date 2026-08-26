@@ -4,7 +4,7 @@ import { EnvironmentalMeasurement } from "@prisma/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale";
 
 type MeasurementWithRelations = EnvironmentalMeasurement & {
   responsible?: { id: string; name: string | null; email: string | null } | null;
@@ -20,11 +20,11 @@ const statusColors: Record<EnvironmentalMeasurement["status"], string> = {
   NON_COMPLIANT: "bg-red-100 text-red-900 border-red-300",
 };
 
-const formatDate = (value: Date) => format(new Date(value), "dd. MMM yyyy", { locale: nb });
+const formatDate = (value: Date) => format(new Date(value), "d MMM yyyy", { locale: enGB });
 
 export function EnvironmentMeasurementList({ measurements }: EnvironmentMeasurementListProps) {
   if (measurements.length === 0) {
-    return <p className="text-sm text-muted-foreground">Ingen målinger registrert ennå.</p>;
+    return <p className="text-sm text-muted-foreground">No measurements recorded yet.</p>;
   }
 
   return (
@@ -33,11 +33,11 @@ export function EnvironmentMeasurementList({ measurements }: EnvironmentMeasurem
         <TableHeader>
           <TableRow>
             <TableHead>Parameter</TableHead>
-            <TableHead>Verdi</TableHead>
-            <TableHead>Grense/Mål</TableHead>
+            <TableHead>Value</TableHead>
+            <TableHead>Limit / target</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Måledato</TableHead>
-            <TableHead>Ansvarlig</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead>Recorded by</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -46,7 +46,7 @@ export function EnvironmentMeasurementList({ measurements }: EnvironmentMeasurem
               <TableCell>
                 <div className="font-medium">{measurement.parameter}</div>
                 {measurement.method && (
-                  <p className="text-xs text-muted-foreground">Metode: {measurement.method}</p>
+                  <p className="text-xs text-muted-foreground">Method: {measurement.method}</p>
                 )}
                 {measurement.notes && (
                   <p className="text-xs text-muted-foreground line-clamp-2">
@@ -60,28 +60,28 @@ export function EnvironmentMeasurementList({ measurements }: EnvironmentMeasurem
               </TableCell>
               <TableCell>
                 <div className="text-sm">
-                  <span className="text-muted-foreground">Grense:</span>{" "}
+                  <span className="text-muted-foreground">Limit:</span>{" "}
                   {typeof measurement.limitValue === "number" ? measurement.limitValue : "-"}
                 </div>
                 <div className="text-sm">
-                  <span className="text-muted-foreground">Mål:</span>{" "}
+                  <span className="text-muted-foreground">Target:</span>{" "}
                   {typeof measurement.targetValue === "number" ? measurement.targetValue : "-"}
                 </div>
               </TableCell>
               <TableCell>
                 <Badge variant="outline" className={statusColors[measurement.status]}>
                   {measurement.status === "COMPLIANT"
-                    ? "I samsvar"
+                    ? "Compliant"
                     : measurement.status === "WARNING"
-                      ? "Advarsel"
-                      : "Avvik"}
+                      ? "Warning"
+                      : "Non-compliant"}
                 </Badge>
               </TableCell>
               <TableCell>{formatDate(measurement.measurementDate)}</TableCell>
               <TableCell>
                 {measurement.responsible?.name ||
                   measurement.responsible?.email ||
-                  "Ikke oppgitt"}
+                  "Not set"}
               </TableCell>
             </TableRow>
           ))}

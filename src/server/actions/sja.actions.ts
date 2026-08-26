@@ -1,425 +1,319 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/db";
-import { generateSequenceNumber } from "@/lib/sequence";
 import { getRequiredTenantContext } from "@/lib/tenant-context";
 import { getAuthContext } from "@/lib/server-authorization";
+import { getAuthUserById } from "@/lib/auth-db";
+import { generateSequenceNumber } from "@/lib/sequence";
+import { requireTenantModule } from "@/lib/require-tenant-module";
 import {
   createSjaSchema,
   updateSjaSchema,
   createSjaTemplateSchema,
 } from "@/features/sja/schemas/sja.schema";
-import { SjaStatus, SjaConclusion } from "@prisma/client";
-import { requireTenantModule } from "@/lib/require-tenant-module";
+import {
+  deactivateSjaTemplate,
+  deleteSjaAnalysisRecord,
+  insertSjaAnalysis,
+  insertSjaTemplate,
+  loadSjaAnalysesForTenant,
+  loadSjaById,
+  loadSjaProject,
+  loadSjaTemplateById,
+  loadSjaTemplates,
+  logSjaAction,
+  updateSjaAnalysisRecord,
+} from "@/server/queries/sja.queries";
 
-async function getSessionContext() {
-  const context = await getRequiredTenantContext();
-
-  const user = await prisma.user.findUnique({
-    where: { id: context.userId },
-    include: { tenants: true },
-  });
-
-  if (!user || user.tenants.length === 0) {
-    throw new Error("User not associated with a tenant");
+function errorMessage(error: unknown, fallback: string): string {
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
+    return error.message;
   }
+  if (error instanceof Error) return error.message;
+  return fallback;
+}
 
-  return { user, tenantId: context.tenantId };
+async function actorName(userId: string, fallbackEmail: string): Promise<string> {
+  const user = await getAuthUserById(userId);
+  return user?.name || user?.email || fallbackEmail;
+}
+
+function revalidateSjaPaths(projectId?: string | null, analysisId?: string | null) {
+  revalidatePath("/dashboard/sja");
+  revalidatePath("/ansatt/sja");
+  if (analysisId) {
+    revalidatePath(`/dashboard/sja/${analysisId}`);
+  }
+  if (projectId) {
+    revalidatePath(`/dashboard/projects/${projectId}`);
+  }
 }
 
 export async function getSjaAnalyses(_tenantId: string) {
   try {
     await requireTenantModule("sja");
     const auth = await getAuthContext();
-    if (!auth) throw new Error("Ikke autentisert");
+    if (!auth) {
+      return { success: false, error: "Unauthorised" };
+    }
 
     const canReadAll = auth.permissions.canReadSja;
     const canReadOwn = auth.permissions.canReadOwnSja;
-
     if (!canReadAll && !canReadOwn) {
-      throw new Error("Ikke autorisert til å se SJA-analyser");
+      return { success: false, error: "Not authorised to view RAMS" };
     }
 
-    const { tenantId, userId } = auth;
-    const ownerFilter = canReadAll ? {} : { createdById: userId };
-
-    const analyses = await prisma.sjaAnalysis.findMany({
-      where: { tenantId, ...ownerFilter },
-      include: {
-        hazards: { orderBy: { sortOrder: "asc" } },
-      },
-      orderBy: [{ plannedDate: "desc" }],
+    const analyses = await loadSjaAnalysesForTenant(auth.tenantId, {
+      createdById: canReadAll ? undefined : auth.userId,
     });
-
     return { success: true, data: analyses, ownOnly: !canReadAll };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke hente SJA-analyser" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load RAMS") };
   }
 }
 
 export async function getSjaAnalysis(id: string) {
   try {
     const auth = await getAuthContext();
-    if (!auth) throw new Error("Ikke autentisert");
+    if (!auth) {
+      return { success: false, error: "Unauthorised" };
+    }
 
     const canReadAll = auth.permissions.canReadSja;
     const canReadOwn = auth.permissions.canReadOwnSja;
-
     if (!canReadAll && !canReadOwn) {
-      throw new Error("Ikke autorisert til å se SJA-analyser");
+      return { success: false, error: "Not authorised to view RAMS" };
     }
 
-    const { tenantId, userId } = auth;
-    const ownerFilter = canReadAll ? {} : { createdById: userId };
-
-    const analysis = await prisma.sjaAnalysis.findFirst({
-      where: { id, tenantId, ...ownerFilter },
-      include: {
-        hazards: { orderBy: { sortOrder: "asc" } },
-      },
+    const analysis = await loadSjaById(id, auth.tenantId, {
+      createdById: canReadAll ? undefined : auth.userId,
     });
-
     if (!analysis) {
-      return { success: false, error: "SJA ikke funnet" };
+      return { success: false, error: "RAMS not found" };
     }
-
     return { success: true, data: analysis };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke hente SJA" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load RAMS") };
   }
 }
 
-export async function createSjaAnalysis(input: any) {
+export async function createSjaAnalysis(input: unknown) {
   try {
-    const { user, tenantId } = await getSessionContext();
-    const normalizedInput = {
-      ...input,
+    await requireTenantModule("sja");
+    const { userId, tenantId, email } = await getRequiredTenantContext();
+    const raw = (input ?? {}) as Record<string, unknown>;
+    const validated = createSjaSchema.parse({
+      ...raw,
       tenantId,
-      plannedDate: new Date(input.plannedDate),
-    };
-    const validated = createSjaSchema.parse(normalizedInput);
+      plannedDate: new Date(String(raw.plannedDate)),
+    });
+
     if (validated.projectId) {
-      const project = await prisma.project.findFirst({
-        where: {
-          id: validated.projectId,
-          tenantId,
-        },
-        select: { id: true },
-      });
+      const project = await loadSjaProject(validated.projectId, tenantId);
       if (!project) {
-        return { success: false, error: "Prosjekt ikke funnet for valgt tenant" };
+        return { success: false, error: "Project not found" };
       }
     }
 
     const sjaNummer = await generateSequenceNumber(
-      validated.tenantId,
+      tenantId,
       "SJA",
-      new Date(validated.plannedDate).getFullYear()
+      new Date(validated.plannedDate).getFullYear(),
     );
 
-    const analysis = await prisma.sjaAnalysis.create({
-      data: {
-        tenantId: validated.tenantId,
-        sjaNummer,
-        title: validated.title,
-        description: validated.description ?? null,
-        workLocation: validated.workLocation,
-        plannedDate: validated.plannedDate,
-        responsibleName: validated.responsibleName,
-        participants: validated.participants,
-        additionalConditions: validated.additionalConditions ?? null,
-        weatherConditions: validated.weatherConditions ?? null,
-        createdById: user.id,
-        createdByName: user.name || user.email,
-        templateId: validated.templateId ?? null,
-        templateName: validated.templateName ?? null,
-        projectId: validated.projectId ?? null,
-        submittedAt: new Date(),
-        signedByNames: validated.participants,
-        status: SjaStatus.DRAFT,
-        conclusion: SjaConclusion.NOT_DECIDED,
-        hazards: {
-          create: validated.hazards.map((h, i) => ({
-            sortOrder: i,
-            activity: h.activity,
-            hazard: h.hazard,
-            consequence: h.consequence ?? null,
-            probability: h.probability,
-            severity: h.severity,
-            riskLevel: h.probability * h.severity,
-            measures: h.measures,
-            responsibleName: h.responsibleName ?? null,
-          })),
-        },
-      },
-      include: { hazards: true },
+    const analysis = await insertSjaAnalysis({
+      tenantId,
+      sjaNummer,
+      title: validated.title,
+      description: validated.description ?? null,
+      workLocation: validated.workLocation,
+      plannedDate: validated.plannedDate,
+      responsibleName: validated.responsibleName,
+      participants: validated.participants,
+      additionalConditions: validated.additionalConditions ?? null,
+      weatherConditions: validated.weatherConditions ?? null,
+      createdById: userId,
+      createdByName: await actorName(userId, email),
+      templateId: validated.templateId ?? null,
+      templateName: validated.templateName ?? null,
+      projectId: validated.projectId ?? null,
+      hazards: validated.hazards,
     });
 
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "SJA_CREATED",
-        resource: `SjaAnalysis:${analysis.id}`,
-        metadata: JSON.stringify({ title: analysis.title }),
-      },
+    await logSjaAction({
+      tenantId,
+      userId,
+      action: "SJA_CREATED",
+      resource: `SjaAnalysis:${analysis.id}`,
+      metadata: { title: analysis.title },
     });
 
-    revalidatePath("/dashboard/sja");
-    if (validated.projectId) {
-      revalidatePath(`/dashboard/projects/${validated.projectId}`);
-    }
-    revalidatePath("/ansatt/sja");
+    revalidateSjaPaths(validated.projectId, analysis.id);
     return { success: true, data: analysis };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke opprette SJA" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not create the RAMS") };
   }
 }
 
-export async function updateSjaAnalysis(input: any) {
+export async function updateSjaAnalysis(input: unknown) {
   try {
-    const { user, tenantId } = await getSessionContext();
-    const normalizedInput = {
-      ...input,
-      plannedDate: input.plannedDate ? new Date(input.plannedDate) : undefined,
-    };
-    const validated = updateSjaSchema.parse(normalizedInput);
-
-    const existing = await prisma.sjaAnalysis.findUnique({
-      where: { id: validated.id, tenantId },
+    const { userId, tenantId, email } = await getRequiredTenantContext();
+    const raw = (input ?? {}) as Record<string, unknown>;
+    const validated = updateSjaSchema.parse({
+      ...raw,
+      plannedDate: raw.plannedDate ? new Date(String(raw.plannedDate)) : undefined,
     });
 
+    const existing = await loadSjaById(validated.id, tenantId);
     if (!existing) {
-      return { success: false, error: "SJA ikke funnet" };
+      return { success: false, error: "RAMS not found" };
     }
 
-    const updateData: Record<string, any> = { updatedAt: new Date() };
-
-    if (validated.title) updateData.title = validated.title;
-    if (validated.description !== undefined) updateData.description = validated.description || null;
-    if (validated.workLocation) updateData.workLocation = validated.workLocation;
-    if (validated.plannedDate) updateData.plannedDate = validated.plannedDate;
-    if (validated.responsibleName) updateData.responsibleName = validated.responsibleName;
-    if (validated.participants !== undefined) updateData.participants = validated.participants || null;
-
-    if (validated.status) {
-      updateData.status = validated.status;
-    }
+    const patch: Record<string, unknown> = {};
+    if (validated.title) patch.title = validated.title;
+    if (validated.description !== undefined) patch.description = validated.description || null;
+    if (validated.workLocation) patch.workLocation = validated.workLocation;
+    if (validated.plannedDate) patch.plannedDate = validated.plannedDate;
+    if (validated.responsibleName) patch.responsibleName = validated.responsibleName;
+    if (validated.participants !== undefined) patch.participants = validated.participants || null;
+    if (validated.status) patch.status = validated.status;
 
     if (validated.conclusion) {
-      updateData.conclusion = validated.conclusion;
-      updateData.conclusionComment = validated.conclusionComment || null;
-      if (validated.conclusion === SjaConclusion.APPROVED || validated.conclusion === SjaConclusion.CONDITIONAL) {
-        updateData.approvedById = user.id;
-        updateData.approvedByName = user.name || user.email;
-        updateData.approvedAt = new Date();
-        if (existing.status === SjaStatus.DRAFT) {
-          updateData.status = SjaStatus.ACTIVE;
+      patch.conclusion = validated.conclusion;
+      patch.conclusionComment = validated.conclusionComment || null;
+      if (validated.conclusion === "APPROVED" || validated.conclusion === "CONDITIONAL") {
+        patch.approvedById = userId;
+        patch.approvedByName = await actorName(userId, email);
+        patch.approvedAt = new Date();
+        if (existing.status === "DRAFT") {
+          patch.status = "ACTIVE";
         }
       }
     }
 
-    if (validated.hazards) {
-      await prisma.sjaHazard.deleteMany({ where: { sjaAnalysisId: validated.id } });
-      await prisma.sjaHazard.createMany({
-        data: validated.hazards.map((h, i) => ({
-          sjaAnalysisId: validated.id,
-          sortOrder: i,
-          activity: h.activity,
-          hazard: h.hazard,
-          consequence: h.consequence ?? null,
-          probability: h.probability,
-          severity: h.severity,
-          riskLevel: h.probability * h.severity,
-          measures: h.measures,
-          responsibleName: h.responsibleName ?? null,
-        })),
-      });
-    }
+    const analysis = await updateSjaAnalysisRecord(validated.id, tenantId, patch, validated.hazards);
 
-    const analysis = await prisma.sjaAnalysis.update({
-      where: { id: validated.id, tenantId },
-      data: updateData,
-      include: { hazards: { orderBy: { sortOrder: "asc" } } },
+    await logSjaAction({
+      tenantId,
+      userId,
+      action: "SJA_UPDATED",
+      resource: `SjaAnalysis:${analysis.id}`,
+      metadata: { title: analysis.title, status: analysis.status },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "SJA_UPDATED",
-        resource: `SjaAnalysis:${analysis.id}`,
-        metadata: JSON.stringify({ title: analysis.title, status: analysis.status }),
-      },
-    });
-
-    revalidatePath("/dashboard/sja");
-    revalidatePath(`/dashboard/sja/${analysis.id}`);
-    revalidatePath("/ansatt/sja");
+    revalidateSjaPaths(analysis.projectId, analysis.id);
     return { success: true, data: analysis };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke oppdatere SJA" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not update the RAMS") };
   }
 }
 
 export async function deleteSjaAnalysis(id: string) {
   try {
-    const { user, tenantId } = await getSessionContext();
-
-    const analysis = await prisma.sjaAnalysis.findUnique({
-      where: { id, tenantId },
-    });
-
+    const { userId, tenantId } = await getRequiredTenantContext();
+    const analysis = await loadSjaById(id, tenantId);
     if (!analysis) {
-      return { success: false, error: "SJA ikke funnet" };
+      return { success: false, error: "RAMS not found" };
     }
 
-    await prisma.sjaAnalysis.delete({ where: { id, tenantId } });
-
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "SJA_DELETED",
-        resource: `SjaAnalysis:${id}`,
-        metadata: JSON.stringify({ title: analysis.title }),
-      },
+    await deleteSjaAnalysisRecord(id, tenantId);
+    await logSjaAction({
+      tenantId,
+      userId,
+      action: "SJA_DELETED",
+      resource: `SjaAnalysis:${id}`,
+      metadata: { title: analysis.title },
     });
 
-    revalidatePath("/dashboard/sja");
-    revalidatePath("/ansatt/sja");
+    revalidateSjaPaths(analysis.projectId);
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke slette SJA" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not delete the RAMS") };
   }
 }
-
-// ============================================
-// SJA Maler (Templates)
-// ============================================
 
 export async function getSjaTemplates(_tenantId: string) {
   try {
-    const context = await getSessionContext();
-
-    const templates = await prisma.sjaTemplate.findMany({
-      where: { tenantId: context.tenantId, isActive: true },
-      include: {
-        hazards: { orderBy: { sortOrder: "asc" } },
-      },
-      orderBy: { name: "asc" },
-    });
-
+    const { tenantId } = await getRequiredTenantContext();
+    const templates = await loadSjaTemplates(tenantId);
     return { success: true, data: templates };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke hente SJA-maler" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load RAMS templates") };
   }
 }
 
-export async function createSjaTemplate(input: any) {
+export async function createSjaTemplate(input: unknown) {
   try {
-    const { user, tenantId } = await getSessionContext();
-    const normalizedInput = { ...input, tenantId };
-    const validated = createSjaTemplateSchema.parse(normalizedInput);
+    const { userId, tenantId, email } = await getRequiredTenantContext();
+    const raw = (input ?? {}) as Record<string, unknown>;
+    const validated = createSjaTemplateSchema.parse({ ...raw, tenantId });
 
-    const template = await prisma.sjaTemplate.create({
-      data: {
-        tenantId: validated.tenantId,
-        name: validated.name,
-        description: validated.description ?? null,
-        workLocation: validated.workLocation ?? null,
-        createdById: user.id,
-        createdByName: user.name || user.email,
-        hazards: {
-          create: validated.hazards.map((h, i) => ({
-            sortOrder: i,
-            activity: h.activity,
-            hazard: h.hazard,
-            consequence: h.consequence ?? null,
-            probability: h.probability,
-            severity: h.severity,
-            measures: h.measures,
-            responsibleName: h.responsibleName ?? null,
-          })),
-        },
-      },
-      include: { hazards: true },
+    const template = await insertSjaTemplate({
+      tenantId,
+      name: validated.name,
+      description: validated.description ?? null,
+      workLocation: validated.workLocation ?? null,
+      createdById: userId,
+      createdByName: await actorName(userId, email),
+      hazards: validated.hazards,
     });
 
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "SJA_TEMPLATE_CREATED",
-        resource: `SjaTemplate:${template.id}`,
-        metadata: JSON.stringify({ name: template.name }),
-      },
+    await logSjaAction({
+      tenantId,
+      userId,
+      action: "SJA_TEMPLATE_CREATED",
+      resource: `SjaTemplate:${template.id}`,
+      metadata: { name: template.name },
     });
 
-    revalidatePath("/dashboard/sja");
-    revalidatePath("/ansatt/sja");
+    revalidateSjaPaths();
     return { success: true, data: template };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke opprette SJA-mal" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not create the RAMS template") };
   }
 }
 
 export async function deleteSjaTemplate(id: string) {
   try {
-    const { user, tenantId } = await getSessionContext();
-
-    const template = await prisma.sjaTemplate.findUnique({
-      where: { id, tenantId },
-    });
-
+    const { userId, tenantId } = await getRequiredTenantContext();
+    const template = await loadSjaTemplateById(id, tenantId);
     if (!template) {
-      return { success: false, error: "SJA-mal ikke funnet" };
+      return { success: false, error: "RAMS template not found" };
     }
 
-    await prisma.sjaTemplate.update({
-      where: { id, tenantId },
-      data: { isActive: false },
+    await deactivateSjaTemplate(id, tenantId);
+    await logSjaAction({
+      tenantId,
+      userId,
+      action: "SJA_TEMPLATE_DELETED",
+      resource: `SjaTemplate:${id}`,
+      metadata: { name: template.name },
     });
 
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "SJA_TEMPLATE_DELETED",
-        resource: `SjaTemplate:${id}`,
-        metadata: JSON.stringify({ name: template.name }),
-      },
-    });
-
-    revalidatePath("/dashboard/sja");
-    revalidatePath("/ansatt/sja");
+    revalidateSjaPaths();
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke slette SJA-mal" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not delete the RAMS template") };
   }
 }
 
 export async function getSjaStats(_tenantId: string) {
   try {
-    const context = await getSessionContext();
-
-    const analyses = await prisma.sjaAnalysis.findMany({
-      where: { tenantId: context.tenantId },
-    });
-
-    const stats = {
-      total: analyses.length,
-      draft: analyses.filter((a) => a.status === "DRAFT").length,
-      active: analyses.filter((a) => a.status === "ACTIVE").length,
-      completed: analyses.filter((a) => a.status === "COMPLETED").length,
-      cancelled: analyses.filter((a) => a.status === "CANCELLED").length,
-      approved: analyses.filter((a) => a.conclusion === "APPROVED").length,
-      rejected: analyses.filter((a) => a.conclusion === "REJECTED").length,
+    const { tenantId } = await getRequiredTenantContext();
+    const analyses = await loadSjaAnalysesForTenant(tenantId);
+    return {
+      success: true,
+      data: {
+        total: analyses.length,
+        draft: analyses.filter((row) => row.status === "DRAFT").length,
+        active: analyses.filter((row) => row.status === "ACTIVE").length,
+        completed: analyses.filter((row) => row.status === "COMPLETED").length,
+        cancelled: analyses.filter((row) => row.status === "CANCELLED").length,
+        approved: analyses.filter((row) => row.conclusion === "APPROVED").length,
+        rejected: analyses.filter((row) => row.conclusion === "REJECTED").length,
+      },
     };
-
-    return { success: true, data: stats };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke hente SJA-statistikk" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load RAMS statistics") };
   }
 }

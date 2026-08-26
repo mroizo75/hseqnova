@@ -30,7 +30,7 @@ export function CopyRoutineTemplateButton({
           description: t("toasts.successDescription"),
           action: {
             label: t("toasts.openRoutine"),
-            onClick: () => router.push(`/dashboard/rutiner/${result.data!.id}`),
+            onClick: () => router.push(`/dashboard/procedures/${result.data!.id}`),
           },
         });
         router.refresh();

@@ -63,15 +63,15 @@ export function TenantSwitcher() {
       });
 
       if (!response.ok) {
-        throw new Error("Kunne ikke bytte bedrift");
+        throw new Error("Could not switch company");
       }
 
       // Oppdater session
       await update({ tenantId });
 
       toast({
-        title: "Bedrift byttet",
-        description: `Du er nå koblet til ${tenants.find(t => t.id === tenantId)?.name}`,
+        title: "Company switched",
+        description: `You are now in ${tenants.find(t => t.id === tenantId)?.name}`,
       });
 
       // Refresh siden
@@ -153,12 +153,12 @@ export function TenantSwitcher() {
 function getRoleLabel(role: string): string {
   const labels: Record<string, string> = {
     ADMIN: "Administrator",
-    HMS: "HMS-ansvarlig",
-    LEDER: "Leder",
-    VERNEOMBUD: "Verneombud",
-    ANSATT: "Ansatt",
-    BHT: "Bedriftshelsetjeneste",
-    REVISOR: "Revisor",
+    HMS: "HSE manager",
+    LEDER: "Line manager",
+    VERNEOMBUD: "Safety representative",
+    ANSATT: "Employee",
+    BHT: "Occupational health",
+    REVISOR: "Auditor",
   };
   return labels[role] || role;
 }

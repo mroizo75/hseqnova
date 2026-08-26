@@ -27,11 +27,11 @@ export function HandbokAnnualPlan({ progress }: HandbokAnnualPlanProps) {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium">
-            Årshjul {progress.year} — Fremdrift
+            Annual H&S plan {progress.year} — Progress
           </p>
           <p className="text-xs text-muted-foreground">
-            {progress.completedSteps} av {progress.totalSteps} aktiviteter
-            fullført
+            {progress.completedSteps} of {progress.totalSteps} activities
+            completed
           </p>
         </div>
         <Badge

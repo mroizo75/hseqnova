@@ -17,19 +17,19 @@ interface RiskMatrixProps {
 }
 
 const likelihoodLabels = [
-  { value: 5, label: "Svært sannsynlig", shortLabel: "Svært sann.", desc: "Skjer ofte (>50%)" },
-  { value: 4, label: "Sannsynlig", shortLabel: "Sannsynlig", desc: "Kan skje (25-50%)" },
-  { value: 3, label: "Mulig", shortLabel: "Mulig", desc: "Kan hende (10-25%)" },
-  { value: 2, label: "Usannsynlig", shortLabel: "Usannsynlig", desc: "Skjer sjelden (1-10%)" },
-  { value: 1, label: "Svært usannsynlig", shortLabel: "Svært usann.", desc: "Nesten aldri (<1%)" },
+  { value: 5, label: "Almost certain", shortLabel: "Almost certain", desc: "Occurs frequently (>50%)" },
+  { value: 4, label: "Likely", shortLabel: "Likely", desc: "Could occur (25–50%)" },
+  { value: 3, label: "Possible", shortLabel: "Possible", desc: "May occur (10–25%)" },
+  { value: 2, label: "Unlikely", shortLabel: "Unlikely", desc: "Rare (1–10%)" },
+  { value: 1, label: "Very unlikely", shortLabel: "Very unlikely", desc: "Almost never (<1%)" },
 ];
 
 const consequenceLabels = [
-  { value: 1, label: "Ubetydelig", shortLabel: "Ubetydelig", desc: "Ingen skade" },
-  { value: 2, label: "Mindre", shortLabel: "Mindre", desc: "Førstehjelpsskade" },
-  { value: 3, label: "Moderat", shortLabel: "Moderat", desc: "Fraværsskade" },
-  { value: 4, label: "Alvorlig", shortLabel: "Alvorlig", desc: "Varig skade" },
-  { value: 5, label: "Katastrofal", shortLabel: "Katastrofal", desc: "Dødsfall" },
+  { value: 1, label: "Negligible", shortLabel: "Negligible", desc: "No injury" },
+  { value: 2, label: "Minor", shortLabel: "Minor", desc: "First-aid injury" },
+  { value: 3, label: "Moderate", shortLabel: "Moderate", desc: "Lost-time injury" },
+  { value: 4, label: "Major", shortLabel: "Major", desc: "Permanent harm" },
+  { value: 5, label: "Catastrophic", shortLabel: "Catastrophic", desc: "Fatality" },
 ];
 
 export function RiskMatrix({
@@ -73,12 +73,14 @@ export function RiskMatrix({
     <Card>
       <CardHeader>
         <CardTitle>
-          5x5 Risikomatrise {viewMode === "residual" ? "– Etter tiltak (rest-risiko)" : "– Før tiltak"}
+          {viewMode === "residual"
+            ? "5×5 risk matrix — Residual risk"
+            : "5×5 risk matrix — Initial risk"}
         </CardTitle>
         <CardDescription>
           {viewMode === "residual"
-            ? "Viser rest-risiko. Når rest-risiko ikke er satt, vises opprinnelig vurdering."
-            : "Klikk på en celle for å velge sannsynlighet og konsekvens"}
+            ? "After controls. If residual risk is not set, the initial score is shown. ISO 45001 / MHSWR 1999."
+            : "Before controls. Likelihood × consequence (ISO 31000). Select a cell to set the score."}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -86,7 +88,7 @@ export function RiskMatrix({
           <thead>
             <tr>
               <th className="w-24 border p-1.5 bg-muted text-[10px] md:text-xs font-semibold">
-                Sannsynlighet / Konsekvens
+                Likelihood / Consequence
               </th>
               {consequenceLabels.map((c) => (
                 <th key={c.value} className="border p-1.5 bg-muted">
@@ -126,7 +128,7 @@ export function RiskMatrix({
                       <div className="text-white font-bold text-base md:text-lg leading-none">{score}</div>
                       {riskCount > 0 && (
                         <div className="text-white text-[10px] leading-tight mt-1">
-                          {riskCount} risiko{riskCount > 1 ? "er" : ""}
+                          {riskCount} {riskCount === 1 ? "risk" : "risks"}
                         </div>
                       )}
                     </td>
@@ -140,23 +142,22 @@ export function RiskMatrix({
         <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-green-500 rounded"></div>
-            <span className="text-xs">Lav (1-5)</span>
+            <span className="text-xs">Low (1–5)</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-            <span className="text-xs">Moderat (6-11)</span>
+            <span className="text-xs">Medium (6–11)</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-orange-500 rounded"></div>
-            <span className="text-xs">Høy (12-19)</span>
+            <span className="text-xs">High (12–19)</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-red-500 rounded"></div>
-            <span className="text-xs">Kritisk (20-25)</span>
+            <span className="text-xs">Critical (20–25)</span>
           </div>
         </div>
       </CardContent>
     </Card>
   );
 }
-

@@ -1,98 +1,45 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { NextRequest } from "next/server";
+import { getRequiredTenantContext } from "@/lib/tenant-context";
 import { createErrorResponse, createSuccessResponse, ErrorCodes } from "@/lib/validations/api";
+import { insertAudit, loadAudits } from "@/server/queries/audits.queries";
 
-const resolveSelectedTenantId = async (userId: string, sessionTenantId?: string | null): Promise<string | null> => {
-  if (!sessionTenantId) {
-    return null;
-  }
-
-  const membership = await prisma.userTenant.findUnique({
-    where: {
-      userId_tenantId: {
-        userId,
-        tenantId: sessionTenantId,
-      },
-    },
-    select: { tenantId: true },
-  });
-
-  return membership?.tenantId ?? null;
-};
-
-/**
- * GET /api/audits
- * List all audits for tenant
- */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Ikke autentisert", 401);
-    }
-
-    const tenantId = await resolveSelectedTenantId(session.user.id, session.user.tenantId);
-    if (!tenantId) {
-      return createErrorResponse(ErrorCodes.FORBIDDEN, "Ingen tenant tilgang", 403);
-    }
-
-    const audits = await prisma.audit.findMany({
-      where: { tenantId },
-      include: {
-        findings: true,
-      },
-      orderBy: { scheduledDate: "desc" },
-    });
-
+    const { tenantId } = await getRequiredTenantContext();
+    const audits = await loadAudits(tenantId);
     return createSuccessResponse({ audits });
   } catch (error) {
-    console.error("[Audits GET] Error:", error);
-    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, "Kunne ikke hente revisjoner", 500);
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Not authenticated", 401);
+    }
+    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, "Could not load audits", 500);
   }
 }
 
-/**
- * POST /api/audits
- * Create new audit
- */
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Ikke autentisert", 401);
-    }
-
-    const tenantId = await resolveSelectedTenantId(session.user.id, session.user.tenantId);
-    if (!tenantId) {
-      return createErrorResponse(ErrorCodes.FORBIDDEN, "Ingen tenant tilgang", 403);
-    }
+    const { userId, tenantId } = await getRequiredTenantContext();
     const data = await request.json();
 
-    const audit = await prisma.audit.create({
-      data: {
-        tenantId,
-        title: data.title,
-        auditType: data.auditType || "INTERNAL",
-        scope: data.scope,
-        criteria: data.criteria,
-        leadAuditorId: data.leadAuditorId || session.user.id,
-        teamMemberIds: data.teamMemberIds ? JSON.stringify(data.teamMemberIds) : null,
-        scheduledDate: new Date(data.scheduledDate),
-        area: data.area,
-        department: data.department,
-        status: "PLANNED",
-      },
-      include: {
-        findings: true,
-      },
+    const audit = await insertAudit({
+      tenantId,
+      title: data.title,
+      auditType: data.auditType || "INTERNAL",
+      scope: data.scope,
+      criteria: data.criteria,
+      leadAuditorId: data.leadAuditorId || userId,
+      teamMemberIds: data.teamMemberIds,
+      scheduledDate: new Date(data.scheduledDate),
+      area: data.area,
+      department: data.department,
+      status: "PLANNED",
     });
 
-    return createSuccessResponse({ audit }, "Revisjon opprettet", 201);
+    return createSuccessResponse({ audit }, "Audit created", 201);
   } catch (error) {
-    console.error("[Audits POST] Error:", error);
-    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, "Kunne ikke opprette revisjon", 500);
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Not authenticated", 401);
+    }
+    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, "Could not create the audit", 500);
   }
 }
-

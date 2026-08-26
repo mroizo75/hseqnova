@@ -1,600 +1,440 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/db";
 import { getRequiredTenantContext } from "@/lib/tenant-context";
-import { generateFileKey, getStorage } from "@/lib/storage";
+import { getStorage } from "@/lib/storage";
 import { AuditLog } from "@/lib/audit-log";
-import { 
-  searchSubstanceByCAS, 
-  calculateHazardLevel, 
+import {
+  searchSubstanceByCAS,
+  calculateHazardLevel,
   isCMRSubstance,
   calculateSubstitutionPriority,
-  suggestAlternatives
+  suggestAlternatives,
 } from "@/lib/echa-api";
 import { parseSDSFile, mapPictogramsToFiles, suggestPPE } from "@/lib/sds-parser";
-import { checkAndUpdateSDSOnCreate } from "./chemical-auto-update.actions";
 import { requireTenantModule } from "@/lib/require-tenant-module";
+import { isChemicalReviewDueSoon, isChemicalReviewOverdue } from "@/features/chemicals/lib/chemical-review";
+import {
+  deleteChemicalRecord,
+  insertChemical,
+  loadChemicalById,
+  loadChemicalsForTenant,
+  toIso,
+  updateChemicalRecord,
+} from "@/server/queries/chemicals.queries";
 
-async function getSessionContext() {
-  const tenantContext = await getRequiredTenantContext();
-
-  const user = await prisma.user.findUnique({
-    where: { id: tenantContext.userId },
-    include: { tenants: true },
-  });
-
-  if (!user || user.tenants.length === 0) {
-    throw new Error("User not associated with a tenant");
+function errorMessage(error: unknown, fallback: string): string {
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
+    return error.message;
   }
-
-  return { user, tenantId: tenantContext.tenantId };
+  if (error instanceof Error) return error.message;
+  return fallback;
 }
 
-// ============================================================================
-// CHEMICALS (Stoffkartotek)
-// ============================================================================
+function asStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string");
+  }
+  if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed.filter((item): item is string => typeof item === "string");
+      }
+    } catch {
+      return [value];
+    }
+  }
+  return [];
+}
 
 export async function getChemicals(_tenantId: string) {
   try {
     await requireTenantModule("chemicals");
-    const { tenantId } = await getSessionContext();
-
-    const chemicals = await prisma.chemical.findMany({
-      where: { tenantId },
-      orderBy: { createdAt: "desc" },
-    });
-
+    const { tenantId } = await getRequiredTenantContext();
+    const chemicals = await loadChemicalsForTenant(tenantId);
     return { success: true, data: chemicals };
-  } catch (error: any) {
-    console.error("Get chemicals error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente kjemikalier" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load the COSHH register") };
   }
 }
 
 export async function getChemical(chemicalId: string) {
   try {
-    const { user, tenantId } = await getSessionContext();
-
-    const chemical = await prisma.chemical.findUnique({
-      where: { id: chemicalId, tenantId },
-    });
-
+    const { tenantId } = await getRequiredTenantContext();
+    const chemical = await loadChemicalById(chemicalId, tenantId);
     if (!chemical) {
-      return { success: false, error: "Kjemikalie ikke funnet" };
+      return { success: false, error: "Chemical not found" };
     }
-
     return { success: true, data: chemical };
-  } catch (error: any) {
-    console.error("Get chemical error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente kjemikalie" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load the chemical") };
   }
 }
 
-export async function createChemical(input: any) {
+export async function createChemical(input: unknown) {
   try {
-    const { user, tenantId } = await getSessionContext();
-
-    // Beregn neste revisjonsdato (3 år frem hvis ikke oppgitt)
-    const nextReviewDate = input.nextReviewDate
-      ? new Date(input.nextReviewDate)
-      : new Date(Date.now() + 3 * 365 * 24 * 60 * 60 * 1000);
-
-    // Berik data med ECHA hvis CAS-nummer er oppgitt
-    let echaData = null;
-    let hazardLevel = null;
-    let isCMR = false;
-    let substitutionPriority = null;
-
-    if (input.casNumber) {
-      echaData = await searchSubstanceByCAS(input.casNumber);
-      
-      // Parse H-setninger hvis de er oppgitt
-      const hStatements = input.hazardStatements 
-        ? (typeof input.hazardStatements === 'string' ? [input.hazardStatements] : input.hazardStatements)
-        : [];
-      
-      hazardLevel = calculateHazardLevel(hStatements);
-      isCMR = isCMRSubstance(hStatements);
-      substitutionPriority = calculateSubstitutionPriority(
-        isCMR, 
-        echaData?.isSVHC || false, 
-        hazardLevel
-      );
+    await requireTenantModule("chemicals");
+    const { userId, tenantId } = await getRequiredTenantContext();
+    const raw = (input ?? {}) as Record<string, unknown>;
+    const productName = typeof raw.productName === "string" ? raw.productName.trim() : "";
+    if (!productName) {
+      return { success: false, error: "Product name is required" };
     }
 
-    const chemical = await prisma.chemical.create({
-      data: {
-        tenantId,
-        productName: input.productName,
-        supplier: input.supplier,
-        casNumber: input.casNumber,
-        hazardClass: input.hazardClass,
-        hazardStatements: input.hazardStatements,
-        precautionaryStatements: input.precautionaryStatements,
-        warningPictograms: input.warningPictograms,
-        requiredPPE: input.requiredPPE,
-        containsIsocyanates: input.containsIsocyanates || false,
-        sdsKey: input.sdsKey,
-        sdsVersion: input.sdsVersion,
-        sdsDate: input.sdsDate ? new Date(input.sdsDate) : undefined,
-        nextReviewDate,
-        location: input.location,
-        quantity: input.quantity ? parseFloat(input.quantity) : undefined,
-        unit: input.unit,
-        status: input.status || "ACTIVE",
-        notes: input.notes,
+    const nextReviewDate = raw.nextReviewDate
+      ? new Date(String(raw.nextReviewDate))
+      : new Date(Date.now() + 3 * 365 * 24 * 60 * 60 * 1000);
 
-        // ECHA-berikede felter – manuell override tar prioritet
-        ecNumber: echaData?.ecNumber,
-        isCMR: input.isCMR === true ? true : isCMR,
-        isSVHC: input.isSVHC === true ? true : (echaData?.isSVHC || false),
-        reachStatus: echaData?.reachStatus,
-        hazardLevel,
-        substitutionPriority,
-        lastEchaSync: echaData ? new Date() : undefined,
-      },
+    let echaData: Awaited<ReturnType<typeof searchSubstanceByCAS>> = null;
+    let hazardLevel: number | null = null;
+    let isCMR = raw.isCMR === true;
+    let substitutionPriority: string | null = null;
+
+    if (typeof raw.casNumber === "string" && raw.casNumber.trim()) {
+      echaData = await searchSubstanceByCAS(raw.casNumber.trim());
+      const hStatements = asStringArray(raw.hazardStatements);
+      hazardLevel = calculateHazardLevel(hStatements);
+      isCMR = raw.isCMR === true ? true : isCMRSubstance(hStatements);
+      substitutionPriority = calculateSubstitutionPriority(isCMR, echaData?.isSVHC || false, hazardLevel);
+    }
+
+    const chemical = await insertChemical({
+      tenantId,
+      productName,
+      supplier: typeof raw.supplier === "string" ? raw.supplier.trim() || null : null,
+      casNumber: typeof raw.casNumber === "string" ? raw.casNumber.trim() || null : null,
+      hazardClass: typeof raw.hazardClass === "string" ? raw.hazardClass.trim() || null : null,
+      hazardStatements: typeof raw.hazardStatements === "string" ? raw.hazardStatements : null,
+      precautionaryStatements:
+        typeof raw.precautionaryStatements === "string" ? raw.precautionaryStatements : null,
+      warningPictograms: typeof raw.warningPictograms === "string" ? raw.warningPictograms : null,
+      requiredPPE: typeof raw.requiredPPE === "string" ? raw.requiredPPE : null,
+      containsIsocyanates: raw.containsIsocyanates === true,
+      sdsKey: typeof raw.sdsKey === "string" ? raw.sdsKey.trim() || null : null,
+      sdsVersion: typeof raw.sdsVersion === "string" ? raw.sdsVersion.trim() || null : null,
+      sdsDate: raw.sdsDate ? toIso(String(raw.sdsDate)) : null,
+      nextReviewDate: toIso(nextReviewDate),
+      location: typeof raw.location === "string" ? raw.location.trim() || null : null,
+      quantity: raw.quantity ? Number(raw.quantity) : null,
+      unit: typeof raw.unit === "string" ? raw.unit.trim() || null : null,
+      status: typeof raw.status === "string" ? raw.status : "ACTIVE",
+      notes: typeof raw.notes === "string" ? raw.notes.trim() || null : null,
+      ecNumber: echaData?.ecNumber ?? null,
+      isCMR,
+      isSVHC: raw.isSVHC === true ? true : Boolean(echaData?.isSVHC),
+      reachStatus: echaData?.reachStatus ?? null,
+      hazardLevel,
+      substitutionPriority,
+      lastEchaSync: echaData ? nowIsoSafe() : null,
     });
 
-    await AuditLog.log(tenantId, user.id, "CHEMICAL_CREATED", "Chemical", chemical.id, {
+    await AuditLog.log(tenantId, userId, "CHEMICAL_CREATED", "Chemical", chemical.id, {
       productName: chemical.productName,
       isCMR,
       hazardLevel,
     });
 
-    // ✨ AUTOMATISK SJEKK FOR NYESTE VERSJON
-    // Kjøres i bakgrunnen etter opprettelse
-    if (chemical.supplier && chemical.casNumber) {
-      checkAndUpdateSDSOnCreate(chemical.id, tenantId)
-        .then((result) => {
-          if (result.wasUpdated) {
-            console.log(`✅ ${chemical.productName}: Automatisk oppdatert til ${result.newVersion}`);
-          } else {
-            console.log(`✅ ${chemical.productName}: Nyeste versjon allerede lastet opp`);
-          }
-        })
-        .catch((err) => {
-          console.warn(`⚠️ Kunne ikke sjekke versjon for ${chemical.productName}:`, err);
-        });
-    }
-
     revalidatePath("/dashboard/chemicals");
     return { success: true, data: chemical };
-  } catch (error: any) {
-    console.error("Create chemical error:", error);
-    return { success: false, error: error.message || "Kunne ikke opprette kjemikalie" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not create the COSHH record") };
   }
 }
 
-export async function updateChemical(chemicalId: string, input: any) {
+function nowIsoSafe(): string {
+  return new Date().toISOString();
+}
+
+export async function updateChemical(chemicalId: string, input: unknown) {
   try {
-    const { user, tenantId } = await getSessionContext();
-
-    const existingChemical = await prisma.chemical.findFirst({
-      where: { id: chemicalId, tenantId },
-    });
-
+    const { userId, tenantId } = await getRequiredTenantContext();
+    const raw = (input ?? {}) as Record<string, unknown>;
+    const existingChemical = await loadChemicalById(chemicalId, tenantId);
     if (!existingChemical) {
-      return { success: false, error: "Kjemikalie ikke funnet" };
+      return { success: false, error: "Chemical not found" };
     }
 
-    // Slett gammelt datablad hvis nytt er lastet opp
-    if (input.sdsKey && existingChemical.sdsKey && input.sdsKey !== existingChemical.sdsKey) {
+    if (typeof raw.sdsKey === "string" && existingChemical.sdsKey && raw.sdsKey !== existingChemical.sdsKey) {
       try {
-        const storage = getStorage();
-        await storage.delete(existingChemical.sdsKey);
-      } catch (error) {
-        console.error("Failed to delete old SDS:", error);
+        await getStorage().delete(existingChemical.sdsKey);
+      } catch {
+        // Keep the record even if the old SDS file cannot be removed.
       }
     }
 
-    const updateData: any = {
-      productName: input.productName,
-      supplier: input.supplier,
-      casNumber: input.casNumber,
-      hazardClass: input.hazardClass,
-      hazardStatements: input.hazardStatements,
-      precautionaryStatements: input.precautionaryStatements,
-      warningPictograms: input.warningPictograms,
-      requiredPPE: input.requiredPPE,
-      containsIsocyanates: input.containsIsocyanates ?? false,
-      isCMR: input.isCMR ?? false,
-      isSVHC: input.isSVHC ?? false,
-      sdsVersion: input.sdsVersion,
-      sdsDate: input.sdsDate ? new Date(input.sdsDate) : undefined,
-      nextReviewDate: input.nextReviewDate ? new Date(input.nextReviewDate) : undefined,
-      location: input.location,
-      quantity: input.quantity ? parseFloat(input.quantity) : undefined,
-      unit: input.unit,
-      status: input.status,
-      notes: input.notes,
-      updatedAt: new Date(),
+    const patch: Record<string, unknown> = {
+      productName: raw.productName,
+      supplier: raw.supplier,
+      casNumber: raw.casNumber,
+      hazardClass: raw.hazardClass,
+      hazardStatements: raw.hazardStatements,
+      precautionaryStatements: raw.precautionaryStatements,
+      warningPictograms: raw.warningPictograms,
+      requiredPPE: raw.requiredPPE,
+      containsIsocyanates: raw.containsIsocyanates ?? false,
+      isCMR: raw.isCMR ?? false,
+      isSVHC: raw.isSVHC ?? false,
+      sdsVersion: raw.sdsVersion,
+      sdsDate: raw.sdsDate ? new Date(String(raw.sdsDate)) : null,
+      nextReviewDate: raw.nextReviewDate ? new Date(String(raw.nextReviewDate)) : null,
+      location: raw.location,
+      quantity: raw.quantity ? Number(raw.quantity) : null,
+      unit: raw.unit,
+      status: raw.status,
+      notes: raw.notes,
     };
-
-    // Oppdater sdsKey kun hvis ny er sendt
-    if (input.sdsKey) {
-      updateData.sdsKey = input.sdsKey;
+    if (typeof raw.sdsKey === "string" && raw.sdsKey) {
+      patch.sdsKey = raw.sdsKey;
     }
 
-    const chemical = await prisma.chemical.update({
-      where: { id: chemicalId },
-      data: updateData,
-    });
-
-    await AuditLog.log(tenantId, user.id, "CHEMICAL_UPDATED", "Chemical", chemical.id, {
+    const chemical = await updateChemicalRecord(chemicalId, tenantId, patch);
+    await AuditLog.log(tenantId, userId, "CHEMICAL_UPDATED", "Chemical", chemical.id, {
       productName: chemical.productName,
     });
 
     revalidatePath("/dashboard/chemicals");
     revalidatePath(`/dashboard/chemicals/${chemical.id}`);
     return { success: true, data: chemical };
-  } catch (error: any) {
-    console.error("Update chemical error:", error);
-    return { success: false, error: error.message || "Kunne ikke oppdatere kjemikalie" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not update the COSHH record") };
   }
 }
 
 export async function deleteChemical(chemicalId: string) {
   try {
-    const { user, tenantId } = await getSessionContext();
-
-    const chemical = await prisma.chemical.findFirst({
-      where: { id: chemicalId, tenantId },
-    });
-
+    const { userId, tenantId } = await getRequiredTenantContext();
+    const chemical = await loadChemicalById(chemicalId, tenantId);
     if (!chemical) {
-      return { success: false, error: "Kjemikalie ikke funnet" };
+      return { success: false, error: "Chemical not found" };
     }
 
-    // Slett sikkerhetsdatablad hvis det finnes
     if (chemical.sdsKey) {
       try {
-        const storage = getStorage();
-        await storage.delete(chemical.sdsKey);
-      } catch (error) {
-        console.error("Failed to delete SDS:", error);
+        await getStorage().delete(chemical.sdsKey);
+      } catch {
+        // Continue so the register record can still be removed.
       }
     }
 
-    await prisma.chemical.delete({
-      where: { id: chemicalId },
-    });
-
-    await AuditLog.log(tenantId, user.id, "CHEMICAL_DELETED", "Chemical", chemicalId, {
+    await deleteChemicalRecord(chemicalId, tenantId);
+    await AuditLog.log(tenantId, userId, "CHEMICAL_DELETED", "Chemical", chemicalId, {
       productName: chemical.productName,
     });
 
     revalidatePath("/dashboard/chemicals");
     return { success: true };
-  } catch (error: any) {
-    console.error("Delete chemical error:", error);
-    return { success: false, error: error.message || "Kunne ikke slette kjemikalie" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not delete the COSHH record") };
   }
 }
 
-// Last ned sikkerhetsdatablad
 export async function downloadSDS(chemicalId: string) {
   try {
-    const { user, tenantId } = await getSessionContext();
-
-    const chemical = await prisma.chemical.findFirst({
-      where: { id: chemicalId, tenantId },
-    });
-
+    const { tenantId } = await getRequiredTenantContext();
+    const chemical = await loadChemicalById(chemicalId, tenantId);
     if (!chemical || !chemical.sdsKey) {
-      return { success: false, error: "Sikkerhetsdatablad ikke funnet" };
+      return { success: false, error: "Safety data sheet not found" };
     }
-
-    const storage = getStorage();
-    const url = await storage.getUrl(chemical.sdsKey);
-
+    const url = await getStorage().getUrl(chemical.sdsKey);
     return { success: true, data: { url } };
-  } catch (error: any) {
-    console.error("Download SDS error:", error);
-    return { success: false, error: error.message || "Kunne ikke laste ned datablad" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not download the safety data sheet") };
   }
 }
 
-// Verifiser kjemikalie (brukes i revisjoner)
 export async function verifyChemical(chemicalId: string) {
   try {
-    const { user, tenantId } = await getSessionContext();
-
-    const chemical = await prisma.chemical.findFirst({
-      where: { id: chemicalId, tenantId },
-    });
-
+    const { userId, tenantId } = await getRequiredTenantContext();
+    const chemical = await loadChemicalById(chemicalId, tenantId);
     if (!chemical) {
-      return { success: false, error: "Kjemikalie ikke funnet" };
+      return { success: false, error: "Chemical not found" };
     }
 
-    await prisma.chemical.update({
-      where: { id: chemicalId },
-      data: {
-        lastVerifiedAt: new Date(),
-        lastVerifiedBy: user.id,
-      },
+    await updateChemicalRecord(chemicalId, tenantId, {
+      lastVerifiedAt: new Date(),
+      lastVerifiedBy: userId,
     });
 
-    await AuditLog.log(tenantId, user.id, "CHEMICAL_VERIFIED", "Chemical", chemicalId, {
+    await AuditLog.log(tenantId, userId, "CHEMICAL_VERIFIED", "Chemical", chemicalId, {
       productName: chemical.productName,
     });
 
     revalidatePath("/dashboard/chemicals");
     revalidatePath(`/dashboard/chemicals/${chemical.id}`);
     return { success: true };
-  } catch (error: any) {
-    console.error("Verify chemical error:", error);
-    return { success: false, error: error.message || "Kunne ikke verifisere kjemikalie" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not verify the chemical") };
   }
 }
 
-// Statistikk
 export async function getChemicalStats(_tenantId: string) {
   try {
-    const { tenantId } = await getSessionContext();
-
-    const chemicals = await prisma.chemical.findMany({
-      where: { tenantId },
-    });
-
+    const { tenantId } = await getRequiredTenantContext();
+    const chemicals = await loadChemicalsForTenant(tenantId);
     const now = new Date();
-    const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     const threeYearsAgo = new Date(Date.now() - 3 * 365 * 24 * 60 * 60 * 1000);
 
-    const stats = {
-      total: chemicals.length,
-      active: chemicals.filter((c) => c.status === "ACTIVE").length,
-      phasedOut: chemicals.filter((c) => c.status === "PHASED_OUT").length,
-      archived: chemicals.filter((c) => c.status === "ARCHIVED").length,
-      missingSDS: chemicals.filter((c) => !c.sdsKey).length,
-      needsReview: chemicals.filter(
-        (c) => c.nextReviewDate && new Date(c.nextReviewDate) <= thirtyDaysFromNow
-      ).length,
-      overdue: chemicals.filter(
-        (c) => c.nextReviewDate && new Date(c.nextReviewDate) < now
-      ).length,
-      cmrSubstances: chemicals.filter((c) => c.isCMR).length,
-      svhcSubstances: chemicals.filter((c) => c.isSVHC).length,
-      highSubstitutionPriority: chemicals.filter((c) => c.substitutionPriority === "HIGH").length,
-      outdatedSDS: chemicals.filter(
-        (c) => c.sdsDate && new Date(c.sdsDate) < threeYearsAgo
-      ).length,
+    return {
+      success: true,
+      data: {
+        total: chemicals.length,
+        active: chemicals.filter((row) => row.status === "ACTIVE").length,
+        phasedOut: chemicals.filter((row) => row.status === "PHASED_OUT").length,
+        archived: chemicals.filter((row) => row.status === "ARCHIVED").length,
+        missingSDS: chemicals.filter((row) => !row.sdsKey).length,
+        needsReview: chemicals.filter((row) => isChemicalReviewDueSoon(row.nextReviewDate)).length,
+        overdue: chemicals.filter((row) => isChemicalReviewOverdue(row.nextReviewDate, now)).length,
+        cmrSubstances: chemicals.filter((row) => row.isCMR).length,
+        svhcSubstances: chemicals.filter((row) => row.isSVHC).length,
+        highSubstitutionPriority: chemicals.filter((row) => row.substitutionPriority === "HIGH").length,
+        outdatedSDS: chemicals.filter((row) => row.sdsDate && new Date(row.sdsDate) < threeYearsAgo).length,
+      },
     };
-
-    return { success: true, data: stats };
-  } catch (error: any) {
-    console.error("Get chemical stats error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente statistikk" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load COSHH statistics") };
   }
 }
 
-// AI-parsing av SDS fra PDF
 export async function parseSDSFromFile(sdsKey: string, chemicalId?: string) {
   try {
-    const { user, tenantId } = await getSessionContext();
-
-    // Hent fil fra storage
-    const storage = getStorage();
-    const fileUrl = await storage.getUrl(sdsKey);
-
-    // Last ned filen
+    const { userId, tenantId } = await getRequiredTenantContext();
+    const fileUrl = await getStorage().getUrl(sdsKey);
     const response = await fetch(fileUrl);
     if (!response.ok) {
-      return { success: false, error: "Kunne ikke laste ned fil" };
+      return { success: false, error: "Could not download the file" };
     }
 
-    const arrayBuffer = await response.arrayBuffer();
-    const fileBuffer = Buffer.from(arrayBuffer);
+    const extractedData = await parseSDSFile(Buffer.from(await response.arrayBuffer()));
 
-    // Parse SDS med AI
-    const extractedData = await parseSDSFile(fileBuffer);
-
-    // Hvis chemicalId er oppgitt, oppdater kjemikaliet automatisk
     if (chemicalId && extractedData.confidence && extractedData.confidence > 0.7) {
-      const updateData: any = {};
-
+      const patch: Record<string, unknown> = { aiExtractedData: JSON.stringify(extractedData) };
       if (extractedData.hazardStatements) {
-        updateData.hazardStatements = JSON.stringify(extractedData.hazardStatements);
-        
-        // Beregn farenivå og CMR-status
-        updateData.hazardLevel = calculateHazardLevel(extractedData.hazardStatements);
-        updateData.isCMR = isCMRSubstance(extractedData.hazardStatements);
+        patch.hazardStatements = JSON.stringify(extractedData.hazardStatements);
+        patch.hazardLevel = calculateHazardLevel(extractedData.hazardStatements);
+        patch.isCMR = isCMRSubstance(extractedData.hazardStatements);
+        patch.requiredPPE = JSON.stringify(suggestPPE(extractedData.hazardStatements));
       }
-
       if (extractedData.precautionaryStatements) {
-        updateData.precautionaryStatements = JSON.stringify(extractedData.precautionaryStatements);
+        patch.precautionaryStatements = JSON.stringify(extractedData.precautionaryStatements);
       }
-
       if (extractedData.pictograms) {
-        updateData.warningPictograms = JSON.stringify(mapPictogramsToFiles(extractedData.pictograms));
+        patch.warningPictograms = JSON.stringify(mapPictogramsToFiles(extractedData.pictograms));
       }
-
-      if (extractedData.hazardStatements) {
-        const ppe = suggestPPE(extractedData.hazardStatements);
-        updateData.requiredPPE = JSON.stringify(ppe);
-      }
-
       if (extractedData.casNumbers && extractedData.casNumbers.length > 0) {
-        updateData.casNumber = extractedData.casNumbers[0];
+        patch.casNumber = extractedData.casNumbers[0];
       }
-
-      updateData.aiExtractedData = JSON.stringify(extractedData);
-
-      await prisma.chemical.update({
-        where: { id: chemicalId, tenantId },
-        data: updateData,
-      });
-
-      await AuditLog.log(tenantId, user.id, "CHEMICAL_AI_PARSED", "Chemical", chemicalId, {
+      await updateChemicalRecord(chemicalId, tenantId, patch);
+      await AuditLog.log(tenantId, userId, "CHEMICAL_AI_PARSED", "Chemical", chemicalId, {
         confidence: extractedData.confidence,
-        extractedFields: Object.keys(updateData),
+        extractedFields: Object.keys(patch),
       });
-
       revalidatePath(`/dashboard/chemicals/${chemicalId}`);
     }
 
     return { success: true, data: extractedData };
-  } catch (error: any) {
-    console.error("Parse SDS error:", error);
-    return { success: false, error: error.message || "Kunne ikke parse SDS" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not parse the safety data sheet") };
   }
 }
 
-// Synkroniser med ECHA for oppdatert faredata
 export async function syncWithECHA(chemicalId: string) {
   try {
-    const { user, tenantId } = await getSessionContext();
-
-    const chemical = await prisma.chemical.findFirst({
-      where: { id: chemicalId, tenantId },
-    });
-
+    const { userId, tenantId } = await getRequiredTenantContext();
+    const chemical = await loadChemicalById(chemicalId, tenantId);
     if (!chemical) {
-      return { success: false, error: "Kjemikalie ikke funnet" };
+      return { success: false, error: "Chemical not found" };
     }
-
     if (!chemical.casNumber) {
-      return { success: false, error: "CAS-nummer mangler" };
+      return { success: false, error: "CAS number is missing" };
     }
 
-    // Søk i ECHA
     const echaData = await searchSubstanceByCAS(chemical.casNumber);
-
     if (!echaData) {
-      return { success: false, error: "Ingen data funnet i ECHA" };
+      return { success: false, error: "No data found in ECHA" };
     }
 
-    // Oppdater kjemikalie med ECHA-data
-    const hStatements = chemical.hazardStatements 
-      ? JSON.parse(chemical.hazardStatements as string)
-      : [];
+    let hStatements: string[] = [];
+    try {
+      hStatements = chemical.hazardStatements ? (JSON.parse(chemical.hazardStatements) as string[]) : [];
+    } catch {
+      hStatements = chemical.hazardStatements ? [chemical.hazardStatements] : [];
+    }
 
     const hazardLevel = calculateHazardLevel(hStatements);
     const isCMR = isCMRSubstance(hStatements);
-    const substitutionPriority = calculateSubstitutionPriority(
-      isCMR,
-      echaData.isSVHC,
-      hazardLevel
-    );
+    const substitutionPriority = calculateSubstitutionPriority(isCMR, echaData.isSVHC, hazardLevel);
 
-    const updatedChemical = await prisma.chemical.update({
-      where: { id: chemicalId },
-      data: {
-        ecNumber: echaData.ecNumber,
-        isCMR,
-        isSVHC: echaData.isSVHC,
-        reachStatus: echaData.reachStatus,
-        hazardLevel,
-        substitutionPriority,
-        lastEchaSync: new Date(),
-      },
+    const updatedChemical = await updateChemicalRecord(chemicalId, tenantId, {
+      ecNumber: echaData.ecNumber,
+      isCMR,
+      isSVHC: echaData.isSVHC,
+      reachStatus: echaData.reachStatus,
+      hazardLevel,
+      substitutionPriority,
+      lastEchaSync: new Date(),
     });
 
-    await AuditLog.log(tenantId, user.id, "CHEMICAL_ECHA_SYNCED", "Chemical", chemicalId, {
-      echaData: {
-        isCMR,
-        isSVHC: echaData.isSVHC,
-        hazardLevel,
-      },
+    await AuditLog.log(tenantId, userId, "CHEMICAL_ECHA_SYNCED", "Chemical", chemicalId, {
+      echaData: { isCMR, isSVHC: echaData.isSVHC, hazardLevel },
     });
 
     revalidatePath(`/dashboard/chemicals/${chemicalId}`);
     revalidatePath("/dashboard/chemicals");
-
     return { success: true, data: updatedChemical };
-  } catch (error: any) {
-    console.error("ECHA sync error:", error);
-    return { success: false, error: error.message || "Kunne ikke synkronisere med ECHA" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not sync with ECHA") };
   }
 }
 
-// Finn substitusjonsalternativer
 export async function findSubstitutionAlternatives(chemicalId: string) {
   try {
-    const { user, tenantId } = await getSessionContext();
-
-    const chemical = await prisma.chemical.findFirst({
-      where: { id: chemicalId, tenantId },
-    });
-
+    const { tenantId } = await getRequiredTenantContext();
+    const chemical = await loadChemicalById(chemicalId, tenantId);
     if (!chemical) {
-      return { success: false, error: "Kjemikalie ikke funnet" };
+      return { success: false, error: "Chemical not found" };
     }
-
     if (!chemical.casNumber) {
-      return { success: false, error: "CAS-nummer mangler" };
+      return { success: false, error: "CAS number is missing" };
     }
 
-    // Finn alternativer
     const alternatives = await suggestAlternatives(
       chemical.casNumber,
       chemical.productName,
-      chemical.hazardClass || undefined
+      chemical.hazardClass || undefined,
     );
 
-    // Oppdater kjemikalie med forslag
     if (alternatives.length > 0) {
-      await prisma.chemical.update({
-        where: { id: chemicalId },
-        data: {
-          autoSuggestedAlternatives: JSON.stringify(alternatives),
-        },
+      await updateChemicalRecord(chemicalId, tenantId, {
+        autoSuggestedAlternatives: JSON.stringify(alternatives),
       });
-
       revalidatePath(`/dashboard/chemicals/${chemicalId}`);
     }
 
     return { success: true, data: alternatives };
-  } catch (error: any) {
-    console.error("Find alternatives error:", error);
-    return { success: false, error: error.message || "Kunne ikke finne alternativer" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not find alternatives") };
   }
 }
 
-// Batch-synkroniser alle kjemikalier med CAS-nummer
 export async function batchSyncWithECHA(_tenantId: string) {
   try {
-    const { tenantId } = await getSessionContext();
-
-    const chemicals = await prisma.chemical.findMany({
-      where: { 
-        tenantId,
-        casNumber: { not: null },
-        status: "ACTIVE",
-      },
-    });
+    const { tenantId } = await getRequiredTenantContext();
+    const chemicals = (await loadChemicalsForTenant(tenantId, { status: "ACTIVE" })).filter(
+      (row) => row.casNumber,
+    );
 
     let synced = 0;
     let failed = 0;
-
     for (const chemical of chemicals) {
-      try {
-        const result = await syncWithECHA(chemical.id);
-        if (result.success) {
-          synced++;
-        } else {
-          failed++;
-        }
-      } catch (error) {
-        failed++;
-        console.error(`Failed to sync ${chemical.id}:`, error);
-      }
-
-      // Vent litt mellom kall for å unngå rate limiting
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const result = await syncWithECHA(chemical.id);
+      if (result.success) synced += 1;
+      else failed += 1;
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
-    return { 
-      success: true, 
-      data: { 
-        total: chemicals.length, 
-        synced, 
-        failed 
-      } 
-    };
-  } catch (error: any) {
-    console.error("Batch ECHA sync error:", error);
-    return { success: false, error: error.message || "Kunne ikke synkronisere" };
+    return { success: true, data: { total: chemicals.length, synced, failed } };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not sync") };
   }
 }

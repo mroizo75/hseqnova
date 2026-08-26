@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ChemicalStatus } from "@prisma/client";
 
-import { prisma } from "@/lib/db";
+import { getAuthMembership } from "@/lib/auth-db";
 import { getRequiredTenantContext } from "@/lib/tenant-context";
+import { loadChemicalById, toIso, updateChemicalRecord } from "@/server/queries/chemicals.queries";
 
 const managerRoles = new Set(["ADMIN", "LEDER", "HMS"]);
 const allowedStatuses = new Set<ChemicalStatus>(["ACTIVE", "PHASED_OUT", "ARCHIVED"]);
@@ -15,7 +16,6 @@ const parseStatus = (value: string | null): ChemicalStatus | null => {
   }
   return value as ChemicalStatus;
 };
-
 
 const normalizeJsonArrayField = (value: unknown): string | null => {
   if (Array.isArray(value)) {
@@ -50,24 +50,18 @@ const normalizeJsonArrayField = (value: unknown): string | null => {
 };
 
 const hasManagerRole = async (userId: string, tenantId: string): Promise<boolean> => {
-  const membership = await prisma.userTenant.findUnique({
-    where: {
-      userId_tenantId: {
-        userId,
-        tenantId,
-      },
-    },
-    select: {
-      role: true,
-    },
-  });
-
+  const membership = await getAuthMembership(userId, tenantId);
   return membership ? managerRoles.has(membership.role) : false;
 };
 
-/**
- * GET /api/chemicals/[id]
- */
+function apiErrorMessage(error: unknown, fallback: string): string {
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
+    return error.message;
+  }
+  if (error instanceof Error) return error.message;
+  return fallback;
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -76,27 +70,21 @@ export async function GET(
     const tenantContext = await getRequiredTenantContext();
     const { id } = await params;
 
-    const chemical = await prisma.chemical.findFirst({
-      where: {
-        id,
-        tenantId: tenantContext.tenantId,
-      },
-    });
+    const chemical = await loadChemicalById(id, tenantContext.tenantId);
 
     if (!chemical) {
-      return NextResponse.json({ error: "Stoff ikke funnet" }, { status: 404 });
+      return NextResponse.json({ error: "Chemical not found" }, { status: 404 });
     }
 
     return NextResponse.json({ chemical }, { status: 200 });
   } catch (error) {
-    console.error("[Chemicals ID GET] Error:", error);
-    return NextResponse.json({ error: "Kunne ikke hente stoff" }, { status: 500 });
+    return NextResponse.json(
+      { error: apiErrorMessage(error, "Could not load the chemical") },
+      { status: 500 },
+    );
   }
 }
 
-/**
- * PATCH /api/chemicals/[id]
- */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -106,78 +94,66 @@ export async function PATCH(
     const canManage = await hasManagerRole(tenantContext.userId, tenantContext.tenantId);
 
     if (!canManage) {
-      return NextResponse.json({ error: "Ingen tilgang til å oppdatere stoff" }, { status: 403 });
+      return NextResponse.json({ error: "You do not have permission to update a COSHH record" }, { status: 403 });
     }
 
     const { id } = await params;
-    const existingChemical = await prisma.chemical.findFirst({
-      where: {
-        id,
-        tenantId: tenantContext.tenantId,
-      },
-      select: {
-        id: true,
-      },
-    });
+    const existingChemical = await loadChemicalById(id, tenantContext.tenantId);
 
     if (!existingChemical) {
-      return NextResponse.json({ error: "Stoff ikke funnet" }, { status: 404 });
+      return NextResponse.json({ error: "Chemical not found" }, { status: 404 });
     }
 
     const payload = (await request.json()) as Record<string, unknown>;
     const productName = typeof payload.productName === "string" ? payload.productName.trim() : "";
 
     if (!productName) {
-      return NextResponse.json({ error: "productName er obligatorisk" }, { status: 400 });
+      return NextResponse.json({ error: "Product name is required" }, { status: 400 });
     }
 
     const statusValue =
       typeof payload.status === "string" ? parseStatus(payload.status) ?? "ACTIVE" : "ACTIVE";
 
-    const chemical = await prisma.chemical.update({
-      where: {
-        id: existingChemical.id,
-      },
-      data: {
-        productName,
-        supplier: typeof payload.supplier === "string" ? payload.supplier.trim() || null : null,
-        casNumber: typeof payload.casNumber === "string" ? payload.casNumber.trim() || null : null,
-        hazardClass: typeof payload.hazardClass === "string" ? payload.hazardClass.trim() || null : null,
-        hazardStatements:
-          typeof payload.hazardStatements === "string" ? payload.hazardStatements.trim() || null : null,
-        precautionaryStatements:
-          typeof payload.precautionaryStatements === "string"
-            ? payload.precautionaryStatements.trim() || null
+    const chemical = await updateChemicalRecord(existingChemical.id, tenantContext.tenantId, {
+      productName,
+      supplier: typeof payload.supplier === "string" ? payload.supplier.trim() || null : null,
+      casNumber: typeof payload.casNumber === "string" ? payload.casNumber.trim() || null : null,
+      hazardClass: typeof payload.hazardClass === "string" ? payload.hazardClass.trim() || null : null,
+      hazardStatements:
+        typeof payload.hazardStatements === "string" ? payload.hazardStatements.trim() || null : null,
+      precautionaryStatements:
+        typeof payload.precautionaryStatements === "string"
+          ? payload.precautionaryStatements.trim() || null
+          : null,
+      warningPictograms: normalizeJsonArrayField(payload.warningPictograms),
+      requiredPPE: normalizeJsonArrayField(payload.requiredPPE),
+      containsIsocyanates: payload.containsIsocyanates === true,
+      isCMR: payload.isCMR === true,
+      isSVHC: payload.isSVHC === true,
+      sdsKey: typeof payload.sdsKey === "string" ? payload.sdsKey.trim() || null : null,
+      sdsVersion: typeof payload.sdsVersion === "string" ? payload.sdsVersion.trim() || null : null,
+      sdsDate: typeof payload.sdsDate === "string" && payload.sdsDate ? toIso(payload.sdsDate) : null,
+      nextReviewDate:
+        typeof payload.nextReviewDate === "string" && payload.nextReviewDate
+          ? toIso(payload.nextReviewDate)
+          : null,
+      location: typeof payload.location === "string" ? payload.location.trim() || null : null,
+      quantity:
+        typeof payload.quantity === "number"
+          ? payload.quantity
+          : typeof payload.quantity === "string" && payload.quantity.trim()
+            ? Number(payload.quantity)
             : null,
-        warningPictograms: normalizeJsonArrayField(payload.warningPictograms),
-        requiredPPE: normalizeJsonArrayField(payload.requiredPPE),
-        containsIsocyanates: payload.containsIsocyanates === true,
-        isCMR: payload.isCMR === true,
-        isSVHC: payload.isSVHC === true,
-        sdsKey: typeof payload.sdsKey === "string" ? payload.sdsKey.trim() || null : null,
-        sdsVersion: typeof payload.sdsVersion === "string" ? payload.sdsVersion.trim() || null : null,
-        sdsDate: typeof payload.sdsDate === "string" && payload.sdsDate ? new Date(payload.sdsDate) : null,
-        nextReviewDate:
-          typeof payload.nextReviewDate === "string" && payload.nextReviewDate
-            ? new Date(payload.nextReviewDate)
-            : null,
-        location: typeof payload.location === "string" ? payload.location.trim() || null : null,
-        quantity:
-          typeof payload.quantity === "number"
-            ? payload.quantity
-            : typeof payload.quantity === "string" && payload.quantity.trim()
-              ? Number(payload.quantity)
-              : null,
-        unit: typeof payload.unit === "string" ? payload.unit.trim() || null : null,
-        status: statusValue,
-        notes: typeof payload.notes === "string" ? payload.notes.trim() || null : null,
-        updatedAt: new Date(),
-      },
+      unit: typeof payload.unit === "string" ? payload.unit.trim() || null : null,
+      status: statusValue,
+      notes: typeof payload.notes === "string" ? payload.notes.trim() || null : null,
     });
 
     return NextResponse.json({ chemical }, { status: 200 });
   } catch (error) {
-    console.error("[Chemicals ID PATCH] Error:", error);
-    return NextResponse.json({ error: "Kunne ikke oppdatere stoff" }, { status: 500 });
+    return NextResponse.json(
+      { error: apiErrorMessage(error, "Could not update the COSHH record") },
+      { status: 500 },
+    );
   }
 }

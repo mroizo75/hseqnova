@@ -1,56 +1,26 @@
-import { NextResponse } from "next/server"
-import { prisma } from "@/lib/db"
-import {
-  collectAnonymizedStats,
-  saveAnonymizedStats,
-} from "@/features/hms-ai/lib/stats-collector"
+import { NextResponse } from "next/server";
 
-/**
- * Daglig cron: samle anonymisert statistikk for alle aktive tenants.
- * GET /api/cron/hms-stats?key=CRON_SECRET
- */
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url)
-  const key = searchParams.get("key")
+/** Not offered in the UK product. */
+function notAvailable() {
+  return NextResponse.json({ error: "Not available" }, { status: 404 });
+}
 
-  if (key !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+export async function GET() {
+  return notAvailable();
+}
 
-  const tenants = await prisma.tenant.findMany({
-    where: { status: { in: ["ACTIVE", "TRIAL"] } },
-    select: { id: true },
-  })
+export async function POST() {
+  return notAvailable();
+}
 
-  // Periode: siste 30 dager
-  const periodEnd = new Date()
-  const periodStart = new Date()
-  periodStart.setDate(periodStart.getDate() - 30)
-  periodStart.setHours(0, 0, 0, 0)
-  periodEnd.setHours(23, 59, 59, 999)
+export async function PUT() {
+  return notAvailable();
+}
 
-  let processed = 0
-  let errors = 0
+export async function PATCH() {
+  return notAvailable();
+}
 
-  for (const tenant of tenants) {
-    try {
-      const stats = await collectAnonymizedStats({
-        tenantId: tenant.id,
-        periodStart,
-        periodEnd,
-      })
-
-      await saveAnonymizedStats(tenant.id, periodStart, periodEnd, stats)
-      processed++
-    } catch {
-      errors++
-    }
-  }
-
-  return NextResponse.json({
-    success: true,
-    processed,
-    errors,
-    total: tenants.length,
-  })
+export async function DELETE() {
+  return notAvailable();
 }

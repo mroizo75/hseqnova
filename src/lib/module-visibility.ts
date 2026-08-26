@@ -67,27 +67,42 @@ export const MODULE_DEFAULTS: Record<ModuleKey, Role[]> = {
   employeeReviews: ["ADMIN"],
 };
 
-/** Norske visningsnavn for hvert modul */
+/** UK labels. Keys stay as database module ids. */
 export const MODULE_LABELS: Record<ModuleKey, string> = {
-  incidents:    "Avvik & hendelser",
-  ruh:          "RUH – Rapport om uønsket hendelse",
-  sja:          "SJA – Sikker jobb-analyse",
-  risks:        "Risikovurderinger",
-  wellbeing:    "Psykososialt arbeidsmiljø",
-  documents:    "Dokumenter",
-  chemicals:    "Stoffkartotek",
-  audits:       "Revisjoner",
-  inspections:  "Inspeksjoner / Vernerunde",
-  training:     "Opplæring & kompetanse",
-  actions:      "Tiltak",
-  goals:        "Mål & KPIer",
-  environment:  "Miljøstyring",
-  meetings:     "AMU / Møter",
-  routines:     "Rutiner",
-  whistleblowing: "Varsling",
-  feedback:     "Kundetilbakemelding",
-  employeeReviews: "Medarbeidersamtaler (full oversikt)",
+  incidents:    "Accident book",
+  ruh:          "Incident report (legacy)",
+  sja:          "RAMS",
+  risks:        "Risk assessments",
+  wellbeing:    "Wellbeing",
+  documents:    "Documents",
+  chemicals:    "COSHH",
+  audits:       "Audits",
+  inspections:  "Workplace inspections",
+  training:     "Training and competence",
+  actions:      "Actions",
+  goals:        "Goals",
+  environment:  "Environment",
+  meetings:     "Consultation meetings",
+  routines:     "Procedures",
+  whistleblowing: "Whistleblowing",
+  feedback:     "Feedback",
+  employeeReviews: "Appraisals (full list)",
 };
+
+export const UK_SETTINGS_MODULES: ModuleKey[] = (
+  [
+    "incidents",
+    "risks",
+    "documents",
+    "inspections",
+    "training",
+    "actions",
+    "sja",
+    "chemicals",
+    "audits",
+    "environment",
+  ] as ModuleKey[]
+);
 
 /**
  * Hvilke RolePermissions-flagg hvert modul kontrollerer.

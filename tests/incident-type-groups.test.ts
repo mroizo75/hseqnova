@@ -5,60 +5,52 @@ import {
   getIncidentTypeGroups,
   getIncidentTypeLabel,
   getIncidentTypesForGroup,
+  getMainCategory,
+  getMainCategoryLabel,
   getSingleTypeForGroup,
 } from "../src/features/incidents/schemas/incident.schema";
 
-test("RUH på gir to grupper: Avvik og RUH", () => {
-  const groups = getIncidentTypeGroups(true).map((definition) => definition.group);
-  assert.deepEqual(groups, ["AVVIK", "RUH"]);
+test("UK accident book always uses four groups regardless of the legacy RUH flag", () => {
+  assert.deepEqual(
+    getIncidentTypeGroups(true).map((definition) => definition.group),
+    ["HMS", "KVALITET", "MILJO", "CUSTOMER"]
+  );
+  assert.deepEqual(
+    getIncidentTypeGroups(false).map((definition) => definition.group),
+    ["HMS", "KVALITET", "MILJO", "CUSTOMER"]
+  );
 });
 
-test("RUH av gir fire grupper: HMS, Kvalitet, Miljø og Kundeklage", () => {
-  const groups = getIncidentTypeGroups(false).map((definition) => definition.group);
-  assert.deepEqual(groups, ["HMS", "KVALITET", "MILJO", "CUSTOMER"]);
+test("accident book group lists RIDDOR types first", () => {
+  const types = getIncidentTypesForGroup("HMS");
+  assert.deepEqual([...types], ["ULYKKE", "NESTEN", "FARLIG_SITUASJON", "YRKESSYKDOM", "HMS"]);
 });
 
-test("HMS-gruppen dekker meldepliktige hendelser etter AML § 5-2", () => {
-  const types = getIncidentTypesForGroup("HMS", false);
-  assert.deepEqual([...types], ["HMS", "ULYKKE", "NESTEN", "FARLIG_SITUASJON", "YRKESSYKDOM"]);
+test("single-type groups skip the second type picker", () => {
+  assert.equal(getSingleTypeForGroup("KVALITET"), "KVALITET");
+  assert.equal(getSingleTypeForGroup("MILJO"), "MILJO");
+  assert.equal(getSingleTypeForGroup("CUSTOMER"), "CUSTOMER");
+  assert.equal(getSingleTypeForGroup("HMS"), null);
 });
 
-test("Avvik-gruppen tilbyr fagområder, ikke den generelle Avvik-typen", () => {
-  const types = getIncidentTypesForGroup("AVVIK", true);
-  assert.deepEqual([...types], ["HMS", "KVALITET", "MILJO", "CUSTOMER"]);
+test("stored types map back to the UK groups", () => {
+  assert.equal(getIncidentTypeGroup("ULYKKE"), "HMS");
+  assert.equal(getIncidentTypeGroup("KVALITET"), "KVALITET");
+  assert.equal(getIncidentTypeGroup("AVVIK"), "HMS");
+  assert.equal(getIncidentTypeGroup("SKADE"), "HMS");
+  assert.equal(getIncidentTypeGroup(""), null);
 });
 
-test("grupper med bare én type hopper over typevalget", () => {
-  assert.equal(getSingleTypeForGroup("KVALITET", false), "KVALITET");
-  assert.equal(getSingleTypeForGroup("MILJO", false), "MILJO");
-  assert.equal(getSingleTypeForGroup("CUSTOMER", false), "CUSTOMER");
-  assert.equal(getSingleTypeForGroup("HMS", false), null);
+test("main category labels are accident book vs other record", () => {
+  assert.equal(getMainCategory("ULYKKE"), "RUH");
+  assert.equal(getMainCategoryLabel("RUH"), "Accident book");
+  assert.equal(getMainCategory("KVALITET"), "AVVIK");
+  assert.equal(getMainCategoryLabel("AVVIK"), "Other record");
 });
 
-test("gruppene i RUH-modus krever typevalg i begge grener", () => {
-  assert.equal(getSingleTypeForGroup("AVVIK", true), null);
-  assert.equal(getSingleTypeForGroup("RUH", true), null);
-});
-
-test("en type finner tilbake til gruppen sin i begge oppsett", () => {
-  assert.equal(getIncidentTypeGroup("ULYKKE", true), "RUH");
-  assert.equal(getIncidentTypeGroup("ULYKKE", false), "HMS");
-  assert.equal(getIncidentTypeGroup("KVALITET", true), "AVVIK");
-  assert.equal(getIncidentTypeGroup("KVALITET", false), "KVALITET");
-});
-
-test("eldre typer finner gruppen sin selv om de ikke kan velges", () => {
-  assert.equal(getIncidentTypeGroup("AVVIK", true), "AVVIK");
-  assert.equal(getIncidentTypeGroup("AVVIK", false), "HMS");
-  assert.equal(getIncidentTypeGroup("SKADE", true), "RUH");
-  assert.equal(getIncidentTypeGroup("SKADE", false), "HMS");
-});
-
-test("tom type gir ingen gruppe", () => {
-  assert.equal(getIncidentTypeGroup("", true), null);
-  assert.equal(getIncidentTypeGroup("", false), null);
-});
-
-test("farlig situasjon merkes også som observasjon", () => {
-  assert.equal(getIncidentTypeLabel("FARLIG_SITUASJON"), "Farlig situasjon / observasjon");
+test("dangerous occurrence uses the UK label", () => {
+  assert.equal(
+    getIncidentTypeLabel("FARLIG_SITUASJON"),
+    "Unsafe condition / dangerous occurrence"
+  );
 });

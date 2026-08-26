@@ -1,30 +1,47 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { createId } from "@/lib/ids";
+import { AuditLog } from "@/lib/audit-log";
 import { DocumentSignerRole } from "@prisma/client";
 import { requirePermission, requireResourceAccess } from "@/lib/server-authorization";
+
+type ActionError = { code: string; message: string; details?: unknown };
 
 export async function getDocumentSignatures(documentId: string) {
   try {
     await requireResourceAccess("document", documentId);
+    const db = getAdminDb();
+    const { data: signatures, error } = await db
+      .from("DocumentSignature")
+      .select("*")
+      .eq("documentId", documentId)
+      .order("role", { ascending: true });
 
-    const signatures = await prisma.documentSignature.findMany({
-      where: { documentId },
-      include: {
-        signedBy: {
-          select: { id: true, name: true, email: true },
-        },
-      },
-      orderBy: [
-        { role: "asc" },
-        { signedAt: "asc" },
-      ],
-    });
+    if (error) {
+      throw { code: "SIGNATURE_LIST_FAILED", message: error.message };
+    }
 
-    return { success: true, data: signatures };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke hente signaturer" };
+    const rows = signatures ?? [];
+    const userIds = [...new Set(rows.map((row: { signedById: string }) => row.signedById))];
+    let people: Array<{ id: string; name: string | null; email: string | null }> = [];
+    if (userIds.length > 0) {
+      const { data: users } = await db.from("User").select("id, name, email").in("id", userIds);
+      people = (users ?? []) as Array<{ id: string; name: string | null; email: string | null }>;
+    }
+    const peopleById = new Map(people.map((person) => [person.id, person]));
+
+    return {
+      success: true as const,
+      data: rows.map((signature: { signedById: string }) => ({
+        ...signature,
+        signedBy: peopleById.get(signature.signedById) ?? null,
+      })),
+    };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not load signatures." };
   }
 }
 
@@ -36,101 +53,120 @@ export async function signDocument(input: {
 }) {
   try {
     const context = await requirePermission("canReadDocuments");
-
-    const document = await prisma.document.findUnique({
-      where: { id: input.documentId },
-    });
+    const db = getAdminDb();
+    const { data: document } = await db.from("Document").select("*").eq("id", input.documentId).maybeSingle();
 
     if (!document) {
-      return { success: false, error: "Dokument ikke funnet" };
+      return { success: false as const, error: "Document not found." };
     }
 
     if (document.tenantId !== context.tenantId) {
-      return { success: false, error: "Ikke autorisert" };
+      return { success: false as const, error: "Not authorised." };
     }
 
     if (input.role === "GODKJENT_AV") {
-      const approveCtx = await requirePermission("canApproveDocuments");
-      if (!approveCtx) {
-        return { success: false, error: "Kun godkjenner-roller kan signere som godkjenner" };
-      }
+      await requirePermission("canApproveDocuments");
     }
 
     if (!input.signatureImg || !input.signatureImg.startsWith("data:image/")) {
-      return { success: false, error: "Ugyldig signatur" };
+      return { success: false as const, error: "Invalid signature." };
     }
 
-    const signature = await prisma.documentSignature.upsert({
-      where: {
-        documentId_signedById_role: {
+    const now = new Date().toISOString();
+    const { data: existing } = await db
+      .from("DocumentSignature")
+      .select("id")
+      .eq("documentId", input.documentId)
+      .eq("signedById", context.userId)
+      .eq("role", input.role)
+      .maybeSingle();
+
+    let signature;
+    if (existing) {
+      const { data, error } = await db
+        .from("DocumentSignature")
+        .update({
+          signatureImg: input.signatureImg,
+          comment: input.comment ?? null,
+          signedAt: now,
+        })
+        .eq("id", existing.id)
+        .select("*")
+        .single();
+      if (error || !data) {
+        throw { code: "SIGNATURE_UPDATE_FAILED", message: error?.message || "Could not update the signature." };
+      }
+      signature = data;
+    } else {
+      const { data, error } = await db
+        .from("DocumentSignature")
+        .insert({
+          id: createId(),
+          tenantId: context.tenantId,
           documentId: input.documentId,
           signedById: context.userId,
           role: input.role,
-        },
-      },
-      update: {
-        signatureImg: input.signatureImg,
-        comment: input.comment ?? null,
-        signedAt: new Date(),
-      },
-      create: {
-        tenantId: context.tenantId,
-        documentId: input.documentId,
-        signedById: context.userId,
-        role: input.role,
-        signatureImg: input.signatureImg,
-        comment: input.comment ?? null,
-      },
-      include: {
-        signedBy: {
-          select: { id: true, name: true, email: true },
-        },
-      },
-    });
+          signatureImg: input.signatureImg,
+          comment: input.comment ?? null,
+          signedAt: now,
+        })
+        .select("*")
+        .single();
+      if (error || !data) {
+        throw { code: "SIGNATURE_CREATE_FAILED", message: error?.message || "Could not save the signature." };
+      }
+      signature = data;
+    }
 
-    await prisma.auditLog.create({
-      data: {
-        tenantId: context.tenantId,
-        userId: context.userId,
-        action: "DOCUMENT_SIGNED",
-        resource: `Document:${input.documentId}`,
-        metadata: JSON.stringify({
-          role: input.role,
-          documentTitle: document.title,
-        }),
-      },
+    const { data: signer } = await db
+      .from("User")
+      .select("id, name, email")
+      .eq("id", context.userId)
+      .maybeSingle();
+
+    await AuditLog.log(context.tenantId, context.userId, "DOCUMENT_SIGNED", "Document", input.documentId, {
+      role: input.role,
+      documentTitle: document.title,
     });
 
     revalidatePath(`/dashboard/documents/${input.documentId}`);
-    return { success: true, data: signature };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke signere dokument" };
+    return {
+      success: true as const,
+      data: { ...signature, signedBy: signer ?? null },
+    };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not sign the document." };
   }
 }
 
 export async function removeDocumentSignature(signatureId: string) {
   try {
     const context = await requirePermission("canApproveDocuments");
-
-    const signature = await prisma.documentSignature.findUnique({
-      where: { id: signatureId },
-    });
+    const db = getAdminDb();
+    const { data: signature } = await db
+      .from("DocumentSignature")
+      .select("*")
+      .eq("id", signatureId)
+      .maybeSingle();
 
     if (!signature) {
-      return { success: false, error: "Signatur ikke funnet" };
+      return { success: false as const, error: "Signature not found." };
     }
 
     if (signature.tenantId !== context.tenantId) {
-      return { success: false, error: "Ikke autorisert" };
+      return { success: false as const, error: "Not authorised." };
     }
 
-    await prisma.documentSignature.delete({
-      where: { id: signatureId },
-    });
+    const { error } = await db.from("DocumentSignature").delete().eq("id", signatureId);
+    if (error) {
+      throw { code: "SIGNATURE_DELETE_FAILED", message: error.message };
+    }
 
     revalidatePath(`/dashboard/documents/${signature.documentId}`);
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke fjerne signatur" };
+    return { success: true as const };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not remove the signature." };
   }
 }

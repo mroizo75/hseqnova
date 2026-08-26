@@ -1,6 +1,7 @@
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { createId } from "@/lib/ids";
 
-/** Prefix og display-format for sekvenstyper */
+/** Prefix and display format for sequence types */
 const SEQUENCE_CONFIG: Record<
   string,
   { prefix: string; format: (year: number, num: number) => string }
@@ -18,8 +19,8 @@ const SEQUENCE_CONFIG: Record<
     format: (year, num) => `RUH-${year}-${String(num).padStart(3, "0")}`,
   },
   SJA: {
-    prefix: "SJA",
-    format: (year, num) => `SJA-${year}-${String(num).padStart(3, "0")}`,
+    prefix: "RAMS",
+    format: (year, num) => `RAMS-${year}-${String(num).padStart(3, "0")}`,
   },
   "FORM:RUH": {
     prefix: "RUH",
@@ -42,12 +43,7 @@ function getSequenceConfig(type: string): {
 }
 
 /**
- * Genererer neste unike referansenummer for en tenant.
- * Bruker transaksjon for å unngå race conditions.
- *
- * @param tenantId - Tenant-ID
- * @param sequenceType - "AVVIK" | "RUH" | "FORM:SKJ" | "FORM:RUH" | "FORM:{custom}"
- * @param year - År for sekvensen (default: nåværende år)
+ * Next unique reference number for a tenant.
  */
 export async function generateSequenceNumber(
   tenantId: string,
@@ -56,38 +52,48 @@ export async function generateSequenceNumber(
 ): Promise<string> {
   const y = year ?? new Date().getFullYear();
   const config = getSequenceConfig(sequenceType);
+  const db = getAdminDb();
+  const now = new Date().toISOString();
 
-  const result = await prisma.$transaction(async (tx) => {
-    const existing = await tx.tenantSequence.findUnique({
-      where: {
-        tenantId_sequenceType_year: { tenantId, sequenceType, year: y },
-      },
+  const { data: existing, error: readError } = await db
+    .from("TenantSequence")
+    .select("id, lastNumber")
+    .eq("tenantId", tenantId)
+    .eq("sequenceType", sequenceType)
+    .eq("year", y)
+    .maybeSingle();
+
+  if (readError) {
+    throw { code: "SEQUENCE_READ_FAILED", message: readError.message };
+  }
+
+  const nextNumber = ((existing?.lastNumber as number | undefined) ?? 0) + 1;
+
+  if (existing?.id) {
+    const { error: updateError } = await db
+      .from("TenantSequence")
+      .update({ lastNumber: nextNumber, updatedAt: now })
+      .eq("id", existing.id);
+    if (updateError) {
+      throw { code: "SEQUENCE_UPDATE_FAILED", message: updateError.message };
+    }
+  } else {
+    const { error: insertError } = await db.from("TenantSequence").insert({
+      id: createId(),
+      tenantId,
+      sequenceType,
+      year: y,
+      lastNumber: nextNumber,
+      updatedAt: now,
     });
+    if (insertError) {
+      throw { code: "SEQUENCE_INSERT_FAILED", message: insertError.message };
+    }
+  }
 
-    const nextNumber = (existing?.lastNumber ?? 0) + 1;
-
-    await tx.tenantSequence.upsert({
-      where: {
-        tenantId_sequenceType_year: { tenantId, sequenceType, year: y },
-      },
-      create: {
-        tenantId,
-        sequenceType,
-        year: y,
-        lastNumber: nextNumber,
-      },
-      update: { lastNumber: nextNumber },
-    });
-
-    return config.format(y, nextNumber);
-  });
-
-  return result;
+  return config.format(y, nextNumber);
 }
 
-/**
- * Henter sequenceType for skjemainnsending basert på FormTemplate.numberPrefix.
- */
 export function getFormSequenceType(numberPrefix: string | null): string {
   if (!numberPrefix || numberPrefix.trim() === "") {
     return "FORM:SKJ";

@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { getAuthContext } from "@/lib/server-authorization";
+import { loadAuditDetail, loadTenantAuditUsers } from "@/server/queries/audits.queries";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,69 +31,19 @@ export default async function AuditDetailPage({ params }: { params: Promise<{ id
   const t = await getTranslations("dashboardAuditDetailPage");
   const locale = await getLocale();
   const { id } = await params;
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.email) {
+  const auth = await getAuthContext();
+  if (!auth) {
     redirect("/login");
   }
 
-  const currentUser = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { tenants: true },
-  });
-
-  if (!currentUser || currentUser.tenants.length === 0) {
-    return <div>{t("noTenantAccess")}</div>;
-  }
-
-  const selectedMembership = currentUser.tenants.find(
-    (membership) => membership.tenantId === session.user.tenantId,
-  );
-  if (!selectedMembership) {
-    return <div>{t("noTenantAccess")}</div>;
-  }
-
-  const tenantId = selectedMembership.tenantId;
-
-  const audit = await prisma.audit.findUnique({
-    where: { id, tenantId },
-    include: {
-      findings: {
-        orderBy: { createdAt: "desc" },
-      },
-    },
-  });
-
+  const audit = await loadAuditDetail(id, auth.tenantId);
   if (!audit) {
     return <div>{t("notFound")}</div>;
   }
 
-  // Hent hovedrevisor
-  const leadAuditor = await prisma.user.findUnique({
-    where: { id: audit.leadAuditorId },
-    select: { id: true, name: true, email: true },
-  });
-
-  // Hent revisjonsteam
-  const teamMemberIds = audit.teamMemberIds ? JSON.parse(audit.teamMemberIds) : [];
-  const teamMembers = await prisma.user.findMany({
-    where: { id: { in: teamMemberIds } },
-    select: { id: true, name: true, email: true },
-  });
-
-  // Hent alle brukere for tenant (for å kunne legge til funn)
-  const tenantUsers = await prisma.user.findMany({
-    where: {
-      tenants: {
-        some: { tenantId },
-      },
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-    },
-  });
+  const leadAuditor = audit.leadAuditor;
+  const teamMembers = audit.teamMembers;
+  const tenantUsers = await loadTenantAuditUsers(auth.tenantId);
 
   const typeLabel = getAuditTypeLabel(audit.auditType);
   const typeColor = getAuditTypeColor(audit.auditType);

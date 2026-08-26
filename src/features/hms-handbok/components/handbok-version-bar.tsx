@@ -40,10 +40,10 @@ interface HandbokVersionBarProps {
 }
 
 const STATUS_CONFIG = {
-  DRAFT: { label: "Utkast", variant: "secondary" as const, icon: Clock },
-  PENDING_APPROVAL: { label: "Venter på godkjenning", variant: "default" as const, icon: Send },
-  APPROVED: { label: "Godkjent", variant: "default" as const, icon: CheckCircle2 },
-  ARCHIVED: { label: "Arkivert", variant: "outline" as const, icon: FileCheck },
+  DRAFT: { label: "Draft", variant: "secondary" as const, icon: Clock },
+          PENDING_APPROVAL: { label: "Ready to publish", variant: "default" as const, icon: Send },
+          APPROVED: { label: "Published", variant: "default" as const, icon: CheckCircle2 },
+  ARCHIVED: { label: "Archived", variant: "outline" as const, icon: FileCheck },
 } as const;
 
 export function HandbokVersionBar({
@@ -67,11 +67,11 @@ export function HandbokVersionBar({
     const result = await createNewDraft({ tenantId, changeNote: changeNote.trim() || undefined });
     setLoading(null);
     if (result.success) {
-      toast({ title: "Nytt utkast opprettet" });
+      toast({ title: "New draft created" });
       setDraftOpen(false);
       setChangeNote("");
     } else {
-      toast({ title: "Feil", description: result.error, variant: "destructive" });
+      toast({ title: "Error", description: result.error, variant: "destructive" });
     }
   }
 
@@ -80,9 +80,9 @@ export function HandbokVersionBar({
     const result = await submitForApproval({ versionId: version.id });
     setLoading(null);
     if (result.success) {
-      toast({ title: "Sendt til godkjenning" });
+      toast({ title: "Sent for publication" });
     } else {
-      toast({ title: "Feil", description: result.error, variant: "destructive" });
+      toast({ title: "Error", description: result.error, variant: "destructive" });
     }
   }
 
@@ -91,9 +91,9 @@ export function HandbokVersionBar({
     const result = await approveVersion({ versionId: version.id });
     setLoading(null);
     if (result.success) {
-      toast({ title: "Versjon godkjent og publisert" });
+      toast({ title: "Policy published" });
     } else {
-      toast({ title: "Feil", description: result.error, variant: "destructive" });
+      toast({ title: "Error", description: result.error, variant: "destructive" });
     }
   }
 
@@ -103,11 +103,11 @@ export function HandbokVersionBar({
     const result = await rejectDraft({ versionId: version.id, rejectedNote: rejectNote.trim() });
     setLoading(null);
     if (result.success) {
-      toast({ title: "Utkast avvist" });
+      toast({ title: "Draft rejected" });
       setRejectOpen(false);
       setRejectNote("");
     } else {
-      toast({ title: "Feil", description: result.error, variant: "destructive" });
+      toast({ title: "Error", description: result.error, variant: "destructive" });
     }
   }
 
@@ -115,16 +115,16 @@ export function HandbokVersionBar({
     <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/50 p-3">
       <div className="flex items-center gap-2">
         <StatusIcon className="h-4 w-4" />
-        <span className="text-sm font-medium">Versjon {version.version}</span>
+        <span className="text-sm font-medium">Version {version.version}</span>
         <Badge variant={config.variant}>{config.label}</Badge>
       </div>
 
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <span>
-          {version.signatureCount}/{version.totalEmployees} signert
+          {version.signatureCount}/{version.totalEmployees} signed
         </span>
         {version.approvedByName && (
-          <span>· Godkjent av {version.approvedByName}</span>
+          <span>· Published by {version.approvedByName}</span>
         )}
       </div>
 
@@ -142,7 +142,7 @@ export function HandbokVersionBar({
             ) : (
               <Send className="h-3.5 w-3.5" />
             )}
-            Send til godkjenning
+            Submit for publication
           </Button>
         )}
 
@@ -160,36 +160,36 @@ export function HandbokVersionBar({
               ) : (
                 <CheckCircle2 className="h-3.5 w-3.5" />
               )}
-              Godkjenn
+              Publish policy
             </Button>
 
             <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-1.5">
                   <XCircle className="h-3.5 w-3.5" />
-                  Avvis
+                  Reject
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Avvis utkast</DialogTitle>
+                  <DialogTitle>Reject draft</DialogTitle>
                   <DialogDescription>
-                    Versjonen sendes tilbake til utkast med din begrunnelse.
+                    The version will be returned to draft with your reason.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3 py-2">
-                  <Label htmlFor="reject-note">Begrunnelse</Label>
+                  <Label htmlFor="reject-note">Reason</Label>
                   <Textarea
                     id="reject-note"
                     value={rejectNote}
                     onChange={(e) => setRejectNote(e.target.value)}
                     rows={3}
-                    placeholder="Beskriv hvorfor utkastet avvises..."
+                    placeholder="Describe why the draft is being rejected..."
                   />
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setRejectOpen(false)}>
-                    Avbryt
+                    Cancel
                   </Button>
                   <Button
                     onClick={handleReject}
@@ -198,7 +198,7 @@ export function HandbokVersionBar({
                     className="gap-1.5"
                   >
                     {loading === "reject" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                    Avvis
+                    Reject
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -212,29 +212,29 @@ export function HandbokVersionBar({
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1.5">
                 <FilePlus className="h-3.5 w-3.5" />
-                Opprett nytt utkast
+                Create new draft
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Opprett nytt utkast</DialogTitle>
+                <DialogTitle>Create new draft</DialogTitle>
                 <DialogDescription>
-                  Et nytt utkast baseres på gjeldende versjon. Alle seksjoner kopieres.
+                  A new draft is based on the current version. All sections are copied.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3 py-2">
-                <Label htmlFor="change-note">Hva endres? (valgfritt)</Label>
+                <Label htmlFor="change-note">What is changing? (optional)</Label>
                 <Textarea
                   id="change-note"
                   value={changeNote}
                   onChange={(e) => setChangeNote(e.target.value)}
                   rows={3}
-                  placeholder="F.eks. «Oppdaterer renholdsrutine etter gjentakende avvik»"
+                  placeholder="e.g. Updating the cleaning procedure after repeated incidents"
                 />
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setDraftOpen(false)}>
-                  Avbryt
+                  Cancel
                 </Button>
                 <Button
                   onClick={handleCreateDraft}
@@ -242,7 +242,7 @@ export function HandbokVersionBar({
                   className="gap-1.5"
                 >
                   {loading === "draft" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  Opprett utkast
+                  Create draft
                 </Button>
               </DialogFooter>
             </DialogContent>

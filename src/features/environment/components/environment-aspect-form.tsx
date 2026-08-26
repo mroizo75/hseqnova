@@ -41,32 +41,32 @@ interface EnvironmentAspectFormProps {
 }
 
 const categoryOptions: Array<{ value: EnvironmentalAspectCategory; label: string }> = [
-  { value: "RESOURCE_USE", label: "Ressursbruk" },
-  { value: "ENERGY", label: "Energi" },
-  { value: "WATER", label: "Vann" },
-  { value: "WASTE", label: "Avfall" },
-  { value: "EMISSIONS", label: "Utslipp" },
-  { value: "BIODIVERSITY", label: "Biologisk mangfold" },
-  { value: "OTHER", label: "Annet" },
+  { value: "RESOURCE_USE", label: "Resource use" },
+  { value: "ENERGY", label: "Energy" },
+  { value: "WATER", label: "Water" },
+  { value: "WASTE", label: "Waste" },
+  { value: "EMISSIONS", label: "Emissions" },
+  { value: "BIODIVERSITY", label: "Biodiversity" },
+  { value: "OTHER", label: "Other" },
 ];
 
 const impactOptions: Array<{ value: EnvironmentalImpactType; label: string }> = [
-  { value: "NEGATIVE", label: "Negativ påvirkning" },
-  { value: "POSITIVE", label: "Positiv påvirkning" },
+  { value: "NEGATIVE", label: "Negative impact" },
+  { value: "POSITIVE", label: "Positive impact" },
 ];
 
 const frequencyOptions: Array<{ value: ControlFrequency; label: string }> = [
-  { value: "WEEKLY", label: "Ukentlig" },
-  { value: "MONTHLY", label: "Månedlig" },
-  { value: "QUARTERLY", label: "Kvartalsvis" },
-  { value: "ANNUAL", label: "Årlig" },
-  { value: "BIENNIAL", label: "Annet hvert år" },
+  { value: "WEEKLY", label: "Weekly" },
+  { value: "MONTHLY", label: "Monthly" },
+  { value: "QUARTERLY", label: "Quarterly" },
+  { value: "ANNUAL", label: "Annual" },
+  { value: "BIENNIAL", label: "Every two years" },
 ];
 
 const statusOptions: Array<{ value: EnvironmentalAspectStatus; label: string }> = [
-  { value: "ACTIVE", label: "Aktiv" },
-  { value: "MONITORED", label: "Følges opp" },
-  { value: "CLOSED", label: "Lukket" },
+  { value: "ACTIVE", label: "Active" },
+  { value: "MONITORED", label: "Monitored" },
+  { value: "CLOSED", label: "Closed" },
 ];
 
 const NO_OWNER_VALUE = "__none_owner__";
@@ -75,15 +75,15 @@ const NO_MONITORING_VALUE = "__none_frequency__";
 
 const getSignificanceMeta = (score: number) => {
   if (score >= 20) {
-    return { label: "Kritisk påvirkning", color: "text-red-900", bg: "bg-red-100 border-red-300" };
+    return { label: "Critical impact", color: "text-red-900", bg: "bg-red-100 border-red-300" };
   }
   if (score >= 12) {
-    return { label: "Høy påvirkning", color: "text-orange-900", bg: "bg-orange-100 border-orange-300" };
+    return { label: "High impact", color: "text-orange-900", bg: "bg-orange-100 border-orange-300" };
   }
   if (score >= 6) {
-    return { label: "Moderat påvirkning", color: "text-yellow-900", bg: "bg-yellow-100 border-yellow-300" };
+    return { label: "Moderate impact", color: "text-yellow-900", bg: "bg-yellow-100 border-yellow-300" };
   }
-  return { label: "Lav påvirkning", color: "text-green-900", bg: "bg-green-100 border-green-300" };
+  return { label: "Low impact", color: "text-green-900", bg: "bg-green-100 border-green-300" };
 };
 
 const toISODate = (value?: Date | string | null) => {
@@ -157,14 +157,14 @@ export function EnvironmentAspectForm({
           : await updateEnvironmentalAspect({ ...payload, id: aspect!.id });
 
       if (!result.success) {
-        throw new Error(result.error || "Kunne ikke lagre miljøaspekt");
+        throw new Error(result.error || "Could not save the environmental aspect");
       }
 
       toast({
-        title: mode === "create" ? "✅ Miljøaspekt opprettet" : "✅ Miljøaspekt oppdatert",
+        title: mode === "create" ? "Environmental aspect created" : "Environmental aspect updated",
         description: mode === "create"
-          ? "Miljøaspektet er registrert og klart for oppfølging"
-          : "Endringene er lagret",
+          ? "The aspect is recorded and ready for follow-up"
+          : "The changes have been saved",
       });
 
       if (mode === "create" && result.data) {
@@ -175,8 +175,8 @@ export function EnvironmentAspectForm({
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Feil",
-        description: error.message || "Noe gikk galt",
+        title: "Error",
+        description: error.message || "Something went wrong",
       });
     } finally {
       setLoading(false);
@@ -187,27 +187,27 @@ export function EnvironmentAspectForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Miljøpåvirkning</CardTitle>
-          <CardDescription>Klassifiser miljøaspektet og vurder betydningen</CardDescription>
+          <CardTitle>Environmental impact</CardTitle>
+          <CardDescription>Classify the aspect and assess its significance (ISO 14001)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="title">Tittel *</Label>
+              <Label htmlFor="title">Title *</Label>
               <Input
                 id="title"
                 name="title"
-                placeholder="F.eks. Energiforbruk ved nattdrift"
+                placeholder="E.g. Energy use during night shift"
                 defaultValue={aspect?.title}
                 required
                 disabled={loading}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="category">Kategori *</Label>
+              <Label htmlFor="category">Category *</Label>
               <Select value={category} onValueChange={(value: EnvironmentalAspectCategory) => setCategory(value)} disabled={loading}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg kategori" />
+                  <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
                   {categoryOptions.map((option) => (
@@ -222,10 +222,10 @@ export function EnvironmentAspectForm({
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="impactType">Påvirkningstype *</Label>
+              <Label htmlFor="impactType">Impact type *</Label>
               <Select value={impactType} onValueChange={(value: EnvironmentalImpactType) => setImpactType(value)} disabled={loading}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg påvirkning" />
+                  <SelectValue placeholder="Select impact" />
                 </SelectTrigger>
                 <SelectContent>
                   {impactOptions.map((option) => (
@@ -237,13 +237,13 @@ export function EnvironmentAspectForm({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="ownerId">Ansvarlig</Label>
+              <Label htmlFor="ownerId">Responsible person</Label>
               <Select value={ownerId} onValueChange={setOwnerId} disabled={loading}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg ansvarlig" />
+                  <SelectValue placeholder="Select owner" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NO_OWNER_VALUE}>Ikke satt</SelectItem>
+                  <SelectItem value={NO_OWNER_VALUE}>Not set</SelectItem>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.name || user.email}
@@ -256,13 +256,13 @@ export function EnvironmentAspectForm({
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="goalId">Knytt til miljømål</Label>
+              <Label htmlFor="goalId">Link to environmental objective</Label>
               <Select value={goalId} onValueChange={setGoalId} disabled={loading || goals.length === 0}>
                 <SelectTrigger>
-                  <SelectValue placeholder={goals.length ? "Velg mål (valgfritt)" : "Ingen mål tilgjengelig"} />
+                  <SelectValue placeholder={goals.length ? "Select objective (optional)" : "No objectives available"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NO_GOAL_VALUE}>Ikke satt</SelectItem>
+                  <SelectItem value={NO_GOAL_VALUE}>Not set</SelectItem>
                   {goals.map((goal) => (
                     <SelectItem key={goal.id} value={goal.id}>
                       {goal.title}
@@ -272,7 +272,7 @@ export function EnvironmentAspectForm({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="nextReviewDate">Neste revisjon</Label>
+              <Label htmlFor="nextReviewDate">Next review</Label>
               <Input
                 id="nextReviewDate"
                 name="nextReviewDate"
@@ -285,7 +285,7 @@ export function EnvironmentAspectForm({
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>Konsekvens (1-5)</Label>
+              <Label>Severity (1-5)</Label>
               <Slider
                 min={1}
                 max={5}
@@ -294,10 +294,10 @@ export function EnvironmentAspectForm({
                 onValueChange={([value]) => setSeverity(value)}
                 disabled={loading}
               />
-              <p className="text-sm text-muted-foreground">Verdi: {severity}</p>
+              <p className="text-sm text-muted-foreground">Score: {severity}</p>
             </div>
             <div className="space-y-2">
-              <Label>Sannsynlighet (1-5)</Label>
+              <Label>Likelihood (1-5)</Label>
               <Slider
                 min={1}
                 max={5}
@@ -306,13 +306,13 @@ export function EnvironmentAspectForm({
                 onValueChange={([value]) => setLikelihood(value)}
                 disabled={loading}
               />
-              <p className="text-sm text-muted-foreground">Verdi: {likelihood}</p>
+              <p className="text-sm text-muted-foreground">Score: {likelihood}</p>
             </div>
           </div>
 
           <div className={`rounded-lg border p-4 ${significanceMeta.bg}`}>
             <p className={`text-sm font-medium ${significanceMeta.color}`}>
-              Betydning: {significanceScore} ({significanceMeta.label})
+              Significance: {significanceScore} ({significanceMeta.label})
             </p>
           </div>
 
@@ -338,16 +338,16 @@ export function EnvironmentAspectForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>Beskrivelse og kontekst</CardTitle>
-          <CardDescription>Hvor oppstår påvirkningen og hvilke prosesser berøres?</CardDescription>
+          <CardTitle>Description and context</CardTitle>
+          <CardDescription>Where the impact occurs and which processes are affected</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="description">Beskrivelse</Label>
+            <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
               name="description"
-              placeholder="Beskriv hva som forårsaker påvirkningen og hvilke ressurser som berøres"
+              placeholder="Describe what causes the impact and which resources are affected"
               defaultValue={aspect?.description ?? ""}
               rows={4}
               disabled={loading}
@@ -356,21 +356,21 @@ export function EnvironmentAspectForm({
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="process">Prosess</Label>
+              <Label htmlFor="process">Process</Label>
               <Input
                 id="process"
                 name="process"
-                placeholder="F.eks. Produksjon, Logistikk"
+                placeholder="E.g. Production, logistics"
                 defaultValue={aspect?.process ?? ""}
                 disabled={loading}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="location">Lokasjon</Label>
+              <Label htmlFor="location">Location</Label>
               <Input
                 id="location"
                 name="location"
-                placeholder="F.eks. Bygg A, Lager 2"
+                placeholder="E.g. Building A, warehouse 2"
                 defaultValue={aspect?.location ?? ""}
                 disabled={loading}
               />
@@ -381,16 +381,16 @@ export function EnvironmentAspectForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>Kontroller og overvåking</CardTitle>
-          <CardDescription>Definer tiltak og hvordan påvirkningen måles</CardDescription>
+          <CardTitle>Controls and monitoring</CardTitle>
+          <CardDescription>Define actions and how the impact is measured</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="legalRequirement">Myndighetskrav</Label>
+            <Label htmlFor="legalRequirement">Legal requirement</Label>
             <Textarea
               id="legalRequirement"
               name="legalRequirement"
-              placeholder="Henvis til lov/krav eller andre forpliktelser"
+              placeholder="Cite the law, permit or other duty"
               defaultValue={aspect?.legalRequirement ?? ""}
               rows={3}
               disabled={loading}
@@ -398,11 +398,11 @@ export function EnvironmentAspectForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="controlMeasures">Kontrolltiltak</Label>
+            <Label htmlFor="controlMeasures">Control measures</Label>
             <Textarea
               id="controlMeasures"
               name="controlMeasures"
-              placeholder="Hvilke barrierer og rutiner reduserer påvirkningen?"
+              placeholder="Which barriers and procedures reduce the impact?"
               defaultValue={aspect?.controlMeasures ?? ""}
               rows={3}
               disabled={loading}
@@ -411,27 +411,27 @@ export function EnvironmentAspectForm({
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="monitoringMethod">Målemetode</Label>
+              <Label htmlFor="monitoringMethod">Monitoring method</Label>
               <Input
                 id="monitoringMethod"
                 name="monitoringMethod"
-                placeholder="F.eks. Energimåler, Lab-analyse, Visuell inspeksjon"
+                placeholder="E.g. Energy meter, lab analysis, visual inspection"
                 defaultValue={aspect?.monitoringMethod ?? ""}
                 disabled={loading}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="monitoringFrequency">Oppfølgingsfrekvens</Label>
+              <Label htmlFor="monitoringFrequency">Monitoring frequency</Label>
               <Select
                 value={monitoringFrequency}
                 onValueChange={(value) => setMonitoringFrequency(value as ControlFrequency | typeof NO_MONITORING_VALUE)}
                 disabled={loading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg frekvens" />
+                  <SelectValue placeholder="Select frequency" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NO_MONITORING_VALUE}>Ikke satt</SelectItem>
+                  <SelectItem value={NO_MONITORING_VALUE}>Not set</SelectItem>
                   {frequencyOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -446,7 +446,7 @@ export function EnvironmentAspectForm({
 
       <div className="flex justify-end gap-4">
         <Button type="submit" disabled={loading}>
-          {loading ? "Lagrer..." : mode === "create" ? "Opprett miljøaspekt" : "Lagre endringer"}
+          {loading ? "Saving..." : mode === "create" ? "Create environmental aspect" : "Save changes"}
         </Button>
       </div>
     </form>

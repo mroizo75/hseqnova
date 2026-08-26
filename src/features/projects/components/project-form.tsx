@@ -15,6 +15,12 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { CdmDutyHolderFields } from "@/features/projects/components/cdm-duty-holder-fields";
+import {
+  emptyAppointmentHolders,
+  mergeDutyHoldersForForm,
+  type CdmDutyHolderInput,
+} from "@/features/projects/lib/cdm-duty-holders";
 
 interface ProjectFormProps {
   users: Array<{ id: string; name: string | null; email: string }>;
@@ -30,16 +36,17 @@ interface ProjectFormProps {
     startDate?: string;
     endDate?: string;
     projectManagerId?: string;
+    dutyHolders?: CdmDutyHolderInput[];
   };
   mode: "create" | "edit";
 }
 
 const statusOptions = [
-  { value: "PLANNING", label: "Planlegging" },
-  { value: "ACTIVE", label: "Aktiv" },
-  { value: "ON_HOLD", label: "På vent" },
-  { value: "COMPLETED", label: "Fullført" },
-  { value: "ARCHIVED", label: "Arkivert" },
+  { value: "PLANNING", label: "Planning" },
+  { value: "ACTIVE", label: "Active" },
+  { value: "ON_HOLD", label: "On hold" },
+  { value: "COMPLETED", label: "Completed" },
+  { value: "ARCHIVED", label: "Archived" },
 ];
 
 const NO_MANAGER = "__none__";
@@ -51,6 +58,11 @@ export function ProjectForm({ users, defaultValues, mode }: ProjectFormProps) {
   const [projectManagerId, setProjectManagerId] = useState(
     defaultValues?.projectManagerId ?? NO_MANAGER
   );
+  const [dutyHolders, setDutyHolders] = useState<CdmDutyHolderInput[]>(
+    defaultValues?.dutyHolders?.length
+      ? mergeDutyHoldersForForm(defaultValues.dutyHolders, defaultValues.clientName)
+      : emptyAppointmentHolders(defaultValues?.clientName)
+  );
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -61,7 +73,6 @@ export function ProjectForm({ users, defaultValues, mode }: ProjectFormProps) {
       name: form.get("name") as string,
       code: (form.get("code") as string) || undefined,
       orderNumber: (form.get("orderNumber") as string) || undefined,
-      clientName: (form.get("clientName") as string) || undefined,
       location: (form.get("location") as string) || undefined,
       description: (form.get("description") as string) || undefined,
       status: (form.get("status") as string) || "PLANNING",
@@ -69,6 +80,7 @@ export function ProjectForm({ users, defaultValues, mode }: ProjectFormProps) {
       endDate: (form.get("endDate") as string) || undefined,
       projectManagerId:
         projectManagerId !== NO_MANAGER ? projectManagerId : undefined,
+      dutyHolders,
     };
 
     try {
@@ -86,18 +98,18 @@ export function ProjectForm({ users, defaultValues, mode }: ProjectFormProps) {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "Feil ved lagring");
+        throw new Error(data.error || data.message || "Could not save the project");
       }
 
       const data = await res.json();
       toast({
-        title: mode === "create" ? "Prosjekt opprettet" : "Prosjekt oppdatert",
+        title: mode === "create" ? "Project created" : "Project updated",
         className: "bg-green-50 border-green-200",
       });
       router.push(`/dashboard/projects/${data.project.id}`);
       router.refresh();
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Feil", description: err.message });
+      toast({ variant: "destructive", title: "Error", description: err.message });
     } finally {
       setLoading(false);
     }
@@ -107,27 +119,27 @@ export function ProjectForm({ users, defaultValues, mode }: ProjectFormProps) {
     <form onSubmit={handleSubmit} className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Prosjektinformasjon</CardTitle>
+          <CardTitle>Project / site details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="name">Prosjektnavn *</Label>
+              <Label htmlFor="name">Project name *</Label>
               <Input
                 id="name"
                 name="name"
                 required
-                placeholder="F.eks. Mongstad Vedlikehold 2026"
+                placeholder="e.g. Block C, Manchester"
                 defaultValue={defaultValues?.name}
                 disabled={loading}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="code">Prosjektkode</Label>
+              <Label htmlFor="code">Project code</Label>
               <Input
                 id="code"
                 name="code"
-                placeholder="F.eks. PRJ-001"
+                placeholder="e.g. PRJ-001"
                 defaultValue={defaultValues?.code}
                 disabled={loading}
               />
@@ -136,34 +148,21 @@ export function ProjectForm({ users, defaultValues, mode }: ProjectFormProps) {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="orderNumber">Ordrenr / oppdragsnr</Label>
+              <Label htmlFor="orderNumber">Order / contract number</Label>
               <Input
                 id="orderNumber"
                 name="orderNumber"
-                placeholder="F.eks. 2025-0142"
+                placeholder="e.g. 2026-0142"
                 defaultValue={defaultValues?.orderNumber}
                 disabled={loading}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="clientName">Kunde / oppdragsgiver</Label>
-              <Input
-                id="clientName"
-                name="clientName"
-                placeholder="F.eks. Equinor ASA"
-                defaultValue={defaultValues?.clientName}
-                disabled={loading}
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="location">Arbeidssted / lokasjon</Label>
+              <Label htmlFor="location">Site address</Label>
               <Input
                 id="location"
                 name="location"
-                placeholder="F.eks. Mongstad Raffineri"
+                placeholder="e.g. Block C, Spinningfields, Manchester"
                 defaultValue={defaultValues?.location}
                 disabled={loading}
               />
@@ -187,7 +186,7 @@ export function ProjectForm({ users, defaultValues, mode }: ProjectFormProps) {
 
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="startDate">Startdato</Label>
+              <Label htmlFor="startDate">Start date</Label>
               <Input
                 id="startDate"
                 name="startDate"
@@ -197,7 +196,7 @@ export function ProjectForm({ users, defaultValues, mode }: ProjectFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="endDate">Sluttdato</Label>
+              <Label htmlFor="endDate">End date</Label>
               <Input
                 id="endDate"
                 name="endDate"
@@ -207,17 +206,17 @@ export function ProjectForm({ users, defaultValues, mode }: ProjectFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label>Prosjektleder</Label>
+              <Label>Site / project manager</Label>
               <Select
                 value={projectManagerId}
                 onValueChange={setProjectManagerId}
                 disabled={loading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg prosjektleder" />
+                  <SelectValue placeholder="Select a manager" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NO_MANAGER}>— Ingen —</SelectItem>
+                  <SelectItem value={NO_MANAGER}>— None —</SelectItem>
                   {users.map((u) => (
                     <SelectItem key={u.id} value={u.id}>
                       {u.name || u.email}
@@ -229,11 +228,11 @@ export function ProjectForm({ users, defaultValues, mode }: ProjectFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Beskrivelse</Label>
+            <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
               name="description"
-              placeholder="Kort beskrivelse av prosjektet, omfang og mål"
+              placeholder="Short description of the site, scope and programme"
               rows={3}
               defaultValue={defaultValues?.description ?? ""}
               disabled={loading}
@@ -242,13 +241,15 @@ export function ProjectForm({ users, defaultValues, mode }: ProjectFormProps) {
         </CardContent>
       </Card>
 
+      <CdmDutyHolderFields holders={dutyHolders} disabled={loading} onChange={setDutyHolders} />
+
       <div className="flex gap-3">
         <Button type="submit" disabled={loading}>
           {loading
-            ? "Lagrer..."
+            ? "Saving..."
             : mode === "create"
-            ? "Opprett prosjekt"
-            : "Lagre endringer"}
+            ? "Create project"
+            : "Save changes"}
         </Button>
         <Button
           type="button"
@@ -256,7 +257,7 @@ export function ProjectForm({ users, defaultValues, mode }: ProjectFormProps) {
           onClick={() => router.back()}
           disabled={loading}
         >
-          Avbryt
+          Cancel
         </Button>
       </div>
     </form>

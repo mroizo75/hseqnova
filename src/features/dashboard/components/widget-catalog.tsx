@@ -88,9 +88,9 @@ export function WidgetCatalog({
       <DialogContent className="max-w-3xl p-0 overflow-hidden">
         <div className="flex max-h-[85vh] flex-col">
           <DialogHeader className="px-6 pt-6 pb-3">
-            <DialogTitle>Legg til boks</DialogTitle>
+            <DialogTitle>Add a tile</DialogTitle>
             <DialogDescription>
-              Velg hvilke moduler du vil se på dashboardet ditt. Klikk på en modul for å legge den til.
+              Choose which modules to show on your dashboard. Click a module to add it.
             </DialogDescription>
           </DialogHeader>
 
@@ -99,7 +99,7 @@ export function WidgetCatalog({
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Søk etter modul..."
+                placeholder="Search modules..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
@@ -113,7 +113,7 @@ export function WidgetCatalog({
                 onClick={() => setSelectedCategory("all")}
                 className="h-7 text-xs"
               >
-                Alle
+                All
               </Button>
               {categoryOrder.map((key) => {
                 const cat = WIDGET_CATEGORIES[key];
@@ -192,7 +192,7 @@ export function WidgetCatalog({
                                 </span>
                                 {widget.isAdvanced && (
                                   <Badge variant="outline" className="text-[10px] h-4 px-1">
-                                    Avansert
+                                    Advanced
                                   </Badge>
                                 )}
                               </div>
@@ -216,7 +216,7 @@ export function WidgetCatalog({
               })}
               {filteredWidgets.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
-                  Ingen moduler funnet for &quot;{search}&quot;
+                  No modules found for &quot;{search}&quot;
                 </div>
               )}
 
@@ -229,7 +229,7 @@ export function WidgetCatalog({
                 >
                   <span className="text-sm font-medium flex items-center gap-2">
                     <Sparkles className="h-4 w-4" />
-                    Opprett egen flis
+                    Create custom tile
                   </span>
                   {customExpanded ? (
                     <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -241,61 +241,61 @@ export function WidgetCatalog({
                   <div className="px-3 pb-3 space-y-3 border-t pt-3">
                     <div className="grid gap-2 md:grid-cols-3">
                       <div className="space-y-1">
-                        <Label className="text-xs">Navn</Label>
+                        <Label className="text-xs">Name</Label>
                         <Input
                           value={customLabel}
                           onChange={(event) => setCustomLabel(event.target.value)}
-                          placeholder="f.eks. Legemiddelkontroll"
+                          placeholder="e.g. Medicine check"
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs">Ikon</Label>
+                        <Label className="text-xs">Icon</Label>
                         <select
                           className="w-full h-10 rounded-md border bg-background px-3 text-sm"
                           value={customIconName}
                           onChange={(event) => setCustomIconName(event.target.value)}
                         >
-                          <optgroup label="Generelt">
-                            <option value="star">Stjerne</option>
-                            <option value="flag">Flagg</option>
-                            <option value="clipboard">Sjekkliste</option>
-                            <option value="bell">Varselklokke</option>
-                            <option value="shield">Skjold / Vern</option>
-                            <option value="file">Dokument</option>
-                            <option value="check">Godkjent</option>
-                            <option value="alert">Advarsel</option>
-                            <option value="eye">Tilsyn / Overvåking</option>
-                            <option value="lock">Sikkerhet / Lås</option>
+                          <optgroup label="General">
+                            <option value="star">Star</option>
+                            <option value="flag">Flag</option>
+                            <option value="clipboard">Checklist</option>
+                            <option value="bell">Alert</option>
+                            <option value="shield">Shield</option>
+                            <option value="file">Document</option>
+                            <option value="check">Approved</option>
+                            <option value="alert">Warning</option>
+                            <option value="eye">Inspection / monitoring</option>
+                            <option value="lock">Security / lock</option>
                           </optgroup>
-                          <optgroup label="Bygg og industri">
-                            <option value="hardhat">Hjelm / Bygg</option>
-                            <option value="hammer">Hammer / Vedlikehold</option>
-                            <option value="wrench">Skrunøkkel / Verktøy</option>
-                            <option value="building">Bygning</option>
-                            <option value="warehouse">Lager</option>
-                            <option value="package">Pakke / Logistikk</option>
+                          <optgroup label="Construction and industry">
+                            <option value="hardhat">Hard hat</option>
+                            <option value="hammer">Hammer / maintenance</option>
+                            <option value="wrench">Wrench / tools</option>
+                            <option value="building">Building</option>
+                            <option value="warehouse">Warehouse</option>
+                            <option value="package">Logistics</option>
                           </optgroup>
-                          <optgroup label="Sikkerhet og teknikk">
-                            <option value="flame">Brann</option>
-                            <option value="zap">Elektro / Strøm</option>
-                            <option value="plug">Plugg / El-tilkobling</option>
-                            <option value="droplets">Vann / Legionella</option>
-                            <option value="thermometer">Temperatur</option>
+                          <optgroup label="Safety and plant">
+                            <option value="flame">Fire</option>
+                            <option value="zap">Electrical</option>
+                            <option value="plug">Plug / supply</option>
+                            <option value="droplets">Water / Legionella</option>
+                            <option value="thermometer">Temperature</option>
                           </optgroup>
-                          <optgroup label="Helse og miljø">
-                            <option value="stethoscope">Medisin / Helse</option>
-                            <option value="heart">Trivsel / Arbeidsmiljø</option>
-                            <option value="leaf">Miljø</option>
-                            <option value="utensils">Mat / Hygiene</option>
+                          <optgroup label="Health and environment">
+                            <option value="stethoscope">Health</option>
+                            <option value="heart">Wellbeing</option>
+                            <option value="leaf">Environment</option>
+                            <option value="utensils">Food hygiene</option>
                           </optgroup>
-                          <optgroup label="Transport og opplæring">
-                            <option value="truck">Transport / Kjøretøy</option>
-                            <option value="graduation">Opplæring / Kurs</option>
+                          <optgroup label="Transport and training">
+                            <option value="truck">Transport / vehicles</option>
+                            <option value="graduation">Training / courses</option>
                           </optgroup>
                         </select>
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs">Koble mot</Label>
+                        <Label className="text-xs">Link to</Label>
                         <select
                           className="w-full h-10 rounded-md border bg-background px-3 text-sm"
                           value={customLinkType}
@@ -303,15 +303,15 @@ export function WidgetCatalog({
                             setCustomLinkType(event.target.value as "function" | "form" | "url")
                           }
                         >
-                          <option value="function">Funksjon</option>
-                          <option value="form">Skjema</option>
-                          <option value="url">Egendefinert lenke</option>
+                          <option value="function">Function</option>
+                          <option value="form">Form</option>
+                          <option value="url">Custom link</option>
                         </select>
                       </div>
                     </div>
 
                     <div className="space-y-1">
-                      <Label className="text-xs">Farge</Label>
+                        <Label className="text-xs">Colour</Label>
                       <div className="flex flex-wrap gap-1.5">
                         {([
                           { key: "blue",    bg: "bg-blue-500" },
@@ -351,7 +351,7 @@ export function WidgetCatalog({
 
                     {customLinkType === "function" && (
                       <div className="space-y-1">
-                        <Label className="text-xs">Velg funksjon</Label>
+                        <Label className="text-xs">Select function</Label>
                         <select
                           className="w-full h-10 rounded-md border bg-background px-3 text-sm"
                           value={customFunctionHref}
@@ -368,7 +368,7 @@ export function WidgetCatalog({
 
                     {customLinkType === "form" && (
                       <div className="space-y-1">
-                        <Label className="text-xs">Velg skjema</Label>
+                        <Label className="text-xs">Select form</Label>
                         <select
                           className="w-full h-10 rounded-md border bg-background px-3 text-sm"
                           value={customFormHref}
@@ -385,7 +385,7 @@ export function WidgetCatalog({
 
                     {customLinkType === "url" && (
                       <div className="space-y-1">
-                        <Label className="text-xs">Lenke</Label>
+                        <Label className="text-xs">Link</Label>
                         <Input
                           value={customUrl}
                           onChange={(event) => setCustomUrl(event.target.value)}
@@ -415,7 +415,7 @@ export function WidgetCatalog({
                           setCustomExpanded(false);
                         }}
                       >
-                        Legg til egen flis
+                        Add custom tile
                       </Button>
                     </div>
                   </div>

@@ -75,10 +75,10 @@ function UploadList({
             <p className="text-xs text-muted-foreground">{row.originalFileName}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline" size="sm" asChild className="bg-transparent">
               <Link href={`/api/files/${row.fileKey}`} target="_blank" rel="noopener noreferrer">
                 <FileText className="h-4 w-4 mr-1" />
-                Åpne
+                Open
               </Link>
             </Button>
             {canRemove(row.createdById) && (
@@ -116,24 +116,24 @@ export function RoutineUploadsSection({
     startTransition(async () => {
       const r = await deleteRoutineUploadedDocument(id);
       if (r.success) {
-        toast({ title: "Slettet" });
+        toast({ title: "Deleted" });
       } else {
-        toast({ variant: "destructive", title: "Kunne ikke slette", description: r.error.message });
+        toast({ variant: "destructive", title: "Could not delete", description: r.error.message });
       }
     });
   };
 
-  const rutiner = uploads.filter((u) => (u.documentType ?? "RUTINE") === "RUTINE");
-  const instrukser = uploads.filter((u) => u.documentType === "INSTRUKS");
+  const procedures = uploads.filter((u) => (u.documentType ?? "RUTINE") === "RUTINE");
+  const instructions = uploads.filter((u) => u.documentType === "INSTRUKS");
 
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <CardTitle>Bedriftens rutiner og instrukser</CardTitle>
+            <CardTitle>Uploaded procedures and instructions</CardTitle>
             <CardDescription className="mt-1">
-              Opplastede dokumenter som er tilgjengelige for alle med tilgang til rutiner.
+              Files available to everyone with access to procedures.
             </CardDescription>
           </div>
           {canCreate && (
@@ -141,14 +141,14 @@ export function RoutineUploadsSection({
               <DialogTrigger asChild>
                 <Button size="sm">
                   <Upload className="h-4 w-4 mr-2" />
-                  Last opp
+                  Upload
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
-                  <DialogTitle>Last opp dokument</DialogTitle>
+                  <DialogTitle>Upload document</DialogTitle>
                   <DialogDescription>
-                    Last opp en rutine eller instruks som PDF eller Word-fil.
+                    Upload a procedure or instruction as a PDF or Word file.
                   </DialogDescription>
                 </DialogHeader>
                 <form
@@ -157,12 +157,12 @@ export function RoutineUploadsSection({
                     startTransition(async () => {
                       const r = await createRoutineUploadedDocument(fd);
                       if (r.success) {
-                        toast({ title: "Lagret", description: "Dokumentet er lastet opp." });
+                        toast({ title: "Saved", description: "The document has been uploaded." });
                         setDialogOpen(false);
                       } else {
                         toast({
                           variant: "destructive",
-                          title: "Kunne ikke laste opp",
+                          title: "Could not upload",
                           description: r.error.message,
                         });
                       }
@@ -177,32 +177,32 @@ export function RoutineUploadsSection({
                       className="w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                       defaultValue="RUTINE"
                     >
-                      <option value="RUTINE">Rutine</option>
-                      <option value="INSTRUKS">Instruks</option>
+                      <option value="RUTINE">Procedure</option>
+                      <option value="INSTRUKS">Instruction</option>
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="ru-title">Tittel *</Label>
+                    <Label htmlFor="ru-title">Title *</Label>
                     <Input
                       id="ru-title"
                       name="title"
                       required
-                      placeholder="F.eks. Rutine ved arbeid i høyden"
+                      placeholder="e.g. Working at height"
                       maxLength={200}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="ru-desc">Kort beskrivelse</Label>
+                    <Label htmlFor="ru-desc">Short description</Label>
                     <Textarea
                       id="ru-desc"
                       name="description"
                       rows={2}
-                      placeholder="Valgfritt – vises for ansatte"
+                      placeholder="Optional — shown to employees"
                       maxLength={4000}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="ru-file">Fil *</Label>
+                    <Label htmlFor="ru-file">File *</Label>
                     <Input
                       id="ru-file"
                       name="file"
@@ -212,12 +212,12 @@ export function RoutineUploadsSection({
                     />
                   </div>
                   <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                      Avbryt
+                    <Button type="button" variant="outline" className="bg-transparent" onClick={() => setDialogOpen(false)}>
+                      Cancel
                     </Button>
                     <Button type="submit" disabled={pending}>
                       <Upload className="h-4 w-4 mr-2" />
-                      Last opp
+                      Upload
                     </Button>
                   </div>
                 </form>
@@ -229,39 +229,39 @@ export function RoutineUploadsSection({
       <CardContent>
         {uploads.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
-            Ingen opplastede dokumenter ennå. {canCreate ? "Klikk «Last opp» for å legge til." : ""}
+            No uploaded documents yet. {canCreate ? "Click Upload to add one." : ""}
           </p>
         ) : (
-          <Tabs defaultValue="rutiner">
+          <Tabs defaultValue="procedures">
             <TabsList>
-              <TabsTrigger value="rutiner" className="gap-1.5">
+              <TabsTrigger value="procedures" className="gap-1.5">
                 <BookOpen className="h-4 w-4" />
-                Rutiner
+                Procedures
                 <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0">
-                  {rutiner.length}
+                  {procedures.length}
                 </Badge>
               </TabsTrigger>
-              <TabsTrigger value="instrukser" className="gap-1.5">
+              <TabsTrigger value="instructions" className="gap-1.5">
                 <ClipboardList className="h-4 w-4" />
-                Instrukser
+                Instructions
                 <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0">
-                  {instrukser.length}
+                  {instructions.length}
                 </Badge>
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="rutiner" className="mt-4">
+            <TabsContent value="procedures" className="mt-4">
               <UploadList
-                items={rutiner}
-                emptyMessage="Ingen opplastede rutiner ennå."
+                items={procedures}
+                emptyMessage="No uploaded procedures yet."
                 canRemove={canRemoveRow}
                 pending={pending}
                 onDelete={handleDelete}
               />
             </TabsContent>
-            <TabsContent value="instrukser" className="mt-4">
+            <TabsContent value="instructions" className="mt-4">
               <UploadList
-                items={instrukser}
-                emptyMessage="Ingen opplastede instrukser ennå."
+                items={instructions}
+                emptyMessage="No uploaded instructions yet."
                 canRemove={canRemoveRow}
                 pending={pending}
                 onDelete={handleDelete}

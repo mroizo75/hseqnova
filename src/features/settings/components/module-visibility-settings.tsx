@@ -30,6 +30,7 @@ import {
 import {
   MODULE_DEFAULTS,
   MODULE_LABELS,
+  UK_SETTINGS_MODULES,
   type ModuleKey,
   type ModuleVisibilityConfig,
 } from "@/lib/module-visibility";
@@ -42,12 +43,12 @@ interface ModuleVisibilitySettingsProps {
   isAdmin: boolean;
 }
 
-const ALL_MODULES = Object.keys(MODULE_DEFAULTS) as ModuleKey[];
+const ALL_MODULES = UK_SETTINGS_MODULES;
 
 const ROLES_IN_ORDER: Role[] = ["ADMIN", "HMS", "LEDER", "VERNEOMBUD", "ANSATT", "BHT", "REVISOR"];
 
 // Moduler der ansatte alltid kan sende inn, selv om de ikke ser andres data
-const SUBMIT_ONLY_MODULES = new Set<ModuleKey>(["incidents", "ruh", "sja", "forms"]);
+const SUBMIT_ONLY_MODULES = new Set<ModuleKey>(["incidents", "sja"]);
 
 export function ModuleVisibilitySettings({
   initialConfig,
@@ -101,14 +102,14 @@ export function ModuleVisibilitySettings({
     setLoading(false);
     if (result.success) {
       toast({
-        title: "Modul-synlighet oppdatert",
-        description: "Innstillingene er lagret. Brukere vil se endringen neste gang de laster siden.",
+        title: "Access updated",
+        description: "Role access is saved. People will see the change the next time they load the page.",
       });
       router.refresh();
     } else {
       toast({
         variant: "destructive",
-        title: "Kunne ikke lagre",
+        title: "Could not save",
         description: result.error,
       });
     }
@@ -119,7 +120,7 @@ export function ModuleVisibilitySettings({
       <Card>
         <CardContent className="pt-6">
           <p className="text-sm text-muted-foreground">
-            Kun administratorer kan konfigurere modul-synlighet.
+            Only administrators can change who can see each module.
           </p>
         </CardContent>
       </Card>
@@ -132,12 +133,12 @@ export function ModuleVisibilitySettings({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Lock className="h-5 w-5" />
-            Hvem kan se og behandle innsendte data?
+            Who can see and handle records?
           </CardTitle>
           <CardDescription>
-            Velg hvilke roller som kan <strong>lese og behandle</strong> innsendt data i hvert modul.
-            Roller som ikke er huket av vil ikke se andres innsendte data. ADMIN har alltid full tilgang.
-            Endringer logges i revisjonssporet.
+            Tick which roles can <strong>read and handle</strong> other people&apos;s records in each
+            module. Unticked roles do not see others&apos; data. Administrator always has full access.
+            Changes are written to the audit trail.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -147,18 +148,18 @@ export function ModuleVisibilitySettings({
             <div className="rounded-lg border bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 p-3 flex gap-2.5 text-sm text-green-900 dark:text-green-100">
               <Send className="h-4 w-4 mt-0.5 shrink-0 text-green-600" />
               <div>
-                <p className="font-semibold">Innsending er alltid åpen</p>
+                <p className="font-semibold">Reporting stays open</p>
                 <p className="text-xs mt-0.5 text-green-800 dark:text-green-200">
-                  Alle ansatte kan fortsatt sende inn avvik, RUH, SJA og skjemaer – uavhengig av hvem som kan se dem.
+                  Employees can still record accident book entries and RAMS, regardless of who can review them.
                 </p>
               </div>
             </div>
             <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 p-3 flex gap-2.5 text-sm text-blue-900 dark:text-blue-100">
               <Eye className="h-4 w-4 mt-0.5 shrink-0 text-blue-600" />
               <div>
-                <p className="font-semibold">Hvem ser og behandler?</p>
+                <p className="font-semibold">Who sees and handles?</p>
                 <p className="text-xs mt-0.5 text-blue-800 dark:text-blue-200">
-                  Kun valgte roller ser andres innsendte data, kan undersøke avvik, godkjenne SJA osv. Varsler sendes kun til roller med tilgang.
+                  Only ticked roles see other people&apos;s records, investigate incidents or approve RAMS. Notifications go only to roles with access.
                 </p>
               </div>
             </div>
@@ -167,8 +168,7 @@ export function ModuleVisibilitySettings({
           <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 p-3 flex gap-2 text-sm text-amber-900 dark:text-amber-100">
             <Info className="h-4 w-4 mt-0.5 shrink-0" />
             <span>
-              <strong>Eksempel:</strong> Hvis kun <em>Admin</em> og <em>HMS-ansvarlig</em> er valgt for «Avvik», kan Leder og andre
-              ikke se, undersøke eller lukke avvik – selv om ansatte fremdeles kan rapportere dem.
+              <strong>Example:</strong> if only Administrator and HSE manager are ticked for the accident book, line managers cannot see, investigate or close other people&apos;s entries — employees can still record them.
             </span>
           </div>
 
@@ -176,14 +176,14 @@ export function ModuleVisibilitySettings({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="text-left py-3 px-4 font-medium w-56">Modul</th>
+                  <th className="text-left py-3 px-4 font-medium w-56">Module</th>
                   {ROLES_IN_ORDER.map((role) => (
                     <th key={role} className="text-center py-3 px-2 font-medium min-w-[80px]">
                       <div className="flex flex-col items-center gap-1">
                         <span className="text-xs">{getRoleDisplayName(role)}</span>
                         {role === "ADMIN" && (
                           <Badge variant="secondary" className="text-[10px] px-1 py-0">
-                            Alltid
+                            Always
                           </Badge>
                         )}
                       </div>
@@ -210,7 +210,7 @@ export function ModuleVisibilitySettings({
                           <span>{MODULE_LABELS[mod]}</span>
                           {SUBMIT_ONLY_MODULES.has(mod) && isRestricted && (
                             <Badge variant="outline" className="text-[10px] px-1 py-0 text-green-700 border-green-300 ml-1">
-                              Innsending åpen
+                              Reporting open
                             </Badge>
                           )}
                         </div>
@@ -239,34 +239,33 @@ export function ModuleVisibilitySettings({
           <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3">
             <Button onClick={handleSave} disabled={loading}>
               <Save className="mr-2 h-4 w-4" />
-              {loading ? "Lagrer..." : "Lagre innstillinger"}
+              {loading ? "Saving…" : "Save access"}
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" disabled={loading} className="bg-transparent">
                   <RotateCcw className="mr-2 h-4 w-4" />
-                  Tilbakestill til standard
+                  Reset to default
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Tilbakestille tilgangsinnstillinger?</AlertDialogTitle>
+                  <AlertDialogTitle>Reset access to the default?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Dette setter alle moduler tilbake til systemets standardtilgang.
-                    Eventuelle begrensninger du har satt fjernes i skjemaet.
-                    Du må trykke «Lagre innstillinger» etterpå for at endringen skal tre i kraft.
+                    This restores each module to the system default. Restrictions you have ticked
+                    off in this form are cleared. Press Save access afterwards to apply.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction onClick={resetToDefault}>
-                    Tilbakestill
+                    Reset
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
             <p className="text-xs text-muted-foreground ml-auto">
-              Endringer trer i kraft umiddelbart for nye sideinnlastinger.
+              Changes apply on the next page load.
             </p>
           </div>
         </CardContent>

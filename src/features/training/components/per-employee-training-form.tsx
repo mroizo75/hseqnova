@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useId } from "react";
+import { useState, useId, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ interface PerEmployeeTrainingFormProps {
   courseTemplates: CourseTemplate[];
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  preselectedUserId?: string;
 }
 
 interface CourseRow {
@@ -78,6 +79,7 @@ export function PerEmployeeTrainingForm({
   courseTemplates,
   open: controlledOpen,
   onOpenChange,
+  preselectedUserId,
 }: PerEmployeeTrainingFormProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -93,6 +95,13 @@ export function PerEmployeeTrainingForm({
   const [userSearch, setUserSearch] = useState("");
   const [rows, setRows] = useState<CourseRow[]>([makeRow(`${baseId}-0`)]);
   const [counter, setCounter] = useState(1);
+
+  useEffect(() => {
+    if (open && preselectedUserId) {
+      setSelectedUserId(preselectedUserId);
+      setStep(2);
+    }
+  }, [open, preselectedUserId]);
 
   const selectedUser = users.find((u) => u.id === selectedUserId);
 
@@ -177,7 +186,7 @@ export function PerEmployeeTrainingForm({
             proofDocKey = key ?? undefined;
           }
           return {
-            courseKey: row.courseKey,
+            courseKey: row.courseKey === "custom" ? `custom-${row.rowId}` : row.courseKey,
             title: row.title,
             provider: row.provider,
             completedAt: row.completedAt || undefined,
@@ -196,8 +205,8 @@ export function PerEmployeeTrainingForm({
 
       if (result.success) {
         toast({
-          title: "Kurs registrert",
-          description: `${rows.length} kurs er registrert for ${selectedUser?.name || selectedUser?.email}`,
+          title: "Competence recorded",
+          description: `${rows.length} record${rows.length === 1 ? "" : "s"} added for ${selectedUser?.name || selectedUser?.email}`,
           className: "bg-green-50 border-green-200",
         });
         handleClose(false);
@@ -205,15 +214,15 @@ export function PerEmployeeTrainingForm({
       } else {
         toast({
           variant: "destructive",
-          title: "Feil",
-          description: result.error || "Kunne ikke registrere kursene",
+          title: "Could not record competence",
+          description: result.error || "The courses could not be saved",
         });
       }
     } catch {
       toast({
         variant: "destructive",
-        title: "Uventet feil",
-        description: "Noe gikk galt under registreringen",
+        title: "Unexpected error",
+        description: "Something went wrong while saving",
       });
     } finally {
       setLoading(false);
@@ -224,9 +233,9 @@ export function PerEmployeeTrainingForm({
     <Dialog open={open} onOpenChange={handleClose}>
       {controlledOpen === undefined && (
         <DialogTrigger asChild>
-          <Button variant="outline">
+          <Button variant="outline" className="bg-transparent">
             <User className="mr-2 h-4 w-4" />
-            Per ansatt
+            Add for employee
           </Button>
         </DialogTrigger>
       )}
@@ -235,16 +244,16 @@ export function PerEmployeeTrainingForm({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
-            Registrer kurs per ansatt
+            Add competence for one employee
           </DialogTitle>
           <DialogDescription>
-            Velg én ansatt og legg til alle kurs de har fullført
+            Choose an employee, then attach courses, certificates and other evidence.
           </DialogDescription>
         </DialogHeader>
 
         {/* Step indicator */}
         <div className="flex items-center gap-2 mb-2">
-          {(["1. Ansatt", "2. Kurs", "3. Bekreft"] as const).map((label, i) => (
+          {(["1. Employee", "2. Courses", "3. Confirm"] as const).map((label, i) => (
             <div key={label} className="flex items-center">
               <div
                 className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold transition-colors ${
@@ -275,7 +284,7 @@ export function PerEmployeeTrainingForm({
             <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
               <Search className="h-4 w-4 text-muted-foreground shrink-0" />
               <Input
-                placeholder="Søk etter ansatt..."
+                placeholder="Search employees..."
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
                 className="border-0 bg-transparent p-0 focus-visible:ring-0 h-auto"
@@ -309,7 +318,7 @@ export function PerEmployeeTrainingForm({
               ))}
               {filteredUsers.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-6">
-                  Ingen ansatte funnet
+                  No employees found
                 </p>
               )}
             </div>
@@ -321,7 +330,7 @@ export function PerEmployeeTrainingForm({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                Kurs for{" "}
+                Courses for{" "}
                 <span className="font-semibold text-foreground">
                   {selectedUser?.name || selectedUser?.email}
                 </span>
@@ -334,7 +343,7 @@ export function PerEmployeeTrainingForm({
                 disabled={loading}
               >
                 <Plus className="mr-1 h-4 w-4" />
-                Legg til kurs
+                Add course
               </Button>
             </div>
 
@@ -346,7 +355,7 @@ export function PerEmployeeTrainingForm({
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                      Kurs {idx + 1}
+                      Course {idx + 1}
                     </span>
                     {rows.length > 1 && (
                       <Button
@@ -364,14 +373,14 @@ export function PerEmployeeTrainingForm({
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="col-span-2 space-y-1">
-                      <Label className="text-xs">Kursmal</Label>
+                      <Label className="text-xs">Course template</Label>
                       <Select
                         value={row.courseKey}
                         onValueChange={(v) => handleCourseSelect(row.rowId, v)}
                         disabled={loading}
                       >
                         <SelectTrigger className="h-8 text-sm">
-                          <SelectValue placeholder="Velg fra mal..." />
+                          <SelectValue placeholder="Choose a template..." />
                         </SelectTrigger>
                         <SelectContent>
                           {courseTemplates.map((c) => (
@@ -384,35 +393,35 @@ export function PerEmployeeTrainingForm({
                               )}
                             </SelectItem>
                           ))}
-                          <SelectItem value="custom">Egendefinert</SelectItem>
+                          <SelectItem value="custom">Custom</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="col-span-2 space-y-1">
-                      <Label className="text-xs">Kurstittel *</Label>
+                      <Label className="text-xs">Title *</Label>
                       <Input
                         className="h-8 text-sm"
                         value={row.title}
                         onChange={(e) => updateRow(row.rowId, { title: e.target.value })}
-                        placeholder="Tittel"
+                        placeholder="Title"
                         disabled={loading}
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <Label className="text-xs">Leverandør *</Label>
+                      <Label className="text-xs">Provider *</Label>
                       <Input
                         className="h-8 text-sm"
                         value={row.provider}
                         onChange={(e) => updateRow(row.rowId, { provider: e.target.value })}
-                        placeholder="F.eks. Røde Kors"
+                        placeholder="e.g. St John Ambulance"
                         disabled={loading}
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <Label className="text-xs">Gjennomført</Label>
+                      <Label className="text-xs">Completed</Label>
                       <Input
                         className="h-8 text-sm"
                         type="date"
@@ -424,7 +433,7 @@ export function PerEmployeeTrainingForm({
                     </div>
 
                     <div className="space-y-1">
-                      <Label className="text-xs">Gyldig til</Label>
+                      <Label className="text-xs">Valid until</Label>
                       <Input
                         className="h-8 text-sm"
                         type="date"
@@ -436,7 +445,7 @@ export function PerEmployeeTrainingForm({
                     </div>
 
                     <div className="col-span-2 space-y-1">
-                      <Label className="text-xs">Diplom</Label>
+                      <Label className="text-xs">Certificate</Label>
                       {row.file ? (
                         <div className="flex items-center justify-between rounded border bg-blue-50 border-blue-200 px-2 py-1">
                           <div className="flex items-center gap-1.5 text-blue-700 min-w-0">
@@ -455,7 +464,7 @@ export function PerEmployeeTrainingForm({
                       ) : (
                         <label className="flex cursor-pointer items-center gap-2 rounded border border-dashed px-3 py-1.5 text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors">
                           <Upload className="h-3.5 w-3.5" />
-                          Last opp diplom (valgfritt)
+                          Upload certificate (optional)
                           <input
                             type="file"
                             accept=".pdf,.jpg,.jpeg,.png"
@@ -482,7 +491,7 @@ export function PerEmployeeTrainingForm({
                         htmlFor={`req-${row.rowId}`}
                         className="text-xs font-normal cursor-pointer"
                       >
-                        Obligatorisk kurs
+                        Required course
                       </Label>
                     </div>
                   </div>
@@ -498,7 +507,7 @@ export function PerEmployeeTrainingForm({
               disabled={loading}
             >
               <Plus className="mr-2 h-4 w-4" />
-              Legg til ett kurs til
+              Add another course
             </Button>
           </div>
         )}
@@ -507,17 +516,17 @@ export function PerEmployeeTrainingForm({
         {step === 3 && (
           <div className="space-y-4">
             <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
-              <h3 className="font-semibold text-sm">Oppsummering</h3>
+              <h3 className="font-semibold text-sm">Summary</h3>
               <div className="grid grid-cols-2 gap-1 text-sm">
-                <span className="text-muted-foreground">Ansatt</span>
+                <span className="text-muted-foreground">Employee</span>
                 <span className="font-medium">
                   {selectedUser?.name || selectedUser?.email}
                 </span>
-                <span className="text-muted-foreground">Antall kurs</span>
+                <span className="text-muted-foreground">Courses</span>
                 <span className="font-semibold text-primary">{rows.length}</span>
-                <span className="text-muted-foreground">Diplomer klar</span>
+                <span className="text-muted-foreground">Files ready</span>
                 <span className="font-medium">
-                  {rows.filter((r) => r.file).length} av {rows.length}
+                  {rows.filter((r) => r.file).length} of {rows.length}
                 </span>
               </div>
             </div>
@@ -533,19 +542,19 @@ export function PerEmployeeTrainingForm({
                     <p className="text-xs text-muted-foreground">
                       {row.provider}
                       {row.completedAt &&
-                        ` · ${new Date(row.completedAt).toLocaleDateString("nb-NO")}`}
+                        ` · ${new Date(row.completedAt).toLocaleDateString("en-GB")}`}
                       {row.validUntil &&
-                        ` → ${new Date(row.validUntil).toLocaleDateString("nb-NO")}`}
+                        ` → ${new Date(row.validUntil).toLocaleDateString("en-GB")}`}
                     </p>
                   </div>
                   {row.file ? (
                     <div className="flex items-center gap-1 text-green-600 shrink-0 ml-2">
                       <FileText className="h-3 w-3" />
-                      <span className="text-xs">Diplom</span>
+                      <span className="text-xs">File</span>
                     </div>
                   ) : (
                     <span className="text-xs text-muted-foreground shrink-0 ml-2">
-                      Uten diplom
+                      No file
                     </span>
                   )}
                 </div>
@@ -553,8 +562,8 @@ export function PerEmployeeTrainingForm({
             </div>
 
             <p className="text-xs text-muted-foreground bg-blue-50 border border-blue-200 rounded p-2">
-              Dette vil opprette{" "}
-              <strong>{rows.length} kursregistreringer</strong> for{" "}
+              This will add{" "}
+              <strong>{rows.length} record{rows.length === 1 ? "" : "s"}</strong> for{" "}
               <strong>{selectedUser?.name || selectedUser?.email}</strong>.
             </p>
           </div>
@@ -569,7 +578,7 @@ export function PerEmployeeTrainingForm({
             disabled={loading}
           >
             <ChevronLeft className="mr-1 h-4 w-4" />
-            {step === 1 ? "Avbryt" : "Tilbake"}
+            {step === 1 ? "Cancel" : "Back"}
           </Button>
 
           {step < 3 ? (
@@ -581,7 +590,7 @@ export function PerEmployeeTrainingForm({
                 (step === 2 && !canProceedStep2)
               }
             >
-              Neste
+              Next
               <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           ) : (
@@ -594,12 +603,12 @@ export function PerEmployeeTrainingForm({
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Registrerer...
+                  Saving...
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Registrer {rows.length} kurs
+                  Save {rows.length} record{rows.length === 1 ? "" : "s"}
                 </>
               )}
             </Button>

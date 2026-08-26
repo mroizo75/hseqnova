@@ -1,28 +1,34 @@
 "use server";
 
-import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { Role } from "@prisma/client";
 import { getRequiredTenantContext } from "@/lib/tenant-context";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { getAuthContext } from "@/lib/server-authorization";
+
+const ALERT_ROLES: Role[] = ["ADMIN", "HMS", "LEDER"];
 
 async function getSessionContext() {
   const tenantContext = await getRequiredTenantContext().catch(() => null);
   if (!tenantContext) {
-    return { error: "Ikke autentisert" };
+    return { error: "Not signed in" };
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: tenantContext.userId },
-    include: {
-      tenants: true,
-    },
-  });
+  const { data: user } = await getAdminDb()
+    .from("User")
+    .select("id, phone")
+    .eq("id", tenantContext.userId)
+    .maybeSingle();
 
-  if (!user || user.tenants.length === 0) {
-    return { error: "Bruker ikke funnet eller ikke tilknyttet tenant" };
+  if (!user) {
+    return { error: "User not found" };
   }
 
-  return { user, tenantId: tenantContext.tenantId };
+  const auth = await getAuthContext();
+  return {
+    user: { ...user, tenants: [{ tenantId: tenantContext.tenantId, role: auth?.role }] },
+    tenantId: tenantContext.tenantId,
+  };
 }
 
 export async function updateNotificationSettings(data: {
@@ -33,6 +39,12 @@ export async function updateNotificationSettings(data: {
   notifyInspections: boolean;
   notifyAudits: boolean;
   notifyMeasures: boolean;
+  notifyIncidents: boolean;
+  notifyDocuments: boolean;
+  notifyTraining: boolean;
+  notifyRisks: boolean;
+  dailyDigest: boolean;
+  weeklyDigest: boolean;
   constructionDailyCheckAlertsEnabled?: boolean;
   constructionDailyCheckAlertRole?: Role;
 }) {
@@ -44,41 +56,30 @@ export async function updateNotificationSettings(data: {
 
     const { user, tenantId } = context;
 
-    // Valider at reminderDaysBefore er et gyldig tall
     if (data.reminderDaysBefore < 0 || data.reminderDaysBefore > 30) {
       return {
         success: false,
-        error: "Påminnelsestid må være mellom 0 og 30 dager",
+        error: "Reminder lead time must be between 0 and 30 days",
       };
     }
 
-    // Hent UserTenant for å sjekke telefonnummer
-    const userTenant = await prisma.userTenant.findUnique({
-      where: {
-        userId_tenantId: {
-          userId: user.id,
-          tenantId,
-        },
-      },
-    });
+    const { data: userTenant } = await getAdminDb()
+      .from("UserTenant")
+      .select("phone")
+      .eq("userId", user.id)
+      .eq("tenantId", tenantId)
+      .maybeSingle();
 
-    // Hvis SMS er aktivert, sjekk at bruker har telefonnummer (sjekk både UserTenant og User)
     if (data.notifyBySms && !userTenant?.phone && !user.phone) {
       return {
         success: false,
-        error: "Du må legge til telefonnummer før du kan aktivere SMS-varsler",
+        error: "Add a telephone number on your profile before turning on text messages",
       };
     }
 
-    // Oppdater innstillinger på UserTenant (tenant-spesifikk)
-    await prisma.userTenant.update({
-      where: {
-        userId_tenantId: {
-          userId: user.id,
-          tenantId,
-        },
-      },
-      data: {
+    const { error } = await getAdminDb()
+      .from("UserTenant")
+      .update({
         notifyByEmail: data.notifyByEmail,
         notifyBySms: data.notifyBySms,
         reminderDaysBefore: data.reminderDaysBefore,
@@ -86,33 +87,46 @@ export async function updateNotificationSettings(data: {
         notifyInspections: data.notifyInspections,
         notifyAudits: data.notifyAudits,
         notifyMeasures: data.notifyMeasures,
-      },
-    });
+        notifyIncidents: data.notifyIncidents,
+        notifyDocuments: data.notifyDocuments,
+        notifyTraining: data.notifyTraining,
+        notifyRisks: data.notifyRisks,
+        dailyDigest: data.dailyDigest,
+        weeklyDigest: data.weeklyDigest,
+        updatedAt: new Date().toISOString(),
+      })
+      .eq("userId", user.id)
+      .eq("tenantId", tenantId);
+    if (error) {
+      throw { code: "NOTIFICATION_UPDATE_FAILED", message: error.message };
+    }
 
     const membership = user.tenants.find((tenant) => tenant.tenantId === tenantId);
     if (
       membership?.role === "ADMIN" &&
       data.constructionDailyCheckAlertsEnabled !== undefined &&
-      data.constructionDailyCheckAlertRole
+      data.constructionDailyCheckAlertRole &&
+      ALERT_ROLES.includes(data.constructionDailyCheckAlertRole)
     ) {
-      await prisma.tenant.update({
-        where: { id: tenantId },
-        data: {
+      const { error: tenantError } = await getAdminDb()
+        .from("Tenant")
+        .update({
           constructionDailyCheckAlertsEnabled: data.constructionDailyCheckAlertsEnabled,
           constructionDailyCheckAlertRole: data.constructionDailyCheckAlertRole,
-        },
-      });
+          updatedAt: new Date().toISOString(),
+        })
+        .eq("id", tenantId);
+      if (tenantError) {
+        throw { code: "TENANT_UPDATE_FAILED", message: tenantError.message };
+      }
     }
 
     revalidatePath("/dashboard/settings");
-    
     return { success: true };
   } catch (error) {
-    console.error("Error updating notification settings:", error);
     return {
       success: false,
-      error: "Kunne ikke oppdatere varslingsinnstillinger",
+      error: error instanceof Error ? error.message : "Could not save notification settings",
     };
   }
 }
-

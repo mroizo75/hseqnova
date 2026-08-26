@@ -1,10 +1,9 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { getAuthContext } from "@/lib/server-authorization";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MeasureForm } from "@/features/measures/components/measure-form";
 import { MeasureList } from "@/features/measures/components/measure-list";
 import { InvestigationForm } from "@/features/incidents/components/investigation-form";
@@ -15,70 +14,48 @@ import {
   getIncidentTypeColor,
   getSeverityInfo,
   getIncidentStatusColor,
+  getRiddorCategoryLabel,
 } from "@/features/incidents/schemas/incident.schema";
-import { ArrowLeft, AlertTriangle, User, MapPin, Eye, Clock, FileText } from "lucide-react";
+import { ArrowLeft, AlertTriangle, User, MapPin, Eye, Clock, FileText, CheckCircle2, Circle } from "lucide-react";
 import Link from "next/link";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
+import {
+  loadIncidentDetail,
+  loadTenantDirectory,
+  loadEnabledModuleKeys,
+} from "@/server/queries/incidents.queries";
+import { tenantHasProjectsAddon } from "@/lib/tenant-modules";
+import {
+  canCloseUkIncident,
+  getUkIncidentHandlingChecks,
+  isAccidentBookType,
+} from "@/lib/incident-uk-handling";
 
 export default async function IncidentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const t = await getTranslations("dashboardIncidentDetailPage");
-  const locale = await getLocale();
   const { id } = await params;
-  const session = await getServerSession(authOptions);
+  const auth = await getAuthContext();
 
-  if (!session?.user?.email) {
+  if (!auth) {
     redirect("/login");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { tenants: true },
-  });
-
-  if (!user || user.tenants.length === 0) {
-    return <div>{t("errors.noTenantAccess")}</div>;
+  const canReadAll = auth.permissions.canReadIncidents;
+  const canReadOwn = auth.permissions.canReadOwnIncidents;
+  if (!canReadAll && !canReadOwn) {
+    redirect("/dashboard");
   }
 
-  const selectedMembership = user.tenants.find(
-    (membership) => membership.tenantId === session.user.tenantId,
-  );
-  if (!selectedMembership) {
-    return <div>{t("errors.noTenantAccess")}</div>;
-  }
-  const tenantId = selectedMembership.tenantId;
-
-  const rawIncident = await prisma.incident.findUnique({
-    where: { id, tenantId },
-    include: {
-      measures: {
-        orderBy: { createdAt: "desc" },
-        include: {
-          responsible: {
-            select: {
-              name: true,
-              email: true,
-            },
-          },
-        },
-      },
-      attachments: true,
-      risk: {
-        select: {
-          id: true,
-          title: true,
-          category: true,
-          score: true,
-        },
-      },
-    },
+  const tenantId = auth.tenantId;
+  const incident = await loadIncidentDetail({
+    id,
+    tenantId,
+    reportedBy: canReadAll ? undefined : auth.userId,
   });
 
-  if (!rawIncident) {
+  if (!incident) {
     return <div>{t("errors.notFound")}</div>;
   }
-
-  // Prisma Decimal → plain number via JSON round-trip
-  const incident = JSON.parse(JSON.stringify(rawIncident)) as typeof rawIncident;
 
   const parsedSubcategoryKeys = (() => {
     if (!incident.subcategoryKeys) return [] as string[];
@@ -92,34 +69,14 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
     }
   })();
 
-  const tenantUsers = await prisma.user.findMany({
-    where: {
-      tenants: {
-        some: { tenantId },
-      },
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-    },
-  });
-
-  const tenantProjects = await prisma.project.findMany({
-    where: { tenantId },
-    select: {
-      id: true,
-      name: true,
-      code: true,
-      status: true,
-    },
-    orderBy: { name: "asc" },
-  });
-
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { ruhModuleEnabled: true },
-  });
+  const [{ users: tenantUsers, projects: tenantProjects }, enabledModules] =
+    await Promise.all([
+      loadTenantDirectory(tenantId),
+      loadEnabledModuleKeys(tenantId),
+    ]);
+  const showProjectFields =
+    tenantHasProjectsAddon(enabledModules) ||
+    Boolean(incident.projectId || incident.projectReference);
 
   const typeLabel = t(`labels.type.${incident.type}`);
   const typeColor = getIncidentTypeColor(incident.type);
@@ -134,7 +91,7 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
 
   const formatDate = (date: Date | null) => {
     if (!date) return t("dash");
-    return new Date(date).toLocaleString(locale === "en" ? "en-US" : "nb-NO", {
+    return new Date(date).toLocaleString("en-GB", {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -143,8 +100,12 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
     });
   };
 
-  const allMeasuresCompleted = incident.measures.length > 0 && incident.measures.every(m => m.status === "DONE");
-  const canClose = incident.rootCause && allMeasuresCompleted && incident.status !== "CLOSED";
+  const canClose = canCloseUkIncident(incident);
+  const handlingChecks = getUkIncidentHandlingChecks(incident);
+  const handlingComplete = handlingChecks.every((check) => check.done);
+  const showAccidentBook = isAccidentBookType(incident.type) || incident.accidentBookEntry;
+  const personLabel = (person: { name: string | null; email: string } | null) =>
+    person?.name || person?.email || t("dash");
 
 
   return (
@@ -157,10 +118,12 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
               {t("actions.backToIncidents")}
             </Link>
           </Button>
-          <IncidentPDFExport
-            incidentId={incident.id}
-            avviksnummer={incident.avviksnummer}
-          />
+          <div className="flex items-center gap-2">
+            <IncidentPDFExport
+              incidentId={incident.id}
+              avviksnummer={incident.avviksnummer}
+            />
+          </div>
         </div>
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -177,23 +140,71 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
               </Badge>
               <Badge className={statusColor}>{statusLabel}</Badge>
               {(incident.source ?? "INTERNAL") === "EXTERNAL" ? (
-                <Badge className="bg-violet-100 text-violet-800 border-violet-300">Ekstern</Badge>
+                <Badge className="bg-violet-100 text-violet-800 border-violet-300">External</Badge>
               ) : (
-                <Badge className="bg-slate-100 text-slate-700 border-slate-300">Intern</Badge>
+                <Badge className="bg-slate-100 text-slate-700 border-slate-300">Internal</Badge>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ISO 9001: a) Reagere på avvik */}
+      {(incident.riddorReportable || incident.isFatal) && (
+        <Alert className={incident.isFatal ? "border-red-300 bg-red-50" : "border-orange-200 bg-orange-50"}>
+          <AlertTriangle className={`h-4 w-4 ${incident.isFatal ? "text-red-600" : "text-orange-600"}`} />
+          <AlertDescription className={incident.isFatal ? "text-red-900" : "text-orange-900"}>
+            {getRiddorCategoryLabel(incident.riddorCategory)}
+            {incident.riddorDueAt
+              ? ` ${t("riddor.due")}: ${new Date(incident.riddorDueAt).toLocaleDateString("en-GB")}.`
+              : ""}{" "}
+            {t("riddor.reportBeforeInvestigation")} {t("riddor.official")}{" "}
+            <a
+              href="https://www.hse.gov.uk/riddor/"
+              target="_blank"
+              rel="noreferrer"
+              className="underline font-medium"
+            >
+              hse.gov.uk/riddor
+            </a>
+            .
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("handling.title")}</CardTitle>
+          <CardDescription>{t("handling.description")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <ul className="space-y-2">
+            {handlingChecks.map((check) => (
+              <li key={check.id} className="flex items-start gap-2 text-sm">
+                {check.done ? (
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                ) : (
+                  <Circle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                )}
+                <span>
+                  <span className={check.done ? "text-foreground" : "font-medium"}>{check.label}</span>
+                  <span className="block text-xs text-muted-foreground">{check.legal}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-muted-foreground">
+            {handlingComplete ? t("handling.complete") : t("handling.open")}
+          </p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" />
-            {t("sections.whatHappened.title")}
+            {t("accidentBook.title")}
           </CardTitle>
-          <CardDescription>{t("sections.whatHappened.description")}</CardDescription>
+          <CardDescription>{t("accidentBook.description")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
@@ -205,121 +216,100 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
             <div>
               <h4 className="font-semibold mb-1 flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                {t("sections.whatHappened.time")}
+                {t("accidentBook.occurred")}
               </h4>
               <p className="text-sm text-muted-foreground">{formatDate(incident.occurredAt)}</p>
             </div>
-
-            {incident.location && (
-              <div>
-                <h4 className="font-semibold mb-1 flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  {t("sections.whatHappened.location")}
-                </h4>
-                <p className="text-sm text-muted-foreground">{incident.location}</p>
-              </div>
-            )}
-
-            {incident.projectReference && (
-              <div>
-                <h4 className="font-semibold mb-1 flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  {t("sections.whatHappened.projectReference")}
-                </h4>
-                <p className="text-sm text-muted-foreground">{incident.projectReference}</p>
-              </div>
-            )}
-
-            {incident.witnessName && (
-              <div>
-                <h4 className="font-semibold mb-1 flex items-center gap-2">
-                  <Eye className="h-4 w-4" />
-                  {t("sections.whatHappened.witnesses")}
-                </h4>
-                <p className="text-sm text-muted-foreground">{incident.witnessName}</p>
-              </div>
-            )}
+            <div>
+              <h4 className="font-semibold mb-1 flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                {t("accidentBook.entered")}
+              </h4>
+              <p className="text-sm text-muted-foreground">{formatDate(incident.createdAt)}</p>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-1 flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                {t("accidentBook.place")}
+              </h4>
+              <p className={`text-sm ${incident.location ? "text-muted-foreground" : "text-amber-700"}`}>
+                {incident.location || t("accidentBook.notRecorded")}
+              </p>
+            </div>
           </div>
 
-          {(incident.injuryType || typeof incident.lostTimeMinutes === "number" || incident.medicalAttentionRequired || incident.risk) && (
-            <div className="grid gap-4 md:grid-cols-3">
-              {(incident.injuryType || incident.medicalAttentionRequired) && (
-                <div>
-                  <h4 className="font-semibold mb-1">{t("sections.whatHappened.injury")}</h4>
-                  <p className="text-sm text-muted-foreground">
-                    {incident.injuryType || t("sections.whatHappened.noInjuryRegistered")}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {incident.medicalAttentionRequired
-                      ? t("sections.whatHappened.medicalRequired")
-                      : t("sections.whatHappened.noMedical")}
-                  </p>
-                </div>
-              )}
-
-              {typeof incident.lostTimeMinutes === "number" && (
-                <div>
-                  <h4 className="font-semibold mb-1">{t("sections.whatHappened.lostTime")}</h4>
-                  <p className="text-sm text-muted-foreground">
-                    {t("sections.whatHappened.lostTimeMinutes", { minutes: incident.lostTimeMinutes })}
-                  </p>
-                </div>
-              )}
-
-              {incident.risk && (
-                <div>
-                  <h4 className="font-semibold mb-1">{t("sections.whatHappened.linkedRisk")}</h4>
-                  <Link
-                    href={`/dashboard/risks/${incident.risk.id}`}
-                    className="text-sm text-primary underline"
-                  >
-                    {incident.risk.title}
-                  </Link>
-                  <p className="text-xs text-muted-foreground">
-                    {t("sections.whatHappened.riskScore", { score: incident.risk.score })}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {incident.involvedPersons && (
+          <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <h4 className="font-semibold mb-2">{t("sections.whatHappened.involvedPersons")}</h4>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {incident.involvedPersons}
+              <h4 className="font-semibold mb-1 flex items-center gap-2">
+                <User className="h-4 w-4" />
+                {t("accidentBook.injuredPerson")}
+              </h4>
+              <p className="text-xs text-muted-foreground mb-1">{t("accidentBook.injuredHint")}</p>
+              <p className={`text-sm whitespace-pre-wrap ${incident.involvedPersons ? "text-muted-foreground" : "text-amber-700"}`}>
+                {incident.involvedPersons || t("accidentBook.notRecorded")}
               </p>
             </div>
-          )}
-
-          {incident.injuryDescription && (
             <div>
-              <h4 className="font-semibold mb-2">{t("sections.whatHappened.injuryDescription")}</h4>
+              <h4 className="font-semibold mb-1">{t("accidentBook.personGivingNotice")}</h4>
+              <p className="text-sm text-muted-foreground">{personLabel(incident.people.reportedBy)}</p>
+              {incident.people.reportedFor && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  {t("accidentBook.reportedFor")}: {personLabel(incident.people.reportedFor)}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <h4 className="font-semibold mb-1 flex items-center gap-2">
+                <Eye className="h-4 w-4" />
+                {t("accidentBook.witnesses")}
+              </h4>
+              <p className="text-sm text-muted-foreground">{incident.witnessName || t("accidentBook.none")}</p>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-1">{t("accidentBook.injuryNature")}</h4>
               <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {incident.injuryDescription}
+                {[incident.injuryType, incident.injuryDescription].filter(Boolean).join(" — ") ||
+                  t("accidentBook.notRecorded")}
               </p>
+            </div>
+          </div>
+
+          {incident.immediateAction && (
+            <div>
+              <h4 className="font-semibold mb-2">{t("accidentBook.immediate")}</h4>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{incident.immediateAction}</p>
             </div>
           )}
 
           {incident.suggestedActions && (
             <div>
               <h4 className="font-semibold mb-2">{t("sections.whatHappened.suggestedActions")}</h4>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {incident.suggestedActions}
-              </p>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{incident.suggestedActions}</p>
             </div>
           )}
 
-          {incident.immediateAction && (
+          {incident.risk && (
             <div>
-              <h4 className="font-semibold mb-2">{t("sections.whatHappened.immediateActions")}</h4>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {incident.immediateAction}
+              <h4 className="font-semibold mb-1">{t("sections.whatHappened.linkedRisk")}</h4>
+              <Link href={`/dashboard/risks/${incident.risk.id}`} className="text-sm text-primary underline">
+                {incident.risk.title}
+              </Link>
+              <p className="text-xs text-muted-foreground">
+                {t("sections.whatHappened.riskScore", { score: incident.risk.score })}
               </p>
             </div>
           )}
 
-          {/* Vedlegg – prominent visning for dokumenter og bilder */}
+          {incident.projectReference && showProjectFields && (
+            <div>
+              <h4 className="font-semibold mb-1">{t("sections.whatHappened.projectReference")}</h4>
+              <p className="text-sm text-muted-foreground">{incident.projectReference}</p>
+            </div>
+          )}
+
           {incident.attachments && incident.attachments.length > 0 && (
             <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
               <h4 className="font-semibold mb-3 flex items-center gap-2">
@@ -350,14 +340,10 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                           {attachment.mime} · {Math.round(attachment.size / 1024)} KB
                         </p>
                       </div>
-                      <a
-                        href={`/api/files/${attachment.fileKey}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
+                      <a href={`/api/files/${attachment.fileKey}`} target="_blank" rel="noopener noreferrer">
                         <Button variant="outline" size="sm">
                           <Eye className="mr-2 h-4 w-4" />
-                          Åpne
+                          Open
                         </Button>
                       </a>
                     </div>
@@ -366,8 +352,46 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
               </div>
             </div>
           )}
+
+          <p className="text-xs text-muted-foreground">{t("accidentBook.keepNote")}</p>
         </CardContent>
       </Card>
+
+      {showAccidentBook && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("riddor.title")}</CardTitle>
+            <CardDescription>
+              {incident.riddorReportable
+                ? t("riddor.reportBeforeInvestigation")
+                : t("riddor.notReportable")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {incident.riddorReportable ? (
+              <>
+                <p>{getRiddorCategoryLabel(incident.riddorCategory)}</p>
+                {incident.riddorDueAt && (
+                  <p className="text-muted-foreground">
+                    {t("riddor.due")}: {new Date(incident.riddorDueAt).toLocaleDateString("en-GB")}
+                  </p>
+                )}
+                <p className="text-muted-foreground">
+                  {t("riddor.recordedAt")}:{" "}
+                  {incident.riddorReportedAt
+                    ? formatDate(incident.riddorReportedAt)
+                    : t("riddor.notYetRecorded")}
+                </p>
+                {incident.riddorReference && (
+                  <p className="text-muted-foreground">
+                    {t("riddor.reference")}: {incident.riddorReference}
+                  </p>
+                )}
+              </>
+            ) : null}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Behandle avvik */}
       {incident.status !== "CLOSED" && (
@@ -403,15 +427,19 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
               currentInjuryType={incident.injuryType}
               currentInjuryDescription={incident.injuryDescription}
               currentSuggestedActions={incident.suggestedActions}
+              currentOverSevenDayInjury={incident.overSevenDayInjury}
+              currentRiddorReportedAt={incident.riddorReportedAt}
+              currentRiddorReference={incident.riddorReference}
+              currentLocation={incident.location}
+              showProjectFields={showProjectFields}
               users={tenantUsers}
-              projects={tenantProjects}
-              ruhModuleEnabled={tenant?.ruhModuleEnabled ?? true}
+              projects={showProjectFields ? tenantProjects : []}
             />
           </CardContent>
         </Card>
       )}
 
-      {/* ISO 9001: b) Vurdere behovet for tiltak - Årsaksanalyse */}
+      {/* HSE HSG245: investigate in proportion to the risk */}
       {!incident.rootCause ? (
         <InvestigationForm incidentId={incident.id} users={tenantUsers} />
       ) : (
@@ -444,37 +472,39 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
         </Card>
       )}
 
-      {/* ISO 9001: c) Implementere nødvendige tiltak */}
-      {incident.rootCause && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>{t("sections.measures.title")}</CardTitle>
-                <CardDescription>
-                  {t("sections.measures.description")}
-                </CardDescription>
-              </div>
-              {incident.status !== "CLOSED" && (
-                <MeasureForm tenantId={tenantId} incidentId={incident.id} users={tenantUsers} />
-              )}
+      {/* HSG245: identify and implement risk control measures */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>{t("sections.measures.title")}</CardTitle>
+              <CardDescription>
+                {t("sections.measures.description")}
+              </CardDescription>
             </div>
-          </CardHeader>
-          <CardContent>
-            <MeasureList measures={incident.measures} />
-            {incident.measures.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>{t("sections.measures.empty")}</p>
-                <p className="text-xs mt-2">{t("sections.measures.emptyHint")}</p>
-              </div>
+            {incident.status !== "CLOSED" && (
+              <MeasureForm tenantId={tenantId} incidentId={incident.id} users={tenantUsers} />
             )}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <MeasureList measures={incident.measures} />
+          {incident.measures.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>{t("sections.measures.empty")}</p>
+              <p className="text-xs mt-2">{t("sections.measures.emptyHint")}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* ISO 9001: d) Gjennomgå effektiviteten */}
+      {/* HSG245: follow up the action plan, then close the record */}
       {canClose ? (
-        <CloseIncidentForm incidentId={incident.id} userId={user.id} />
+        <CloseIncidentForm
+          incidentId={incident.id}
+          userId={auth.userId}
+          actionCount={incident.measures.length}
+        />
       ) : incident.status === "CLOSED" ? (
         <Card>
           <CardHeader>

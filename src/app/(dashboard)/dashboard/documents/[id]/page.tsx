@@ -1,19 +1,17 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { getAuthContext } from "@/lib/server-authorization";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { FileText, Download, Edit, Clock, CheckCircle2, AlertCircle, Calendar, User, Tag } from "lucide-react";
+import { FileText, Download, Edit, Clock, CheckCircle2, Calendar, User, Tag } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { DocumentSignatureSection } from "@/features/documents/components/document-signature-section";
-import { getPermissions } from "@/lib/permissions";
+import { loadDocumentDetail } from "@/server/queries/documents.queries";
 
-function formatDate(date: Date | null | undefined, locale: string, fallback: string) {
+function formatDate(date: Date | string | null | undefined, locale: string, fallback: string) {
   if (!date) return fallback;
-  return new Date(date).toLocaleDateString(locale === "en" ? "en-US" : "nb-NO", {
+  return new Date(date).toLocaleDateString(locale === "en" ? "en-GB" : "nb-NO", {
     day: "2-digit",
     month: "long",
     year: "numeric",
@@ -58,64 +56,24 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
     OTHER: t("kinds.OTHER"),
   };
   const { id } = await params;
-  const session = await getServerSession(authOptions);
+  const auth = await getAuthContext();
 
-  if (!session?.user?.email) {
+  if (!auth) {
     redirect("/login");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { tenants: true },
-  });
-
-  if (!user || user.tenants.length === 0) {
-    redirect("/login");
+  if (!auth.permissions.canReadDocuments) {
+    redirect("/dashboard");
   }
 
-  const selectedMembership = user.tenants.find(
-    (membership) => membership.tenantId === session.user.tenantId,
-  );
-  if (!selectedMembership) {
-    redirect("/login");
-  }
-
-  const tenantId = selectedMembership.tenantId;
-
-  const document = await prisma.document.findUnique({
-    where: {
-      id,
-      tenantId,
-    },
-    include: {
-      template: true,
-      versions: {
-        orderBy: { createdAt: "desc" },
-        take: 5,
-      },
-      signatures: {
-        include: {
-          signedBy: {
-            select: { id: true, name: true, email: true },
-          },
-        },
-        orderBy: [{ role: "asc" }, { signedAt: "asc" }],
-      },
-      approvedByUser: {
-        select: { name: true, email: true },
-      },
-      owner: {
-        select: { name: true, email: true },
-      },
-    },
-  });
+  const document = await loadDocumentDetail({ id, tenantId: auth.tenantId });
 
   if (!document) {
     redirect("/dashboard/documents");
   }
 
-  const permissions = getPermissions(selectedMembership.role);
-  const currentUserId = user.id;
+  const permissions = auth.permissions;
+  const currentUserId = auth.userId;
 
   return (
     <div className="space-y-6">
@@ -131,12 +89,14 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link href={`/dashboard/documents/${document.id}/edit`}>
-              <Edit className="h-4 w-4 mr-2" />
-              {t("actions.edit")}
-            </Link>
-          </Button>
+          {permissions.canCreateDocuments && (
+            <Button variant="outline" asChild className="bg-transparent">
+              <Link href={`/dashboard/documents/${document.id}/edit`}>
+                <Edit className="h-4 w-4 mr-2" />
+                {t("actions.edit")}
+              </Link>
+            </Button>
+          )}
           <Button asChild>
             <a href={`/api/documents/${document.id}/download`} download>
               <Download className="h-4 w-4 mr-2" />
@@ -238,19 +198,23 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
         </CardContent>
       </Card>
 
-      {/* Signaturside – IK-HMS § 5 */}
       <DocumentSignatureSection
         documentId={document.id}
         signatures={document.signatures.map((s) => ({
           ...s,
-          signedAt: s.signedAt.toISOString(),
+          signedAt: typeof s.signedAt === "string" ? s.signedAt : s.signedAt.toISOString(),
+          signedBy: {
+            id: s.signedBy?.id ?? "",
+            name: s.signedBy?.name ?? null,
+            email: s.signedBy?.email ?? "",
+          },
         }))}
         canSign={permissions.canReadDocuments}
         canApprove={permissions.canApproveDocuments}
         currentUserId={currentUserId}
       />
 
-      {/* Versjonshistorikk */}
+      {/* Version history */}
       {document.versions.length > 0 && (
         <Card>
           <CardHeader>

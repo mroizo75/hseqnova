@@ -1,15 +1,19 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Plus, AlertTriangle, CheckCircle, Clock, Archive, Search } from "lucide-react";
+import { FileText, Plus, AlertTriangle, CheckCircle, Clock, Search } from "lucide-react";
 import Link from "next/link";
 import { ChemicalList } from "@/features/chemicals/components/chemical-list";
 import { PageHelpDialog } from "@/components/dashboard/page-help-dialog";
 import { helpContent } from "@/lib/help-content";
 import { getTranslations } from "next-intl/server";
+import { loadChemicalsForTenant } from "@/server/queries/chemicals.queries";
+import {
+  isChemicalReviewDueSoon,
+  isChemicalReviewOverdue,
+} from "@/features/chemicals/lib/chemical-review";
 
 export default async function ChemicalsPage({
   searchParams,
@@ -29,62 +33,24 @@ export default async function ChemicalsPage({
           : undefined;
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.email) {
+  if (!session?.user?.tenantId) {
     redirect("/login");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: {
-      tenants: {
-        include: {
-          tenant: true,
-        },
-      },
-    },
-  });
-
-  if (!user || user.tenants.length === 0) {
-    return <div>{t("notLinkedTenant")}</div>;
-  }
-
-  const selectedMembership = user.tenants.find(
-    (membership) => membership.tenantId === session.user.tenantId,
-  );
-  if (!selectedMembership) {
-    return <div>{t("notLinkedTenant")}</div>;
-  }
-
-  const tenantId = selectedMembership.tenantId;
-
-  // Hent alle kjemikalier
-  const chemicals = await prisma.chemical.findMany({
-    where: { tenantId },
-    orderBy: { createdAt: "desc" },
-  });
-
-  // Statistikk
-  const now = new Date();
-  const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-  const withIsocyanates = chemicals.filter((c) => c.containsIsocyanates).length;
+  const tenantId = session.user.tenantId;
+  const chemicals = await loadChemicalsForTenant(tenantId);
 
   const stats = {
     total: chemicals.length,
     active: chemicals.filter((c) => c.status === "ACTIVE").length,
-    withIsocyanates,
+    withIsocyanates: chemicals.filter((c) => c.containsIsocyanates).length,
     missingSDS: chemicals.filter((c) => !c.sdsKey).length,
-    needsReview: chemicals.filter(
-      (c) => c.nextReviewDate && new Date(c.nextReviewDate) <= thirtyDaysFromNow
-    ).length,
-    overdue: chemicals.filter(
-      (c) => c.nextReviewDate && new Date(c.nextReviewDate) < now
-    ).length,
+    needsReview: chemicals.filter((c) => isChemicalReviewDueSoon(c.nextReviewDate)).length,
+    overdue: chemicals.filter((c) => isChemicalReviewOverdue(c.nextReviewDate)).length,
   };
 
   return (
     <div className="space-y-6 w-full">
-      {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
@@ -112,7 +78,6 @@ export default async function ChemicalsPage({
         </div>
       </div>
 
-      {/* HMS Info Card */}
       <Card className="bg-blue-50 border-blue-200">
         <CardContent className="pt-6">
           <div className="flex items-start gap-3">
@@ -133,7 +98,6 @@ export default async function ChemicalsPage({
         </CardContent>
       </Card>
 
-      {/* Stats */}
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -231,7 +195,6 @@ export default async function ChemicalsPage({
         </Link>
       </div>
 
-      {/* Chemicals List */}
       <Card className="w-full min-w-0 overflow-hidden">
         <CardHeader>
           <CardTitle>{t("list.title")}</CardTitle>
@@ -248,4 +211,3 @@ export default async function ChemicalsPage({
     </div>
   );
 }
-

@@ -16,50 +16,22 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { createExposureRegister, updateExposureRegister } from "@/server/actions/exposure-register.actions";
 import type { CreateExposureRegisterInput } from "@/server/actions/exposure-register.actions";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale";
 import { Search, X, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
-
-/**
- * Validerer norsk fødselsnummer (11 siffer) ved hjelp av kontrollsiffer-algoritmen.
- * Returnerer "valid" | "invalid" | "incomplete".
- */
-function validateFodselsnummer(value: string): "valid" | "invalid" | "incomplete" {
-  const digits = value.replace(/\s/g, "");
-  if (digits.length < 11) return "incomplete";
-  if (!/^\d{11}$/.test(digits)) return "invalid";
-
-  const d = digits.split("").map(Number);
-  const w1 = [3, 7, 6, 1, 8, 9, 4, 5, 2];
-  const w2 = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
-
-  const s1 = w1.reduce((acc, w, i) => acc + w * d[i], 0);
-  const k1 = 11 - (s1 % 11);
-  if (k1 === 10) return "invalid";
-  const k1Final = k1 === 11 ? 0 : k1;
-  if (k1Final !== d[9]) return "invalid";
-
-  const s2 = w2.reduce((acc, w, i) => acc + w * d[i], 0);
-  const k2 = 11 - (s2 % 11);
-  if (k2 === 10) return "invalid";
-  const k2Final = k2 === 11 ? 0 : k2;
-  if (k2Final !== d[10]) return "invalid";
-
-  return "valid";
-}
+import { isValidNiNumber, niNumberStatus, normalizeNiNumber } from "@/features/exposure-register/lib/ni-number";
 
 const EXPOSURE_TYPE_OPTIONS: { value: ExposureType; label: string }[] = [
-  { value: "INHALATION", label: "Innånding" },
-  { value: "SKIN", label: "Hudkontakt" },
-  { value: "NOISE", label: "Støy" },
-  { value: "VIBRATION", label: "Vibrasjon" },
-  { value: "BIOLOGICAL", label: "Biologisk" },
-  { value: "RADIATION", label: "Stråling" },
-  { value: "OTHER", label: "Annet" },
+  { value: "INHALATION", label: "Inhalation" },
+  { value: "SKIN", label: "Skin contact" },
+  { value: "NOISE", label: "Noise" },
+  { value: "VIBRATION", label: "Vibration" },
+  { value: "BIOLOGICAL", label: "Biological" },
+  { value: "RADIATION", label: "Radiation" },
+  { value: "OTHER", label: "Other" },
 ];
 
 type Employee = {
@@ -223,14 +195,22 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
     e.preventDefault();
     setError(null);
 
-    if (!employeeName.trim()) return setError("Navn på ansatt er påkrevd");
-    if (!employeeBirthNumber.trim()) return setError("Fødselsnummer er påkrevd");
-    if (validateFodselsnummer(employeeBirthNumber) === "invalid") return setError("Ugyldig fødselsnummer – kontrollsifrene stemmer ikke");
-    if (employeeBirthNumber.trim() !== birthNumberConfirm.trim()) return setError("Fødselsnumrene stemmer ikke overens");
-    if (!jobTitle.trim()) return setError("Stilling er påkrevd");
-    if (!workLocation.trim()) return setError("Arbeidssted er påkrevd");
-    if (!exposureAgent.trim()) return setError("Eksponeringsfaktor er påkrevd");
-    if (!exposureStartDate) return setError("Startdato for eksponering er påkrevd");
+    const niUnchanged =
+      Boolean(existing) &&
+      normalizeNiNumber(employeeBirthNumber) === normalizeNiNumber(existing?.employeeBirthNumber ?? "");
+
+    if (!employeeName.trim()) return setError("Employee name is required");
+    if (!employeeBirthNumber.trim()) return setError("National Insurance number is required");
+    if (!niUnchanged && !isValidNiNumber(employeeBirthNumber)) {
+      return setError("Enter a valid National Insurance number");
+    }
+    if (normalizeNiNumber(employeeBirthNumber) !== normalizeNiNumber(birthNumberConfirm)) {
+      return setError("The National Insurance numbers do not match");
+    }
+    if (!jobTitle.trim()) return setError("Job title is required");
+    if (!workLocation.trim()) return setError("Workplace is required");
+    if (!exposureAgent.trim()) return setError("Substance or agent is required");
+    if (!exposureStartDate) return setError("Exposure start date is required");
 
     const input: CreateExposureRegisterInput = {
       employeeId: employeeId || undefined,
@@ -268,10 +248,12 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
         router.push("/dashboard/exposure-register");
         router.refresh();
       } else {
-        setError(result.error || "Noe gikk galt");
+        setError(result.error || "Something went wrong");
       }
     });
   }
+
+  const niStatus = niNumberStatus(employeeBirthNumber);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -281,21 +263,20 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
         </div>
       )}
 
-      {/* Ansattinformasjon */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Ansattinformasjon</CardTitle>
+          <CardTitle className="text-base">Employee</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {employees.length > 0 && (
             <div className="space-y-2">
-              <Label>Velg ansatt fra systemet (valgfritt – autofyller navn)</Label>
+              <Label>Select employee from the organisation (optional — fills in the name)</Label>
               <Select value={employeeId || "_manual"} onValueChange={handleEmployeeSelect}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg ansatt..." />
+                  <SelectValue placeholder="Select employee..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="_manual">– Skriv inn manuelt –</SelectItem>
+                  <SelectItem value="_manual">– Enter manually –</SelectItem>
                   {employees.map((emp) => (
                     <SelectItem key={emp.id} value={emp.id}>
                       {emp.name || emp.email}
@@ -309,90 +290,84 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="employeeName">Fullt navn *</Label>
+              <Label htmlFor="employeeName">Full name *</Label>
               <Input
                 id="employeeName"
                 value={employeeName}
                 onChange={(e) => setEmployeeName(e.target.value)}
-                placeholder="Ola Nordmann"
+                placeholder="Alex Taylor"
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="internalEmployeeNumber">Ansatt-ID (internt nr.)</Label>
+              <Label htmlFor="internalEmployeeNumber">Employee ID (internal no.)</Label>
               <Input
                 id="internalEmployeeNumber"
                 value={internalEmployeeNumber}
                 onChange={(e) => setInternalEmployeeNumber(e.target.value)}
-                placeholder="f.eks. A-0042"
+                placeholder="e.g. A-0042"
                 className="font-mono"
               />
               {employeeId && !internalEmployeeNumber && (
                 <p className="text-xs text-amber-600">
-                  Ingen ansattnummer registrert på denne ansatte – kan settes under Innstillinger → Brukere.
+                  No employee number is set for this person — it can be added under Settings → Users.
                 </p>
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="employeeBirthNumber">Fødselsnummer *</Label>
-              {(() => {
-                const status = validateFodselsnummer(employeeBirthNumber);
-                return (
-                  <>
-                    <div className="relative">
-                      <Input
-                        id="employeeBirthNumber"
-                        value={employeeBirthNumber}
-                        onChange={(e) => setEmployeeBirthNumber(e.target.value.replace(/\D/g, ""))}
-                        placeholder="11 siffer"
-                        maxLength={11}
-                        inputMode="numeric"
-                        className={`pr-9 font-mono ${
-                          status === "valid" ? "border-green-500 focus-visible:ring-green-500" :
-                          status === "invalid" ? "border-red-400 focus-visible:ring-red-400" : ""
-                        }`}
-                        required
-                      />
-                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-                        {status === "valid" && <CheckCircle2 className="h-4 w-4 text-green-500" />}
-                        {status === "invalid" && <XCircle className="h-4 w-4 text-red-400" />}
-                        {status === "incomplete" && employeeBirthNumber.length > 0 && (
-                          <AlertCircle className="h-4 w-4 text-amber-400" />
-                        )}
-                      </span>
-                    </div>
-                    {status === "valid" && (
-                      <p className="text-xs text-green-600 flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" /> Gyldig fødselsnummer
-                      </p>
-                    )}
-                    {status === "invalid" && employeeBirthNumber.length === 11 && (
-                      <p className="text-xs text-red-500 flex items-center gap-1">
-                        <XCircle className="h-3 w-3" /> Ugyldig – kontrollsifrene stemmer ikke
-                      </p>
-                    )}
-                  </>
-                );
-              })()}
+              <Label htmlFor="employeeBirthNumber">National Insurance number *</Label>
+              <div className="relative">
+                <Input
+                  id="employeeBirthNumber"
+                  value={employeeBirthNumber}
+                  onChange={(e) => setEmployeeBirthNumber(e.target.value.toUpperCase())}
+                  placeholder="AB123456C"
+                  maxLength={13}
+                  className={`pr-9 font-mono ${
+                    niStatus === "valid" ? "border-green-500 focus-visible:ring-green-500" :
+                    niStatus === "invalid" ? "border-red-400 focus-visible:ring-red-400" : ""
+                  }`}
+                  required
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+                  {niStatus === "valid" && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                  {niStatus === "invalid" && <XCircle className="h-4 w-4 text-red-400" />}
+                  {niStatus === "incomplete" && employeeBirthNumber.length > 0 && (
+                    <AlertCircle className="h-4 w-4 text-amber-400" />
+                  )}
+                </span>
+              </div>
+              {niStatus === "valid" && (
+                <p className="text-xs text-green-600 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> Valid National Insurance number
+                </p>
+              )}
+              {niStatus === "invalid" && (
+                <p className="text-xs text-red-500 flex items-center gap-1">
+                  <XCircle className="h-3 w-3" /> Use the HMRC format (two letters, six digits, one letter)
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="birthNumberConfirm">
-                Bekreft fødselsnummer *
-              </Label>
+              <Label htmlFor="birthNumberConfirm">Confirm National Insurance number *</Label>
               {(() => {
-                const matches = birthNumberConfirm.length > 0 && birthNumberConfirm === employeeBirthNumber;
-                const mismatch = birthNumberConfirm.length === employeeBirthNumber.length && birthNumberConfirm !== employeeBirthNumber;
+                const matches =
+                  birthNumberConfirm.length > 0 &&
+                  normalizeNiNumber(birthNumberConfirm) === normalizeNiNumber(employeeBirthNumber);
+                const mismatch =
+                  birthNumberConfirm.length > 0 &&
+                  normalizeNiNumber(birthNumberConfirm).length === normalizeNiNumber(employeeBirthNumber).length &&
+                  !matches;
                 return (
                   <>
                     <div className="relative">
                       <Input
                         id="birthNumberConfirm"
                         value={birthNumberConfirm}
-                        onChange={(e) => setBirthNumberConfirm(e.target.value.replace(/\D/g, ""))}
-                        placeholder="Skriv inn igjen"
-                        maxLength={11}
-                        inputMode="numeric"
+                        onChange={(e) => setBirthNumberConfirm(e.target.value.toUpperCase())}
+                        placeholder="Type again"
+                        maxLength={13}
                         onPaste={(e) => e.preventDefault()}
                         className={`pr-9 font-mono ${
                           matches ? "border-green-500 focus-visible:ring-green-500" :
@@ -406,45 +381,45 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
                     </div>
                     {matches && (
                       <p className="text-xs text-green-600 flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" /> Fødselsnumrene stemmer overens
+                        <CheckCircle2 className="h-3 w-3" /> The numbers match
                       </p>
                     )}
                     {mismatch && (
                       <p className="text-xs text-red-500 flex items-center gap-1">
-                        <XCircle className="h-3 w-3" /> Stemmer ikke – sjekk igjen
+                        <XCircle className="h-3 w-3" /> They do not match — check again
                       </p>
                     )}
-                    <p className="text-xs text-muted-foreground">Lim inn er deaktivert – tast inn manuelt for å bekrefte</p>
+                    <p className="text-xs text-muted-foreground">Paste is disabled — type it in to confirm</p>
                   </>
                 );
               })()}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="department">Avdeling</Label>
+              <Label htmlFor="department">Department</Label>
               <Input
                 id="department"
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
-                placeholder="Produksjon"
+                placeholder="Production"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="jobTitle">Stilling/Rolle *</Label>
+              <Label htmlFor="jobTitle">Job title / role *</Label>
               <Input
                 id="jobTitle"
                 value={jobTitle}
                 onChange={(e) => setJobTitle(e.target.value)}
-                placeholder="Operatør"
+                placeholder="Operator"
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="workLocation">Arbeidssted/Lokasjon *</Label>
+              <Label htmlFor="workLocation">Workplace / location *</Label>
               <Input
                 id="workLocation"
                 value={workLocation}
                 onChange={(e) => setWorkLocation(e.target.value)}
-                placeholder="Fabrikk A, bygg 2"
+                placeholder="Factory A, building 2"
                 required
               />
             </div>
@@ -452,7 +427,7 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="employmentStartDate">Ansettelsesdato</Label>
+              <Label htmlFor="employmentStartDate">Employment start date</Label>
               <Input
                 id="employmentStartDate"
                 type="date"
@@ -461,7 +436,7 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="employmentEndDate">Fratredelsesdato</Label>
+              <Label htmlFor="employmentEndDate">Employment end date</Label>
               <Input
                 id="employmentEndDate"
                 type="date"
@@ -473,21 +448,20 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
         </CardContent>
       </Card>
 
-      {/* Eksponeringsfaktor */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Eksponeringsfaktor</CardTitle>
+          <CardTitle className="text-base">Substance / agent</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {chemicals.length > 0 && (
             <div className="space-y-2">
-              <Label>Velg fra stoffkartotek (autofyller stoff og CAS-nr)</Label>
+              <Label>Select from the COSHH register (fills in name and CAS)</Label>
               <Select value={chemicalId || "_manual"} onValueChange={handleChemicalSelect}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg kjemikalie fra stoffkartotek..." />
+                  <SelectValue placeholder="Select a chemical from the COSHH register..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="_manual">– Skriv inn manuelt –</SelectItem>
+                  <SelectItem value="_manual">– Enter manually –</SelectItem>
                   {chemicals.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.productName}
@@ -501,17 +475,17 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="exposureAgent">Eksponeringsfaktor (navn på stoff) *</Label>
+              <Label htmlFor="exposureAgent">Substance or agent *</Label>
               <Input
                 id="exposureAgent"
                 value={exposureAgent}
                 onChange={(e) => setExposureAgent(e.target.value)}
-                placeholder="Toluen, kvartsstøv, sveiserøyk..."
+                placeholder="Toluene, silica dust, welding fume..."
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="casNumber">CAS-nummer</Label>
+              <Label htmlFor="casNumber">CAS number</Label>
               <Input
                 id="casNumber"
                 value={casNumber}
@@ -520,7 +494,7 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="exposureType">Type eksponering *</Label>
+              <Label htmlFor="exposureType">Type of exposure *</Label>
               <Select
                 value={exposureType}
                 onValueChange={(v) => setExposureType(v as ExposureType)}
@@ -541,15 +515,14 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
         </CardContent>
       </Card>
 
-      {/* Eksponeringsperiode */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Eksponeringsperiode</CardTitle>
+          <CardTitle className="text-base">Exposure period</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="exposureStartDate">Startdato eksponering *</Label>
+              <Label htmlFor="exposureStartDate">Start date *</Label>
               <Input
                 id="exposureStartDate"
                 type="date"
@@ -559,45 +532,42 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="exposureEndDate">Sluttdato eksponering</Label>
+              <Label htmlFor="exposureEndDate">End date</Label>
               <Input
                 id="exposureEndDate"
                 type="date"
                 value={exposureEndDate}
                 onChange={(e) => setExposureEndDate(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">La stå tom hvis eksponering pågår</p>
+              <p className="text-xs text-muted-foreground">Leave blank if exposure is ongoing</p>
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="duration">Varighet (timer/dager/år)</Label>
+            <Label htmlFor="duration">Duration (hours/days/years)</Label>
             <Input
               id="duration"
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
-              placeholder="f.eks. 3 dager/uke, 2 timer/dag"
+              placeholder="e.g. 3 days/week, 2 hours/day"
             />
           </div>
         </CardContent>
       </Card>
 
-      {/* Tiltak og kontroller */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Tiltak og kontroller</CardTitle>
+          <CardTitle className="text-base">Controls</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="ppeUsed">Verneutstyr brukt</Label>
+            <Label htmlFor="ppeUsed">PPE used</Label>
             <Input
               id="ppeUsed"
               value={ppeUsed}
               onChange={(e) => setPpeUsed(e.target.value)}
-              placeholder="f.eks. hansker, briller, åndedrettsvern P3"
+              placeholder="e.g. gloves, goggles, P3 respirator"
             />
           </div>
-
-          <Separator />
 
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -607,7 +577,7 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
                 onCheckedChange={(v) => setHealthCheckRequired(Boolean(v))}
               />
               <Label htmlFor="healthCheckRequired" className="cursor-pointer">
-                Helsekontroll påkrevd
+                Health surveillance required (COSHH 2002)
               </Label>
             </div>
 
@@ -620,13 +590,13 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
                     onCheckedChange={(v) => setHealthCheckDone(Boolean(v))}
                   />
                   <Label htmlFor="healthCheckDone" className="cursor-pointer">
-                    Helsekontroll utført
+                    Health surveillance completed
                   </Label>
                 </div>
 
                 {healthCheckDone && (
                   <div className="space-y-2">
-                    <Label htmlFor="healthCheckDate">Dato for helseundersøkelse</Label>
+                    <Label htmlFor="healthCheckDate">Date of health surveillance</Label>
                     <Input
                       id="healthCheckDate"
                       type="date"
@@ -642,14 +612,13 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
         </CardContent>
       </Card>
 
-      {/* RUH-kobling */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Kobling til RUH-rapport</CardTitle>
+          <CardTitle className="text-base">Link to accident book</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {ruhReports.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Ingen RUH-rapporter registrert ennå.</p>
+            <p className="text-sm text-muted-foreground">No accident book entries yet.</p>
           ) : ruhReportId ? (
             (() => {
               const selected = ruhReports.find((r) => r.id === ruhReportId);
@@ -657,11 +626,11 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
                 <div className="flex items-center justify-between rounded-md border px-3 py-2 bg-muted/40">
                   <div>
                     <span className="font-medium text-sm">
-                      {selected.ruhNummer ?? "Uten nummer"}
+                      {selected.ruhNummer ?? "No number"}
                     </span>
                     <span className="text-sm text-muted-foreground ml-2">– {selected.title}</span>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      {format(new Date(selected.occurredAt), "dd.MM.yyyy", { locale: nb })}
+                      {format(new Date(selected.occurredAt), "dd MMM yyyy", { locale: enGB })}
                     </div>
                   </div>
                   <Button
@@ -681,7 +650,7 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Søk på RUH-nummer eller tittel..."
+                  placeholder="Search accident book number or title..."
                   value={ruhSearch}
                   onChange={(e) => setRuhSearch(e.target.value)}
                   className="pl-9"
@@ -714,7 +683,7 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
                           <span className="text-sm truncate">{r.title}</span>
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5">
-                          {format(new Date(r.occurredAt), "dd.MM.yyyy", { locale: nb })}
+                          {format(new Date(r.occurredAt), "dd MMM yyyy", { locale: enGB })}
                         </div>
                       </button>
                     ))}
@@ -723,25 +692,24 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
                     return r.title.toLowerCase().includes(q) || (r.ruhNummer?.toLowerCase().includes(q) ?? false);
                   }).length === 0 && (
                     <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-                      Ingen treff
+                      No matches
                     </div>
                   )}
                 </div>
               )}
-              <p className="text-xs text-muted-foreground">Valgfritt – koble til RUH hvis eksponeringen skyldes en hendelse</p>
+              <p className="text-xs text-muted-foreground">Optional — link if the exposure arose from an incident</p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Risikovurdering */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Kobling til risikovurdering</CardTitle>
+          <CardTitle className="text-base">Link to risk assessment</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {risks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Ingen åpne risikovurderinger registrert ennå.</p>
+            <p className="text-sm text-muted-foreground">No open risk assessments yet.</p>
           ) : riskId ? (
             (() => {
               const selected = risks.find((r) => r.id === riskId);
@@ -759,7 +727,7 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
                         Score: {selected.score}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
-                        Sannsynlighet {selected.likelihood} × Konsekvens {selected.consequence}
+                        Likelihood {selected.likelihood} × Consequence {selected.consequence}
                       </span>
                     </div>
                   </div>
@@ -780,7 +748,7 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Søk på risikotittel eller vurdering..."
+                  placeholder="Search risk title or assessment..."
                   value={riskSearch}
                   onChange={(e) => setRiskSearch(e.target.value)}
                   className="pl-9"
@@ -824,49 +792,46 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
                     const q = riskSearch.toLowerCase();
                     return r.title.toLowerCase().includes(q) || (r.riskAssessment?.title.toLowerCase().includes(q) ?? false);
                   }).length === 0 && (
-                    <div className="px-3 py-4 text-sm text-muted-foreground text-center">Ingen treff</div>
+                    <div className="px-3 py-4 text-sm text-muted-foreground text-center">No matches</div>
                   )}
                 </div>
               )}
-              <p className="text-xs text-muted-foreground">Koble til den risikovurderingen som dekker denne eksponeringen</p>
+              <p className="text-xs text-muted-foreground">Link the risk assessment that covers this exposure</p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Lagring og kommentar */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Lagring og kommentar</CardTitle>
+          <CardTitle className="text-base">Retention and notes</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="retentionYears">Oppbevaringstid (år)</Label>
+            <Label htmlFor="retentionYears">Retention period (years)</Label>
             <Select
               value={String(retentionYears)}
               onValueChange={(v) => setRetentionYears(Number(v))}
             >
-              <SelectTrigger id="retentionYears" className="max-w-[200px]">
+              <SelectTrigger id="retentionYears" className="max-w-[280px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="10">10 år (biologiske faktorer)</SelectItem>
-                <SelectItem value="40">40 år (standard)</SelectItem>
-                <SelectItem value="60">60 år (kreftfremkallende)</SelectItem>
+                <SelectItem value="40">40 years (COSHH 2002 health records)</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Arbeidstilsynet krever 40–60 år for kjemisk eksponering
+              COSHH 2002 requires health records to be kept for 40 years
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="comment">Kommentar / tilleggsinformasjon</Label>
+            <Label htmlFor="comment">Notes</Label>
             <Textarea
               id="comment"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Eventuelle tilleggsopplysninger om eksponeringen..."
+              placeholder="Any further details about the exposure..."
               rows={3}
             />
           </div>
@@ -877,13 +842,13 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.back()}
           disabled={isPending}
+          onClick={() => router.back()}
         >
-          Avbryt
+          Cancel
         </Button>
         <Button type="submit" disabled={isPending}>
-          {isPending ? "Lagrer..." : existing ? "Lagre endringer" : "Registrer eksponering"}
+          {isPending ? "Saving..." : existing ? "Save changes" : "Record exposure"}
         </Button>
       </div>
     </form>

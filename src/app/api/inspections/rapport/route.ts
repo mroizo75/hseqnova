@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db } from "@/lib/db";
 import { htmlToPdf } from "@/lib/adobe-pdf";
 import { getLogoBase64, resolveImageToBase64 } from "@/lib/pdf-brand";
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
 import { nb } from "date-fns/locale";
+import {
+  loadInspectionPeople,
+  loadInspectionsForReport,
+  loadTenantBranding,
+} from "@/server/queries/inspections.queries";
 
 const TYPE_LABELS: Record<string, string> = {
   VERNERUNDE: "Vernerunde",
@@ -492,16 +496,7 @@ export async function GET(req: NextRequest) {
       ? format(refDate, "MMMM yyyy", { locale: nb }).replace(/^./, (c) => c.toUpperCase())
       : `Årsrapport ${year}`;
 
-  const inspections = await db.inspection.findMany({
-    where: {
-      tenantId,
-      scheduledDate: { gte: startDate, lte: endDate },
-    },
-    include: {
-      findings: true,
-    },
-    orderBy: { scheduledDate: "asc" },
-  });
+  const inspections = await loadInspectionsForReport(tenantId, startDate, endDate);
 
   const allUserIds = [
     ...new Set([
@@ -510,16 +505,10 @@ export async function GET(req: NextRequest) {
     ]),
   ] as string[];
 
-  const users = await db.user.findMany({
-    where: { id: { in: allUserIds } },
-    select: { id: true, name: true },
-  });
+  const users = await loadInspectionPeople(allUserIds);
   const userMap = Object.fromEntries(users.map((u) => [u.id, u.name ?? u.id]));
 
-  const tenant = await db.tenant.findUnique({
-    where: { id: tenantId },
-    select: { name: true, orgNumber: true, logoUrl: true },
-  });
+  const tenant = await loadTenantBranding(tenantId);
 
   const allFindings = inspections.flatMap((ins) =>
     ins.findings.map((f) => ({

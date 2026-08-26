@@ -59,7 +59,7 @@ export default async function TavleAdminPage({ params, searchParams }: Props) {
   if (!tavle) notFound();
   if (!subscription) redirect("/dashboard/hms-tavle");
 
-  // Hent inkludert statistikk for HMS Nova-kunder
+  // Hent inkludert statistikk for HSEQ Nova-kunder
   const tenantInfo = await prisma.tenant.findUnique({
     where: { id: auth.tenantId },
     select: { isTavleOnly: true },

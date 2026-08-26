@@ -5,10 +5,12 @@
  */
 
 const PATH_TO_WIDGET: Record<string, string> = {
+  "/dashboard/health-safety-policy": "hms-handbok",
   "/dashboard/hms-handbok": "hms-handbok",
   "/dashboard/hms-cockpit": "hms-cockpit",
   "/dashboard/incidents": "incidents",
   "/dashboard/risks": "risks",
+  "/dashboard/procedures": "routines",
   "/dashboard/rutiner": "routines",
   "/dashboard/inspections": "inspections",
   "/dashboard/training": "training",
@@ -49,6 +51,7 @@ const PATH_TO_WIDGET: Record<string, string> = {
 const EXCLUDED_PATHS = new Set([
   "/dashboard",
   "/dashboard/settings",
+  "/dashboard/users",
   "/dashboard/support",
 ])
 

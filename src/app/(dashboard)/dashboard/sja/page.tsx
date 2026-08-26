@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
 import { getAuthContext } from "@/lib/server-authorization";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -10,7 +9,6 @@ import {
   FileText,
   CheckCircle,
   Clock,
-  XCircle,
   Plus,
   BookTemplate,
   Info,
@@ -24,53 +22,43 @@ import {
 } from "@/features/sja/schemas/sja.schema";
 import { SjaCreateTemplateButton } from "@/components/sja/sja-create-template-button";
 import { SjaDeleteTemplateButton } from "@/components/sja/sja-delete-template-button";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
+import { loadSjaAnalysesForTenant, loadSjaTemplates } from "@/server/queries/sja.queries";
 
 export default async function SjaDashboardPage() {
   const t = await getTranslations("dashboardSjaPage");
-  const locale = await getLocale();
-
   const auth = await getAuthContext();
-  const { permissions, tenantId, userId } = auth;
+  if (!auth) {
+    redirect("/login");
+  }
 
-  const canReadAll  = permissions.canReadSja;
-  const canReadOwn  = permissions.canReadOwnSja;
-  const canCreate   = permissions.canCreateSja;
+  const { permissions, tenantId, userId } = auth;
+  const canReadAll = permissions.canReadSja;
+  const canReadOwn = permissions.canReadOwnSja;
+  const canCreate = permissions.canCreateSja;
 
   if (!canReadAll && !canReadOwn && !canCreate) {
     redirect("/dashboard");
   }
 
-  const ownerFilter = canReadAll ? {} : { createdById: userId };
   const showOwnOnlyNotice = !canReadAll && canReadOwn;
   const showCreateOnlyNotice = !canReadAll && !canReadOwn && canCreate;
 
-  const analyses = (canReadAll || canReadOwn)
-    ? await prisma.sjaAnalysis.findMany({
-        where: { tenantId, ...ownerFilter },
-        include: {
-          hazards: { select: { id: true, riskLevel: true } },
-        },
-        orderBy: { plannedDate: "desc" },
-      })
-    : [];
-
-  const templates = await prisma.sjaTemplate.findMany({
-    where: { tenantId, isActive: true },
-    include: {
-      hazards: { orderBy: { sortOrder: "asc" } },
-    },
-    orderBy: { name: "asc" },
-  });
+  const [analyses, templates] = await Promise.all([
+    canReadAll || canReadOwn
+      ? loadSjaAnalysesForTenant(tenantId, { createdById: canReadAll ? undefined : userId })
+      : Promise.resolve([]),
+    loadSjaTemplates(tenantId),
+  ]);
 
   const stats = {
     total: analyses.length,
-    draft: analyses.filter((a) => a.status === "DRAFT").length,
-    active: analyses.filter((a) => a.status === "ACTIVE").length,
-    completed: analyses.filter((a) => a.status === "COMPLETED").length,
-    cancelled: analyses.filter((a) => a.status === "CANCELLED").length,
+    draft: analyses.filter((row) => row.status === "DRAFT").length,
+    active: analyses.filter((row) => row.status === "ACTIVE").length,
+    completed: analyses.filter((row) => row.status === "COMPLETED").length,
     templates: templates.length,
   };
+
   const statusLabel = (status: string): string => {
     const labels: Record<string, string> = {
       DRAFT: t("status.DRAFT"),
@@ -82,14 +70,17 @@ export default async function SjaDashboardPage() {
     };
     return labels[status] ?? status;
   };
+
   const conclusionLabel = (conclusion: string | null): string => {
-    if (!conclusion) {
-      return "-";
-    }
+    if (!conclusion) return "-";
     const labels: Record<string, string> = {
-      GO: t("conclusion.GO"),
-      GO_WITH_MEASURES: t("conclusion.GO_WITH_MEASURES"),
-      NO_GO: t("conclusion.NO_GO"),
+      NOT_DECIDED: t("conclusion.NOT_DECIDED"),
+      APPROVED: t("conclusion.APPROVED"),
+      CONDITIONAL: t("conclusion.CONDITIONAL"),
+      REJECTED: t("conclusion.REJECTED"),
+      GO: t("conclusion.APPROVED"),
+      GO_WITH_MEASURES: t("conclusion.CONDITIONAL"),
+      NO_GO: t("conclusion.REJECTED"),
     };
     return labels[conclusion] ?? conclusion;
   };
@@ -102,9 +93,7 @@ export default async function SjaDashboardPage() {
             <HardHat className="h-8 w-8 text-orange-600" />
             {t("title")}
           </h1>
-          <p className="text-muted-foreground">
-            {t("description")}
-          </p>
+          <p className="text-muted-foreground">{t("description")}</p>
         </div>
         <Button asChild>
           <Link href="/dashboard/sja/new">
@@ -118,7 +107,7 @@ export default async function SjaDashboardPage() {
         <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/30">
           <Send className="h-4 w-4 text-amber-600" />
           <AlertDescription className="text-amber-900 dark:text-amber-100">
-            Du kan opprette SJA-analyser, men har ikke tilgang til å se andres. SJA-er du sender inn behandles og godkjennes av HMS-ansvarlig eller administrator.
+            {t("notices.createOnly")}
           </AlertDescription>
         </Alert>
       )}
@@ -126,7 +115,7 @@ export default async function SjaDashboardPage() {
         <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/30">
           <Info className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-900 dark:text-blue-100">
-            Du ser kun dine egne SJA-analyser. SJA-er du oppretter behandles og godkjennes av leder.
+            {t("notices.ownOnly")}
           </AlertDescription>
         </Alert>
       )}
@@ -197,9 +186,7 @@ export default async function SjaDashboardPage() {
             <div className="text-center py-12">
               <HardHat className="h-16 w-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">{t("analyses.emptyTitle")}</h3>
-              <p className="text-muted-foreground">
-                {t("analyses.emptyDescription")}
-              </p>
+              <p className="text-muted-foreground">{t("analyses.emptyDescription")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -218,9 +205,8 @@ export default async function SjaDashboardPage() {
                 </thead>
                 <tbody>
                   {analyses.map((sja) => {
-                    const maxRisk = sja.hazards.length > 0
-                      ? Math.max(...sja.hazards.map((h) => h.riskLevel))
-                      : 0;
+                    const maxRisk =
+                      sja.hazards.length > 0 ? Math.max(...sja.hazards.map((hazard) => hazard.riskLevel)) : 0;
 
                     return (
                       <tr key={sja.id} className="border-b last:border-0 hover:bg-muted/50">
@@ -233,37 +219,24 @@ export default async function SjaDashboardPage() {
                           </Link>
                         </td>
                         <td className="py-3 pr-4">
-                          <Link
-                            href={`/dashboard/sja/${sja.id}`}
-                            className="text-sm font-medium hover:underline"
-                          >
+                          <Link href={`/dashboard/sja/${sja.id}`} className="text-sm font-medium hover:underline">
                             {sja.title}
                           </Link>
                         </td>
-                        <td className="py-3 pr-4 text-sm text-muted-foreground">
-                          {sja.workLocation}
-                        </td>
+                        <td className="py-3 pr-4 text-sm text-muted-foreground">{sja.workLocation}</td>
                         <td className="py-3 pr-4">
-                          <Badge
-                            variant="outline"
-                            className={`text-xs ${getSjaStatusColor(sja.status)}`}
-                          >
+                          <Badge variant="outline" className={`text-xs ${getSjaStatusColor(sja.status)}`}>
                             {statusLabel(sja.status)}
                           </Badge>
                         </td>
                         <td className="py-3 pr-4">
-                          <Badge
-                            variant="outline"
-                            className={`text-xs ${getSjaConclusionColor(sja.conclusion)}`}
-                          >
+                          <Badge variant="outline" className={`text-xs ${getSjaConclusionColor(sja.conclusion)}`}>
                             {conclusionLabel(sja.conclusion)}
                           </Badge>
                         </td>
+                        <td className="py-3 pr-4 text-sm text-muted-foreground">{sja.createdByName}</td>
                         <td className="py-3 pr-4 text-sm text-muted-foreground">
-                          {sja.createdByName}
-                        </td>
-                        <td className="py-3 pr-4 text-sm text-muted-foreground">
-                          {new Date(sja.plannedDate).toLocaleDateString(locale === "en" ? "en-US" : "nb-NO", {
+                          {new Date(sja.plannedDate).toLocaleDateString("en-GB", {
                             day: "numeric",
                             month: "short",
                             year: "numeric",
@@ -271,11 +244,7 @@ export default async function SjaDashboardPage() {
                         </td>
                         <td className="py-3">
                           {maxRisk > 0 ? (
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded-full font-medium ${getRiskColor(
-                                maxRisk
-                              )}`}
-                            >
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getRiskColor(maxRisk)}`}>
                               {maxRisk}
                             </span>
                           ) : (
@@ -301,18 +270,14 @@ export default async function SjaDashboardPage() {
             </CardTitle>
             <SjaCreateTemplateButton tenantId={tenantId} />
           </div>
-          <p className="text-sm text-muted-foreground">
-            {t("templates.description")}
-          </p>
+          <p className="text-sm text-muted-foreground">{t("templates.description")}</p>
         </CardHeader>
         <CardContent>
           {templates.length === 0 ? (
             <div className="text-center py-8">
               <BookTemplate className="h-12 w-12 text-gray-300 mx-auto mb-3" />
               <h3 className="text-base font-semibold mb-1">{t("templates.emptyTitle")}</h3>
-              <p className="text-sm text-muted-foreground">
-                {t("templates.emptyDescription")}
-              </p>
+              <p className="text-sm text-muted-foreground">{t("templates.emptyDescription")}</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -322,9 +287,7 @@ export default async function SjaDashboardPage() {
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold">{template.name}</h3>
                       {template.description && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {template.description}
-                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">{template.description}</p>
                       )}
                       {template.workLocation && (
                         <p className="text-xs text-muted-foreground mt-1">
@@ -337,7 +300,7 @@ export default async function SjaDashboardPage() {
                         </Badge>
                         <span className="text-xs text-muted-foreground">
                           {t("templates.createdBy", { name: template.createdByName })} •{" "}
-                          {new Date(template.createdAt).toLocaleDateString(locale === "en" ? "en-US" : "nb-NO", {
+                          {new Date(template.createdAt).toLocaleDateString("en-GB", {
                             day: "numeric",
                             month: "short",
                             year: "numeric",
@@ -345,13 +308,13 @@ export default async function SjaDashboardPage() {
                         </span>
                       </div>
                       <div className="mt-3 space-y-1">
-                        {template.hazards.map((h) => (
-                          <div key={h.id} className="flex items-start gap-2 text-xs">
+                        {template.hazards.map((hazard) => (
+                          <div key={hazard.id} className="flex items-start gap-2 text-xs">
                             <Badge variant="outline" className="text-xs shrink-0">
-                              {h.activity}
+                              {hazard.activity}
                             </Badge>
                             <span className="text-muted-foreground truncate">
-                              {h.hazard} → {h.measures}
+                              {hazard.hazard} → {hazard.measures}
                             </span>
                           </div>
                         ))}

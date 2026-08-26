@@ -15,9 +15,10 @@ import { useTranslations } from "next-intl";
 interface CloseIncidentFormProps {
   incidentId: string;
   userId: string;
+  actionCount: number;
 }
 
-export function CloseIncidentForm({ incidentId, userId }: CloseIncidentFormProps) {
+export function CloseIncidentForm({ incidentId, userId, actionCount }: CloseIncidentFormProps) {
   const t = useTranslations("dashboardIncidentCloseForm");
   const router = useRouter();
   const { toast } = useToast();
@@ -34,6 +35,7 @@ export function CloseIncidentForm({ incidentId, userId }: CloseIncidentFormProps
       effectivenessReview: formData.get("effectivenessReview") as string,
       lessonsLearned: formData.get("lessonsLearned") as string || undefined,
       measureEffectiveness: formData.get("measureEffectiveness") as string,
+      noActionReason: actionCount === 0 ? (formData.get("noActionReason") as string) : undefined,
     };
 
     try {
@@ -81,10 +83,25 @@ export function CloseIncidentForm({ incidentId, userId }: CloseIncidentFormProps
             <p className="text-sm font-medium text-green-900 mb-2">{t("ready.title")}</p>
             <ul className="text-sm text-green-800 space-y-1 list-disc list-inside">
               <li>{t("ready.items.i1")}</li>
-              <li>{t("ready.items.i2")}</li>
+              <li>{actionCount === 0 ? t("ready.items.noAction") : t("ready.items.i2")}</li>
               <li>{t("ready.items.i3")}</li>
             </ul>
           </div>
+
+          {actionCount === 0 ? (
+            <div className="space-y-2">
+              <Label htmlFor="noActionReason">{t("fields.noActionReason")}</Label>
+              <Textarea
+                id="noActionReason"
+                name="noActionReason"
+                placeholder={t("placeholders.noActionReason")}
+                required
+                disabled={loading}
+                rows={4}
+              />
+              <p className="text-xs text-muted-foreground">{t("hints.noActionReason")}</p>
+            </div>
+          ) : null}
 
           <div className="space-y-2">
             <Label htmlFor="effectivenessReview">{t("fields.effectivenessReview")}</Label>

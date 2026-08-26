@@ -11,8 +11,8 @@ const pdcaFields = {
 export const createDocumentSchema = z.object({
   tenantId: z.string().cuid(),
   kind: z.nativeEnum(DocumentKind),
-  title: z.string().min(3, "Tittel må være minst 3 tegn"),
-  version: z.string().min(1, "Versjon er påkrevd").default("v1.0"),
+  title: z.string().min(3, "Title must be at least 3 characters"),
+  version: z.string().min(1, "Version is required").default("v1.0"),
   ownerId: z.string().cuid().optional().nullable(),
   templateId: z.string().cuid().optional().nullable(),
   reviewIntervalMonths: z.number().int().min(1).max(36).default(12),

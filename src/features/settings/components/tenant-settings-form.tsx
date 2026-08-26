@@ -29,8 +29,8 @@ export function TenantSettingsForm({ tenant, isAdmin }: TenantSettingsFormProps)
     if (!isAdmin) {
       toast({
         variant: "destructive",
-        title: "Ingen tilgang",
-        description: "Kun administratorer kan endre bedriftsinnstillinger",
+        title: "No access",
+        description: "Only administrators can change company settings",
       });
       return;
     }
@@ -40,31 +40,32 @@ export function TenantSettingsForm({ tenant, isAdmin }: TenantSettingsFormProps)
     const formData = new FormData(e.currentTarget);
     const data = {
       name: formData.get("name") as string,
-      orgNumber: formData.get("orgNumber") as string || undefined,
-      contactEmail: formData.get("contactEmail") as string || undefined,
-      contactPhone: formData.get("contactPhone") as string || undefined,
-      address: formData.get("address") as string || undefined,
-      city: formData.get("city") as string || undefined,
-      postalCode: formData.get("postalCode") as string || undefined,
-      hmsContactName: formData.get("hmsContactName") as string || undefined,
-      hmsContactPhone: formData.get("hmsContactPhone") as string || undefined,
-      hmsContactEmail: formData.get("hmsContactEmail") as string || undefined,
+      companyNumber: (formData.get("companyNumber") as string) || undefined,
+      vatNumber: (formData.get("vatNumber") as string) || undefined,
+      contactEmail: (formData.get("contactEmail") as string) || undefined,
+      contactPhone: (formData.get("contactPhone") as string) || undefined,
+      address: (formData.get("address") as string) || undefined,
+      city: (formData.get("city") as string) || undefined,
+      postalCode: (formData.get("postalCode") as string) || undefined,
+      hmsContactName: (formData.get("hmsContactName") as string) || undefined,
+      hmsContactPhone: (formData.get("hmsContactPhone") as string) || undefined,
+      hmsContactEmail: (formData.get("hmsContactEmail") as string) || undefined,
     };
 
     const result = await updateTenantSettings(data);
 
     if (result.success) {
       toast({
-        title: "✅ Innstillinger lagret",
-        description: "Bedriftsinformasjonen er oppdatert",
+        title: "Settings saved",
+        description: "Company details have been updated",
         className: "bg-green-50 border-green-200",
       });
       router.refresh();
     } else {
       toast({
         variant: "destructive",
-        title: "Feil",
-        description: result.error || "Kunne ikke lagre innstillinger",
+        title: "Could not save",
+        description: result.error || "Could not save settings",
       });
     }
 
@@ -77,15 +78,15 @@ export function TenantSettingsForm({ tenant, isAdmin }: TenantSettingsFormProps)
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            Bedriftsinformasjon
+            Company details
           </CardTitle>
           <CardDescription>
-            Grunnleggende informasjon om bedriften
+            Legal identity for this organisation. Used on the health and safety policy and invoices.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Bedriftsnavn *</Label>
+            <Label htmlFor="name">Company name *</Label>
             <Input
               id="name"
               name="name"
@@ -95,37 +96,48 @@ export function TenantSettingsForm({ tenant, isAdmin }: TenantSettingsFormProps)
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="orgNumber">Organisasjonsnummer</Label>
-            <Input
-              id="orgNumber"
-              name="orgNumber"
-              placeholder="123 456 789"
-              disabled={loading || !isAdmin}
-              defaultValue={tenant.orgNumber || ""}
-            />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="companyNumber">Companies House number</Label>
+              <Input
+                id="companyNumber"
+                name="companyNumber"
+                placeholder="12345678"
+                disabled={loading || !isAdmin}
+                defaultValue={tenant.companyNumber || tenant.orgNumber || ""}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vatNumber">VAT number</Label>
+              <Input
+                id="vatNumber"
+                name="vatNumber"
+                placeholder="GB123456789"
+                disabled={loading || !isAdmin}
+                defaultValue={tenant.vatNumber || ""}
+              />
+            </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="contactEmail">Kontakt e-post</Label>
+              <Label htmlFor="contactEmail">Contact email</Label>
               <Input
                 id="contactEmail"
                 name="contactEmail"
                 type="email"
-                placeholder="post@bedrift.no"
+                placeholder="hello@company.co.uk"
                 disabled={loading || !isAdmin}
                 defaultValue={tenant.contactEmail || ""}
               />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="contactPhone">Kontakt telefon</Label>
+              <Label htmlFor="contactPhone">Contact telephone</Label>
               <Input
                 id="contactPhone"
                 name="contactPhone"
                 type="tel"
-                placeholder="12 34 56 78"
+                placeholder="020 7946 0000"
                 disabled={loading || !isAdmin}
                 defaultValue={tenant.contactPhone || ""}
               />
@@ -133,11 +145,11 @@ export function TenantSettingsForm({ tenant, isAdmin }: TenantSettingsFormProps)
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="address">Adresse</Label>
+            <Label htmlFor="address">Address</Label>
             <Input
               id="address"
               name="address"
-              placeholder="Gateveien 1"
+              placeholder="1 Example Street"
               disabled={loading || !isAdmin}
               defaultValue={tenant.address || ""}
             />
@@ -145,22 +157,21 @@ export function TenantSettingsForm({ tenant, isAdmin }: TenantSettingsFormProps)
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="postalCode">Postnummer</Label>
+              <Label htmlFor="postalCode">Postcode</Label>
               <Input
                 id="postalCode"
                 name="postalCode"
-                placeholder="0123"
+                placeholder="SW1A 1AA"
                 disabled={loading || !isAdmin}
                 defaultValue={tenant.postalCode || ""}
               />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="city">Poststed</Label>
+              <Label htmlFor="city">Town / city</Label>
               <Input
                 id="city"
                 name="city"
-                placeholder="Oslo"
+                placeholder="London"
                 disabled={loading || !isAdmin}
                 defaultValue={tenant.city || ""}
               />
@@ -169,24 +180,24 @@ export function TenantSettingsForm({ tenant, isAdmin }: TenantSettingsFormProps)
         </CardContent>
       </Card>
 
-      {/* HMS-ansvarlig kontaktinformasjon */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ShieldAlert className="h-5 w-5 text-orange-600" />
-            HMS-ansvarlig kontaktinformasjon
+            Competent person
           </CardTitle>
           <CardDescription>
-            Dette vises for alle ansatte på deres dashboard under "Nødkontakter"
+            MHSWR 1999 reg.7: the person appointed to assist with health and safety. Shown to
+            employees as the HSE contact.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="hmsContactName">Navn på HMS-ansvarlig</Label>
+            <Label htmlFor="hmsContactName">Name</Label>
             <Input
               id="hmsContactName"
               name="hmsContactName"
-              placeholder="Navn Navnesen"
+              placeholder="Jane Smith"
               disabled={loading || !isAdmin}
               defaultValue={tenant.hmsContactName || ""}
             />
@@ -194,24 +205,23 @@ export function TenantSettingsForm({ tenant, isAdmin }: TenantSettingsFormProps)
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="hmsContactPhone">Telefonnummer</Label>
+              <Label htmlFor="hmsContactPhone">Telephone</Label>
               <Input
                 id="hmsContactPhone"
                 name="hmsContactPhone"
                 type="tel"
-                placeholder="+47 123 45 678"
+                placeholder="020 7946 0000"
                 disabled={loading || !isAdmin}
                 defaultValue={tenant.hmsContactPhone || ""}
               />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="hmsContactEmail">E-postadresse</Label>
+              <Label htmlFor="hmsContactEmail">Email</Label>
               <Input
                 id="hmsContactEmail"
                 name="hmsContactEmail"
                 type="email"
-                placeholder="hms@bedrift.no"
+                placeholder="hse@company.co.uk"
                 disabled={loading || !isAdmin}
                 defaultValue={tenant.hmsContactEmail || ""}
               />
@@ -225,20 +235,20 @@ export function TenantSettingsForm({ tenant, isAdmin }: TenantSettingsFormProps)
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <LayoutDashboard className="h-5 w-5 text-blue-600" />
-              Dashboard-innstillinger
+              Dashboard lock
             </CardTitle>
             <CardDescription>
-              Kontroller om ansatte kan tilpasse sitt eget dashboard
+              When locked, your dashboard tiles and Simple menu apply to everyone in the company.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
                 <Label htmlFor="dashboardLocked" className="text-sm font-medium">
-                  Lås dashboard for alle ansatte
+                  Lock dashboard and Simple menu for all users
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  Når aktivert speiles ditt dashboard-oppsett til alle ansatte — både admin-dashboardet og ansatt-dashboardet viser kun de modulene du har valgt. Ansatte ser bare relevante funksjoner og navigasjon.
+                  Employees cannot change tiles or Simple mode items until you unlock.
                 </p>
               </div>
               <Switch
@@ -251,18 +261,18 @@ export function TenantSettingsForm({ tenant, isAdmin }: TenantSettingsFormProps)
                   if (result.success) {
                     setDashboardLocked(checked);
                     toast({
-                      title: checked ? "Dashboard er nå låst" : "Dashboard er nå ulåst",
+                      title: checked ? "Dashboard locked" : "Dashboard unlocked",
                       description: checked
-                        ? "Ditt dashboard-oppsett speiles nå til alle ansatte"
-                        : "Ansatte ser nå alle funksjoner igjen",
+                        ? "Your layout now applies to everyone"
+                        : "People can choose their own Simple menu and tiles again",
                       className: "bg-green-50 border-green-200",
                     });
                     router.refresh();
                   } else {
                     toast({
                       variant: "destructive",
-                      title: "Feil",
-                      description: result.error || "Kunne ikke oppdatere dashboard-lås",
+                      title: "Could not save",
+                      description: result.error || "Could not update the lock",
                     });
                   }
                   setLockLoading(false);
@@ -276,16 +286,16 @@ export function TenantSettingsForm({ tenant, isAdmin }: TenantSettingsFormProps)
       {isAdmin && (
         <div className="flex justify-end">
           <Button type="submit" disabled={loading}>
-            {loading ? "Lagrer..." : "Lagre endringer"}
+            {loading ? "Saving…" : "Save changes"}
           </Button>
         </div>
       )}
 
       {!isAdmin && (
-        <Card className="bg-amber-50 border-amber-200">
+        <Card className="border-amber-200 bg-amber-50">
           <CardContent className="pt-4">
             <p className="text-sm text-amber-800">
-              Kun administratorer kan endre bedriftsinnstillinger
+              Only administrators can change company settings
             </p>
           </CardContent>
         </Card>
@@ -293,4 +303,3 @@ export function TenantSettingsForm({ tenant, isAdmin }: TenantSettingsFormProps)
     </form>
   );
 }
-

@@ -1,35 +1,26 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { validateApiKey, logApiRequest } from "@/lib/intelligence-api-auth";
 
-export const dynamic = "force-dynamic";
+/** Not offered in the UK product. */
+function notAvailable() {
+  return NextResponse.json({ error: "Not available" }, { status: 404 });
+}
 
-export async function GET(request: Request) {
-  const startTime = Date.now();
-  const authResult = await validateApiKey(request);
-  if (authResult instanceof NextResponse) return authResult;
+export async function GET() {
+  return notAvailable();
+}
 
-  const snapshots = await prisma.industrySnapshot.findMany({
-    orderBy: { createdAt: "desc" },
-    distinct: ["industry"],
-    select: {
-      industry: true,
-      period: true,
-      tenantCount: true,
-      employeeCount: true,
-      createdAt: true,
-    },
-  });
+export async function POST() {
+  return notAvailable();
+}
 
-  const industries = snapshots.map((s) => ({
-    industry: s.industry,
-    latestPeriod: s.period,
-    tenantCount: s.tenantCount,
-    employeeCount: s.employeeCount,
-    lastUpdated: s.createdAt.toISOString(),
-  }));
+export async function PUT() {
+  return notAvailable();
+}
 
-  await logApiRequest(authResult.apiKeyId, "/v1/industries", null, startTime);
+export async function PATCH() {
+  return notAvailable();
+}
 
-  return NextResponse.json({ industries });
+export async function DELETE() {
+  return notAvailable();
 }

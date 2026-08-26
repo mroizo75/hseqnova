@@ -52,7 +52,7 @@ export async function GET(
       const ext = path.extname(realPath).toLowerCase();
       const contentType = getContentType(ext);
 
-      return new NextResponse(fileBuffer, {
+      return new NextResponse(fileBuffer as unknown as BodyInit, {
         headers: {
           "Content-Type": contentType,
           "Content-Disposition": `inline; filename="${path.basename(realPath)}"`,
@@ -98,7 +98,7 @@ export async function GET(
       const ext = path.extname(fileKey).toLowerCase();
       const contentType = response.ContentType || getContentType(ext);
 
-      return new NextResponse(fileBuffer, {
+      return new NextResponse(fileBuffer as unknown as BodyInit, {
         headers: {
           "Content-Type": contentType,
           "Content-Disposition": `inline; filename="${path.basename(fileKey)}"`,

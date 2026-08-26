@@ -11,20 +11,20 @@ import { z } from "zod";
  */
 
 export const createTrainingSchema = z.object({
-  tenantId: z.string().cuid(),
-  userId: z.string().cuid(),
-  courseKey: z.string().min(2, "Kurs ID må være minst 2 tegn"),
-  title: z.string().min(3, "Tittel må være minst 3 tegn"),
-  provider: z.string().min(2, "Leverandør må være minst 2 tegn"),
+  tenantId: z.string().min(1, "Organisation is required"),
+  userId: z.string().min(1, "Employee is required"),
+  courseKey: z.string().min(2, "Course ID must be at least 2 characters"),
+  title: z.string().min(3, "Title must be at least 3 characters"),
+  provider: z.string().min(2, "Provider must be at least 2 characters"),
   completedAt: z.date().optional(),
-  validUntil: z.date().optional(), // For kurs med utløpsdato (f.eks. førstehjelpskurs)
-  proofDocKey: z.string().optional(), // ISO 9001: Dokumentert bevis (sertifikat)
-  isRequired: z.boolean().default(false), // Obligatorisk kurs for alle/visse roller
-  effectiveness: z.string().optional(), // ISO 9001: Evaluering av effektivitet
+  validUntil: z.date().optional(),
+  proofDocKey: z.string().optional(),
+  isRequired: z.boolean().default(false),
+  effectiveness: z.string().optional(),
 });
 
 export const updateTrainingSchema = z.object({
-  id: z.string().cuid(),
+  id: z.string().min(1, "Training is required"),
   title: z.string().min(3).optional(),
   provider: z.string().min(2).optional(),
   completedAt: z.date().optional(),
@@ -34,9 +34,9 @@ export const updateTrainingSchema = z.object({
 });
 
 export const evaluateTrainingSchema = z.object({
-  id: z.string().cuid(),
-  effectiveness: z.string().min(20, "Evalueringen må være minst 20 tegn"),
-  evaluatedBy: z.string().cuid(),
+  id: z.string().min(1, "Training is required"),
+  effectiveness: z.string().min(20, "The evaluation must be at least 20 characters"),
+  evaluatedBy: z.string().min(1, "Evaluator is required"),
 });
 
 export type CreateTrainingInput = z.infer<typeof createTrainingSchema>;
@@ -76,13 +76,22 @@ export function getTrainingStatus(training: {
  */
 export function getTrainingStatusLabel(status: string): string {
   const labels: Record<string, string> = {
-    NOT_STARTED: "Ikke dokumentert",
-    COMPLETED: "Fullført",
-    VALID: "Gyldig",
-    EXPIRING_SOON: "Utløper snart",
-    EXPIRED: "Utløpt",
+    NOT_STARTED: "Not recorded",
+    COMPLETED: "Completed",
+    VALID: "Valid",
+    EXPIRING_SOON: "Expiring soon",
+    EXPIRED: "Expired",
   };
   return labels[status] || status;
+}
+
+export function uniqueByCourseKey<T extends { courseKey: string }>(rows: T[]): T[] {
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    if (seen.has(row.courseKey)) return false;
+    seen.add(row.courseKey);
+    return true;
+  });
 }
 
 /**

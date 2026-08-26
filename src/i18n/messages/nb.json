@@ -22,7 +22,7 @@
     "projects": "Prosjekter",
     "constructionCompliance": "Bygg/anlegg-compliance",
     "hseStatistics": "HSE-statistikk",
-    "sja": "SJA",
+    "sja": "RAMS",
     "inspections": "Vernerunde",
     "fireDrills": "Brannøvelser",
     "chemicals": "Stoffkartotek",
@@ -1575,9 +1575,9 @@
     "occurredAtLabel": "Hendelsesdato:"
   },
   "employeeSjaPage": {
-    "title": "Mine SJA-analyser",
-    "description": "Sikker Jobb Analyse - identifiser farer før arbeidet starter",
-    "new": "Ny SJA",
+    "title": "My RAMS",
+    "description": "Risk assessment and method statement — identify hazards before work starts",
+    "new": "New RAMS",
     "stats": {
       "draft": "Utkast",
       "active": "Aktive",
@@ -2989,8 +2989,9 @@
   "dashboardActionsPage": {
     "noTenantAccess": "Ingen tilgang til tenant",
     "title": "Tiltak",
-    "description": "ISO 9001: Planlagte tiltak med ansvarlige og tidsplaner",
-    "projectInfo": "Nye tiltak opprettes for prosjekt:",
+    "description": "Preventive and protective measures with an owner and due date (MHSWR 1999)",
+    "projectInfo": "New actions are created for project:",
+    "fireDrillInfo": "New actions are created for fire drill:",
     "stats": {
       "total": {
         "title": "Totalt",
@@ -3137,70 +3138,78 @@
     }
   },
   "dashboardSjaPage": {
-    "noTenantAccess": "Ingen tilgang til tenant",
-    "title": "SJA – Sikker Jobb Analyse",
-    "description": "Oversikt over alle SJA-analyser og maler",
+    "noTenantAccess": "No organisation access",
+    "title": "RAMS",
+    "description": "Risk assessments and method statements for the task (MHSWR 1999; CDM 2015)",
     "actions": {
-      "new": "Ny SJA"
+      "new": "New RAMS"
+    },
+    "notices": {
+      "createOnly": "You can create RAMS, but you cannot view others. RAMS you submit are reviewed by the competent person or an administrator.",
+      "ownOnly": "You can see only the RAMS you created. Submissions are reviewed and approved by a line manager."
     },
     "stats": {
       "total": {
-        "title": "Totalt",
-        "description": "SJA-analyser"
+        "title": "Total",
+        "description": "RAMS records"
       },
       "draft": {
-        "title": "Utkast",
-        "description": "Venter på godkjenning"
+        "title": "Draft",
+        "description": "Waiting for approval"
       },
       "active": {
-        "title": "Aktive",
-        "description": "Pågående arbeid"
+        "title": "Live",
+        "description": "Work in progress"
       },
       "completed": {
-        "title": "Fullført",
-        "description": "Ferdig behandlet"
+        "title": "Complete",
+        "description": "Closed out"
       },
       "templates": {
-        "title": "Maler",
-        "description": "Gjenbrukbare maler"
+        "title": "Templates",
+        "description": "Reusable task templates"
       }
     },
     "analyses": {
-      "title": "Alle SJA-analyser",
-      "emptyTitle": "Ingen SJA-analyser",
-      "emptyDescription": "Det er ikke opprettet noen SJA-analyser ennå."
+      "title": "All RAMS",
+      "emptyTitle": "No RAMS yet",
+      "emptyDescription": "Create a RAMS before work starts so hazards and controls are agreed."
     },
     "table": {
-      "number": "Nr.",
-      "title": "Tittel",
-      "location": "Sted",
+      "number": "No.",
+      "title": "Title",
+      "location": "Location",
       "status": "Status",
-      "conclusion": "Konklusjon",
-      "createdBy": "Opprettet av",
-      "date": "Dato",
-      "risk": "Risiko"
+      "conclusion": "Decision",
+      "createdBy": "Created by",
+      "date": "Date",
+      "risk": "Risk"
     },
     "status": {
-      "DRAFT": "Utkast",
-      "PENDING_APPROVAL": "Til godkjenning",
-      "APPROVED": "Godkjent",
-      "ACTIVE": "Aktiv",
-      "COMPLETED": "Fullført",
-      "CANCELLED": "Avbrutt"
+      "DRAFT": "Draft",
+      "PENDING_APPROVAL": "Pending approval",
+      "APPROVED": "Approved",
+      "ACTIVE": "Live",
+      "COMPLETED": "Complete",
+      "CANCELLED": "Cancelled"
     },
     "conclusion": {
-      "GO": "Kan gjennomføres",
-      "GO_WITH_MEASURES": "Kan gjennomføres med tiltak",
-      "NO_GO": "Kan ikke gjennomføres"
+      "NOT_DECIDED": "Not decided",
+      "APPROVED": "Approved — work may start",
+      "CONDITIONAL": "Approved with conditions",
+      "REJECTED": "Rejected — work must not start",
+      "GO": "Approved — work may start",
+      "GO_WITH_MEASURES": "Approved with conditions",
+      "NO_GO": "Rejected — work must not start"
     },
     "templates": {
-      "title": "SJA-maler ({count})",
-      "description": "Maler gjør det enkelt for ansatte å opprette SJA daglig med forhåndsdefinerte farer og tiltak",
-      "emptyTitle": "Ingen maler opprettet",
-      "emptyDescription": "Opprett en mal slik at ansatte raskt kan lage SJA for gjentakende arbeidsoppgaver.",
-      "workLocation": "Arbeidssted: {value}",
-      "hazards": "{count} farer",
-      "createdBy": "Opprettet av {name}"
+      "title": "RAMS templates ({count})",
+      "description": "Templates help the workforce complete RAMS for recurring tasks with predefined hazards and controls",
+      "emptyTitle": "No templates yet",
+      "emptyDescription": "Create a template so the workforce can complete RAMS quickly for recurring work.",
+      "workLocation": "Work location: {value}",
+      "hazards": "{count} hazards",
+      "createdBy": "Created by {name}"
     }
   },
   "dashboardTrainingPage": {

@@ -1,11 +1,13 @@
 import { redirect, notFound } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { ProjectForm } from "@/features/projects/components/project-form";
+import { loadDutyHoldersForProject, loadProjectById, loadProjectPeopleForTenant } from "@/server/queries/projects.queries";
+import { mergeDutyHoldersForForm } from "@/features/projects/lib/cdm-duty-holders";
+import type { CdmDutyHolderRoleKey } from "@/features/projects/lib/cdm-duty-holders";
 
 export default async function EditProjectPage({
   params,
@@ -13,29 +15,15 @@ export default async function EditProjectPage({
   params: Promise<{ id: string }>;
 }) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) redirect("/login");
+  if (!session?.user?.tenantId) redirect("/login");
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { tenants: true },
-  });
-  if (!user || user.tenants.length === 0) return <div>Ingen tilgang</div>;
-
-  const selectedMembership = user.tenants.find(
-    (membership) => membership.tenantId === session.user.tenantId,
-  );
-  if (!selectedMembership) return <div>Ingen tilgang</div>;
-
-  const tenantId = selectedMembership.tenantId;
+  const tenantId = session.user.tenantId;
   const { id } = await params;
 
-  const [project, users] = await Promise.all([
-    prisma.project.findUnique({ where: { id, tenantId } }),
-    prisma.userTenant.findMany({
-      where: { tenantId },
-      include: { user: { select: { id: true, name: true, email: true } } },
-      orderBy: { user: { name: "asc" } },
-    }),
+  const [project, users, dutyHolders] = await Promise.all([
+    loadProjectById(id, tenantId),
+    loadProjectPeopleForTenant(tenantId),
+    loadDutyHoldersForProject(id, tenantId),
   ]);
 
   if (!project) notFound();
@@ -49,14 +37,14 @@ export default async function EditProjectPage({
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold">Rediger prosjekt</h1>
+          <h1 className="text-2xl font-bold">Edit project</h1>
           <p className="text-muted-foreground">{project.name}</p>
         </div>
       </div>
 
       <ProjectForm
         mode="edit"
-        users={users.map((ut) => ut.user)}
+        users={users}
         defaultValues={{
           id: project.id,
           name: project.name,
@@ -69,6 +57,13 @@ export default async function EditProjectPage({
           startDate: project.startDate?.toISOString().split("T")[0],
           endDate: project.endDate?.toISOString().split("T")[0],
           projectManagerId: project.projectManagerId ?? undefined,
+          dutyHolders: mergeDutyHoldersForForm(
+            dutyHolders.map((holder) => ({
+              ...holder,
+              role: holder.role as CdmDutyHolderRoleKey,
+            })),
+            project.clientName,
+          ),
         }}
       />
     </div>

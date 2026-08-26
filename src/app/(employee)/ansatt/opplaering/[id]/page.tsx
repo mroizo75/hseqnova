@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
-import { prisma } from "@/lib/db";
+import { loadTrainingById } from "@/server/queries/training.queries";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,12 +21,10 @@ export default async function AnsattTrainingDetailPage({ params }: { params: Pro
     redirect("/login");
   }
 
-  const training = await prisma.training.findUnique({
-    where: {
-      id,
-      tenantId: session.user.tenantId,
-      userId: session.user.id, // Ansatte kan kun se sine egne opplæringer
-    },
+  const training = await loadTrainingById({
+    id,
+    tenantId: session.user.tenantId,
+    userId: session.user.id,
   });
 
   if (!training) {

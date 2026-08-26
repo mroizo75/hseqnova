@@ -1,88 +1,43 @@
-import { getCurrentUser } from "@/lib/server-action";
+import { getAuthContext } from "@/lib/server-authorization";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
 import { DocumentEditForm } from "@/features/documents/components/document-edit-form";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { loadDocumentById, loadDocumentFormOptions } from "@/server/queries/documents.queries";
 
 export default async function EditDocumentPage({ params }: { params: Promise<{ id: string }> }) {
-  const user = await getCurrentUser();
+  const auth = await getAuthContext();
   const { id } = await params;
 
-  if (!user) {
+  if (!auth) {
     redirect("/login");
   }
 
-  const userTenant = user.tenants.at(0);
-  if (!userTenant) {
-    return <div>Ingen tilgang til tenant</div>;
+  if (!auth.permissions.canCreateDocuments) {
+    redirect(`/dashboard/documents/${id}`);
   }
 
-  const document = await prisma.document.findFirst({
-    where: {
-      id,
-      tenantId: userTenant.tenantId,
-    },
-  });
+  const document = await loadDocumentById({ id, tenantId: auth.tenantId });
 
   if (!document) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Dokument ikke funnet</h1>
+        <h1 className="text-3xl font-bold">Document not found</h1>
         <p className="text-muted-foreground">
-          Dette dokumentet finnes ikke eller du har ikke tilgang til det.
+          This document does not exist or you do not have access to it.
         </p>
         <Button asChild>
           <Link href="/dashboard/documents">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Tilbake til dokumenter
+            Back to documents
           </Link>
         </Button>
       </div>
     );
   }
 
-  const tenantUsers = await prisma.userTenant.findMany({
-    where: { tenantId: userTenant.tenantId },
-    include: {
-      user: {
-        select: { id: true, name: true, email: true },
-      },
-    },
-    orderBy: {
-      user: { name: "asc" },
-    },
-  });
-
-  const templates = await prisma.documentTemplate.findMany({
-    where: {
-      OR: [{ isGlobal: true }, { tenantId: userTenant.tenantId }],
-    },
-    orderBy: [
-      { isGlobal: "desc" },
-      { name: "asc" },
-    ],
-  });
-
-  const ownerOptions = tenantUsers
-    .map((member) => ({
-      id: member.user?.id ?? "",
-      name: member.user?.name ?? member.user?.email ?? "Ukjent",
-      email: member.user?.email ?? "",
-      role: member.role,
-    }))
-    .filter((user) => user.id);
-
-  const templateOptions = templates.map((template) => ({
-    id: template.id,
-    name: template.name,
-    category: template.category,
-    description: template.description,
-    defaultReviewIntervalMonths: template.defaultReviewIntervalMonths,
-    isGlobal: template.isGlobal,
-    pdcaGuidance: template.pdcaGuidance as Record<string, string> | null,
-  }));
+  const { owners, templates } = await loadDocumentFormOptions(auth.tenantId);
 
   return (
     <div className="space-y-6">
@@ -90,21 +45,16 @@ export default async function EditDocumentPage({ params }: { params: Promise<{ i
         <Button variant="ghost" asChild className="mb-4">
           <Link href="/dashboard/documents">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Tilbake til dokumenter
+            Back to documents
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold">Rediger dokument</h1>
+        <h1 className="text-3xl font-bold">Edit document</h1>
         <p className="text-muted-foreground">
-          Oppdater metadata og tilgangskontroll for "{document.title}"
+          Update metadata and access for “{document.title}”.
         </p>
       </div>
 
-      <DocumentEditForm
-        document={document}
-        owners={ownerOptions}
-        templates={templateOptions}
-      />
+      <DocumentEditForm document={document} owners={owners} templates={templates} />
     </div>
   );
 }
-

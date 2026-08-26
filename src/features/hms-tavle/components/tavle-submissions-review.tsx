@@ -21,21 +21,21 @@ import {
 import { SubcontractorSubmission, SubcontractorSubmissionStatus, SubcontractorSubmissionType } from "@prisma/client";
 
 const TYPE_LABELS: Record<SubcontractorSubmissionType, string> = {
-  AVVIK: "Avvik",
-  RUH: "RUH",
-  SJA: "SJA",
-  NESTENULYKKE: "Nestenulykke",
-  PDF_RAPPORT: "PDF-rapport",
+  AVVIK: "Incident",
+  RUH: "Accident / injury",
+  SJA: "RAMS",
+  NESTENULYKKE: "Near miss",
+  PDF_RAPPORT: "PDF report",
 };
 
 const STATUS_CONFIG: Record<
   SubcontractorSubmissionStatus,
   { label: string; icon: React.ReactNode; variant: "default" | "secondary" | "destructive" | "outline" }
 > = {
-  PENDING: { label: "Venter", icon: <Clock className="h-3.5 w-3.5" />, variant: "outline" },
-  UNDER_REVIEW: { label: "Under behandling", icon: <AlertTriangle className="h-3.5 w-3.5" />, variant: "secondary" },
-  LINKED: { label: "Koblet", icon: <CheckCircle2 className="h-3.5 w-3.5" />, variant: "default" },
-  REJECTED: { label: "Avvist", icon: <XCircle className="h-3.5 w-3.5" />, variant: "destructive" },
+  PENDING: { label: "Pending", icon: <Clock className="h-3.5 w-3.5" />, variant: "outline" },
+  UNDER_REVIEW: { label: "Under review", icon: <AlertTriangle className="h-3.5 w-3.5" />, variant: "secondary" },
+  LINKED: { label: "Linked", icon: <CheckCircle2 className="h-3.5 w-3.5" />, variant: "default" },
+  REJECTED: { label: "Rejected", icon: <XCircle className="h-3.5 w-3.5" />, variant: "destructive" },
 };
 
 interface Props {
@@ -59,8 +59,8 @@ export function TavleSubmissionsReview({ submissions, tavleId, isAddon }: Props)
         body: JSON.stringify({ action, notes }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Feil");
-      toast.success(action === "approve" ? "Innsending godkjent" : "Innsending avvist");
+      if (!res.ok) throw new Error(json.error ?? "Error");
+      toast.success(action === "approve" ? "Submission approved" : "Submission rejected");
       setReviewingId(null);
       setNotes("");
       router.refresh();
@@ -74,7 +74,7 @@ export function TavleSubmissionsReview({ submissions, tavleId, isAddon }: Props)
   if (submissions.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground text-sm border rounded-lg border-dashed">
-        Ingen innsendinger fra underentreprenører ennå.
+        No submissions from subcontractors yet.
       </div>
     );
   }
@@ -82,9 +82,9 @@ export function TavleSubmissionsReview({ submissions, tavleId, isAddon }: Props)
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold">UE-innsendinger</h3>
+        <h3 className="font-semibold">Subcontractor submissions</h3>
         <p className="text-sm text-muted-foreground">
-          {submissions.filter((s) => s.status === "PENDING").length} ventende
+          {submissions.filter((s) => s.status === "PENDING").length} pending
         </p>
       </div>
 
@@ -118,7 +118,7 @@ export function TavleSubmissionsReview({ submissions, tavleId, isAddon }: Props)
                       </span>
                     )}
                     <span className="text-xs">
-                      {new Date(sub.createdAt).toLocaleDateString("nb-NO", {
+                      {new Date(sub.createdAt).toLocaleDateString("en-GB", {
                         day: "2-digit",
                         month: "short",
                         year: "numeric",
@@ -135,7 +135,7 @@ export function TavleSubmissionsReview({ submissions, tavleId, isAddon }: Props)
                     variant="outline"
                     onClick={() => setReviewingId(isReviewing ? null : sub.id)}
                   >
-                    {isReviewing ? "Avbryt" : "Behandle"}
+                    {isReviewing ? "Cancel" : "Review"}
                   </Button>
                 )}
               </div>
@@ -159,7 +159,7 @@ export function TavleSubmissionsReview({ submissions, tavleId, isAddon }: Props)
                     <Button key={i} size="sm" variant="outline" asChild>
                       <a href={url} target="_blank" rel="noopener noreferrer">
                         <FileText className="h-3.5 w-3.5 mr-1" />
-                        Vedlegg {i + 1}
+                        Attachment {i + 1}
                       </a>
                     </Button>
                   ))}
@@ -170,10 +170,10 @@ export function TavleSubmissionsReview({ submissions, tavleId, isAddon }: Props)
               {isAddon && (sub.linkedIncidentId || sub.linkedRuhId || sub.linkedSjaId) && (
                 <div className="text-xs text-green-700 flex items-center gap-1">
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  Koblet til HMS Nova
+                  Linked to HSEQ Nova
                   {sub.linkedIncidentId && (
                     <Button size="sm" variant="link" className="h-auto p-0 text-xs" asChild>
-                      <a href={`/dashboard/incidents/${sub.linkedIncidentId}`}>Se avvik</a>
+                      <a href={`/dashboard/incidents/${sub.linkedIncidentId}`}>View incident</a>
                     </Button>
                   )}
                 </div>
@@ -182,11 +182,11 @@ export function TavleSubmissionsReview({ submissions, tavleId, isAddon }: Props)
               {/* Behandlingspanel */}
               {isReviewing && (
                 <div className="border-t pt-3 space-y-2">
-                  <Label className="text-xs">Notat (valgfritt)</Label>
+                  <Label className="text-xs">Note (optional)</Label>
                   <Textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Notat om behandlingen..."
+                    placeholder="Note about this review..."
                     rows={2}
                     className="text-sm"
                   />
@@ -198,7 +198,7 @@ export function TavleSubmissionsReview({ submissions, tavleId, isAddon }: Props)
                       disabled={processing}
                     >
                       <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                      Godkjenn
+                      Approve
                     </Button>
                     <Button
                       size="sm"
@@ -207,7 +207,7 @@ export function TavleSubmissionsReview({ submissions, tavleId, isAddon }: Props)
                       disabled={processing}
                     >
                       <XCircle className="h-3.5 w-3.5 mr-1" />
-                      Avvis
+                      Reject
                     </Button>
                   </div>
                 </div>

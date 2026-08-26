@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
-export default function NewRuhPage() {
-  redirect("/dashboard/incidents/new?type=ULYKKE");
+/** Not offered in the UK product. */
+export default function Page() {
+  redirect("/dashboard");
 }

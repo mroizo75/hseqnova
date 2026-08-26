@@ -1,20 +1,20 @@
 import { GLOBAL_ROUTINE_TEMPLATE_LIBRARY } from "@/lib/routine-template-library";
 
-const CATEGORY_LABELS_NB: Record<string, string> = {
-  AVVIK: "Avvik og korrigerende tiltak",
-  VARSLING: "Varsling",
-  HMS_STYRING: "HMS-styring og system",
-  EL_SIKKERHET: "Elektrisk sikkerhet",
-  BYGG_ANLEGG: "Bygg og anlegg",
-  HELSE: "Helse og miljø",
-  TRANSPORT: "Transport og logistikk",
-  INDUSTRI: "Industri og produksjon",
-  HANDEL_SERVICE: "Handel og service",
-  HOTELL_RESTAURANT: "Hotell og restaurant",
-  UTDANNING: "Utdanning",
-  TEKNOLOGI_IT: "Teknologi og IT",
-  LANDBRUK: "Landbruk",
-  GENERELL: "Generell HMS",
+const CATEGORY_LABELS: Record<string, string> = {
+  AVVIK: "Incidents and corrective actions",
+  VARSLING: "Whistleblowing",
+  HMS_STYRING: "HSEQ management and system",
+  EL_SIKKERHET: "Electrical safety",
+  BYGG_ANLEGG: "Construction",
+  HELSE: "Health and environment",
+  TRANSPORT: "Transport and logistics",
+  INDUSTRI: "Industry and production",
+  HANDEL_SERVICE: "Retail and service",
+  HOTELL_RESTAURANT: "Hotels and restaurants",
+  UTDANNING: "Education",
+  TEKNOLOGI_IT: "Technology and IT",
+  LANDBRUK: "Agriculture",
+  GENERELL: "General HSEQ",
 };
 
 const CUSTOM_SENTINEL = "__ANNET__";
@@ -26,9 +26,9 @@ export function getRoutineCategoryPresets(): { value: string; label: string }[] 
     const c = entry.category?.trim();
     if (!c || seen.has(c)) continue;
     seen.add(c);
-    out.push({ value: c, label: CATEGORY_LABELS_NB[c] ?? c });
+    out.push({ value: c, label: CATEGORY_LABELS[c] ?? c });
   }
-  out.sort((a, b) => a.label.localeCompare(b.label, "nb"));
+  out.sort((a, b) => a.label.localeCompare(b.label, "en-GB"));
   return out;
 }
 

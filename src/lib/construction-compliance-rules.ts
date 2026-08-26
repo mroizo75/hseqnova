@@ -52,6 +52,12 @@ export interface ConstructionComplianceValidation {
   preNotificationMissingFieldsForSubmission: string[];
 }
 
+export type F10NotifiableInput = {
+  workDays: number | null;
+  maxWorkers: number | null;
+  personDays: number | null;
+};
+
 function asDate(value: Date | string | null | undefined): Date | null {
   if (!value) return null;
   const parsed = value instanceof Date ? value : new Date(value);
@@ -81,35 +87,55 @@ export function countWorkdaysInclusive(start: Date, end: Date): number {
   return count;
 }
 
-// Byggherreforskriften § 10: forhåndsmelding ved >15 virkedager eller >250 dagsverk.
+/**
+ * CDM 2015 reg. 6 — F10 notification to HSE if construction work is expected to
+ * last more than 30 working days and have more than 20 workers on site at any
+ * one time, or exceed 500 person days.
+ */
+export function isF10Notifiable(input: F10NotifiableInput): {
+  isRequired: boolean;
+  reasons: string[];
+} {
+  const reasons: string[] = [];
+  if (
+    input.workDays !== null &&
+    input.maxWorkers !== null &&
+    input.workDays > 30 &&
+    input.maxWorkers > 20
+  ) {
+    reasons.push(
+      "Planned duration is more than 30 working days with more than 20 workers on site at any one time",
+    );
+  }
+  if (input.personDays !== null && input.personDays > 500) {
+    reasons.push("Estimated work exceeds 500 person days");
+  }
+  return { isRequired: reasons.length > 0, reasons };
+}
+
+// CDM 2015 reg. 6: notify HSE before the construction phase begins.
 export function evaluatePreNotificationRequirement(
-  preNotification: PreNotificationData | null | undefined
+  preNotification: PreNotificationData | null | undefined,
 ): PreNotificationRequirementResult {
   const startDate = asDate(preNotification?.expectedStartDate);
   const endDate = asDate(preNotification?.expectedEndDate);
   const workers = preNotification?.maxWorkersSimultaneous ?? null;
 
   const workDays = startDate && endDate ? countWorkdaysInclusive(startDate, endDate) : null;
-  const estimatedWorkerDays =
-    workDays && workers && workers > 0 ? workDays * workers : null;
+  const estimatedWorkerDays = workDays && workers && workers > 0 ? workDays * workers : null;
+  const { isRequired, reasons } = isF10Notifiable({
+    workDays,
+    maxWorkers: workers,
+    personDays: estimatedWorkerDays,
+  });
 
-  const reasons: string[] = [];
-  if (workDays !== null && workDays > 15) {
-    reasons.push("Planlagt varighet er over 15 virkedager");
-  }
-  if (estimatedWorkerDays !== null && estimatedWorkerDays > 250) {
-    reasons.push("Estimert arbeidsmengde er over 250 dagsverk");
-  }
-
-  const isRequired = reasons.length > 0;
-  const submissionDeadlineDate =
-    isRequired && startDate ? new Date(startDate.getTime() - 7 * 24 * 60 * 60 * 1000) : null;
+  const submissionDeadlineDate = isRequired && startDate ? new Date(startDate) : null;
   const now = new Date();
   const isDeadlinePassed = Boolean(submissionDeadlineDate && now > submissionDeadlineDate);
   const isDeadlineSoon = Boolean(
     submissionDeadlineDate &&
       !isDeadlinePassed &&
-      submissionDeadlineDate.getTime() - now.getTime() <= 3 * 24 * 60 * 60 * 1000
+      submissionDeadlineDate.getTime() - now.getTime() <= 3 * 24 * 60 * 60 * 1000,
   );
 
   return {
@@ -123,44 +149,46 @@ export function evaluatePreNotificationRequirement(
   };
 }
 
-// Byggherreforskriften § 8/§9: SHA-plan må være konkret før den settes aktiv.
+// CDM 2015 reg. 12: Construction Phase Plan must be sufficiently developed before work starts.
 export function validateShaPlanForActive(
-  shaPlan: ShaPlanData | null | undefined
+  shaPlan: ShaPlanData | null | undefined,
 ): { isValid: boolean; missingFields: string[] } {
   const missingFields: string[] = [];
-  if (!hasText(shaPlan?.builderName)) missingFields.push("Byggherre");
-  if (!hasText(shaPlan?.coordinatorPlanningName)) missingFields.push("Koordinator prosjektering (KP)");
-  if (!hasText(shaPlan?.coordinatorExecutionName)) missingFields.push("Koordinator utførelse (KU)");
-  if (!hasText(shaPlan?.organizationChart)) missingFields.push("Organisasjonskart / rollefordeling");
-  if (!hasText(shaPlan?.progressPlan)) missingFields.push("Fremdriftsplan");
-  if (!hasText(shaPlan?.specificMeasures)) missingFields.push("Spesifikke SHA-tiltak");
-  if (!hasText(shaPlan?.changeProcedure)) missingFields.push("Rutine for endring av SHA-plan");
+  if (!hasText(shaPlan?.builderName)) missingFields.push("Client");
+  if (!hasText(shaPlan?.coordinatorPlanningName)) missingFields.push("Principal Designer");
+  if (!hasText(shaPlan?.coordinatorExecutionName)) missingFields.push("Principal Contractor");
+  if (!hasText(shaPlan?.organizationChart)) missingFields.push("Organisation / duty holders");
+  if (!hasText(shaPlan?.progressPlan)) missingFields.push("Programme");
+  if (!hasText(shaPlan?.specificMeasures)) missingFields.push("Site-specific controls (CPP)");
+  if (!hasText(shaPlan?.changeProcedure)) missingFields.push("Arrangements for change");
   if (shaPlan?.conflictAssessmentDocumented !== true) {
-    missingFields.push("Dokumentert rollekonflikt-vurdering");
+    missingFields.push("Competence / appointment recorded");
   }
   if (shaPlan?.availableOnSite !== true) {
-    missingFields.push("SHA-plan tilgjengelig på byggeplassen");
+    missingFields.push("Construction Phase Plan available on site");
   }
 
   return { isValid: missingFields.length === 0, missingFields };
 }
 
-// Byggherreforskriften § 10: før innsending må kjernefeltene være på plass.
+// CDM 2015 reg. 6: F10 particulars before the notification is treated as submitted.
 export function validatePreNotificationForSubmission(
-  preNotification: PreNotificationData | null | undefined
+  preNotification: PreNotificationData | null | undefined,
 ): { isValid: boolean; missingFields: string[] } {
   const missingFields: string[] = [];
-  if (!hasText(preNotification?.projectAddress)) missingFields.push("Adresse byggeplass");
-  if (!hasText(preNotification?.projectType)) missingFields.push("Prosjektets art");
-  if (!hasText(preNotification?.builderName)) missingFields.push("Byggherre navn");
+  if (!hasText(preNotification?.projectAddress)) missingFields.push("Site address");
+  if (!hasText(preNotification?.projectType)) missingFields.push("Description of the project");
+  if (!hasText(preNotification?.builderName)) missingFields.push("Client");
   if (!hasText(preNotification?.builderRepresentativeName)) {
-    missingFields.push("Byggherres representant");
+    missingFields.push("Client contact");
   }
-  if (!asDate(preNotification?.expectedStartDate)) missingFields.push("Startdato");
-  if (!hasText(preNotification?.coordinators)) missingFields.push("Koordinatorer");
-  if (!hasText(preNotification?.contractors)) missingFields.push("Utførende virksomheter");
+  if (!asDate(preNotification?.expectedStartDate)) missingFields.push("Start date");
+  if (!hasText(preNotification?.coordinators)) {
+    missingFields.push("Principal Designer / Principal Contractor");
+  }
+  if (!hasText(preNotification?.contractors)) missingFields.push("Contractors");
   if (preNotification?.visibleAtSite !== true) {
-    missingFields.push("Bekreftelse på at forhåndsmelding er synlig på byggeplass");
+    missingFields.push("F10 copy displayed on site");
   }
 
   return { isValid: missingFields.length === 0, missingFields };
@@ -168,7 +196,7 @@ export function validatePreNotificationForSubmission(
 
 export function buildConstructionComplianceValidation(
   shaPlan: ShaPlanData | null | undefined,
-  preNotification: PreNotificationData | null | undefined
+  preNotification: PreNotificationData | null | undefined,
 ): ConstructionComplianceValidation {
   const shaValidation = validateShaPlanForActive(shaPlan);
   const preValidation = validatePreNotificationForSubmission(preNotification);
@@ -181,7 +209,7 @@ export function buildConstructionComplianceValidation(
   };
 }
 
-// Byggherreforskriften § 15: oversiktsliste skal oppbevares i 6 måneder etter avsluttet arbeid.
+// Operational retention for the site register. Not a CDM statutory period.
 export function getRosterRetentionUntil(workFinishedAt: Date): Date {
   const retention = new Date(workFinishedAt);
   retention.setMonth(retention.getMonth() + 6);

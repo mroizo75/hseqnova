@@ -15,12 +15,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Building2, Flame, Save } from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { FIRE_DRILL_TYPE_LABELS } from "@/features/fire-drills/schemas/fire-drill.schema";
 import type { FireDrillType } from "@/features/fire-drills/schemas/fire-drill.schema";
+import { FireDrillLegalNote } from "@/features/fire-drills/components/fire-drill-legal-note";
 
 interface TenantUser {
   user: { id: string; name: string | null; email: string };
@@ -65,7 +66,7 @@ export default function NewFireDrillPage() {
           }
         }
       } catch {
-        // silent
+        setUsers([]);
       } finally {
         setLoadingUsers(false);
       }
@@ -80,7 +81,7 @@ export default function NewFireDrillPage() {
     e.preventDefault();
 
     if (!form.title || !form.plannedDate || !form.location || !form.responsibleId || !form.objectives) {
-      toast({ title: "Fyll ut alle påkrevde felt", variant: "destructive" });
+      toast({ title: "Complete all required fields", variant: "destructive" });
       return;
     }
 
@@ -94,11 +95,11 @@ export default function NewFireDrillPage() {
           plannedDate: new Date(form.plannedDate).toISOString(),
           scenario: form.scenario || undefined,
           riskAssessment: form.riskAssessment || undefined,
-          buildingOwnerName: form.buildingOwnerName || undefined,
-          totalBuildingOccupants: form.totalBuildingOccupants
-            ? parseInt(form.totalBuildingOccupants, 10)
-            : undefined,
-          // Fjern samordningsfelt hvis ikke delt bygg
+          buildingOwnerName: form.sharedPremises ? form.buildingOwnerName || undefined : undefined,
+          totalBuildingOccupants:
+            form.sharedPremises && form.totalBuildingOccupants
+              ? parseInt(form.totalBuildingOccupants, 10)
+              : undefined,
           buildingOwnerCoordinated: form.sharedPremises ? form.buildingOwnerCoordinated : undefined,
           otherTenantsInformed: form.sharedPremises ? form.otherTenantsInformed : undefined,
           fullBuildingEvacuation: form.sharedPremises ? form.fullBuildingEvacuation : undefined,
@@ -107,16 +108,16 @@ export default function NewFireDrillPage() {
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error ?? "Ukjent feil");
+        throw new Error(err.error ?? "Could not plan the drill");
       }
 
       const drill = await res.json();
-      toast({ title: "Brannøvelse planlagt", description: form.title });
+      toast({ title: "Fire drill planned", description: form.title });
       router.push(`/dashboard/fire-drills/${drill.id}`);
     } catch (error) {
       toast({
-        title: "Kunne ikke opprette øvelse",
-        description: error instanceof Error ? error.message : "Ukjent feil",
+        title: "Could not create drill",
+        description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
     } finally {
@@ -125,57 +126,53 @@ export default function NewFireDrillPage() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/dashboard/fire-drills">
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            Tilbake
-          </Link>
-        </Button>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100">
-          <Flame className="h-5 w-5 text-red-600" />
-        </div>
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Link href="/dashboard/fire-drills">
+          <Button variant="ghost" size="icon" aria-label="Back to fire drills">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
         <div>
-          <h1 className="text-2xl font-bold">Planlegg brannøvelse</h1>
-          <p className="text-sm text-muted-foreground">
-            Forskrift om brannforebygging § 12 — systematisk sikkerhetsarbeid
+          <h1 className="text-3xl font-bold tracking-tight">Plan a fire drill</h1>
+          <p className="text-muted-foreground">
+            Record the drill here. Keep it with the fire risk assessment — do not send it to the HSE.
           </p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Grunnleggende info */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Øvelsesdetaljer</CardTitle>
-            <CardDescription>Grunnleggende informasjon om øvelsen</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">
-                Tittel <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="title"
-                value={form.title}
-                onChange={(e) => set("title", e.target.value)}
-                placeholder="F.eks. Evakueringsøvelse bygg A — Q1 2026"
-                required
-              />
-            </div>
+      <FireDrillLegalNote />
 
-            <div className="grid gap-4 sm:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>Drill record</CardTitle>
+          <CardDescription>
+            Date, time, location and drill leader. Add objectives so the review has something to measure.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="title">
+                  Title <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="title"
+                  value={form.title}
+                  onChange={(e) => set("title", e.target.value)}
+                  placeholder="e.g. Evacuation drill — warehouse A — Q1 2026"
+                  required
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="drillType">
-                  Type øvelse <span className="text-destructive">*</span>
+                  Drill type <span className="text-destructive">*</span>
                 </Label>
                 <Select
                   value={form.drillType}
-                  onValueChange={(v) => set("drillType", v as FireDrillType)}
+                  onValueChange={(value) => set("drillType", value as FireDrillType)}
                 >
                   <SelectTrigger id="drillType">
                     <SelectValue />
@@ -194,48 +191,48 @@ export default function NewFireDrillPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="plannedDate">
-                  Planlagt dato <span className="text-destructive">*</span>
+                  Planned date and time <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="plannedDate"
-                  type="date"
+                  type="datetime-local"
                   value={form.plannedDate}
                   onChange={(e) => set("plannedDate", e.target.value)}
                   required
                 />
               </div>
-            </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="location">
-                  Lokasjon / bygg <span className="text-destructive">*</span>
+                  Location / building <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="location"
                   value={form.location}
                   onChange={(e) => set("location", e.target.value)}
-                  placeholder="F.eks. Kontorbygg, Produksjonshall"
+                  placeholder="e.g. Office, warehouse, production hall"
                   required
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="responsibleId">
-                  Øvingsleder <span className="text-destructive">*</span>
+                  Drill leader <span className="text-destructive">*</span>
                 </Label>
                 <Select
                   value={form.responsibleId}
-                  onValueChange={(v) => set("responsibleId", v)}
+                  onValueChange={(value) => set("responsibleId", value)}
                   disabled={loadingUsers}
                 >
                   <SelectTrigger id="responsibleId">
-                    <SelectValue placeholder="Velg øvingsleder" />
+                    <SelectValue
+                      placeholder={loadingUsers ? "Loading people..." : "Select drill leader"}
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {users.map((ut) => (
-                      <SelectItem key={ut.user.id} value={ut.user.id}>
-                        {ut.user.name ?? ut.user.email}
+                    {users.map((entry) => (
+                      <SelectItem key={entry.user.id} value={entry.user.id}>
+                        {entry.user.name ?? entry.user.email}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -243,203 +240,159 @@ export default function NewFireDrillPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div>
-                <Label htmlFor="isAnnounced" className="text-sm font-medium">
-                  Varslet øvelse
-                </Label>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Slå av for uvarslet øvelse (gir mer realistisk respons)
-                </p>
-              </div>
-              <Switch
-                id="isAnnounced"
-                checked={form.isAnnounced}
-                onCheckedChange={(v) => set("isAnnounced", v)}
+            <label className="flex items-start gap-3 rounded-md border p-3 text-sm">
+              <Checkbox
+                checked={!form.isAnnounced}
+                onCheckedChange={(value) => set("isAnnounced", value !== true)}
+                className="mt-0.5"
               />
-            </div>
-          </CardContent>
-        </Card>
+              <span className="min-w-0">
+                <span className="font-medium">Unannounced drill</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  Leave unchecked for a planned, announced drill. Tick for a more realistic response.
+                </span>
+              </span>
+            </label>
 
-        {/* Mål og scenario — § 12 */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Mål og scenario</CardTitle>
-            <CardDescription>
-              § 12b/c/d: Definer hva som skal øves og hvorfor — brukes til evaluering
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="objectives">
-                Mål for øvelsen <span className="text-destructive">*</span>
+                Drill objectives <span className="text-destructive">*</span>
               </Label>
               <Textarea
                 id="objectives"
                 value={form.objectives}
                 onChange={(e) => set("objectives", e.target.value)}
-                placeholder="Hva skal øves på? Hvem skal øves? Hva er forventet resultat?&#10;&#10;F.eks.: Alle ansatte i bygg A skal evakuere til samlingsplass innen 3 minutter. Øvingsleder verifiserer at alle er kommet seg ut."
+                placeholder="What will be practised, who takes part, and what good looks like. e.g. All employees in building A evacuate to the assembly point within 3 minutes."
                 rows={4}
                 required
               />
-              <p className="text-xs text-muted-foreground">
-                Påkrevd — § 12: klare mål gjør det mulig å evaluere om øvelsen ble vellykket
-              </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="scenario">Scenario-beskrivelse</Label>
-              <Textarea
-                id="scenario"
-                value={form.scenario}
-                onChange={(e) => set("scenario", e.target.value)}
-                placeholder="Beskriv øvelsesstillingen. F.eks.: Antatt brannstart i 2. etasje, røykutvikling fra korridor."
-                rows={3}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="riskAssessment">Risikovurdering</Label>
-              <Textarea
-                id="riskAssessment"
-                value={form.riskAssessment}
-                onChange={(e) => set("riskAssessment", e.target.value)}
-                placeholder="Anbefalt hvis det brukes reelle virkemidler (røyk, alarm). Beskriv mulige risikomomenter og forebyggende tiltak."
-                rows={3}
-              />
-              <p className="text-xs text-muted-foreground">
-                Anbefalt av Brannportal — spesielt ved bruk av røyk/alarm under øvelsen
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Delte lokaler — § 4 tredje ledd */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-              Deler lokaler med andre virksomheter
-            </CardTitle>
-            <CardDescription>
-              § 4 tredje ledd: Eieren av byggverket skal sikre at all bruk samordnes. Dokumenter
-              koordineringen hvis virksomheten deler bygg med andre.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div>
-                <Label htmlFor="sharedPremises" className="text-sm font-medium">
-                  Deler virksomheten lokaler med andre?
-                </Label>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  F.eks. kontorfellesskap, kjøpesenter, næringsbygg med flere leietakere
-                </p>
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="scenario">Scenario</Label>
+                <Textarea
+                  id="scenario"
+                  value={form.scenario}
+                  onChange={(e) => set("scenario", e.target.value)}
+                  placeholder="e.g. Assumed fire start on the first floor, smoke in the corridor."
+                  rows={3}
+                />
               </div>
-              <Switch
-                id="sharedPremises"
-                checked={form.sharedPremises}
-                onCheckedChange={(v) => set("sharedPremises", v)}
-              />
+              <div className="space-y-2">
+                <Label htmlFor="riskAssessment">Risks during the drill</Label>
+                <Textarea
+                  id="riskAssessment"
+                  value={form.riskAssessment}
+                  onChange={(e) => set("riskAssessment", e.target.value)}
+                  placeholder="Recommended if you use smoke, alarms or blocked routes. Describe the risks and controls."
+                  rows={3}
+                />
+              </div>
             </div>
 
-            {form.sharedPremises && (
-              <div className="space-y-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
-                <p className="text-xs font-medium text-amber-800">
-                  Delt bygg krever samordning — dokumenter dette her (§ 4)
-                </p>
+            <div className="space-y-4">
+              <label className="flex items-start gap-3 rounded-md border p-3 text-sm">
+                <Checkbox
+                  checked={form.sharedPremises}
+                  onCheckedChange={(value) => set("sharedPremises", value === true)}
+                  className="mt-0.5"
+                />
+                <span className="min-w-0">
+                  <span className="font-medium">Shared building</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    Tick if another responsible person shares the premises. Co-ordinate the drill
+                    (Fire Safety Order 2005 art.22).
+                  </span>
+                </span>
+              </label>
 
-                <div className="space-y-2">
-                  <Label htmlFor="buildingOwnerName">
-                    Byggeier / samordningsansvarlig
-                  </Label>
-                  <Input
-                    id="buildingOwnerName"
-                    value={form.buildingOwnerName}
-                    onChange={(e) => set("buildingOwnerName", e.target.value)}
-                    placeholder="Navn på gårdeier, driftsselskap eller fellesansvarlig"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="totalBuildingOccupants">
-                    Totalt antall personer i bygget under øvelsen
-                  </Label>
-                  <Input
-                    id="totalBuildingOccupants"
-                    type="number"
-                    min={1}
-                    value={form.totalBuildingOccupants}
-                    onChange={(e) => set("totalBuildingOccupants", e.target.value)}
-                    placeholder="Inkluderer ansatte hos alle virksomheter og besøkende"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Påkrevd for korrekt § 13-dokumentasjon i delt bygg
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-between rounded-lg border bg-white p-3">
-                  <div>
-                    <Label htmlFor="buildingOwnerCoordinated" className="text-sm font-medium">
-                      Byggeier er koordinert og informert
-                    </Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      § 4: eieren skal sikre samordning av all bruk
-                    </p>
+              {form.sharedPremises ? (
+                <div className="space-y-4 rounded-md border bg-muted/40 p-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="buildingOwnerName">
+                        Building owner or co-ordinating responsible person
+                      </Label>
+                      <Input
+                        id="buildingOwnerName"
+                        value={form.buildingOwnerName}
+                        onChange={(e) => set("buildingOwnerName", e.target.value)}
+                        placeholder="Landlord, facilities manager or responsible person"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="totalBuildingOccupants">People in the building during the drill</Label>
+                      <Input
+                        id="totalBuildingOccupants"
+                        type="number"
+                        min={1}
+                        value={form.totalBuildingOccupants}
+                        onChange={(e) => set("totalBuildingOccupants", e.target.value)}
+                        placeholder="All organisations and visitors"
+                      />
+                    </div>
                   </div>
-                  <Switch
-                    id="buildingOwnerCoordinated"
-                    checked={form.buildingOwnerCoordinated}
-                    onCheckedChange={(v) => set("buildingOwnerCoordinated", v)}
-                  />
-                </div>
 
-                <div className="flex items-center justify-between rounded-lg border bg-white p-3">
-                  <div>
-                    <Label htmlFor="otherTenantsInformed" className="text-sm font-medium">
-                      Øvrige leietakere / virksomheter er informert
-                    </Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      God praksis — hindrer unødig alarm hos nabovirksomheter
-                    </p>
+                  <div className="grid gap-3 sm:grid-cols-1">
+                    <label className="flex items-start gap-3 text-sm">
+                      <Checkbox
+                        checked={form.buildingOwnerCoordinated}
+                        onCheckedChange={(value) => set("buildingOwnerCoordinated", value === true)}
+                        className="mt-0.5"
+                      />
+                      <span className="min-w-0">
+                        <span className="font-medium">Building owner informed and co-ordinated</span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          Art.22: each responsible person must co-operate so the evacuation works.
+                        </span>
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-3 text-sm">
+                      <Checkbox
+                        checked={form.otherTenantsInformed}
+                        onCheckedChange={(value) => set("otherTenantsInformed", value === true)}
+                        className="mt-0.5"
+                      />
+                      <span className="min-w-0">
+                        <span className="font-medium">Other occupiers informed</span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          Avoids an unexpected alarm for neighbouring organisations.
+                        </span>
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-3 text-sm">
+                      <Checkbox
+                        checked={form.fullBuildingEvacuation}
+                        onCheckedChange={(value) => set("fullBuildingEvacuation", value === true)}
+                        className="mt-0.5"
+                      />
+                      <span className="min-w-0">
+                        <span className="font-medium">Whole-building evacuation</span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          Tick if the drill covers the whole building, not only your premises.
+                        </span>
+                      </span>
+                    </label>
                   </div>
-                  <Switch
-                    id="otherTenantsInformed"
-                    checked={form.otherTenantsInformed}
-                    onCheckedChange={(v) => set("otherTenantsInformed", v)}
-                  />
                 </div>
+              ) : null}
+            </div>
 
-                <div className="flex items-center justify-between rounded-lg border bg-white p-3">
-                  <div>
-                    <Label htmlFor="fullBuildingEvacuation" className="text-sm font-medium">
-                      Felles evakueringsøvelse for hele bygget
-                    </Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Slå på hvis øvelsen gjelder hele bygget, ikke bare egne lokaler
-                    </p>
-                  </div>
-                  <Switch
-                    id="fullBuildingEvacuation"
-                    checked={form.fullBuildingEvacuation}
-                    onCheckedChange={(v) => set("fullBuildingEvacuation", v)}
-                  />
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="flex justify-end gap-3">
-          <Button type="button" variant="outline" asChild>
-            <Link href="/dashboard/fire-drills">Avbryt</Link>
-          </Button>
-          <Button type="submit" disabled={loading}>
-            <Save className="mr-2 h-4 w-4" />
-            {loading ? "Lagrer..." : "Planlegg øvelse"}
-          </Button>
-        </div>
-      </form>
+            <div className="flex justify-end gap-4">
+              <Link href="/dashboard/fire-drills">
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </Link>
+              <Button type="submit" disabled={loading || loadingUsers || !form.responsibleId}>
+                <Save className="mr-2 h-4 w-4" />
+                {loading ? "Saving..." : "Plan drill"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

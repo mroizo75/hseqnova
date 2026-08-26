@@ -6,8 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { getRegistrationDetails } from "@/server/actions/onboarding.actions";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { getRegistrationDetails } from "@/server/actions/admin-registration.actions";
 import { ActivateTenantForm } from "@/features/admin/components/activate-tenant-form";
 import { RejectRegistrationForm } from "@/features/admin/components/reject-registration-form";
 import { ResendWelcomeEmailForm } from "@/features/admin/components/resend-welcome-email-form";
@@ -37,12 +37,15 @@ export const metadata = {
 async function RegistrationDetails({ id }: { id: string }) {
   const session = await getServerSession(authOptions);
   const currentUser = session?.user?.email
-    ? await prisma.user.findUnique({
-        where: { email: session.user.email },
-        select: { isSuperAdmin: true },
-      })
+    ? (
+        await getAdminDb()
+          .from("User")
+          .select("isSuperAdmin")
+          .eq("email", session.user.email)
+          .maybeSingle()
+      ).data
     : null;
-  const isSuperAdmin = currentUser?.isSuperAdmin ?? false;
+  const isSuperAdmin = Boolean(currentUser?.isSuperAdmin);
 
   const result = await getRegistrationDetails(id);
 

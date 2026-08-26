@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import type { IncidentType } from "@prisma/client";
 import { getIncidentIndustryScopes } from "@/lib/tenant-features";
 
@@ -17,21 +17,21 @@ const HEALTHCARE_FALLBACK_SUBCATEGORIES: Partial<
   Record<IncidentType, Array<{ key: string; label: string; industry: string }>>
 > = {
   ULYKKE: [
-    { key: "PASIENTFORFLYTNING", label: "Pasientforflytning / belastningsskade", industry: "HELSE" },
-    { key: "VOLD_TRUSLER", label: "Vold eller trusler fra bruker/pårørende", industry: "HELSE" },
-    { key: "STIKK_KUTT", label: "Stikk-/kuttskade", industry: "HELSE" },
+    { key: "PASIENTFORFLYTNING", label: "Patient handling / musculoskeletal injury", industry: "HELSE" },
+    { key: "VOLD_TRUSLER", label: "Violence or threats from a service user / relative", industry: "HELSE" },
+    { key: "STIKK_KUTT", label: "Needlestick or cut injury", industry: "HELSE" },
   ],
   NESTEN: [
-    { key: "NESTEN_MEDIKAMENT", label: "Nesten-feil i medikamenthåndtering", industry: "HELSE" },
-    { key: "NESTEN_FALL", label: "Nesten fall ved hjemmebesøk", industry: "HELSE" },
+    { key: "NESTEN_MEDIKAMENT", label: "Near miss in medication handling", industry: "HELSE" },
+    { key: "NESTEN_FALL", label: "Near miss fall during a home visit", industry: "HELSE" },
   ],
   FARLIG_SITUASJON: [
-    { key: "ALENEARBEID", label: "Alenearbeid med forhøyet risiko", industry: "HELSE" },
-    { key: "SMITTE_RISIKO", label: "Smitterisiko i oppdragssituasjon", industry: "HELSE" },
+    { key: "ALENEARBEID", label: "Lone working with elevated risk", industry: "HELSE" },
+    { key: "SMITTE_RISIKO", label: "Infection risk during an assignment", industry: "HELSE" },
   ],
   YRKESSYKDOM: [
-    { key: "BIOLOGISK_EKSPONERING", label: "Biologisk eksponering", industry: "HELSE" },
-    { key: "MUSKEL_SKJELETT", label: "Muskel- og skjelettplager", industry: "HELSE" },
+    { key: "BIOLOGISK_EKSPONERING", label: "Biological exposure", industry: "HELSE" },
+    { key: "MUSKEL_SKJELETT", label: "Musculoskeletal disorder", industry: "HELSE" },
   ],
 };
 
@@ -74,51 +74,47 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get("type") as IncidentType | null;
 
     if (!type) {
-      return NextResponse.json({ error: "type er påkrevd" }, { status: 400 });
+      return NextResponse.json({ error: "type is required" }, { status: 400 });
     }
 
     const tenantId = session.user.tenantId;
-    const tenant = tenantId
-      ? await prisma.tenant.findUnique({
-          where: { id: tenantId },
-          select: { industry: true },
-        })
-      : null;
+    const db = getAdminDb();
+    const { data: tenant } = tenantId
+      ? await db.from("Tenant").select("industry").eq("id", tenantId).maybeSingle()
+      : { data: null };
     const industryScopes = getIncidentIndustryScopes(tenant?.industry);
 
-    const tenantSpecificFilter = tenantId ? [{ tenantId }] : [];
+    const { data: systemOptions } = await db
+      .from("IncidentSubcategoryOption")
+      .select("id, key, label, industry, tenantId")
+      .eq("incidentType", type)
+      .eq("isActive", true)
+      .is("tenantId", null)
+      .in("industry", industryScopes)
+      .order("sortOrder", { ascending: true });
 
-    // Hent systemstandard (tenantId = null) + tenant-egne for denne typen
-    const options = await prisma.incidentSubcategoryOption.findMany({
-      where: {
-        incidentType: type,
-        isActive: true,
-        OR: [
-          {
-            tenantId: null,
-            industry: {
-              in: industryScopes,
-            },
-          },
-          ...tenantSpecificFilter,
-        ],
-      },
-      orderBy: [{ sortOrder: "asc" }, { label: "asc" }],
-      select: {
-        id: true,
-        key: true,
-        label: true,
-        industry: true,
-        tenantId: true,
-      },
-    });
+    const { data: tenantOptions } = tenantId
+      ? await db
+          .from("IncidentSubcategoryOption")
+          .select("id, key, label, industry, tenantId")
+          .eq("incidentType", type)
+          .eq("isActive", true)
+          .eq("tenantId", tenantId)
+          .order("sortOrder", { ascending: true })
+      : { data: [] };
+
+    const optionMap = new Map<string, SubcategoryOption>();
+    for (const option of [...(systemOptions ?? []), ...(tenantOptions ?? [])] as SubcategoryOption[]) {
+      optionMap.set(option.key, option);
+    }
+    const options = Array.from(optionMap.values());
 
     return NextResponse.json({
       options: mergeFallbackSubcategories(type, options, industryScopes),
     });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message || "Intern feil" },
+      { error: error.message || "Internal error" },
       { status: 500 }
     );
   }

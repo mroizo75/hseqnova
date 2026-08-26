@@ -48,13 +48,15 @@ export function ReportIncidentForm({
   reportedBy,
   projects = [],
   successRedirectPath = "/ansatt/avvik/takk",
-  ruhModuleEnabled = true,
+  ruhModuleEnabled = false,
+  showProjectFields = false,
 }: {
   tenantId: string;
   reportedBy: string;
   projects?: Array<{ id: string; name: string; code: string | null }>;
   successRedirectPath?: string;
   ruhModuleEnabled?: boolean;
+  showProjectFields?: boolean;
 }) {
   const t = useTranslations("employeeIncidentForm");
   const router = useRouter();
@@ -189,7 +191,7 @@ export function ReportIncidentForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Prosjektvelger (kun om det finnes aktive prosjekter) */}
-      {projects.length > 0 && (
+      {showProjectFields && projects.length > 0 && (
         <div className="space-y-2">
           <Label className="text-base">{t("fields.project.label")}</Label>
           <Select
@@ -216,6 +218,7 @@ export function ReportIncidentForm({
       )}
 
       {/* Prosjektnummer som fritekst for oppdrag som ikke er registrert som prosjekt */}
+      {showProjectFields && (
       <div className="space-y-2">
         <Label htmlFor="projectReference" className="text-base">
           {t("fields.projectReference.label")}
@@ -232,6 +235,7 @@ export function ReportIncidentForm({
           {t("fields.projectReference.help")}
         </p>
       </div>
+      )}
 
       {/* Steg 1: Fagområde / hovedkategori */}
       <div className="space-y-2">
@@ -384,9 +388,8 @@ export function ReportIncidentForm({
         </p>
       </div>
 
-      {/* Personinvolvering og skadeomfang er ukjent ved melding. Uten RUH-modulen
-          fyller leder dette ut under behandlingen i stedet. */}
-      {ruhModuleEnabled && (
+      {/* People involved and outcome — RIDDOR / accident book */}
+      {selectedType && ["ULYKKE", "NESTEN", "FARLIG_SITUASJON", "YRKESSYKDOM"].includes(selectedType) && (
         <>
           <div className="space-y-2">
             <Label htmlFor="involvedPersons" className="text-base">

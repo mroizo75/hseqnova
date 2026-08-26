@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale";
 import type { ReactNode } from "react";
 
 interface HandbokSectionProps {
@@ -22,7 +22,7 @@ interface HandbokSectionProps {
 
 function formatDate(d: Date | string | null | undefined): string {
   if (!d) return "–";
-  return format(new Date(d), "d. MMM yyyy", { locale: nb });
+  return format(new Date(d), "d MMM yyyy", { locale: enGB });
 }
 
 export function HandbokSection({
@@ -66,7 +66,7 @@ export function HandbokSection({
           </div>
           <Button asChild variant="ghost" size="sm" className="shrink-0 gap-1.5">
             <Link href={href}>
-              Åpne
+              Open
               <ExternalLink className="h-3.5 w-3.5" />
             </Link>
           </Button>
@@ -76,18 +76,18 @@ export function HandbokSection({
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-muted-foreground border-t pt-3">
           <span className="flex items-center gap-1.5">
             {statusIcon}
-            {status === "empty" ? "Ingen data ennå" : status === "warning" ? "Krever oppmerksomhet" : "Oppdatert"}
+            {status === "empty" ? "No data yet" : status === "warning" ? "Needs attention" : "Up to date"}
           </span>
           {count !== undefined && (
             <span>
               <span className="font-medium text-foreground">{count}</span>{" "}
-              {countLabel ?? "poster"}
+              {countLabel ?? "records"}
             </span>
           )}
           {lastUpdatedAt && (
             <span className="flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" />
-              Sist endret: {formatDate(lastUpdatedAt)}
+              Last changed: {formatDate(lastUpdatedAt)}
             </span>
           )}
         </div>

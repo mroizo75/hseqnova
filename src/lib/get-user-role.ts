@@ -2,41 +2,20 @@
  * Server-side utility for å hente brukerens rolle
  */
 
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { getSessionAppUser, getMemberships } from "@/lib/membership";
 import { Role } from "@prisma/client";
 
 export async function getUserRole(): Promise<{ role: Role | null; tenantId: string | null }> {
-  const session = await getServerSession(authOptions);
-  
-  if (!session?.user?.email || !session.user.tenantId) {
+  const ctx = await getSessionAppUser();
+  if (!ctx?.tenantId) {
     return { role: null, tenantId: null };
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: {
-      tenants: {
-        where: { tenantId: session.user.tenantId },
-        take: 1,
-      },
-    },
-  });
-
-  if (!user || user.tenants.length === 0) {
+  const memberships = await getMemberships(ctx.user.id);
+  const selected = memberships.find((membership) => membership.tenantId === ctx.tenantId);
+  if (!selected) {
     return { role: null, tenantId: null };
   }
 
-  const selectedMembership = user.tenants.find(
-    (membership) => membership.tenantId === session.user.tenantId,
-  );
-  if (!selectedMembership) {
-    return { role: null, tenantId: null };
-  }
-  return {
-    role: selectedMembership.role,
-    tenantId: selectedMembership.tenantId,
-  };
+  return { role: selected.role, tenantId: selected.tenantId };
 }
-

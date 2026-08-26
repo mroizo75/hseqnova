@@ -14,13 +14,13 @@ export function getExposureLevel(score: number, residualScore?: number | null): 
 export function getExposureBadge(level: ExposureLevel) {
   switch (level) {
     case "CRITICAL":
-      return { label: "Kritisk", className: "bg-red-100 text-red-800 border-red-200" };
+      return { label: "Critical", className: "bg-red-100 text-red-800 border-red-200" };
     case "HIGH":
-      return { label: "Høy", className: "bg-orange-100 text-orange-900 border-orange-200" };
+      return { label: "High", className: "bg-orange-100 text-orange-900 border-orange-200" };
     case "MODERATE":
-      return { label: "Moderat", className: "bg-yellow-100 text-yellow-900 border-yellow-200" };
+      return { label: "Medium", className: "bg-yellow-100 text-yellow-900 border-yellow-200" };
     default:
-      return { label: "Lav", className: "bg-green-100 text-green-900 border-green-200" };
+      return { label: "Low", className: "bg-green-100 text-green-900 border-green-200" };
   }
 }
 

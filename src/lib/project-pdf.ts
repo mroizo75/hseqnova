@@ -1,11 +1,11 @@
 /**
- * PDF-generator for prosjektrapporter
- * Bruker profesjonell HMS Nova-branding via pdf-brand.ts
+ * PDF generator for project HSEQ reports.
+ * Legal hook: HSWA 1974 s.2; CDM 2015 for construction sites.
  */
 
 import { generateBrandedPdf, type PdfSection } from "@/lib/pdf-brand";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale";
 
 interface ProjectReportData {
   project: {
@@ -71,24 +71,24 @@ interface ProjectReportData {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  PLANNING: "Planlegging",
-  ACTIVE: "Aktiv",
-  ON_HOLD: "På vent",
-  COMPLETED: "Fullført",
-  ARCHIVED: "Arkivert",
+  PLANNING: "Planning",
+  ACTIVE: "Active",
+  ON_HOLD: "On hold",
+  COMPLETED: "Completed",
+  ARCHIVED: "Archived",
 };
 
 const INCIDENT_TYPE_LABELS: Record<string, string> = {
-  ULYKKE: "Ulykke",
-  NESTEN: "Nestenulykke",
-  FARLIG_SITUASJON: "Farlig situasjon",
-  YRKESSYKDOM: "Yrkessykdom",
-  AVVIK: "Avvik",
+  ULYKKE: "Accident",
+  NESTEN: "Near miss",
+  FARLIG_SITUASJON: "Unsafe condition",
+  YRKESSYKDOM: "Occupational disease",
+  AVVIK: "Incident",
 };
 
 function fmt(d: Date | null | undefined): string {
   if (!d) return "–";
-  return format(new Date(d), "d. MMM yyyy", { locale: nb });
+  return format(new Date(d), "d MMM yyyy", { locale: enGB });
 }
 
 export async function generateProjectReport(data: ProjectReportData): Promise<Buffer> {
@@ -97,22 +97,22 @@ export async function generateProjectReport(data: ProjectReportData): Promise<Bu
 
   const sections: PdfSection[] = [
     {
-      title: "Prosjektinformasjon",
-      legalRef: "AML § 3-1, Byggherreforskriften",
+      title: "Project information",
+      legalRef: "HSWA 1974 s.2; CDM 2015",
       content: [
         {
           type: "keyvalue",
           pairs: [
-            ["Prosjektnavn", project.name],
-            ["Prosjektkode", project.code ?? "–"],
-            ["Ordrenummer", project.orderNumber ?? "–"],
-            ["Kunde/oppdragsgiver", project.clientName ?? "–"],
-            ["Lokasjon", project.location ?? "–"],
+            ["Project name", project.name],
+            ["Project code", project.code ?? "–"],
+            ["Order number", project.orderNumber ?? "–"],
+            ["Client", project.clientName ?? "–"],
+            ["Location", project.location ?? "–"],
             ["Status", STATUS_LABELS[project.status] ?? project.status],
-            ["Startdato", fmt(project.startDate)],
-            ["Sluttdato", fmt(project.endDate)],
-            ["Prosjektleder", pm],
-            ["Arbeidstimer", String(data.manHours)],
+            ["Start date", fmt(project.startDate)],
+            ["End date", fmt(project.endDate)],
+            ["Site / project manager", pm],
+            ["Hours worked", String(data.manHours)],
           ],
         },
         ...(project.description ? [{ type: "paragraph" as const, text: project.description }] : []),
@@ -121,19 +121,19 @@ export async function generateProjectReport(data: ProjectReportData): Promise<Bu
   ];
 
   sections.push({
-    title: "HMS-statistikk",
+    title: "HSEQ statistics",
     content: [
       {
         type: "table",
-        headers: ["Indikator", "Verdi"],
+        headers: ["Indicator", "Value"],
         rows: [
-          ["Totalt antall hendelser", data.incidents.length],
-          ["Dødelige ulykker (H1)", data.incidents.filter((i) => i.isFatal).length],
-          ["Fraværsulykker (H2)", data.incidents.filter((i) => i.isLostTimeIncident).length],
-          ["Totalt tapte arbeidsdager", data.incidents.reduce((acc, i) => acc + (i.lostWorkdays ?? 0), 0)],
-          ["Antall SJA-analyser", data.sjaAnalyses.length],
-          ["Antall inspeksjoner", data.inspections.length],
-          ["Åpne tiltak", data.measures.filter((m) => m.status !== "DONE").length],
+          ["Total incidents", data.incidents.length],
+          ["Fatal accidents", data.incidents.filter((i) => i.isFatal).length],
+          ["Lost-time injuries", data.incidents.filter((i) => i.isLostTimeIncident).length],
+          ["Lost workdays", data.incidents.reduce((acc, i) => acc + (i.lostWorkdays ?? 0), 0)],
+          ["RAMS", data.sjaAnalyses.length],
+          ["Workplace inspections", data.inspections.length],
+          ["Open actions", data.measures.filter((m) => m.status !== "DONE").length],
         ],
       },
     ],
@@ -141,11 +141,11 @@ export async function generateProjectReport(data: ProjectReportData): Promise<Bu
 
   if (data.incidents.length > 0) {
     sections.push({
-      title: "Hendelser og avvik",
+      title: "Incidents",
       content: [
         {
           type: "table",
-          headers: ["Ref.", "Tittel", "Type", "Dato", "Status"],
+          headers: ["Ref.", "Title", "Type", "Date", "Status"],
           rows: data.incidents.map((i) => [
             i.avviksnummer ?? "–",
             i.title,
@@ -160,11 +160,11 @@ export async function generateProjectReport(data: ProjectReportData): Promise<Bu
 
   if (data.sjaAnalyses.length > 0) {
     sections.push({
-      title: "SJA-analyser",
+      title: "RAMS",
       content: [
         {
           type: "table",
-          headers: ["SJA-nr.", "Tittel", "Status", "Dato", "Ansvarlig"],
+          headers: ["RAMS no.", "Title", "Status", "Date", "Responsible"],
           rows: data.sjaAnalyses.map((s) => [
             s.sjaNummer ?? "–",
             s.title,
@@ -179,11 +179,11 @@ export async function generateProjectReport(data: ProjectReportData): Promise<Bu
 
   if (data.measures.length > 0) {
     sections.push({
-      title: "Tiltak og oppfølging",
+      title: "Actions",
       content: [
         {
           type: "table",
-          headers: ["Tiltak", "Status", "Frist"],
+          headers: ["Action", "Status", "Due"],
           rows: data.measures.map((m) => [m.title, m.status, fmt(m.dueAt)]),
         },
       ],
@@ -192,7 +192,7 @@ export async function generateProjectReport(data: ProjectReportData): Promise<Bu
 
   return generateBrandedPdf({
     type: "operational",
-    reportLabel: "Prosjektrapport",
+    reportLabel: "Project report",
     title: project.name,
     subtitle: `${STATUS_LABELS[project.status] ?? project.status} · ${fmt(project.startDate)} – ${fmt(project.endDate)}`,
     tenant: {
@@ -202,7 +202,7 @@ export async function generateProjectReport(data: ProjectReportData): Promise<Bu
     },
     generatedBy: pm,
     generatedAt: new Date(),
-    legalReference: "AML § 3-1, Byggherreforskriften",
+    legalReference: "HSWA 1974 s.2; CDM 2015",
     sections,
   });
 }

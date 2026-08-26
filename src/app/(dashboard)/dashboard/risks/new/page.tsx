@@ -5,6 +5,7 @@ import { RiskAssessmentForm } from "@/features/risks/components/risk-assessment-
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { loadActiveProjects, loadRiskSession } from "@/server/queries/risks.queries";
 
 export default async function NewRiskAssessmentPage() {
   const session = await getServerSession(authOptions);
@@ -13,38 +14,13 @@ export default async function NewRiskAssessmentPage() {
     redirect("/login");
   }
 
-  const { prisma } = await import("@/lib/db");
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { tenants: true },
-  });
-
-  if (!user || user.tenants.length === 0) {
-    return <div>Ingen tilgang til tenant</div>;
+  const context = await loadRiskSession(session.user.email, session.user.tenantId);
+  if (!context) {
+    return <div>No access to organisation</div>;
   }
 
-  const selectedMembership = user.tenants.find(
-    (membership) => membership.tenantId === session.user.tenantId,
-  );
-  if (!selectedMembership) {
-    return <div>Ingen tilgang til tenant</div>;
-  }
-
-  const tenantId = selectedMembership.tenantId;
   const currentYear = new Date().getFullYear();
-  const projects = await prisma.project.findMany({
-    where: {
-      tenantId,
-      status: "ACTIVE",
-    },
-    select: {
-      id: true,
-      name: true,
-    },
-    orderBy: {
-      name: "asc",
-    },
-  });
+  const projects = await loadActiveProjects(context.tenantId);
 
   return (
     <div className="space-y-6">
@@ -52,16 +28,17 @@ export default async function NewRiskAssessmentPage() {
         <Button variant="ghost" asChild className="mb-4">
           <Link href="/dashboard/risks">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Tilbake til risikovurdering
+            Back to risk assessments
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold">Ny risikovurdering</h1>
+        <h1 className="text-3xl font-bold">New risk assessment</h1>
         <p className="text-muted-foreground">
-          Opprett en risikovurdering for et år (f.eks. 2026). Deretter legger du inn risikopunkter nedover i listen – ISO 45001.
+          Create a suitable and sufficient risk assessment (MHSWR 1999). Then add the individual
+          risk items.
         </p>
       </div>
 
-      <RiskAssessmentForm tenantId={tenantId} defaultYear={currentYear} projects={projects} />
+      <RiskAssessmentForm tenantId={context.tenantId} defaultYear={currentYear} projects={projects} />
     </div>
   );
 }

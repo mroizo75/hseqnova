@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { getStorage, generateFileKey } from "@/lib/storage";
+import { createId } from "@/lib/ids";
 
 export async function POST(
   request: NextRequest,
@@ -16,14 +17,17 @@ export async function POST(
 
     const { id } = await params;
     const tenantId = session.user.tenantId;
+    const db = getAdminDb();
 
-    const incident = await prisma.incident.findUnique({
-      where: { id, tenantId },
-      select: { id: true },
-    });
+    const { data: incident } = await db
+      .from("Incident")
+      .select("id")
+      .eq("id", id)
+      .eq("tenantId", tenantId)
+      .maybeSingle();
 
     if (!incident) {
-      return NextResponse.json({ error: "Avvik ikke funnet" }, { status: 404 });
+      return NextResponse.json({ error: "Incident not found" }, { status: 404 });
     }
 
     const formData = await request.formData();
@@ -35,25 +39,21 @@ export async function POST(
       if (!image || image.size === 0) continue;
       const fileKey = generateFileKey(tenantId, "incidents", image.name);
       await storage.upload(fileKey, image);
-      await prisma.attachment.create({
-        data: {
-          tenantId,
-          incidentId: id,
-          fileKey,
-          name: image.name,
-          mime: image.type,
-          size: image.size,
-        },
+      await db.from("Attachment").insert({
+        id: createId(),
+        tenantId,
+        incidentId: id,
+        fileKey,
+        name: image.name,
+        mime: image.type,
+        size: image.size,
       });
       created.push(fileKey);
     }
 
     return NextResponse.json({ success: true, count: created.length }, { status: 201 });
-  } catch (error: any) {
-    console.error("[INCIDENT_ATTACHMENTS]", error);
-    return NextResponse.json(
-      { error: error.message || "Kunne ikke laste opp bilder" },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Could not upload images";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

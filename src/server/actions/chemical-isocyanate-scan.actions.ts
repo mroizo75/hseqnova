@@ -1,46 +1,33 @@
 /**
- * ISOCYANAT-SKANNING
- * 
- * Skanner eksisterende stoffkartotek for å identifisere kjemikalier
- * som inneholder diisocyanater (MDI, TDI, HDI, IPDI, etc.)
- * 
- * VIKTIG: EU-forordning 2020/1149 krever obligatorisk kurs for
- * arbeid med produkter som inneholder >0.1% diisocyanater
+ * Diisocyanate scan — UK REACH restriction on diisocyanates
+ * (retained EU 2020/1149): training is required for industrial and
+ * professional use of substances or mixtures with ≥0.1% diisocyanates.
  */
 
 "use server";
 
-import { prisma } from "@/lib/db";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { getRequiredTenantContext } from "@/lib/tenant-context";
+import { getAuthMembership } from "@/lib/auth-db";
 import { detectIsocyanates } from "@/lib/sds-parser";
+import {
+  loadChemicalById,
+  loadChemicalsForTenant,
+  updateChemicalRecord,
+} from "@/server/queries/chemicals.queries";
 
-async function getSessionContext() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    throw new Error("Ikke autentisert");
+async function requireScanAccess() {
+  const { userId, tenantId } = await getRequiredTenantContext();
+  const membership = await getAuthMembership(userId, tenantId);
+  if (!membership) {
+    throw { code: "UNAUTHORISED", message: "Unauthorised" };
   }
-
-  const userTenant = await prisma.userTenant.findFirst({
-    where: {
-      userId: session.user.id,
-      tenantId: session.user.tenantId!,
-    },
-    include: {
-      tenant: true,
-    },
-  });
-
-  if (!userTenant) {
-    throw new Error("Ingen aktiv tenant");
+  if (membership.role !== "ADMIN" && membership.role !== "HMS") {
+    throw {
+      code: "FORBIDDEN",
+      message: "Only the HSE manager or an administrator can run the diisocyanate scan",
+    };
   }
-
-  return {
-    userId: session.user.id,
-    tenantId: userTenant.tenantId,
-    role: userTenant.role,
-    tenant: userTenant.tenant,
-  };
+  return { userId, tenantId, role: membership.role };
 }
 
 export interface IsocyanateScanResult {
@@ -59,223 +46,108 @@ export interface IsocyanateScanResult {
   }>;
 }
 
-/**
- * Skann alle kjemikalier i bedriftens stoffkartotek
- */
 export async function scanStoffkartotekForIsocyanates(): Promise<IsocyanateScanResult> {
-  try {
-    const { tenantId, role } = await getSessionContext();
+  const { tenantId } = await requireScanAccess();
+  const chemicals = await loadChemicalsForTenant(tenantId, { status: "ACTIVE" });
 
-    // Kun HMS/ADMIN kan kjøre skanning
-    if (role !== "ADMIN" && role !== "HMS") {
-      throw new Error("Kun HMS-ansvarlige og administratorer kan kjøre isocyanat-skanning");
-    }
+  const results: IsocyanateScanResult["chemicals"] = [];
+  let foundCount = 0;
+  let updatedCount = 0;
 
-    console.log(`🔍 Starter isocyanat-skanning for tenant ${tenantId}...`);
-
-    // Hent alle aktive kjemikalier
-    const chemicals = await prisma.chemical.findMany({
-      where: {
-        tenantId,
-        status: "ACTIVE",
-      },
-      select: {
-        id: true,
-        productName: true,
-        supplier: true,
-        casNumber: true,
-        hazardStatements: true,
-        containsIsocyanates: true,
-        aiExtractedData: true,
-      },
-    });
-
-    console.log(`📊 Fant ${chemicals.length} kjemikalier å skanne`);
-
-    const results: IsocyanateScanResult["chemicals"] = [];
-    let foundCount = 0;
-    let updatedCount = 0;
-
-    for (const chemical of chemicals) {
-      // Bygg opp tekst for deteksjon
-      let searchText = chemical.productName;
-      if (chemical.supplier) searchText += ` ${chemical.supplier}`;
-      if (chemical.hazardStatements) searchText += ` ${chemical.hazardStatements}`;
-      if (chemical.aiExtractedData) searchText += ` ${chemical.aiExtractedData}`;
-
-      // Sjekk for isocyanater
-      const casNumbers = chemical.casNumber ? [chemical.casNumber] : [];
-      const detection = detectIsocyanates(
-        chemical.productName,
-        casNumbers,
-        searchText
-      );
-
-      // Hvis funnet og ikke allerede merket
-      const needsUpdate = detection.containsIsocyanates && !chemical.containsIsocyanates;
-
-      if (detection.containsIsocyanates) {
-        foundCount++;
-      }
-
-      if (needsUpdate) {
-        // Oppdater database
-        await prisma.chemical.update({
-          where: { id: chemical.id },
-          data: {
-            containsIsocyanates: true,
-          },
-        });
-
-        updatedCount++;
-        console.log(`✅ Oppdatert: ${chemical.productName} - ${detection.details}`);
-      }
-
-      results.push({
-        id: chemical.id,
-        productName: chemical.productName,
-        supplier: chemical.supplier || undefined,
-        casNumber: chemical.casNumber || undefined,
-        containsIsocyanates: detection.containsIsocyanates,
-        isocyanateDetails: detection.details,
-        wasUpdated: needsUpdate,
-      });
-    }
-
-    console.log(`✅ Isocyanat-skanning fullført:`);
-    console.log(`   - Skannet: ${chemicals.length}`);
-    console.log(`   - Funnet: ${foundCount}`);
-    console.log(`   - Oppdatert: ${updatedCount}`);
-
-    return {
-      success: true,
-      totalScanned: chemicals.length,
-      foundIsocyanates: foundCount,
-      updated: updatedCount,
-      chemicals: results.filter(r => r.containsIsocyanates), // Returner kun de med isocyanater
-    };
-  } catch (error) {
-    console.error("❌ Isocyanat-skanning feilet:", error);
-    throw error;
-  }
-}
-
-/**
- * Skann et enkelt kjemikalie
- */
-export async function scanSingleChemicalForIsocyanates(
-  chemicalId: string
-): Promise<{
-  success: boolean;
-  containsIsocyanates: boolean;
-  details?: string;
-  wasUpdated: boolean;
-}> {
-  try {
-    const { tenantId } = await getSessionContext();
-
-    const chemical = await prisma.chemical.findUnique({
-      where: {
-        id: chemicalId,
-        tenantId,
-      },
-      select: {
-        id: true,
-        productName: true,
-        supplier: true,
-        casNumber: true,
-        hazardStatements: true,
-        containsIsocyanates: true,
-        aiExtractedData: true,
-      },
-    });
-
-    if (!chemical) {
-      throw new Error("Kjemikalie ikke funnet");
-    }
-
-    // Bygg søketekst
+  for (const chemical of chemicals) {
     let searchText = chemical.productName;
     if (chemical.supplier) searchText += ` ${chemical.supplier}`;
     if (chemical.hazardStatements) searchText += ` ${chemical.hazardStatements}`;
     if (chemical.aiExtractedData) searchText += ` ${chemical.aiExtractedData}`;
 
     const casNumbers = chemical.casNumber ? [chemical.casNumber] : [];
-    const detection = detectIsocyanates(
-      chemical.productName,
-      casNumbers,
-      searchText
-    );
-
+    const detection = detectIsocyanates(chemical.productName, casNumbers, searchText);
     const needsUpdate = detection.containsIsocyanates && !chemical.containsIsocyanates;
 
-    if (needsUpdate) {
-      await prisma.chemical.update({
-        where: { id: chemical.id },
-        data: {
-          containsIsocyanates: true,
-        },
-      });
+    if (detection.containsIsocyanates) {
+      foundCount += 1;
     }
 
-    return {
-      success: true,
+    if (needsUpdate) {
+      await updateChemicalRecord(chemical.id, tenantId, { containsIsocyanates: true });
+      updatedCount += 1;
+    }
+
+    results.push({
+      id: chemical.id,
+      productName: chemical.productName,
+      supplier: chemical.supplier || undefined,
+      casNumber: chemical.casNumber || undefined,
       containsIsocyanates: detection.containsIsocyanates,
-      details: detection.details,
+      isocyanateDetails: detection.details,
       wasUpdated: needsUpdate,
-    };
-  } catch (error) {
-    console.error("❌ Enkelt-skanning feilet:", error);
-    throw error;
+    });
   }
+
+  return {
+    success: true,
+    totalScanned: chemicals.length,
+    foundIsocyanates: foundCount,
+    updated: updatedCount,
+    chemicals: results.filter((row) => row.containsIsocyanates),
+  };
 }
 
-/**
- * Hent statistikk over isocyanater i stoffkartoteket
- */
-export async function getIsocyanateStats() {
-  try {
-    const { tenantId } = await getSessionContext();
+export async function scanSingleChemicalForIsocyanates(
+  chemicalId: string,
+): Promise<{
+  success: boolean;
+  containsIsocyanates: boolean;
+  details?: string;
+  wasUpdated: boolean;
+}> {
+  const { tenantId } = await getRequiredTenantContext();
+  const chemical = await loadChemicalById(chemicalId, tenantId);
 
-    const total = await prisma.chemical.count({
-      where: { tenantId, status: "ACTIVE" },
-    });
-
-    const withIsocyanates = await prisma.chemical.count({
-      where: { 
-        tenantId, 
-        status: "ACTIVE",
-        containsIsocyanates: true,
-      },
-    });
-
-    const chemicalsWithIsocyanates = await prisma.chemical.findMany({
-      where: {
-        tenantId,
-        status: "ACTIVE",
-        containsIsocyanates: true,
-      },
-      select: {
-        id: true,
-        productName: true,
-        supplier: true,
-        casNumber: true,
-        quantity: true,
-        location: true,
-      },
-      orderBy: {
-        productName: "asc",
-      },
-    });
-
-    return {
-      total,
-      withIsocyanates,
-      percentage: total > 0 ? Math.round((withIsocyanates / total) * 100) : 0,
-      chemicals: chemicalsWithIsocyanates,
-    };
-  } catch (error) {
-    console.error("❌ Henting av isocyanat-statistikk feilet:", error);
-    throw error;
+  if (!chemical) {
+    throw { code: "NOT_FOUND", message: "Chemical not found" };
   }
+
+  let searchText = chemical.productName;
+  if (chemical.supplier) searchText += ` ${chemical.supplier}`;
+  if (chemical.hazardStatements) searchText += ` ${chemical.hazardStatements}`;
+  if (chemical.aiExtractedData) searchText += ` ${chemical.aiExtractedData}`;
+
+  const casNumbers = chemical.casNumber ? [chemical.casNumber] : [];
+  const detection = detectIsocyanates(chemical.productName, casNumbers, searchText);
+  const needsUpdate = detection.containsIsocyanates && !chemical.containsIsocyanates;
+
+  if (needsUpdate) {
+    await updateChemicalRecord(chemical.id, tenantId, { containsIsocyanates: true });
+  }
+
+  return {
+    success: true,
+    containsIsocyanates: detection.containsIsocyanates,
+    details: detection.details,
+    wasUpdated: needsUpdate,
+  };
+}
+
+export async function getIsocyanateStats() {
+  const { tenantId } = await getRequiredTenantContext();
+  const chemicals = await loadChemicalsForTenant(tenantId, { status: "ACTIVE" });
+  const withIsocyanates = chemicals.filter((row) => row.containsIsocyanates);
+  const total = chemicals.length;
+
+  return {
+    total,
+    withIsocyanates: withIsocyanates.length,
+    percentage: total > 0 ? Math.round((withIsocyanates.length / total) * 100) : 0,
+    chemicals: withIsocyanates
+      .map((row) => ({
+        id: row.id,
+        productName: row.productName,
+        supplier: row.supplier,
+        casNumber: row.casNumber,
+        quantity: row.quantity,
+        location: row.location,
+      }))
+      .sort((a, b) => a.productName.localeCompare(b.productName, "en-GB")),
+  };
 }

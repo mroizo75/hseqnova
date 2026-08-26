@@ -21,66 +21,29 @@ import {
 } from "@/server/actions/org-chart.actions";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Building2 } from "lucide-react";
-
-// ─── Types ───────────────────────────────────────────
-
-interface OrgNode {
-  id: string;
-  parentId: string | null;
-  title: string;
-  name: string | null;
-  department: string | null;
-  sortOrder: number;
-}
+import {
+  buildOrgChartTree,
+  type OrgChartTreeBranch,
+  type OrgChartTreeNode,
+} from "@/features/organization/lib/org-chart-tree";
 
 interface OrgChartTreeProps {
-  nodes: OrgNode[];
+  nodes: OrgChartTreeNode[];
   canManage: boolean;
-}
-
-interface TreeNode extends OrgNode {
-  children: TreeNode[];
-}
-
-// ─── Tree builder ────────────────────────────────────
-
-function buildTree(nodes: OrgNode[]): TreeNode[] {
-  const map = new Map<string, TreeNode>();
-  const roots: TreeNode[] = [];
-
-  for (const node of nodes) {
-    map.set(node.id, { ...node, children: [] });
-  }
-
-  for (const node of nodes) {
-    const treeNode = map.get(node.id)!;
-    if (node.parentId && map.has(node.parentId)) {
-      map.get(node.parentId)!.children.push(treeNode);
-    } else {
-      roots.push(treeNode);
-    }
-  }
-
-  const sortChildren = (items: TreeNode[]) => {
-    items.sort((a, b) => a.sortOrder - b.sortOrder);
-    for (const item of items) sortChildren(item.children);
-  };
-  sortChildren(roots);
-  return roots;
 }
 
 // ─── Visual chart node (box) ─────────────────────────
 
-function useNodeDelete(node: OrgNode) {
+function useNodeDelete(node: OrgChartTreeNode) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
   function handleDelete() {
-    if (!confirm(`Slett "${node.title}"${node.name ? ` (${node.name})` : ""}? Underordnede flyttes opp.`)) return;
+    if (!confirm(`Delete "${node.title}"${node.name ? ` (${node.name})` : ""}? Direct reports will move up.`)) return;
     startTransition(async () => {
       const result = await deleteOrgChartNode(node.id);
       if (!result.success) {
-        toast({ title: "Feil", description: result.error, variant: "destructive" });
+        toast({ title: "Error", description: result.error, variant: "destructive" });
       }
     });
   }
@@ -96,8 +59,8 @@ function NodeActions({
   compact,
   onTeal,
 }: {
-  node: TreeNode;
-  allNodes: OrgNode[];
+  node: OrgChartTreeBranch;
+  allNodes: OrgChartTreeNode[];
   isPending: boolean;
   onDelete: () => void;
   compact?: boolean;
@@ -117,8 +80,8 @@ function NodeActions({
         trigger={
           <button
             className={compact && !onTeal ? `${btn} text-green-600 hover:bg-green-50` : `${btn} text-green-200`}
-            title="Legg til underordnet"
-            aria-label="Legg til underordnet"
+            title="Add a report"
+            aria-label="Add a report"
           >
             <Plus className={compact || onTeal ? "h-3.5 w-3.5" : "h-4 w-4"} />
           </button>
@@ -130,8 +93,8 @@ function NodeActions({
         trigger={
           <button
             className={compact && !onTeal ? `${btn} text-blue-600 hover:bg-blue-50` : `${btn} text-sky-100`}
-            title="Rediger"
-            aria-label="Rediger"
+            title="Edit"
+            aria-label="Edit"
           >
             <Edit className={compact || onTeal ? "h-3.5 w-3.5" : "h-4 w-4"} />
           </button>
@@ -141,8 +104,8 @@ function NodeActions({
         className={compact && !onTeal ? `${btn} text-red-500 hover:bg-red-50` : `${btn} text-red-200`}
         onClick={onDelete}
         disabled={isPending}
-        title="Slett"
-        aria-label="Slett"
+        title="Delete"
+        aria-label="Delete"
       >
         <Trash2 className={compact || onTeal ? "h-3.5 w-3.5" : "h-4 w-4"} />
       </button>
@@ -155,9 +118,9 @@ function ChartBox({
   canManage,
   allNodes,
 }: {
-  node: TreeNode;
+  node: OrgChartTreeBranch;
   canManage: boolean;
-  allNodes: OrgNode[];
+  allNodes: OrgChartTreeNode[];
 }) {
   const { isPending, handleDelete } = useNodeDelete(node);
 
@@ -200,9 +163,9 @@ function MobileOrgNode({
   allNodes,
   isRoot = false,
 }: {
-  node: TreeNode;
+  node: OrgChartTreeBranch;
   canManage: boolean;
-  allNodes: OrgNode[];
+  allNodes: OrgChartTreeNode[];
   isRoot?: boolean;
 }) {
   const { isPending, handleDelete } = useNodeDelete(node);
@@ -252,8 +215,8 @@ function NodeDialog({
   trigger,
 }: {
   parentId?: string;
-  editNode?: OrgNode;
-  allNodes: OrgNode[];
+  editNode?: OrgChartTreeNode;
+  allNodes: OrgChartTreeNode[];
   trigger: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -283,7 +246,7 @@ function NodeDialog({
           });
 
       if (result.success) {
-        toast({ title: editNode ? "Oppdatert" : "Opprettet" });
+        toast({ title: editNode ? "Updated" : "Created" });
         setOpen(false);
         if (!editNode) {
           setTitle("");
@@ -291,7 +254,7 @@ function NodeDialog({
           setDepartment("");
         }
       } else {
-        toast({ title: "Feil", description: result.error, variant: "destructive" });
+        toast({ title: "Error", description: result.error, variant: "destructive" });
       }
     });
   }
@@ -309,49 +272,49 @@ function NodeDialog({
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>{editNode ? "Rediger rolle" : "Legg til ny rolle"}</DialogTitle>
+            <DialogTitle>{editNode ? "Edit role" : "Add a role"}</DialogTitle>
             <DialogDescription>
               {editNode
-                ? "Oppdater informasjon for denne rollen i organisasjonskartet"
-                : "Legg til en ny rolle i organisasjonshierarkiet"}
+                ? "Update this role on the organisation chart (HSWA s.2(3))"
+                : "Add a role to the organisation chart (HSWA s.2(3))"}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="node-title">Stillingstittel / Rolle *</Label>
+              <Label htmlFor="node-title">Job title / role *</Label>
               <Input
                 id="node-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="F.eks. Daglig leder, HMS-ansvarlig"
+                placeholder="e.g. Managing director, HSE manager"
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="node-name">Navn på person</Label>
+              <Label htmlFor="node-name">Person's name</Label>
               <Input
                 id="node-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="F.eks. Ola Nordmann"
+                placeholder="e.g. Jane Smith"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="node-dept">Avdeling</Label>
+              <Label htmlFor="node-dept">Department</Label>
               <Input
                 id="node-dept"
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
-                placeholder="F.eks. Drift, Administrasjon"
+                placeholder="e.g. Operations, Administration"
               />
             </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Avbryt
+              Cancel
             </Button>
             <Button type="submit" disabled={isPending || !title.trim()}>
-              {editNode ? "Lagre" : "Opprett"}
+              {editNode ? "Save" : "Create"}
             </Button>
           </DialogFooter>
         </form>
@@ -511,7 +474,7 @@ const chartStyles = `
 // ─── Main export ─────────────────────────────────────
 
 export function OrgChartTree({ nodes, canManage }: OrgChartTreeProps) {
-  const tree = buildTree(nodes);
+  const tree = buildOrgChartTree(nodes);
   const isEmpty = tree.length === 0;
 
   return (
@@ -522,10 +485,10 @@ export function OrgChartTree({ nodes, canManage }: OrgChartTreeProps) {
         <Card>
           <CardContent className="py-16 text-center">
             <Building2 className="h-14 w-14 mx-auto text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Ingen roller lagt til ennå</h3>
+            <h3 className="text-lg font-semibold mb-2">No roles added yet</h3>
             <p className="mx-auto mb-6 max-w-md text-sm text-muted-foreground">
-              Start med å legge til øverste leder (f.eks. Daglig leder) for å bygge opp organisasjonskartet.
-              Du kan deretter legge til underordnede roller fra hver boks.
+              Start with the most senior role (e.g. Managing director) to build the organisation chart.
+              You can then add reports from each box.
             </p>
             {canManage && (
               <NodeDialog
@@ -533,7 +496,7 @@ export function OrgChartTree({ nodes, canManage }: OrgChartTreeProps) {
                 trigger={
                   <Button size="lg" className="w-full sm:w-auto">
                     <Plus className="mr-2 h-4 w-4" />
-                    Legg til øverste leder
+                    Add the most senior role
                   </Button>
                 }
               />
@@ -550,7 +513,7 @@ export function OrgChartTree({ nodes, canManage }: OrgChartTreeProps) {
                   trigger={
                     <Button variant="outline" className="w-full sm:w-auto">
                       <Plus className="mr-2 h-4 w-4" />
-                      Legg til toppnivå
+                      Add a top-level role
                     </Button>
                   }
                 />
@@ -584,8 +547,8 @@ export function OrgChartTree({ nodes, canManage }: OrgChartTreeProps) {
 
             {canManage ? (
               <p className="mt-6 text-center text-xs text-muted-foreground">
-                <span className="lg:hidden">Bruk knappene på hver rolle for å legge til underordnede, redigere eller slette</span>
-                <span className="hidden lg:inline">Hold musepekeren over en boks for å legge til underordnede, redigere eller slette</span>
+                <span className="lg:hidden">Use the buttons on each role to add reports, edit or delete</span>
+                <span className="hidden lg:inline">Hover a box to add reports, edit or delete</span>
               </p>
             ) : null}
           </CardContent>

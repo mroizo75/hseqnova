@@ -48,7 +48,7 @@ const formatDate = (value: string | Date | null | undefined, locale: string) => 
   if (!value) return null;
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleDateString(locale === "en" ? "en-US" : "nb-NO");
+  return date.toLocaleDateString(locale === "en" ? "en-GB" : "nb-NO");
 };
 
 export function DocumentList({ documents, tenantId, currentUserId }: DocumentListProps) {
@@ -437,7 +437,7 @@ export function DocumentList({ documents, tenantId, currentUserId }: DocumentLis
                       variant="outline"
                       size="sm"
                       onClick={() => handleDownload(doc.id)}
-                      className="flex-1"
+                      className="flex-1 bg-transparent"
                     >
                       <Download className="h-4 w-4 mr-2" />
                       {t("actions.download")}
@@ -450,7 +450,7 @@ export function DocumentList({ documents, tenantId, currentUserId }: DocumentLis
                         size="sm"
                         onClick={() => handleConvertToPDF(doc.id, doc.title)}
                         disabled={loading === doc.id}
-                        className="flex-1"
+                        className="flex-1 bg-transparent"
                       >
                         <FileDown className="h-4 w-4 mr-2" />
                         PDF
@@ -459,7 +459,7 @@ export function DocumentList({ documents, tenantId, currentUserId }: DocumentLis
                   </div>
 
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" asChild className="flex-1">
+                    <Button variant="outline" size="sm" asChild className="flex-1 bg-transparent">
                       <Link href={`/dashboard/documents/${doc.id}/edit`}>
                         <Edit className="h-4 w-4 mr-2" />
                         {t("actions.edit")}
@@ -480,7 +480,7 @@ export function DocumentList({ documents, tenantId, currentUserId }: DocumentLis
                     )}
 
                     {doc.status === "APPROVED" && (
-                      <Button variant="outline" size="sm" asChild className="flex-1">
+                      <Button variant="outline" size="sm" asChild className="flex-1 bg-transparent">
                         <Link href={`/dashboard/documents/${doc.id}/new-version`}>
                           <Upload className="h-4 w-4 mr-2" />
                           {t("actions.newVersion")}

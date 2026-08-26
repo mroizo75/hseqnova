@@ -25,6 +25,7 @@ import type {
 } from "@/server/actions/hms-handbok.actions";
 import type { HandbookVersionStatus } from "@prisma/client";
 import { HandbokAnnualPlan } from "./handbok-annual-plan";
+import { applyUkPolicyDefaults } from "@/lib/health-safety-policy";
 
 interface HandbokSectionExpandedProps {
   section: HandbookSectionData;
@@ -47,9 +48,10 @@ export function HandbokSectionExpanded({
   annualPlanProgress,
   suggestions = [],
 }: HandbokSectionExpandedProps) {
+  const displaySection = applyUkPolicyDefaults(section);
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [editContent, setEditContent] = useState(section.content);
+  const [editContent, setEditContent] = useState(displaySection.content);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -66,10 +68,10 @@ export function HandbokSectionExpanded({
     });
     setSaving(false);
     if (result.success) {
-      toast({ title: "Seksjon oppdatert" });
+      toast({ title: "Section updated" });
       setEditing(false);
     } else {
-      toast({ title: "Feil", description: result.error, variant: "destructive" });
+      toast({ title: "Error", description: result.error, variant: "destructive" });
     }
   }
 
@@ -82,30 +84,30 @@ export function HandbokSectionExpanded({
             onClick={() => setExpanded(!expanded)}
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-              {section.sectionNumber}
+              {displaySection.sectionNumber}
             </span>
             <div className="flex-1">
               <CardTitle className="flex items-center gap-2 text-base">
-                {section.title}
+                {displaySection.title}
                 {sectionSuggestions.length > 0 && (
                   <Badge variant="secondary" className="gap-1 text-xs">
                     <Lightbulb className="h-3 w-3" />
-                    {sectionSuggestions.length} forslag
+                    {sectionSuggestions.length} suggestions
                   </Badge>
                 )}
               </CardTitle>
-              {section.legalRef && (
+              {displaySection.legalRef && (
                 <Badge variant="outline" className="mt-1.5 text-xs font-normal">
-                  {section.legalRef}
+                  {displaySection.legalRef}
                 </Badge>
               )}
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            {section.moduleLink && (
+            {displaySection.moduleLink && (
               <Button asChild variant="ghost" size="sm" className="shrink-0 gap-1.5">
-                <Link href={section.moduleLink}>
-                  Åpne
+                <Link href={displaySection.moduleLink}>
+                  Open
                   <ExternalLink className="h-3.5 w-3.5" />
                 </Link>
               </Button>
@@ -136,19 +138,19 @@ export function HandbokSectionExpanded({
               <div className="flex gap-2">
                 <Button onClick={handleSave} disabled={saving} size="sm" className="gap-1.5">
                   {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  Lagre
+                  Save
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
                     setEditing(false);
-                    setEditContent(section.content);
+                    setEditContent(displaySection.content);
                   }}
                   className="gap-1.5"
                 >
                   <X className="h-3.5 w-3.5" />
-                  Avbryt
+                  Cancel
                 </Button>
               </div>
             </div>
@@ -156,7 +158,7 @@ export function HandbokSectionExpanded({
             <div className="relative">
               <div
                 className="prose prose-sm max-w-none dark:prose-invert"
-                dangerouslySetInnerHTML={{ __html: section.content }}
+                dangerouslySetInnerHTML={{ __html: displaySection.content }}
               />
               {isDraft && canEdit && (
                 <Button
@@ -166,7 +168,7 @@ export function HandbokSectionExpanded({
                   onClick={() => setEditing(true)}
                 >
                   <Pencil className="h-3.5 w-3.5" />
-                  Rediger
+                  Edit
                 </Button>
               )}
             </div>
@@ -184,7 +186,7 @@ export function HandbokSectionExpanded({
             <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/20">
               <p className="flex items-center gap-1.5 text-sm font-medium text-amber-800 dark:text-amber-300">
                 <Lightbulb className="h-4 w-4" />
-                Forbedringsforslag fra HMS-motoren
+                Improvement suggestions from the HSEQ engine
               </p>
               {sectionSuggestions.map((s) => (
                 <div

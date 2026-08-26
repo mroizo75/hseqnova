@@ -28,7 +28,7 @@ interface CO2CalculatorCardProps {
 
 // CO2 konverteringsfaktorer (kg CO2 per enhet)
 const CO2_FACTORS = {
-  ENERGY: 0.385, // kg CO2 per kWh (norsk strømmiks)
+  ENERGY: 0.385, // kg CO2 per kWh (grid mix estimate)
   WATER: 0.001, // kg CO2 per liter
   WASTE: 0.5, // kg CO2 per kg avfall
   EMISSIONS: 1.0, // direkte CO2
@@ -126,11 +126,11 @@ export function CO2CalculatorCard({ measurements, companyName }: CO2CalculatorCa
   const equivalents = calculateEquivalents(totalSavings);
 
   const categoryData = [
-    { key: "ENERGY", label: "Energi", icon: Zap, color: "bg-yellow-500" },
-    { key: "WATER", label: "Vann", icon: Droplet, color: "bg-blue-500" },
-    { key: "WASTE", label: "Avfall", icon: Trash2, color: "bg-green-500" },
-    { key: "EMISSIONS", label: "Utslipp", icon: Wind, color: "bg-gray-500" },
-    { key: "RESOURCE_USE", label: "Ressurser", icon: Leaf, color: "bg-emerald-500" },
+    { key: "ENERGY", label: "Energy", icon: Zap, color: "bg-yellow-500" },
+    { key: "WATER", label: "Water", icon: Droplet, color: "bg-blue-500" },
+    { key: "WASTE", label: "Waste", icon: Trash2, color: "bg-green-500" },
+    { key: "EMISSIONS", label: "Emissions", icon: Wind, color: "bg-gray-500" },
+    { key: "RESOURCE_USE", label: "Resources", icon: Leaf, color: "bg-emerald-500" },
   ];
 
   const totalBreakdown = Object.values(breakdown).reduce((sum, val) => sum + val, 0);
@@ -144,9 +144,9 @@ export function CO2CalculatorCard({ measurements, companyName }: CO2CalculatorCa
               <Leaf className="h-6 w-6 text-white" />
             </div>
             <div>
-              <CardTitle className="text-green-900">CO₂-Besparelse</CardTitle>
+              <CardTitle className="text-green-900">CO₂ saving</CardTitle>
               <CardDescription className="text-green-700">
-                {companyName}s miljøpåvirkning
+                {companyName} environmental impact
               </CardDescription>
             </div>
           </div>
@@ -168,7 +168,7 @@ export function CO2CalculatorCard({ measurements, companyName }: CO2CalculatorCa
       <CardContent className="space-y-6">
         {/* Total besparelse */}
         <div className="text-center p-6 bg-white rounded-lg border-2 border-green-300 shadow-sm">
-          <p className="text-sm text-muted-foreground mb-1">Total CO₂-besparelse (dette året)</p>
+          <p className="text-sm text-muted-foreground mb-1">Total CO₂ saving (this year)</p>
           <div className="flex items-baseline justify-center gap-2">
             <span className="text-5xl font-bold text-green-600">
               {totalSavings.toFixed(0)}
@@ -176,14 +176,14 @@ export function CO2CalculatorCard({ measurements, companyName }: CO2CalculatorCa
             <span className="text-xl text-green-600 font-medium">kg CO₂</span>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Basert på {measurements.length} målinger
+            Based on {measurements.length} measurements
           </p>
         </div>
 
         {/* Breakdown per kategori */}
         {totalBreakdown > 0 && (
           <div className="space-y-3">
-            <p className="text-sm font-medium text-green-900">Besparelse per kategori</p>
+            <p className="text-sm font-medium text-green-900">Saving by category</p>
             {categoryData.map((cat) => {
               const value = breakdown[cat.key] || 0;
               const percentage = totalBreakdown > 0 ? (value / totalBreakdown) * 100 : 0;
@@ -215,22 +215,22 @@ export function CO2CalculatorCard({ measurements, companyName }: CO2CalculatorCa
             <div className="p-4 bg-white rounded-lg border border-green-200">
               <div className="flex items-center gap-2 mb-2">
                 <TreePine className="h-5 w-5 text-green-600" />
-                <p className="text-sm font-medium text-green-900">Trær plantet</p>
+                <p className="text-sm font-medium text-green-900">Trees planted</p>
               </div>
               <p className="text-2xl font-bold text-green-600">{equivalents.trees}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Tilsvarende CO₂-opptak
+                Equivalent CO₂ uptake
               </p>
             </div>
 
             <div className="p-4 bg-white rounded-lg border border-green-200">
               <div className="flex items-center gap-2 mb-2">
                 <Car className="h-5 w-5 text-green-600" />
-                <p className="text-sm font-medium text-green-900">Biler av veien</p>
+                <p className="text-sm font-medium text-green-900">Cars off the road</p>
               </div>
               <p className="text-2xl font-bold text-green-600">{equivalents.cars || "< 1"}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Ett år uten kjøring
+                One year without driving
               </p>
             </div>
 
@@ -238,11 +238,11 @@ export function CO2CalculatorCard({ measurements, companyName }: CO2CalculatorCa
               <div className="p-4 bg-white rounded-lg border border-green-200 col-span-2">
                 <div className="flex items-center gap-2 mb-2">
                   <Home className="h-5 w-5 text-green-600" />
-                  <p className="text-sm font-medium text-green-900">Husholdninger</p>
+                  <p className="text-sm font-medium text-green-900">Households</p>
                 </div>
                 <p className="text-2xl font-bold text-green-600">{equivalents.homes}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Årlig strømforbruk dekket
+                  Annual electricity use covered
                 </p>
               </div>
             )}
@@ -253,22 +253,22 @@ export function CO2CalculatorCard({ measurements, companyName }: CO2CalculatorCa
           <div className="text-center py-8">
             <Leaf className="h-12 w-12 text-green-300 mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">
-              Ingen CO₂-besparelser registrert ennå.
+              No CO₂ savings recorded yet.
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Registrer målinger med målverdier for å se besparelser.
+              Record measurements with target values to see savings.
             </p>
           </div>
         )}
 
         {/* Disclaimer */}
         <div className="text-xs text-muted-foreground bg-white/50 p-3 rounded border border-green-200">
-          <p className="font-medium mb-1">📊 Beregningsmetode:</p>
+          <p className="font-medium mb-1">Calculation method:</p>
           <ul className="space-y-1 ml-4 list-disc">
-            <li>Energi: {CO2_FACTORS.ENERGY} kg CO₂/kWh</li>
-            <li>Vann: {CO2_FACTORS.WATER * 1000} kg CO₂/m³</li>
-            <li>Avfall: {CO2_FACTORS.WASTE} kg CO₂/kg</li>
-            <li>Besparelse = (Målverdi - Faktisk forbruk) × Faktor</li>
+            <li>Energy: {CO2_FACTORS.ENERGY} kg CO₂/kWh</li>
+            <li>Water: {CO2_FACTORS.WATER * 1000} kg CO₂/m³</li>
+            <li>Waste: {CO2_FACTORS.WASTE} kg CO₂/kg</li>
+            <li>Saving = (target − actual use) × factor</li>
           </ul>
         </div>
       </CardContent>

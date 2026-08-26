@@ -1,67 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { getRequiredTenantContext } from "@/lib/tenant-context";
 import { generateInspectionReport } from "@/lib/inspection-pdf";
+import { loadInspectionDetail, loadTenantBranding } from "@/server/queries/inspections.queries";
 
-/**
- * GET /api/inspections/[id]/report
- * Generate PDF report for inspection
- */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-
-    const sessionTenantId = session.user.tenantId ?? (
-      await prisma.userTenant.findFirst({
-        where: { userId: session.user.id },
-        select: { tenantId: true },
-      })
-    )?.tenantId;
-    if (!sessionTenantId) {
-      return new NextResponse("Forbidden", { status: 403 });
-    }
+    const tenantContext = await getRequiredTenantContext();
     const { id } = await params;
-
-    const inspection = await prisma.inspection.findFirst({
-      where: { id, tenantId: sessionTenantId },
-      include: {
-        findings: {
-          orderBy: { severity: "desc" },
-        },
-        tenant: {
-          select: { name: true, orgNumber: true, logoUrl: true },
-        },
-      },
-    });
-
+    const inspection = await loadInspectionDetail(tenantContext.tenantId, id);
     if (!inspection) {
       return new NextResponse("Inspection not found", { status: 404 });
     }
 
+    const tenant = await loadTenantBranding(tenantContext.tenantId);
     const pdfBuffer = await generateInspectionReport({
       ...inspection,
-      conductedBy: session.user.name || session.user.email || "Ukjent",
-      tenantName: inspection.tenant.name,
-      tenantOrgNumber: inspection.tenant.orgNumber,
-      tenantLogoUrl: inspection.tenant.logoUrl,
+      conductedBy: tenantContext.email,
+      tenantName: tenant?.name,
+      tenantOrgNumber: tenant?.orgNumber,
+      tenantLogoUrl: tenant?.logoUrl,
     });
 
-    return new NextResponse(pdfBuffer as any, {
+    return new NextResponse(pdfBuffer as BodyInit, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="Inspeksjon-${inspection.title.replace(/[^a-zA-Z0-9]/g, "-")}.pdf"`,
+        "Content-Disposition": `attachment; filename="Inspection-${inspection.title.replace(/[^a-zA-Z0-9]/g, "-")}.pdf"`,
       },
     });
   } catch (error) {
-    console.error("[Inspection Report] Error:", error);
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }
-

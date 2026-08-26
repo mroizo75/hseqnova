@@ -1,27 +1,44 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/db";
 import { getRequiredTenantContext } from "@/lib/tenant-context";
 import { ExposureRegisterStatus, ExposureType } from "@prisma/client";
 import { encryptField, decryptField } from "@/lib/field-encryption";
+import {
+  chemicalExistsInTenant,
+  insertExposureRegister,
+  loadEmployeesForTenant,
+  loadExposureById,
+  loadExposureRegistersForTenant,
+  loadOpenRisksForSelect,
+  loadRuhReportsForSelect,
+  loadUserNameEmail,
+  membershipExists,
+  riskExistsInTenant,
+  ruhReportExistsInTenant,
+  toIso,
+  updateExposureRecord,
+} from "@/server/queries/exposure-register.queries";
+import {
+  computeRetentionUntilDate,
+  deriveExposureStatus,
+} from "@/features/exposure-register/lib/exposure-status";
+import { isValidNiNumber, normalizeNiNumber } from "@/features/exposure-register/lib/ni-number";
+
+function errorMessage(error: unknown, fallback: string): string {
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
+    return error.message;
+  }
+  if (error instanceof Error) return error.message;
+  return fallback;
+}
 
 async function getSessionContext() {
   const tenantContext = await getRequiredTenantContext();
-
-  const user = await prisma.user.findUnique({
-    where: { id: tenantContext.userId },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-    },
-  });
-
+  const user = await loadUserNameEmail(tenantContext.userId);
   if (!user) {
-    throw new Error("User not found");
+    throw { code: "USER_NOT_FOUND", message: "User not found" };
   }
-
   return { user, tenantId: tenantContext.tenantId };
 }
 
@@ -34,129 +51,54 @@ type ExposureRelationInput = {
 
 async function assertTenantScopedExposureRelations(
   tenantId: string,
-  relations: ExposureRelationInput
+  relations: ExposureRelationInput,
 ): Promise<void> {
   const { employeeId, chemicalId, ruhReportId, riskId } = relations;
 
   if (employeeId) {
-    const employeeMembership = await prisma.userTenant.findUnique({
-      where: {
-        userId_tenantId: {
-          userId: employeeId,
-          tenantId,
-        },
-      },
-      select: { userId: true },
-    });
-    if (!employeeMembership) {
-      throw new Error("Ansatt finnes ikke i valgt tenant");
+    const exists = await membershipExists(employeeId, tenantId);
+    if (!exists) {
+      throw { code: "EMPLOYEE_NOT_IN_TENANT", message: "Employee is not in this organisation" };
     }
   }
 
   if (chemicalId) {
-    const chemical = await prisma.chemical.findFirst({
-      where: { id: chemicalId, tenantId },
-      select: { id: true },
-    });
-    if (!chemical) {
-      throw new Error("Kjemikalie finnes ikke i valgt tenant");
+    const exists = await chemicalExistsInTenant(chemicalId, tenantId);
+    if (!exists) {
+      throw { code: "CHEMICAL_NOT_IN_TENANT", message: "Chemical is not in this organisation" };
     }
   }
 
   if (ruhReportId) {
-    const ruhReport = await prisma.ruhReport.findFirst({
-      where: { id: ruhReportId, tenantId },
-      select: { id: true },
-    });
-    if (!ruhReport) {
-      throw new Error("RUH-rapport finnes ikke i valgt tenant");
+    const exists = await ruhReportExistsInTenant(ruhReportId, tenantId);
+    if (!exists) {
+      throw { code: "INCIDENT_NOT_IN_TENANT", message: "Accident book entry is not in this organisation" };
     }
   }
 
   if (riskId) {
-    const risk = await prisma.risk.findFirst({
-      where: { id: riskId, tenantId },
-      select: { id: true },
-    });
-    if (!risk) {
-      throw new Error("Risikovurdering finnes ikke i valgt tenant");
+    const exists = await riskExistsInTenant(riskId, tenantId);
+    if (!exists) {
+      throw { code: "RISK_NOT_IN_TENANT", message: "Risk assessment is not in this organisation" };
     }
   }
 }
 
-function computeRetentionUntilDate(retentionYears: number): Date {
-  const d = new Date();
-  d.setFullYear(d.getFullYear() + retentionYears);
-  return d;
-}
-
-/**
- * Beregner riktig status basert på sluttdato.
- * Hvis sluttdato er satt og ligger i fortiden → INACTIVE.
- * Ingen sluttdato, eller sluttdato i fremtiden → ACTIVE.
- */
-function deriveStatus(
-  exposureEndDate: Date | null | undefined,
-  explicitStatus?: ExposureRegisterStatus
-): ExposureRegisterStatus {
-  if (explicitStatus) return explicitStatus;
-  if (exposureEndDate && new Date(exposureEndDate) < new Date()) {
-    return ExposureRegisterStatus.INACTIVE;
-  }
-  return ExposureRegisterStatus.ACTIVE;
-}
-
-// ============================================================================
-// READ
-// ============================================================================
-
 export async function getExposureRegisters(_tenantId: string) {
   try {
     const { tenantId } = await getSessionContext();
-
-    const entries = await prisma.exposureRegister.findMany({
-      where: { tenantId, status: { not: ExposureRegisterStatus.ARCHIVED } },
-      include: {
-        employee: { select: { id: true, name: true, email: true } },
-        chemical: { select: { id: true, productName: true, casNumber: true } },
-        ruhReport: { select: { id: true, ruhNummer: true, title: true, occurredAt: true } },
-        risk: {
-          select: {
-            id: true, title: true, score: true, likelihood: true,
-            consequence: true, status: true,
-            riskAssessment: { select: { title: true, assessmentYear: true } },
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    return {
-      success: true,
-      data: entries.map((e) => ({
-        ...e,
-        employeeBirthNumber: decryptField(e.employeeBirthNumber),
-      })),
-    };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke hente eksponeringsregister" };
+    const entries = await loadExposureRegistersForTenant(tenantId);
+    return { success: true, data: entries };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load health records") };
   }
 }
 
 export async function getExposureRegister(id: string) {
   try {
     const { tenantId } = await getSessionContext();
-
-    const entry = await prisma.exposureRegister.findFirst({
-      where: { id, tenantId },
-      include: {
-        employee: { select: { id: true, name: true, email: true } },
-        chemical: { select: { id: true, productName: true, casNumber: true } },
-      },
-    });
-
-    if (!entry) return { success: false, error: "Ikke funnet" };
-
+    const entry = await loadExposureById(id, tenantId);
+    if (!entry) return { success: false, error: "Not found" };
     return {
       success: true,
       data: {
@@ -164,14 +106,10 @@ export async function getExposureRegister(id: string) {
         employeeBirthNumber: decryptField(entry.employeeBirthNumber),
       },
     };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke hente oppføring" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load the record") };
   }
 }
-
-// ============================================================================
-// CREATE
-// ============================================================================
 
 export interface CreateExposureRegisterInput {
   employeeId?: string;
@@ -203,6 +141,11 @@ export interface CreateExposureRegisterInput {
 export async function createExposureRegister(input: CreateExposureRegisterInput) {
   try {
     const { tenantId, user } = await getSessionContext();
+    const nino = normalizeNiNumber(input.employeeBirthNumber);
+    if (!isValidNiNumber(nino)) {
+      return { success: false, error: "Enter a valid National Insurance number" };
+    }
+
     await assertTenantScopedExposureRelations(tenantId, {
       employeeId: input.employeeId,
       chemicalId: input.chemicalId,
@@ -210,49 +153,43 @@ export async function createExposureRegister(input: CreateExposureRegisterInput)
       riskId: input.riskId,
     });
 
-    const entry = await prisma.exposureRegister.create({
-      data: {
-        tenantId,
-        employeeId: input.employeeId || null,
-        employeeName: input.employeeName,
-        employeeBirthNumber: encryptField(input.employeeBirthNumber),
-        department: input.department || null,
-        jobTitle: input.jobTitle,
-        workLocation: input.workLocation,
-        employmentStartDate: input.employmentStartDate || null,
-        employmentEndDate: input.employmentEndDate || null,
-        chemicalId: input.chemicalId || null,
-        exposureAgent: input.exposureAgent,
-        casNumber: input.casNumber || null,
-        exposureType: input.exposureType,
-        exposureStartDate: input.exposureStartDate,
-        exposureEndDate: input.exposureEndDate || null,
-        duration: input.duration || null,
-        ppeUsed: input.ppeUsed || null,
-        riskAssessmentDone: input.riskAssessmentDone,
-        healthCheckRequired: input.healthCheckRequired,
-        healthCheckDone: input.healthCheckDone,
-        healthCheckDate: input.healthCheckDate || null,
-        retentionYears: input.retentionYears,
-        retentionUntilDate: computeRetentionUntilDate(input.retentionYears),
-        status: deriveStatus(input.exposureEndDate),
-        ruhReportId: input.ruhReportId || null,
-        riskId: input.riskId || null,
-        comment: input.comment || null,
-        registeredBy: user.name || user.email,
-      },
+    const entry = await insertExposureRegister({
+      tenantId,
+      employeeId: input.employeeId || null,
+      employeeName: input.employeeName,
+      employeeBirthNumber: encryptField(nino),
+      department: input.department || null,
+      jobTitle: input.jobTitle,
+      workLocation: input.workLocation,
+      employmentStartDate: toIso(input.employmentStartDate ?? null),
+      employmentEndDate: toIso(input.employmentEndDate ?? null),
+      chemicalId: input.chemicalId || null,
+      exposureAgent: input.exposureAgent,
+      casNumber: input.casNumber || null,
+      exposureType: input.exposureType,
+      exposureStartDate: toIso(input.exposureStartDate),
+      exposureEndDate: toIso(input.exposureEndDate ?? null),
+      duration: input.duration || null,
+      ppeUsed: input.ppeUsed || null,
+      riskAssessmentDone: input.riskAssessmentDone,
+      healthCheckRequired: input.healthCheckRequired,
+      healthCheckDone: input.healthCheckDone,
+      healthCheckDate: toIso(input.healthCheckDate ?? null),
+      retentionYears: input.retentionYears,
+      retentionUntilDate: toIso(computeRetentionUntilDate(input.retentionYears)),
+      status: deriveExposureStatus(input.exposureEndDate),
+      ruhReportId: input.ruhReportId || null,
+      riskId: input.riskId || null,
+      comment: input.comment || null,
+      registeredBy: user.name || user.email,
     });
 
     revalidatePath("/dashboard/exposure-register");
     return { success: true, data: entry };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke opprette oppføring" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not create the health record") };
   }
 }
-
-// ============================================================================
-// UPDATE
-// ============================================================================
 
 export type UpdateExposureRegisterInput = Partial<CreateExposureRegisterInput> & {
   status?: ExposureRegisterStatus;
@@ -261,18 +198,14 @@ export type UpdateExposureRegisterInput = Partial<CreateExposureRegisterInput> &
 export async function updateExposureRegister(id: string, input: UpdateExposureRegisterInput) {
   try {
     const { tenantId } = await getSessionContext();
-
-    const existing = await prisma.exposureRegister.findFirst({ where: { id, tenantId } });
-    if (!existing) return { success: false, error: "Ikke funnet" };
-    if (existing.status === ExposureRegisterStatus.ARCHIVED) {
-      return { success: false, error: "Arkiverte oppføringer kan ikke endres" };
+    const existing = await loadExposureById(id, tenantId);
+    if (!existing) return { success: false, error: "Not found" };
+    if (existing.status === "ARCHIVED") {
+      return { success: false, error: "Archived records cannot be changed" };
     }
 
-    // Finn ut hvilken sluttdato som vil gjelde etter oppdateringen
     const resolvedEndDate =
-      input.exposureEndDate !== undefined
-        ? (input.exposureEndDate || null)
-        : existing.exposureEndDate;
+      input.exposureEndDate !== undefined ? input.exposureEndDate || null : existing.exposureEndDate;
 
     await assertTenantScopedExposureRelations(tenantId, {
       employeeId: input.employeeId,
@@ -281,173 +214,119 @@ export async function updateExposureRegister(id: string, input: UpdateExposureRe
       riskId: input.riskId,
     });
 
-    const updated = await prisma.exposureRegister.update({
-      where: { id, tenantId },
-      data: {
-        ...(input.employeeId !== undefined && { employeeId: input.employeeId || null }),
-        ...(input.employeeName && { employeeName: input.employeeName }),
-        ...(input.employeeBirthNumber && { employeeBirthNumber: encryptField(input.employeeBirthNumber) }),
-        ...(input.department !== undefined && { department: input.department || null }),
-        ...(input.jobTitle && { jobTitle: input.jobTitle }),
-        ...(input.workLocation && { workLocation: input.workLocation }),
-        ...(input.employmentStartDate !== undefined && { employmentStartDate: input.employmentStartDate || null }),
-        ...(input.employmentEndDate !== undefined && { employmentEndDate: input.employmentEndDate || null }),
-        ...(input.chemicalId !== undefined && { chemicalId: input.chemicalId || null }),
-        ...(input.exposureAgent && { exposureAgent: input.exposureAgent }),
-        ...(input.casNumber !== undefined && { casNumber: input.casNumber || null }),
-        ...(input.exposureType && { exposureType: input.exposureType }),
-        ...(input.exposureStartDate && { exposureStartDate: input.exposureStartDate }),
-        ...(input.exposureEndDate !== undefined && { exposureEndDate: input.exposureEndDate || null }),
-        ...(input.duration !== undefined && { duration: input.duration || null }),
-        ...(input.ppeUsed !== undefined && { ppeUsed: input.ppeUsed || null }),
-        ...(input.riskAssessmentDone !== undefined && { riskAssessmentDone: input.riskAssessmentDone }),
-        ...(input.healthCheckRequired !== undefined && { healthCheckRequired: input.healthCheckRequired }),
-        ...(input.healthCheckDone !== undefined && { healthCheckDone: input.healthCheckDone }),
-        ...(input.healthCheckDate !== undefined && { healthCheckDate: input.healthCheckDate || null }),
-        ...(input.retentionYears !== undefined && {
-          retentionYears: input.retentionYears,
-          retentionUntilDate: computeRetentionUntilDate(input.retentionYears),
-        }),
-        ...(input.ruhReportId !== undefined && { ruhReportId: input.ruhReportId || null }),
-        ...(input.riskId !== undefined && { riskId: input.riskId || null }),
-        ...(input.comment !== undefined && { comment: input.comment || null }),
-        // Status: eksplisitt verdi vinner, ellers utlede fra sluttdato
-        status: deriveStatus(resolvedEndDate, input.status),
-      },
-    });
+    const patch: Record<string, unknown> = {
+      status: deriveExposureStatus(resolvedEndDate, input.status ?? null),
+    };
+    if (input.employeeId !== undefined) patch.employeeId = input.employeeId || null;
+    if (input.employeeName) patch.employeeName = input.employeeName;
+    if (input.employeeBirthNumber) {
+      const nino = normalizeNiNumber(input.employeeBirthNumber);
+      const existingNi = normalizeNiNumber(decryptField(existing.employeeBirthNumber));
+      if (isValidNiNumber(nino)) {
+        patch.employeeBirthNumber = encryptField(nino);
+      } else if (nino !== existingNi) {
+        return { success: false, error: "Enter a valid National Insurance number" };
+      }
+    }
+    if (input.department !== undefined) patch.department = input.department || null;
+    if (input.jobTitle) patch.jobTitle = input.jobTitle;
+    if (input.workLocation) patch.workLocation = input.workLocation;
+    if (input.employmentStartDate !== undefined) patch.employmentStartDate = input.employmentStartDate || null;
+    if (input.employmentEndDate !== undefined) patch.employmentEndDate = input.employmentEndDate || null;
+    if (input.chemicalId !== undefined) patch.chemicalId = input.chemicalId || null;
+    if (input.exposureAgent) patch.exposureAgent = input.exposureAgent;
+    if (input.casNumber !== undefined) patch.casNumber = input.casNumber || null;
+    if (input.exposureType) patch.exposureType = input.exposureType;
+    if (input.exposureStartDate) patch.exposureStartDate = input.exposureStartDate;
+    if (input.exposureEndDate !== undefined) patch.exposureEndDate = input.exposureEndDate || null;
+    if (input.duration !== undefined) patch.duration = input.duration || null;
+    if (input.ppeUsed !== undefined) patch.ppeUsed = input.ppeUsed || null;
+    if (input.riskAssessmentDone !== undefined) patch.riskAssessmentDone = input.riskAssessmentDone;
+    if (input.healthCheckRequired !== undefined) patch.healthCheckRequired = input.healthCheckRequired;
+    if (input.healthCheckDone !== undefined) patch.healthCheckDone = input.healthCheckDone;
+    if (input.healthCheckDate !== undefined) patch.healthCheckDate = input.healthCheckDate || null;
+    if (input.retentionYears !== undefined) {
+      patch.retentionYears = input.retentionYears;
+      patch.retentionUntilDate = computeRetentionUntilDate(input.retentionYears);
+    }
+    if (input.ruhReportId !== undefined) patch.ruhReportId = input.ruhReportId || null;
+    if (input.riskId !== undefined) patch.riskId = input.riskId || null;
+    if (input.comment !== undefined) patch.comment = input.comment || null;
 
+    const updated = await updateExposureRecord(id, tenantId, patch);
     revalidatePath("/dashboard/exposure-register");
     return { success: true, data: updated };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke oppdatere oppføring" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not update the health record") };
   }
 }
-
-// ============================================================================
-// ARCHIVE (aldri hard-slett – jf. Arbeidstilsynets krav)
-// ============================================================================
 
 export async function archiveExposureRegister(id: string) {
   try {
     const { tenantId } = await getSessionContext();
-
-    const existing = await prisma.exposureRegister.findFirst({ where: { id, tenantId } });
-    if (!existing) return { success: false, error: "Ikke funnet" };
+    const existing = await loadExposureById(id, tenantId);
+    if (!existing) return { success: false, error: "Not found" };
 
     const now = new Date();
     if (existing.retentionUntilDate > now) {
       return {
         success: false,
-        error: `Kan ikke arkiveres før oppbevaringsplikten utløper (${existing.retentionUntilDate.toLocaleDateString("nb-NO")})`,
+        error: `Cannot archive before the retention period ends (${existing.retentionUntilDate.toLocaleDateString("en-GB")})`,
       };
     }
 
-    await prisma.exposureRegister.update({
-      where: { id, tenantId },
-      data: { status: ExposureRegisterStatus.ARCHIVED, archivedAt: now },
-    });
-
+    await updateExposureRecord(id, tenantId, { status: "ARCHIVED", archivedAt: now });
     revalidatePath("/dashboard/exposure-register");
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke arkivere oppføring" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not archive the record") };
   }
 }
-
-// ============================================================================
-// MARK INACTIVE (eksponering avsluttet)
-// ============================================================================
 
 export async function markExposureInactive(id: string, endDate: Date) {
   try {
     const { tenantId } = await getSessionContext();
+    const existing = await loadExposureById(id, tenantId);
+    if (!existing) return { success: false, error: "Not found" };
 
-    const existing = await prisma.exposureRegister.findFirst({ where: { id, tenantId } });
-    if (!existing) return { success: false, error: "Ikke funnet" };
-
-    await prisma.exposureRegister.update({
-      where: { id, tenantId },
-      data: {
-        status: ExposureRegisterStatus.INACTIVE,
-        exposureEndDate: endDate,
-      },
+    await updateExposureRecord(id, tenantId, {
+      status: "INACTIVE",
+      exposureEndDate: endDate,
     });
 
     revalidatePath("/dashboard/exposure-register");
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke oppdatere oppføring" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not update the record") };
   }
 }
-
-// ============================================================================
-// HELPERS – hent ansatte og kjemikalier for skjema
-// ============================================================================
 
 export async function getRisksForTenant(_tenantId: string) {
   try {
     const { tenantId } = await getSessionContext();
-
-    const risks = await prisma.risk.findMany({
-      where: { tenantId, status: { not: "CLOSED" } },
-      select: {
-        id: true,
-        title: true,
-        score: true,
-        likelihood: true,
-        consequence: true,
-        category: true,
-        status: true,
-        location: true,
-        riskAssessment: { select: { title: true, assessmentYear: true } },
-      },
-      orderBy: [{ score: "desc" }, { createdAt: "desc" }],
-    });
-
+    const risks = await loadOpenRisksForSelect(tenantId);
     return { success: true, data: risks };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke hente risikovurderinger" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load risk assessments") };
   }
 }
 
 export async function getRuhReportsForTenant(_tenantId: string) {
   try {
     const { tenantId } = await getSessionContext();
-
-    const reports = await prisma.ruhReport.findMany({
-      where: { tenantId },
-      select: { id: true, ruhNummer: true, title: true, occurredAt: true, category: true },
-      orderBy: { occurredAt: "desc" },
-    });
-
+    const reports = await loadRuhReportsForSelect(tenantId);
     return { success: true, data: reports };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke hente RUH-rapporter" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load accident book entries") };
   }
 }
 
 export async function getEmployeesForTenant(_tenantId: string) {
   try {
     const { tenantId } = await getSessionContext();
-
-    const userTenants = await prisma.userTenant.findMany({
-      where: { tenantId },
-      include: { user: { select: { id: true, name: true, email: true } } },
-      orderBy: { user: { name: "asc" } },
-    });
-
-    return {
-      success: true,
-      data: userTenants.map((ut) => ({
-        id: ut.user.id,
-        name: ut.user.name || ut.user.email,
-        email: ut.user.email,
-        department: ut.department,
-        role: ut.role,
-        employeeNumber: ut.employeeNumber ?? null,
-      })),
-    };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke hente ansatte" };
+    const employees = await loadEmployeesForTenant(tenantId);
+    return { success: true, data: employees };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load employees") };
   }
 }

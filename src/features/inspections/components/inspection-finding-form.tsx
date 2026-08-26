@@ -117,10 +117,19 @@ export function InspectionFindingForm({ inspectionId, users }: InspectionFinding
       description: formData.get("description") as string,
       severity: parseInt(formData.get("severity") as string),
       location: formData.get("location") as string,
-      responsibleId: formData.get("responsibleId") as string || null,
+      responsibleId: (formData.get("responsibleId") as string) || null,
       dueDate: formData.get("dueDate") ? new Date(formData.get("dueDate") as string).toISOString() : null,
       imageKeys: images,
     };
+    if (!data.responsibleId || !data.dueDate) {
+      toast({
+        title: t("toasts.error.title"),
+        description: "Name who will follow this up and set a due date (HSE F2533).",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch(`/api/inspections/${inspectionId}/findings`, {
@@ -226,8 +235,10 @@ export function InspectionFindingForm({ inspectionId, users }: InspectionFinding
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="responsibleId">{t("fields.responsible")}</Label>
-              <Select name="responsibleId">
+              <Label htmlFor="responsibleId">
+                {t("fields.responsible")} <span className="text-destructive">*</span>
+              </Label>
+              <Select name="responsibleId" required>
                 <SelectTrigger>
                   <SelectValue placeholder={t("placeholders.selectResponsible")} />
                 </SelectTrigger>
@@ -242,11 +253,14 @@ export function InspectionFindingForm({ inspectionId, users }: InspectionFinding
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="dueDate">{t("fields.dueDate")}</Label>
+              <Label htmlFor="dueDate">
+                {t("fields.dueDate")} <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="dueDate"
                 name="dueDate"
                 type="date"
+                required
                 min={format(new Date(), "yyyy-MM-dd")}
               />
             </div>

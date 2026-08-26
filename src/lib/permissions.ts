@@ -475,7 +475,7 @@ export const rolePermissions: Record<Role, RolePermissions> = {
     canDeleteEmployeeReviews: false,
   },
 
-  // VERNEOMBUD - Verneombud, fokus på HMS (AML § 6-2: rett til informasjon om arbeidsmiljøet)
+  // VERNEOMBUD — safety representative (SRSCWR 1977: inspect and consult)
   VERNEOMBUD: {
     canAccessDashboard: true,
     canViewAnalytics: true,
@@ -945,33 +945,30 @@ export function getVisibleNavItems(role: Role) {
 }
 
 /**
- * Hent rolle-navn på norsk
+ * Role label shown in the product UI (UK).
  */
 export function getRoleDisplayName(role: Role): string {
   const roleNames: Record<Role, string> = {
     ADMIN: "Administrator",
-    HMS: "HMS-ansvarlig",
-    LEDER: "Leder",
-    VERNEOMBUD: "Verneombud",
-    ANSATT: "Ansatt",
-    BHT: "Bedriftshelsetjeneste",
-    REVISOR: "Revisor",
+    HMS: "HSE manager",
+    LEDER: "Line manager",
+    VERNEOMBUD: "Safety representative",
+    ANSATT: "Employee",
+    BHT: "Occupational health",
+    REVISOR: "Auditor",
   };
   return roleNames[role];
 }
 
-/**
- * Hent rolle-beskrivelse
- */
 export function getRoleDescription(role: Role): string {
   const descriptions: Record<Role, string> = {
-    ADMIN: "Full tilgang til alle funksjoner i bedriften",
-    HMS: "Administrerer HMS-systemet og har full tilgang til HMS-relaterte funksjoner",
-    LEDER: "Kan administrere sin avdeling og håndtere HMS-oppgaver",
-    VERNEOMBUD: "Kan rapportere avvik, risikovurderinger og delta i HMS-arbeid",
-    ANSATT: "Kan rapportere avvik, fylle ut skjemaer og lese dokumenter",
-    BHT: "Lesetilgang til alt og kan rapportere hendelser og risikovurderinger",
-    REVISOR: "Kun lesetilgang til alle HMS-data for revisjonsformål",
+    ADMIN: "Full access for this company",
+    HMS: "Competent person. Runs the HSEQ system day to day",
+    LEDER: "Manages their team and owns actions on their sites",
+    VERNEOMBUD: "Safety representative. Can report incidents, inspect and consult",
+    ANSATT: "Can report incidents, complete forms and read the policy",
+    BHT: "Occupational health. Read access plus incident and risk reporting",
+    REVISOR: "Read-only access for audit and SSIP evidence",
   };
   return descriptions[role];
 }

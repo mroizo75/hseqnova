@@ -1,113 +1,62 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { NextRequest } from "next/server";
+import { getRequiredTenantContext } from "@/lib/tenant-context";
 import { createErrorResponse, createSuccessResponse, ErrorCodes } from "@/lib/validations/api";
+import {
+  deleteInspectionFindingRecord,
+  updateInspectionFindingRecord,
+} from "@/server/queries/inspections.queries";
 
-/**
- * PATCH /api/inspections/findings/[id]
- */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Ikke autentisert", 401);
-    }
-
-    const sessionTenantId = session.user.tenantId ?? (
-      await prisma.userTenant.findFirst({
-        where: { userId: session.user.id },
-        select: { tenantId: true },
-      })
-    )?.tenantId;
-    if (!sessionTenantId) {
-      return createErrorResponse(ErrorCodes.FORBIDDEN, "Ingen tenant tilgang", 403);
-    }
+    const tenantContext = await getRequiredTenantContext();
     const { id } = await params;
     const data = await request.json();
-    const existing = await prisma.inspectionFinding.findFirst({
-      where: {
-        id,
-        inspection: { tenantId: sessionTenantId },
-      },
-      select: { id: true },
+    const finding = await updateInspectionFindingRecord({
+      tenantId: tenantContext.tenantId,
+      findingId: id,
+      title: data.title,
+      description: data.description,
+      severity: data.severity,
+      location: data.location,
+      imageKeys: data.imageKeys,
+      status: data.status,
+      responsibleId: data.responsibleId,
+      dueDate: data.dueDate,
+      resolutionNotes: data.resolutionNotes,
     });
-    if (!existing) {
-      return createErrorResponse(ErrorCodes.NOT_FOUND, "Funn ikke funnet", 404);
+    return createSuccessResponse({ finding }, "Finding updated");
+  } catch (error: unknown) {
+    const code = typeof error === "object" && error && "code" in error ? String((error as { code: string }).code) : "";
+    if (code === "FINDING_NOT_FOUND") {
+      return createErrorResponse(ErrorCodes.NOT_FOUND, "Finding not found", 404);
     }
-
-    const finding = await prisma.inspectionFinding.update({
-      where: { id: existing.id },
-      data: {
-        ...(data.title && { title: data.title }),
-        ...(data.description && { description: data.description }),
-        ...(data.severity && { severity: data.severity }),
-        ...(data.location !== undefined && { location: data.location }),
-        ...(data.imageKeys !== undefined && {
-          imageKeys: data.imageKeys ? JSON.stringify(data.imageKeys) : null,
-        }),
-        ...(data.status && { status: data.status }),
-        ...(data.responsibleId !== undefined && { responsibleId: data.responsibleId }),
-        ...(data.dueDate !== undefined && {
-          dueDate: data.dueDate ? new Date(data.dueDate) : null,
-        }),
-        ...(data.resolutionNotes !== undefined && { resolutionNotes: data.resolutionNotes }),
-        ...(data.status === "RESOLVED" && { resolvedAt: new Date() }),
-      },
-    });
-
-    return createSuccessResponse({ finding }, "Funn oppdatert");
-  } catch (error) {
-    console.error("[Inspection Finding PATCH] Error:", error);
-    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, "Kunne ikke oppdatere funn", 500);
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Not authenticated", 401);
+    }
+    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, "Could not update finding", 500);
   }
 }
 
-/**
- * DELETE /api/inspections/findings/[id]
- */
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Ikke autentisert", 401);
-    }
-
-    const sessionTenantId = session.user.tenantId ?? (
-      await prisma.userTenant.findFirst({
-        where: { userId: session.user.id },
-        select: { tenantId: true },
-      })
-    )?.tenantId;
-    if (!sessionTenantId) {
-      return createErrorResponse(ErrorCodes.FORBIDDEN, "Ingen tenant tilgang", 403);
-    }
+    const tenantContext = await getRequiredTenantContext();
     const { id } = await params;
-    const existing = await prisma.inspectionFinding.findFirst({
-      where: {
-        id,
-        inspection: { tenantId: sessionTenantId },
-      },
-      select: { id: true },
-    });
-    if (!existing) {
-      return createErrorResponse(ErrorCodes.NOT_FOUND, "Funn ikke funnet", 404);
+    await deleteInspectionFindingRecord(tenantContext.tenantId, id);
+    return createSuccessResponse(undefined, "Finding deleted");
+  } catch (error: unknown) {
+    const code = typeof error === "object" && error && "code" in error ? String((error as { code: string }).code) : "";
+    if (code === "FINDING_NOT_FOUND") {
+      return createErrorResponse(ErrorCodes.NOT_FOUND, "Finding not found", 404);
     }
-
-    await prisma.inspectionFinding.delete({
-      where: { id: existing.id },
-    });
-
-    return createSuccessResponse(undefined, "Funn slettet");
-  } catch (error) {
-    console.error("[Inspection Finding DELETE] Error:", error);
-    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, "Kunne ikke slette funn", 500);
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Not authenticated", 401);
+    }
+    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, "Could not delete finding", 500);
   }
 }
-

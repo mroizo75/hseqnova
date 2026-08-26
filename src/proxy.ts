@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { SESSION_TOKEN_COOKIE_NAME } from "@/lib/auth-cookie";
 
 const applySecurityHeaders = (response: NextResponse): NextResponse => {
   // Strict-Transport-Security (HSTS)
@@ -82,6 +83,7 @@ export async function proxy(request: NextRequest) {
     const token = await getToken({
       req: request,
       secret: process.env.NEXTAUTH_SECRET,
+      cookieName: SESSION_TOKEN_COOKIE_NAME,
     });
 
     if (!token) {

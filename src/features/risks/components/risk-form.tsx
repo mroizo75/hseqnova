@@ -22,8 +22,6 @@ import type {
   ControlFrequency,
   Risk,
   RiskCategory,
-  RiskResponseStrategy,
-  RiskTrend,
 } from "@prisma/client";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -31,7 +29,12 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, ChevronRight, Lightbulb } from "lucide-react";
+import { Lightbulb } from "lucide-react";
+import {
+  CONSEQUENCE_SCALE,
+  LIKELIHOOD_SCALE,
+  RISK_LEVEL_LABELS,
+} from "@/features/risks/utils/risk-labels";
 
 interface RiskFormProps {
   tenantId: string;
@@ -41,11 +44,10 @@ interface RiskFormProps {
   owners: Array<{ id: string; name?: string | null; email?: string | null }>;
   goalOptions?: Array<{ id: string; title: string }>;
   templateOptions?: Array<{ id: string; name: string }>;
-  /** Kort som vises mellom Risikonivå og Rest-risiko (f.eks. Tiltak for å redusere risiko). Kun i edit-mode. */
+  /** Shown between initial risk and residual risk (further action). Edit mode only. */
   slotBetweenRisikonivaAndResidual?: React.ReactNode;
 }
 
-// ISO 45001/31000 – status for risikovurdering
 const statusOptions = [
   { value: "OPEN", labelKey: "status.OPEN" },
   { value: "MITIGATING", labelKey: "status.MITIGATING" },
@@ -74,38 +76,6 @@ const frequencyOptions: Array<{ value: ControlFrequency; labelKey: string }> = [
   { value: "ANNUAL", labelKey: "frequency.ANNUAL" },
   { value: "BIENNIAL", labelKey: "frequency.BIENNIAL" },
 ];
-
-const responseOptions: Array<{ value: RiskResponseStrategy; labelKey: string; descriptionKey: string }> = [
-  {
-    value: "AVOID",
-    labelKey: "response.AVOID.label",
-    descriptionKey: "response.AVOID.description",
-  },
-  {
-    value: "REDUCE",
-    labelKey: "response.REDUCE.label",
-    descriptionKey: "response.REDUCE.description",
-  },
-  {
-    value: "TRANSFER",
-    labelKey: "response.TRANSFER.label",
-    descriptionKey: "response.TRANSFER.description",
-  },
-  {
-    value: "ACCEPT",
-    labelKey: "response.ACCEPT.label",
-    descriptionKey: "response.ACCEPT.description",
-  },
-];
-
-const trendOptions: Array<{ value: RiskTrend; labelKey: string }> = [
-  { value: "INCREASING", labelKey: "trend.INCREASING" },
-  { value: "STABLE", labelKey: "trend.STABLE" },
-  { value: "DECREASING", labelKey: "trend.DECREASING" },
-];
-
-const NO_GOAL_VALUE = "__none_goal__";
-const NO_TEMPLATE_VALUE = "__none_template__";
 
 const formatDateInput = (value?: Date | string | null) => {
   if (!value) return "";
@@ -138,8 +108,6 @@ export function RiskForm({
   risk,
   mode = "create",
   owners,
-  goalOptions = [],
-  templateOptions = [],
   slotBetweenRisikonivaAndResidual,
 }: RiskFormProps) {
   const t = useTranslations("riskForm");
@@ -163,17 +131,6 @@ export function RiskForm({
   const [residualConsequence, setResidualConsequence] = useState<number | null>(
     risk?.residualConsequence ?? null
   );
-  const [selectedGoal, setSelectedGoal] = useState(risk?.kpiId ?? NO_GOAL_VALUE);
-  const [selectedTemplate, setSelectedTemplate] = useState(
-    risk?.inspectionTemplateId ?? NO_TEMPLATE_VALUE
-  );
-  const [riskAppetite, setRiskAppetite] = useState(risk?.riskAppetite ?? "");
-  const [riskTolerance, setRiskTolerance] = useState(risk?.riskTolerance ?? "");
-  const [responseStrategy, setResponseStrategy] = useState<RiskResponseStrategy>(
-    risk?.responseStrategy ?? "REDUCE"
-  );
-  const [trend, setTrend] = useState<RiskTrend>(risk?.trend ?? "STABLE");
-  const [reviewedAt, setReviewedAt] = useState(formatDateInput(risk?.reviewedAt));
 
   useEffect(() => {
     if (!nextReviewTouched) {
@@ -212,14 +169,14 @@ export function RiskForm({
       riskStatement: formData.get("riskStatement") as string,
       residualLikelihood,
       residualConsequence,
-      kpiId: selectedGoal === NO_GOAL_VALUE ? undefined : selectedGoal,
-      inspectionTemplateId: selectedTemplate === NO_TEMPLATE_VALUE ? undefined : selectedTemplate,
-      linkedProcess: formData.get("linkedProcess") as string,
-      riskAppetite,
-      riskTolerance,
-      responseStrategy,
-      trend,
-      reviewedAt: reviewedAt || undefined,
+      kpiId: risk?.kpiId ?? undefined,
+      inspectionTemplateId: risk?.inspectionTemplateId ?? undefined,
+      linkedProcess: risk?.linkedProcess ?? undefined,
+      riskAppetite: risk?.riskAppetite ?? undefined,
+      riskTolerance: risk?.riskTolerance ?? undefined,
+      responseStrategy: risk?.responseStrategy,
+      trend: risk?.trend,
+      reviewedAt: risk?.reviewedAt ? formatDateInput(risk.reviewedAt) : undefined,
     };
 
     try {
@@ -234,7 +191,10 @@ export function RiskForm({
             mode === "create"
               ? t("toasts.createSuccess.title")
               : t("toasts.updateSuccess.title"),
-          description: t("toasts.successDescription", { level, score }),
+          description: t("toasts.successDescription", {
+            level: RISK_LEVEL_LABELS[level],
+            score,
+          }),
           className: "bg-green-50 border-green-200",
         });
         router.push("/dashboard/risks");
@@ -246,7 +206,7 @@ export function RiskForm({
           description: result.error || t("toasts.error.saveRisk"),
         });
       }
-    } catch (error) {
+    } catch {
       toast({
         variant: "destructive",
         title: t("toasts.unexpectedError.title"),
@@ -451,79 +411,61 @@ export function RiskForm({
             )}
           </div>
           <CardDescription>
-            {risk?.riskAssessmentId
-              ? t("sections.riskLevel.descriptionReadOnly")
-              : t("sections.riskLevel.descriptionEditable")}
+            {t("sections.riskLevel.descriptionEditable")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {risk?.riskAssessmentId ? (
-            <div className={`rounded-lg border-2 p-4 ${bgColor}`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className={`text-xl font-bold ${color}`}>{level}</div>
-                  <div className="text-sm text-muted-foreground mt-1">
-                      {t("sections.riskLevel.scoreEquation", { likelihood, consequence, score })}
-                  </div>
-                </div>
-                <div className={`text-4xl font-bold ${color}`}>{score}</div>
-              </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>{t("sections.riskLevel.likelihoodLabel")}</Label>
+              <Select
+                value={String(likelihood)}
+                onValueChange={(v) => setLikelihood(Number(v))}
+                disabled={loading}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n}. {LIKELIHOOD_SCALE[n]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          ) : (
-            <>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>{t("sections.riskLevel.likelihoodLabel")}</Label>
-                  <Select
-                    value={String(likelihood)}
-                    onValueChange={(v) => setLikelihood(Number(v))}
-                    disabled={loading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 4, 5].map((n) => (
-                        <SelectItem key={n} value={String(n)}>
-                          {n}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("sections.riskLevel.consequenceLabel")}</Label>
-                  <Select
-                    value={String(consequence)}
-                    onValueChange={(v) => setConsequence(Number(v))}
-                    disabled={loading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 4, 5].map((n) => (
-                        <SelectItem key={n} value={String(n)}>
-                          {n}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+            <div className="space-y-2">
+              <Label>{t("sections.riskLevel.consequenceLabel")}</Label>
+              <Select
+                value={String(consequence)}
+                onValueChange={(v) => setConsequence(Number(v))}
+                disabled={loading}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n}. {CONSEQUENCE_SCALE[n]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className={`rounded-lg border-2 p-4 ${bgColor}`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className={`text-xl font-bold ${color}`}>{RISK_LEVEL_LABELS[level]}</div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  {t("sections.riskLevel.scoreEquation", { likelihood, consequence, score })}
                 </div>
               </div>
-              <div className={`rounded-lg border-2 p-4 ${bgColor}`}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className={`text-xl font-bold ${color}`}>{level}</div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      {t("sections.riskLevel.scoreEquation", { likelihood, consequence, score })}
-                    </div>
-                  </div>
-                  <div className={`text-4xl font-bold ${color}`}>{score}</div>
-                </div>
-              </div>
-            </>
-          )}
+              <div className={`text-4xl font-bold ${color}`}>{score}</div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -550,7 +492,7 @@ export function RiskForm({
               />
               <p className="text-sm text-muted-foreground mt-1">
                 {residualLikelihood
-                  ? t("sections.residual.value", { value: residualLikelihood })
+                  ? `${residualLikelihood}. ${LIKELIHOOD_SCALE[residualLikelihood]}`
                   : t("sections.residual.selectValue")}
               </p>
             </div>
@@ -566,7 +508,7 @@ export function RiskForm({
               />
               <p className="text-sm text-muted-foreground mt-1">
                 {residualConsequence
-                  ? t("sections.residual.value", { value: residualConsequence })
+                  ? `${residualConsequence}. ${CONSEQUENCE_SCALE[residualConsequence]}`
                   : t("sections.residual.selectValue")}
               </p>
             </div>
@@ -575,7 +517,7 @@ export function RiskForm({
             <div className={`p-4 rounded-lg border ${residualScore.bgColor}`}>
               <p className={`font-semibold ${residualScore.color}`}>
                 {t("sections.residual.level", {
-                  level: residualScore.level,
+                  level: RISK_LEVEL_LABELS[residualScore.level],
                   score: residualScore.score,
                 })}
               </p>
@@ -592,7 +534,7 @@ export function RiskForm({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="controlFrequency">{t("fields.controlFrequency.label")}</Label>
               <Select
@@ -626,53 +568,9 @@ export function RiskForm({
                 disabled={loading}
               />
             </div>
-            <div className="space-y-2">
-              <Label>{t("fields.responseStrategy.label")}</Label>
-              <Select
-                value={responseStrategy}
-                onValueChange={(value: RiskResponseStrategy) => setResponseStrategy(value)}
-                disabled={loading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t("fields.responseStrategy.placeholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {responseOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <div>
-                        <p className="font-medium">{t(option.labelKey)}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {t(option.descriptionKey)}
-                        </p>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </CardContent>
       </Card>
-
-      {/* Avansert: ISO 31000-spesifikke felter – kun nødvendig for virksomhetsrisiko */}
-      <AdvancedSection
-        goalOptions={goalOptions}
-        templateOptions={templateOptions}
-        selectedGoal={selectedGoal}
-        setSelectedGoal={setSelectedGoal}
-        selectedTemplate={selectedTemplate}
-        setSelectedTemplate={setSelectedTemplate}
-        linkedProcess={risk?.linkedProcess ?? ""}
-        riskAppetite={riskAppetite}
-        setRiskAppetite={setRiskAppetite}
-        riskTolerance={riskTolerance}
-        setRiskTolerance={setRiskTolerance}
-        trend={trend}
-        setTrend={setTrend}
-        reviewedAt={reviewedAt}
-        setReviewedAt={setReviewedAt}
-        loading={loading}
-      />
 
       <div className="flex gap-4">
         <Button type="submit" disabled={loading}>
@@ -685,6 +583,7 @@ export function RiskForm({
         <Button
           type="button"
           variant="outline"
+          className="bg-transparent"
           onClick={() => router.back()}
           disabled={loading}
         >
@@ -692,195 +591,5 @@ export function RiskForm({
         </Button>
       </div>
     </form>
-  );
-}
-
-interface AdvancedSectionProps {
-  goalOptions: Array<{ id: string; title: string }>;
-  templateOptions: Array<{ id: string; name: string }>;
-  selectedGoal: string;
-  setSelectedGoal: (v: string) => void;
-  selectedTemplate: string;
-  setSelectedTemplate: (v: string) => void;
-  linkedProcess: string;
-  riskAppetite: string;
-  setRiskAppetite: (v: string) => void;
-  riskTolerance: string;
-  setRiskTolerance: (v: string) => void;
-  trend: RiskTrend;
-  setTrend: (v: RiskTrend) => void;
-  reviewedAt: string;
-  setReviewedAt: (v: string) => void;
-  loading: boolean;
-}
-
-function AdvancedSection({
-  goalOptions,
-  templateOptions,
-  selectedGoal,
-  setSelectedGoal,
-  selectedTemplate,
-  setSelectedTemplate,
-  linkedProcess,
-  riskAppetite,
-  setRiskAppetite,
-  riskTolerance,
-  setRiskTolerance,
-  trend,
-  setTrend,
-  reviewedAt,
-  setReviewedAt,
-  loading,
-}: AdvancedSectionProps) {
-  const t = useTranslations("riskForm");
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="rounded-lg border bg-muted/30">
-      <button
-        type="button"
-        className="flex w-full items-center justify-between px-5 py-4 text-left"
-        onClick={() => setOpen((prev) => !prev)}
-      >
-        <div>
-          <p className="font-medium text-sm">{t("advanced.title")}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {t("advanced.description")}
-          </p>
-        </div>
-        {open ? (
-          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-        )}
-      </button>
-
-      {open && (
-        <div className="px-5 pb-5 space-y-5 border-t pt-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="linkedProcess">{t("advanced.fields.linkedProcess.label")}</Label>
-              <Input
-                id="linkedProcess"
-                name="linkedProcess"
-                placeholder={t("advanced.fields.linkedProcess.placeholder")}
-                defaultValue={linkedProcess}
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="kpiId">{t("advanced.fields.goal.label")}</Label>
-              <Select
-                value={selectedGoal}
-                onValueChange={setSelectedGoal}
-                disabled={goalOptions.length === 0 || loading}
-              >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      goalOptions.length
-                        ? t("advanced.fields.goal.placeholder")
-                        : t("advanced.fields.goal.noneAvailable")
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_GOAL_VALUE}>{t("advanced.fields.goal.noneOption")}</SelectItem>
-                  {goalOptions.map((goal) => (
-                    <SelectItem key={goal.id} value={goal.id}>
-                      {goal.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="inspectionTemplateId">{t("advanced.fields.template.label")}</Label>
-              <Select
-                value={selectedTemplate}
-                onValueChange={setSelectedTemplate}
-                disabled={templateOptions.length === 0 || loading}
-              >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      templateOptions.length
-                        ? t("advanced.fields.template.placeholder")
-                        : t("advanced.fields.template.noneAvailable")
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_TEMPLATE_VALUE}>
-                    {t("advanced.fields.template.noneOption")}
-                  </SelectItem>
-                  {templateOptions.map((template) => (
-                    <SelectItem key={template.id} value={template.id}>
-                      {template.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="riskAppetite">{t("advanced.fields.riskAppetite.label")}</Label>
-              <Textarea
-                id="riskAppetite"
-                name="riskAppetite"
-                placeholder={t("advanced.fields.riskAppetite.placeholder")}
-                value={riskAppetite}
-                onChange={(e) => setRiskAppetite(e.target.value)}
-                disabled={loading}
-                rows={2}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="riskTolerance">{t("advanced.fields.riskTolerance.label")}</Label>
-              <Textarea
-                id="riskTolerance"
-                name="riskTolerance"
-                placeholder={t("advanced.fields.riskTolerance.placeholder")}
-                value={riskTolerance}
-                onChange={(e) => setRiskTolerance(e.target.value)}
-                disabled={loading}
-                rows={2}
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>{t("advanced.fields.trend.label")}</Label>
-              <Select value={trend} onValueChange={(value: RiskTrend) => setTrend(value)} disabled={loading}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("advanced.fields.trend.placeholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {trendOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {t(option.labelKey)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="reviewedAt">{t("advanced.fields.reviewedAt.label")}</Label>
-              <Input
-                id="reviewedAt"
-                name="reviewedAt"
-                type="date"
-                value={reviewedAt}
-                onChange={(e) => setReviewedAt(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
   );
 }

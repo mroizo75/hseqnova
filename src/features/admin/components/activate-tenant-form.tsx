@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { activateTenant } from "@/server/actions/onboarding.actions";
+import { activateTenant } from "@/server/actions/admin-registration.actions";
 import { Loader2, CheckCircle2, Eye, EyeOff } from "lucide-react";
 
 interface ActivateTenantFormProps {

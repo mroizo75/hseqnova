@@ -1,27 +1,29 @@
 "use server";
 
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { getRequiredTenantContext } from "@/lib/tenant-context";
+import type { Role } from "@prisma/client";
 
 export async function getActionContext() {
   const tenantContext = await getRequiredTenantContext();
+  const { data: membership, error } = await getAdminDb()
+    .from("UserTenant")
+    .select("role")
+    .eq("userId", tenantContext.userId)
+    .eq("tenantId", tenantContext.tenantId)
+    .maybeSingle();
 
-  const user = await prisma.user.findUnique({
-    where: { id: tenantContext.userId },
-    include: { tenants: true },
-  });
-
-  if (!user || user.tenants.length === 0) {
-    throw new Error("Bruker er ikke tilknyttet en virksomhet");
+  if (error) {
+    throw { code: "TENANT_LOOKUP_FAILED", message: error.message };
   }
 
-  const selectedTenantMembership = user.tenants.find(
-    (membership) => membership.tenantId === tenantContext.tenantId,
-  );
-  if (!selectedTenantMembership) {
-    throw new Error("Bruker er ikke tilknyttet valgt virksomhet");
+  if (!membership) {
+    throw new Error("User is not linked to the selected company");
   }
 
-  return { user, tenantId: tenantContext.tenantId, role: selectedTenantMembership.role };
+  return {
+    user: { id: tenantContext.userId, email: tenantContext.email },
+    tenantId: tenantContext.tenantId,
+    role: membership.role as Role,
+  };
 }
-

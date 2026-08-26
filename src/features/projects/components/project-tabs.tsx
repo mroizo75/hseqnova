@@ -8,7 +8,7 @@ import Link from "next/link";
 import { getIncidentTypeLabel, getIncidentStatusLabel } from "@/features/incidents/schemas/incident.schema";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 
 interface Incident {
   id: string;
@@ -107,7 +107,6 @@ export function ProjectTabs({
   formSubmissions,
 }: ProjectTabsProps) {
   const t = useTranslations("dashboardProjectTabs");
-  const locale = useLocale();
   const { toast } = useToast();
   const [projectAttachments, setProjectAttachments] = useState<ProjectAttachment[]>(attachments);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -226,7 +225,7 @@ export function ProjectTabs({
         </TabsTrigger>
         <TabsTrigger value="sja" className="flex items-center gap-1.5">
           <HardHat className="h-3.5 w-3.5" />
-          SJA
+          {t("tabs.sja")}
           {sjaAnalyses.length > 0 && (
             <Badge variant="secondary" className="ml-1 text-xs h-4 px-1">{sjaAnalyses.length}</Badge>
           )}
@@ -293,7 +292,7 @@ export function ProjectTabs({
                     <span className="text-sm font-medium truncate">{inc.title}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {getIncidentTypeLabel(inc.type as any)} · {new Date(inc.occurredAt).toLocaleDateString(locale === "en" ? "en-US" : "nb-NO")}
+                    {getIncidentTypeLabel(inc.type as any)} · {new Date(inc.occurredAt).toLocaleDateString("en-GB")}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -333,7 +332,7 @@ export function ProjectTabs({
                       <span className="text-sm font-medium">{sja.title}</span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {sja.workLocation} · {new Date(sja.plannedDate).toLocaleDateString(locale === "en" ? "en-US" : "nb-NO")}
+                      {sja.workLocation} · {new Date(sja.plannedDate).toLocaleDateString("en-GB")}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -369,7 +368,7 @@ export function ProjectTabs({
                   <div>
                     <span className="text-sm font-medium">{insp.title}</span>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {insp.location ?? "—"} · {new Date(insp.scheduledDate).toLocaleDateString(locale === "en" ? "en-US" : "nb-NO")}
+                      {insp.location ?? "—"} · {new Date(insp.scheduledDate).toLocaleDateString("en-GB")}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -406,7 +405,7 @@ export function ProjectTabs({
                   <div>
                     <span className="text-sm font-medium">{m.title}</span>
                     <p className={`text-xs mt-0.5 ${overdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}>
-                      {t("measures.deadline", { date: new Date(m.dueAt).toLocaleDateString(locale === "en" ? "en-US" : "nb-NO") })}
+                      {t("measures.deadline", { date: new Date(m.dueAt).toLocaleDateString("en-GB") })}
                       {overdue && ` ${t("measures.overdue")}`}
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -442,7 +441,7 @@ export function ProjectTabs({
                     {entry.user.name || entry.user.email}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {new Date(entry.date).toLocaleDateString(locale === "en" ? "en-US" : "nb-NO")} · {entry.timeType}
+                    {new Date(entry.date).toLocaleDateString("en-GB")} · {entry.timeType}
                     {entry.comment ? ` · ${entry.comment}` : ""}
                   </p>
                 </div>
@@ -503,7 +502,7 @@ export function ProjectTabs({
                       {isImage && <Badge variant="outline" className="text-[10px]">{t("attachments.imageBadge")}</Badge>}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {formatFileSize(attachment.size)} · {new Date(attachment.createdAt).toLocaleDateString(locale === "en" ? "en-US" : "nb-NO")}
+                      {formatFileSize(attachment.size)} · {new Date(attachment.createdAt).toLocaleDateString("en-GB")}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -557,7 +556,7 @@ export function ProjectTabs({
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {submission.submittedBy?.name || submission.submittedBy?.email || t("forms.anonymous")} ·{" "}
-                    {new Date(submission.createdAt).toLocaleDateString(locale === "en" ? "en-US" : "nb-NO")}
+                    {new Date(submission.createdAt).toLocaleDateString("en-GB")}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

@@ -1,57 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { getStorage } from "@/lib/storage";
+import { loadChemicalById } from "@/server/queries/chemicals.queries";
 
-/**
- * Proxier SDS-fil fra R2 til klienten for å unngå CORS (browser får ikke
- * tilgang til signert R2-URL direkte fra www.hmsnova.no).
- */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.tenantId) {
-      return NextResponse.json(
-        { error: "Ikke autorisert" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
     }
 
-    const chemical = await prisma.chemical.findUnique({
-      where: {
-        id,
-        tenantId: session.user.tenantId,
-      },
-    });
+    const chemical = await loadChemicalById(id, session.user.tenantId);
 
     if (!chemical) {
-      return NextResponse.json(
-        { error: "Kjemikalie ikke funnet" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Chemical not found" }, { status: 404 });
     }
 
     if (!chemical.sdsKey) {
-      return NextResponse.json(
-        { error: "Sikkerhetsdatablad mangler" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Safety data sheet is missing" }, { status: 404 });
     }
 
     const storage = getStorage();
     const buffer = await storage.get(chemical.sdsKey);
 
     if (!buffer || buffer.length === 0) {
-      return NextResponse.json(
-        { error: "Sikkerhetsdatablad ikke funnet i lagring" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Safety data sheet not found in storage" }, { status: 404 });
     }
 
     const filename =
@@ -67,11 +46,8 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Feil ved nedlasting av SDS:", error);
-    return NextResponse.json(
-      { error: "Kunne ikke laste ned sikkerhetsdatablad" },
-      { status: 500 }
-    );
+    const message =
+      error instanceof Error ? error.message : "Could not download the safety data sheet";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

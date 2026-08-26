@@ -141,7 +141,7 @@ async function checkRoutineReviews(tenantId: string): Promise<AlertResult> {
         type: "ROUTINE_REVIEW_DUE",
         title: "Rutine krever revisjon",
         message: `Rutinen "${routine.title}" skal revideres innen ${reviewDateText}.`,
-        link: `/dashboard/rutiner/${routine.id}`,
+        link: `/dashboard/procedures/${routine.id}`,
       });
     }
 
@@ -149,13 +149,13 @@ async function checkRoutineReviews(tenantId: string): Promise<AlertResult> {
       type: "ROUTINE_REVIEW_DUE",
       title: "Lederoppfolging: rutine til revisjon",
       message: `Rutinen "${routine.title}" trenger oppfolging innen ${reviewDateText}.`,
-      link: `/dashboard/rutiner/${routine.id}`,
+      link: `/dashboard/procedures/${routine.id}`,
     });
     await notifyUsersByRole(tenantId, "HMS", {
       type: "ROUTINE_REVIEW_DUE",
       title: "HMS-oppfolging: rutine til revisjon",
       message: `Rutinen "${routine.title}" trenger oppfolging innen ${reviewDateText}.`,
-      link: `/dashboard/rutiner/${routine.id}`,
+      link: `/dashboard/procedures/${routine.id}`,
     });
     notifications += 1;
   }

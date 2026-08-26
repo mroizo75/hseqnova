@@ -16,14 +16,14 @@ interface RecentIncidentsCardProps {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  OPEN: { label: "Åpen", className: "bg-red-100 text-red-700 border-red-200" },
-  INVESTIGATING: { label: "Under behandling", className: "bg-amber-100 text-amber-700 border-amber-200" },
-  ACTION_TAKEN: { label: "Tiltak iverksatt", className: "bg-blue-100 text-blue-700 border-blue-200" },
-  CLOSED: { label: "Lukket", className: "bg-green-100 text-green-700 border-green-200" },
+  OPEN: { label: "Open", className: "bg-red-100 text-red-700 border-red-200" },
+  INVESTIGATING: { label: "Under investigation", className: "bg-amber-100 text-amber-700 border-amber-200" },
+  ACTION_TAKEN: { label: "Action taken", className: "bg-blue-100 text-blue-700 border-blue-200" },
+  CLOSED: { label: "Closed", className: "bg-green-100 text-green-700 border-green-200" },
 };
 
 function formatDate(isoDate: string): string {
-  return new Date(isoDate).toLocaleDateString("nb-NO", {
+  return new Date(isoDate).toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -37,13 +37,13 @@ export function RecentIncidentsCard({ incidents }: RecentIncidentsCardProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <AlertCircle className="h-4 w-4" />
-            Siste avvik
+            Recent incidents
           </CardTitle>
           <Link
             href="/dashboard/incidents"
             className="text-xs text-primary hover:underline flex items-center gap-1"
           >
-            Se alle
+            View all
             <ArrowRight className="h-3 w-3" />
           </Link>
         </div>

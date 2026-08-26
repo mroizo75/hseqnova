@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { getStorage } from "@/lib/storage";
+import { deleteProjectAttachment, loadProjectAttachment } from "@/server/queries/projects.queries";
 
 export async function DELETE(
   _request: Request,
@@ -14,48 +14,34 @@ export async function DELETE(
 
     if (!session?.user || !tenantId) {
       return NextResponse.json(
-        { code: "UNAUTHORIZED", message: "Ikke autorisert" },
+        { code: "UNAUTHORIZED", message: "Unauthorised" },
         { status: 401 }
       );
     }
 
     const { id: projectId, attachmentId } = await params;
-    const attachment = await prisma.attachment.findFirst({
-      where: {
-        id: attachmentId,
-        tenantId,
-        objectType: "PROJECT",
-        objectId: projectId,
-      },
-      select: {
-        id: true,
-        fileKey: true,
-      },
-    });
+    const attachment = await loadProjectAttachment(attachmentId, projectId, tenantId);
 
     if (!attachment) {
       return NextResponse.json(
-        { code: "ATTACHMENT_NOT_FOUND", message: "Vedlegg ikke funnet" },
+        { code: "ATTACHMENT_NOT_FOUND", message: "Attachment not found" },
         { status: 404 }
       );
     }
 
     const storage = getStorage();
     await storage.delete(attachment.fileKey);
-
-    await prisma.attachment.delete({
-      where: { id: attachment.id },
-    });
+    await deleteProjectAttachment(attachment.id);
 
     return NextResponse.json({
       code: "OK",
-      message: "Vedlegg slettet",
+      message: "Attachment deleted",
     });
   } catch (error: any) {
     return NextResponse.json(
       {
         code: "DELETE_FAILED",
-        message: "Kunne ikke slette vedlegg",
+        message: "Could not delete the attachment",
         details: error?.message,
       },
       { status: 500 }

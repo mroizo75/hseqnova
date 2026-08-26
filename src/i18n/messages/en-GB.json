@@ -14,8 +14,8 @@
     "dashboard": "Dashboard",
     "documents": "Documents",
     "electro": "Compliance declarations",
-    "routines": "Routines",
-    "legalRegister": "Legal Register",
+    "routines": "Procedures",
+    "legalRegister": "Legal register",
     "risks": "Risk Assessments",
     "riskRegister": "Risk Register",
     "incidents": "Accident book",
@@ -23,7 +23,7 @@
     "constructionCompliance": "CDM / construction",
     "hseStatistics": "HSE Statistics",
     "sja": "RAMS",
-    "inspections": "Inspections",
+    "inspections": "Workplace inspections",
     "fireDrills": "Fire Drills",
     "chemicals": "COSHH",
     "environment": "Environment",
@@ -31,24 +31,25 @@
     "complaints": "Customer Complaints",
     "feedback": "Feedback",
     "bcm": "Emergency Preparedness",
-    "training": "Competence",
+    "training": "Training",
     "audits": "Audits",
     "managementReviews": "Management Reviews",
     "annualHmsPlan": "Annual H&S Plan",
-    "meetings": "Meetings (WEC/SRs)",
+    "meetings": "Consultation meetings",
     "timeRegistration": "Time Registration",
-    "exposureRegister": "Exposure Register",
+    "exposureRegister": "Health records",
     "whistleblowing": "Whistleblowing",
     "actions": "Actions",
     "goals": "Goals",
-    "orgChart": "Organization Chart",
-    "hmsCockpit": "HMS Cockpit",
+    "orgChart": "Organisation chart",
+    "users": "Users",
+    "hmsCockpit": "HSEQ overview",
     "benchmark": "Benchmark",
     "support": "Help & support",
     "settings": "Settings",
     "employeeReviews": "Employee Reviews",
     "hmsTavle": "Digital safety board",
-    "hmsHandbok": "H&S policy",
+    "hmsHandbok": "Health and safety policy",
     "ikMat": "Food safety and HACCP",
     "beredskapReiseliv": "Emergency preparedness – tourism",
     "aktivitetssikkerhet": "Activity safety",
@@ -75,13 +76,16 @@
   },
   "settingsSimpleMenu": {
     "noAccessTitle": "No access",
-    "noAccessDescription": "Only administrators can change the simple menu",
+    "noAccessDescription": "The simple menu is locked by an administrator",
+    "lockedDescription": "An administrator has locked Simple mode for this company. You cannot change which items appear.",
     "savedTitle": "Simple menu saved",
-    "savedDescription": "These menu choices apply when users select \"Simple\" mode in the dashboard.",
+    "savedDescription": "These choices apply to your Simple mode. An administrator can lock the menu for everyone from Company settings.",
+    "savedCompanyDescription": "These choices now apply to everyone while the dashboard is locked.",
     "saveFailedTitle": "Could not save",
-    "onlyAdminDescription": "Only administrators can choose which menu items are shown in simple mode.",
+    "onlyAdminDescription": "An administrator has locked Simple mode for this company.",
     "title": "Simple menu",
-    "cardDescription": "Choose which menu items are shown when users have \"Simple\" mode enabled in the dashboard. Advanced mode always shows all items you have access to.",
+    "cardDescription": "Choose which menu items you see in Simple mode. Advanced mode still shows everything you have access to.",
+    "cardDescriptionLocked": "The dashboard is locked. These choices apply to everyone in Simple mode.",
     "saving": "Saving…",
     "saveButton": "Save selection",
     "resetButton": "Reset to default"
@@ -89,46 +93,46 @@
   "incidentForm": {
     "types": {
       "ULYKKE": {
-        "label": "Work accident",
-        "labelWithoutRuh": "Work accident",
-        "desc": "Energy was released and caused injury/loss to person, equipment, or environment",
-        "badge": "Working Environment Act § 5-2 – mandatory notification"
+        "label": "Accident / injury",
+        "labelWithoutRuh": "Accident / injury",
+        "desc": "Energy was released and caused injury or loss to a person, equipment or the environment",
+        "badge": "RIDDOR 2013 – reportable if death, specified injury or over-seven-day"
       },
       "NESTEN": {
         "label": "Near miss",
         "labelWithoutRuh": "Near miss",
-        "desc": "Energy was released, but no injury occurred - under different circumstances an accident would have happened",
-        "badge": "Working Environment Act § 5-2 – near accident"
+        "desc": "Energy was released, but no injury occurred — under different circumstances an accident would have happened",
+        "badge": "Accident book (not RIDDOR unless listed as a dangerous occurrence)"
       },
       "FARLIG_SITUASJON": {
-        "label": "Hazardous situation / observation",
+        "label": "Unsafe condition / dangerous occurrence",
         "desc": "Hazardous condition or unwanted circumstance that represents danger, but no energy released",
-        "badge": "Working Environment Act § 2-3"
+        "badge": "RIDDOR if listed as a dangerous occurrence; otherwise accident book"
       },
       "YRKESSYKDOM": {
-        "label": "Occupational disease / Work-related illness",
+        "label": "Occupational disease",
         "desc": "Illness assumed to be caused by work or workplace conditions",
-        "badge": "Working Environment Act § 5-1"
+        "badge": "RIDDOR 2013 – occupational disease"
       },
       "AVVIK": {
-        "label": "Deviation",
-        "desc": "Breach of legislation, internal requirements, procedures, or standards (ISO 9001 ch. 10.2)"
+        "label": "Non-conformance",
+        "desc": "Breach of legislation, internal requirements or procedures"
       },
       "HMS": {
-        "label": "HSE deviation",
-        "desc": "Breach of HSE requirements or routines without injury or near miss"
+        "label": "H&S non-conformance",
+        "desc": "Breach of health and safety requirements or procedures without injury or near miss"
       },
       "MILJO": {
-        "label": "Environmental deviation",
-        "desc": "Emission, spill, or other deviation from environmental requirements (ISO 14001)"
+        "label": "Environmental incident",
+        "desc": "Emission, spill, or other departure from environmental requirements"
       },
       "KVALITET": {
-        "label": "Quality deviation",
-        "desc": "Product or service quality does not meet requirements (ISO 9001)"
+        "label": "Quality non-conformance",
+        "desc": "Product or service quality does not meet requirements"
       },
       "CUSTOMER": {
         "label": "Customer complaint",
-        "desc": "Complaint or feedback from customer/user (ISO 10002)"
+        "desc": "Complaint or feedback from a customer or user"
       }
     },
     "severity": {
@@ -192,7 +196,7 @@
       },
       "error": {
         "title": "Error",
-        "reportIncident": "Could not report deviation"
+        "reportIncident": "Could not report the incident"
       },
       "incidentReported": {
         "title": "Incident reported",
@@ -210,12 +214,12 @@
     },
     "sections": {
       "basicInfo": {
-        "title": "Basic information",
-        "description": "Working Environment Act § 5-2 / Internal Control Regulations § 5 - Report what happened"
+        "title": "Accident book entry",
+        "description": "SSCPR 1979 / BI 510 — type, what, when, where and who. Severity, RIDDOR and actions are completed when the record is handled (HSG245)."
       },
       "hmsSpecific": {
         "title": "People involved and outcome",
-        "description": "Working Environment Act § 5-2 - Report of unwanted incident (RUH)"
+        "description": "RIDDOR 2013 — injury, lost time and medical attention"
       },
       "hseStats": {
         "title": "HSE statistics",
@@ -225,15 +229,15 @@
       },
       "injuryFollowUp": {
         "title": "Injury and follow-up",
-        "description": "ISO 45001: document personal injury and link to risk"
+        "description": "RIDDOR 2013 — injury, lost time and any link to a risk assessment"
       },
       "customerComplaint": {
         "title": "Customer complaint",
-        "description": "ISO 10002: register who complains and how the case should be handled"
+        "description": "Who complained. Response deadline and follow-up are set when the record is handled."
       },
       "immediateActions": {
         "title": "Immediate actions and cause",
-        "description": "ISO 9001 ch. 10.2 - What was done immediately, and what is the cause?"
+        "description": "What was done immediately, and what caused the event"
       },
       "images": {
         "title": "Images",
@@ -248,23 +252,23 @@
     "fields": {
       "mainCategory": {
         "label": "What do you want to report? *",
-        "avvik": "Deviation",
-        "avvikDesc": "Deviation from procedures, quality, environment, or customer complaint",
-        "ruh": "RUH",
-        "ruhDesc": "Report of unwanted incident, accident, or near miss"
+        "avvik": "Incident",
+        "avvikDesc": "Non-conformance from procedures, quality, environment, or a customer complaint",
+        "ruh": "Injury / near miss",
+        "ruhDesc": "Accident, injury or near miss"
       },
       "typeGroup": {
         "AVVIK": {
-          "label": "Deviation",
-          "desc": "Deviation in HSE, quality or environment, or a customer complaint"
+          "label": "Incident",
+          "desc": "Non-conformance in H&S, quality or environment, or a customer complaint"
         },
         "RUH": {
-          "label": "RUH",
-          "desc": "Report of unwanted incident, accident, or near miss"
+          "label": "Injury / near miss",
+          "desc": "Accident, injury or near miss"
         },
         "HMS": {
-          "label": "HSE",
-          "desc": "Accident, near miss, observation, or occupational illness"
+          "label": "Accident book",
+          "desc": "Injury, near miss, dangerous occurrence or occupational disease"
         },
         "KVALITET": {
           "label": "Quality",
@@ -272,7 +276,7 @@
         },
         "MILJO": {
           "label": "Environment",
-          "desc": "Emissions, spills, or other deviation from environmental requirements"
+          "desc": "Emissions, spills, or other environmental non-conformance"
         },
         "CUSTOMER": {
           "label": "Customer complaint",
@@ -305,13 +309,13 @@
         "placeholder": "E.g. Fall from ladder during warehouse work"
       },
       "description": {
-        "label": "Incident description *",
-        "placeholder": "Describe in detail what happened, when, where, and who was involved"
+        "label": "What happened? *",
+        "placeholder": "Short account of what happened"
       },
       "occurredAt": { "label": "When did it happen? *" },
       "location": {
         "label": "Where did it happen?",
-        "placeholder": "E.g. Warehouse 2, Production Hall A"
+        "placeholder": "Place of accident — e.g. Warehouse 2, site address"
       },
       "witnessName": {
         "label": "Witnesses (name)",
@@ -324,12 +328,14 @@
         "noneOption": "- None (reporting for myself) -"
       },
       "involvedPersons": {
-        "label": "Involved persons",
-        "placeholder": "Name and role of all involved persons"
+        "label": "Injured / involved persons",
+        "placeholder": "Full name, occupation and address of the injured person (accident book / SSCPR 1979)"
       },
       "injuryDescription": {
         "label": "Incident outcome",
-        "placeholder": "Describe any injuries, extent of damage, and immediate consequences"
+        "placeholder": "Describe any injuries, extent of damage, and immediate consequences",
+        "createLabel": "Cause and nature of injury",
+        "createPlaceholder": "E.g. cut to left hand from a knife — accident book / SSCPR 1979"
       },
       "injuryType": {
         "label": "Injury type",
@@ -395,7 +401,9 @@
       "fatality": { "label": "Fatality", "short": "Fatality" },
       "lti": { "label": "Lost time injury", "short": "LTI" },
       "restrictedWork": { "label": "Restricted work", "short": "Restricted work" },
-      "medicalTreatment": { "label": "Medical treatment", "short": "Medical treatment" }
+      "medicalTreatment": { "label": "Medical treatment", "short": "Medical treatment" },
+      "overSevenDay": { "label": "Over-seven-day injury (RIDDOR — 15 days)" },
+      "riddorHelp": "RIDDOR 2013: death without delay; specified injury 10 days; over-seven-day injury 15 days. Official report is made on hse.gov.uk/riddor."
     },
     "aiHelp": {
       "title": "AI support: incident to actions",
@@ -413,15 +421,14 @@
     },
     "afterReporting": {
       "title": "After reporting",
-      "point1": "Manager will investigate the cause (root cause analysis / ROT)",
-      "point2": "Corrective and preventive actions will be planned",
-      "point3": "Effectiveness of actions will be evaluated (ISO 9001: 10.2)",
-      "point4Hse": "Included in TRIR statistics and HSE reporting to clients"
+      "point1": "A manager or competent person investigates and sets severity (HSE HSG245)",
+      "point2": "RIDDOR classification and any HSE report are completed during handling",
+      "point3": "Actions are planned with an owner and due date, then closed"
     }
   },
   "dashboardIncidentNewPage": {
-    "title": "Report incident / deviation",
-    "description": "Working Environment Act § 5-1/5-2 and Internal Control Regulations § 5 - register accidents, near misses, hazardous situations and deviations",
+    "title": "Record an incident",
+    "description": "Record the accident book entry quickly. Investigation, RIDDOR and actions follow when the competent person handles the record.",
     "tabletModeActive": "Tablet mode active: optimized for fast registration in the field.",
     "actions": {
       "backToIncidents": "Back to incidents"
@@ -433,8 +440,8 @@
   "riskForm": {
     "status": {
       "OPEN": "Identified",
-      "MITIGATING": "Mitigation in progress",
-      "ACCEPTED": "Accepted",
+      "MITIGATING": "Further action in progress",
+      "ACCEPTED": "Residual risk accepted",
       "CLOSED": "Closed"
     },
     "categories": {
@@ -443,7 +450,7 @@
       "HEALTH": "Health",
       "ENVIRONMENTAL": "Environmental",
       "INFORMATION_SECURITY": "Information security",
-      "LEGAL": "Legal/Compliance",
+      "LEGAL": "Legal / compliance",
       "STRATEGIC": "Strategic",
       "PSYCHOSOCIAL": "Psychosocial",
       "ERGONOMIC": "Ergonomic",
@@ -457,62 +464,39 @@
       "ANNUAL": "Annual",
       "BIENNIAL": "Every two years"
     },
-    "response": {
-      "AVOID": {
-        "label": "Avoid",
-        "description": "Stop activity or change process to remove the risk"
-      },
-      "REDUCE": {
-        "label": "Reduce",
-        "description": "Implement controls to reduce likelihood or consequence"
-      },
-      "TRANSFER": {
-        "label": "Transfer",
-        "description": "Transfer risk via insurance, contracts, or suppliers"
-      },
-      "ACCEPT": {
-        "label": "Accept",
-        "description": "Accept risk within defined tolerance"
-      }
-    },
-    "trend": {
-      "INCREASING": "Increasing",
-      "STABLE": "Stable",
-      "DECREASING": "Decreasing"
-    },
     "toasts": {
-      "createSuccess": { "title": "✅ Risk created" },
-      "updateSuccess": { "title": "✅ Risk updated" },
-      "successDescription": "Risk level: {level} ({score})",
+      "createSuccess": { "title": "Risk recorded" },
+      "updateSuccess": { "title": "Risk updated" },
+      "successDescription": "Rating: {level} ({score})",
       "error": {
-        "title": "Error",
-        "saveRisk": "Could not save risk"
+        "title": "Could not save",
+        "saveRisk": "The risk could not be saved."
       },
       "unexpectedError": {
-        "title": "Unexpected error",
-        "description": "Something went wrong"
+        "title": "Could not save",
+        "description": "Something went wrong."
       }
     },
     "sections": {
       "basic": {
-        "title": "Basic information",
-        "description": "Describe the risk and who owns it — Internal Control Regulations § 5 no. 6 requires written documentation of all identified hazards."
+        "title": "Hazard",
+        "description": "What is the hazard, where is it, and who is responsible for controlling it."
       },
       "description": {
-        "title": "Description and consequence",
-        "description": "Describe the situation and what may happen (consequence). Existing controls and notes below."
+        "title": "Who might be harmed and how",
+        "description": "Record significant findings: who is at risk, how they could be harmed, and what you already do to control it (MHSWR 1999)."
       },
       "riskLevel": {
-        "title": "Risk level (Working Environment Act § 3-1)",
-        "tipsButtonTitle": "Tips",
-        "tipsTitle": "Tips for {level} risk",
-        "tipsEdit": "ISO 45001 recommends actions to reduce risk. Scroll down to \"Actions to reduce risk\" and add concrete actions with owner and deadline.",
-        "tipsCreate": "After saving, you can add actions to reduce risk. ISO 45001 requires planned actions for medium and high risk.",
-        "descriptionReadOnly": "Set when the risk point was created. Can be changed on the overview page if needed.",
-        "descriptionEditable": "Likelihood and consequence (1–5). The risk matrix is shown on the overview page /dashboard/risks",
-        "scoreEquation": "Likelihood: {likelihood} × Consequence: {consequence} = {score}",
-        "likelihoodLabel": "Likelihood (1–5)",
-        "consequenceLabel": "Consequence (1–5)",
+        "title": "Initial risk",
+        "tipsButtonTitle": "What to do next",
+        "tipsTitle": "This is a {level} risk",
+        "tipsEdit": "Add further action below with a person responsible and a due date, then set the residual risk.",
+        "tipsCreate": "After saving, add further controls if the initial risk is not as low as reasonably practicable.",
+        "descriptionReadOnly": "Likelihood × consequence before further action. Change it here if the initial rating needs updating.",
+        "descriptionEditable": "How likely is harm, and how severe would it be (HSE five-by-five).",
+        "scoreEquation": "Likelihood {likelihood} × Consequence {consequence} = {score}",
+        "likelihoodLabel": "Likelihood",
+        "consequenceLabel": "Consequence",
         "levels": {
           "critical": "critical",
           "high": "high",
@@ -520,31 +504,31 @@
         }
       },
       "residual": {
-        "title": "Residual risk after actions",
-        "description": "Assess residual risk when actions are implemented - it should be lower after implemented actions (ISO 45001).",
+        "title": "Residual risk",
+        "description": "The risk that remains after existing controls and further action. It should be as low as reasonably practicable.",
         "likelihoodLabel": "Residual likelihood",
         "consequenceLabel": "Residual consequence",
-        "value": "Value: {value}",
-        "selectValue": "Select a value 1-5",
-        "level": "Residual level: {level} ({score})"
+        "value": "{value}",
+        "selectValue": "Set 1–5",
+        "level": "Residual rating: {level} ({score})"
       },
       "followUp": {
-        "title": "Follow-up",
-        "description": "Frequency and next review date — Internal Control Regulations § 5 no. 8 requires regular review of risk assessments."
+        "title": "Review",
+        "description": "Review the assessment if things change, and at least on this interval (MHSWR 1999)."
       }
     },
     "fields": {
       "title": {
-        "label": "Title *",
-        "placeholder": "E.g. Fall from height during roof work"
+        "label": "Hazard / activity *",
+        "placeholder": "e.g. Working at height on the warehouse mezzanine"
       },
       "category": {
         "label": "Category *",
         "placeholder": "Select category"
       },
       "owner": {
-        "label": "Risk owner *",
-        "placeholder": "Select risk owner"
+        "label": "Person responsible *",
+        "placeholder": "Select person"
       },
       "status": {
         "label": "Status",
@@ -552,80 +536,39 @@
       },
       "location": {
         "label": "Location",
-        "placeholder": "E.g. Production hall A"
+        "placeholder": "e.g. Warehouse A"
       },
       "area": {
-        "label": "Area / Process",
-        "placeholder": "Construction site, warehouse, etc."
+        "label": "Task / area",
+        "placeholder": "e.g. Goods in, roof work, workshop"
       },
       "context": {
-        "label": "Description *",
-        "placeholder": "Describe the situation, where it may occur, who is exposed, etc."
+        "label": "Who might be harmed and how *",
+        "placeholder": "Employees, contractors or others who could be harmed, and how."
       },
       "riskStatement": {
-        "label": "Consequence",
-        "placeholder": "What may happen if the risk scenario occurs? Describe the consequence."
+        "label": "What could happen",
+        "placeholder": "The harm if the hazard is realised, e.g. fall from height, crush injury."
       },
       "existingControls": {
         "label": "Existing controls",
-        "placeholder": "What barriers or controls exist today?"
+        "placeholder": "What is already in place: training, PPE, guarding, permits, supervision."
       },
       "description": {
-        "label": "Additional notes",
-        "placeholder": "Other relevant details, references, or observations"
+        "label": "Notes",
+        "placeholder": "Anything else needed to understand the assessment."
       },
       "controlFrequency": {
-        "label": "Follow-up frequency *",
-        "placeholder": "Select frequency"
+        "label": "Review interval *",
+        "placeholder": "Select interval"
       },
       "nextReviewDate": {
         "label": "Next review *"
-      },
-      "responseStrategy": {
-        "label": "Response strategy",
-        "placeholder": "Select strategy"
-      }
-    },
-    "advanced": {
-      "title": "Advanced - ISO 31000 / enterprise risk",
-      "description": "Risk appetite, KPI linkage, inspection template, etc. - not required for standard Working Environment Act assessments",
-      "fields": {
-        "linkedProcess": {
-          "label": "Linked to process",
-          "placeholder": "E.g. Maintenance, Assembly"
-        },
-        "goal": {
-          "label": "Link to goal/KPI",
-          "placeholder": "Select goal (optional)",
-          "noneAvailable": "No goals available",
-          "noneOption": "None"
-        },
-        "template": {
-          "label": "Inspection template",
-          "placeholder": "Select template (optional)",
-          "noneAvailable": "No templates available",
-          "noneOption": "None"
-        },
-        "riskAppetite": {
-          "label": "Risk appetite",
-          "placeholder": "Describe what level of risk the organization accepts"
-        },
-        "riskTolerance": {
-          "label": "Risk tolerance",
-          "placeholder": "Describe which deviations/indicators trigger actions"
-        },
-        "trend": {
-          "label": "Trend",
-          "placeholder": "Select trend"
-        },
-        "reviewedAt": {
-          "label": "Last reviewed (ISO 31000)"
-        }
       }
     },
     "actions": {
       "saving": "Saving...",
-      "create": "Create risk",
+      "create": "Save risk",
       "saveChanges": "Save changes",
       "cancel": "Cancel"
     }
@@ -881,7 +824,7 @@
         "defaultDescription": "Safe Job Analysis"
       },
       "chemicals": {
-        "title": "Chemicals",
+        "title": "COSHH",
         "description": "Hazardous substances and SDS"
       },
       "training": {
@@ -933,7 +876,7 @@
     },
     "tip": {
       "title": "💡 Tip:",
-      "description": "You can see the status of your reports here. The HSE manager will process the incident. Incidents should be closed when actions are completed and effect is verified (ISO 9001/45001 ch. 10.2). You will be notified when the incident is closed."
+      "description": "You can see the status of your reports here. The competent person or a line manager will investigate. You will be notified when the record is closed."
     },
     "list": {
       "title": "My reports ({count})",
@@ -1025,11 +968,11 @@
       "employeeNumber": "Employee no.:"
     },
     "exposure": {
-      "title": "Exposure register",
-      "subtitle": "Your registered exposures to hazardous substances and factors",
+      "title": "Health records",
+      "subtitle": "Your registered exposures to hazardous substances and agents",
       "downloadPdf": "Download PDF",
-      "empty": "You are not registered in the exposure register. If you have questions, contact your HSE manager.",
-      "warning": "You are registered in the exposure register. These details are retained until {year} and may be used as documentation in case of occupational disease.",
+      "empty": "You are not on a health record. If you have questions, contact your HSE manager.",
+      "warning": "You are on a health record. These details are retained until {year} and may be used as documentation in case of occupational disease.",
       "status": {
         "active": "Active",
         "closed": "Closed"
@@ -1054,7 +997,7 @@
         "done": "Health check completed{date}",
         "pending": "Health check is required – not completed yet"
       },
-      "footer": "Questions about these registrations? Contact your HSE manager. You have the right to access your own information under the Working Environment Act."
+      "footer": "Questions about these records? Contact your HSE manager. You have the right of access under UK GDPR / DPA 2018."
     }
   },
   "employeeDocumentsPage": {
@@ -1575,44 +1518,44 @@
     "occurredAtLabel": "Incident date:"
   },
   "employeeSjaPage": {
-    "title": "My SJA analyses",
-    "description": "Safe Job Analysis - identify hazards before work starts",
-    "new": "New SJA",
+    "title": "My RAMS",
+    "description": "Risk assessment and method statement — identify hazards before work starts",
+    "new": "New RAMS",
     "stats": {
       "draft": "Draft",
-      "active": "Active",
-      "completed": "Completed"
+      "active": "Live",
+      "completed": "Complete"
     },
     "templates": {
       "button": "Templates",
-      "availableSingle": "{count} SJA template available",
-      "availableMultiple": "{count} SJA templates available",
-      "description": "Use a template to quickly create SJA for recurring work tasks",
+      "availableSingle": "{count} RAMS template available",
+      "availableMultiple": "{count} RAMS templates available",
+      "description": "Use a template to complete RAMS quickly for recurring work",
       "view": "View templates"
     },
     "info": {
-      "title": "What is SJA?",
-      "description": "A Safe Job Analysis (SJA) is a systematic review of hazard factors in a work task. SJA must be completed BEFORE work starts, and everyone involved must participate in the review."
+      "title": "What is RAMS?",
+      "description": "A RAMS (risk assessment and method statement) records the hazards in a task and the safe system of work. Complete it before work starts, and brief everyone involved (MHSWR 1999; CDM 2015)."
     },
     "analyses": {
-      "title": "My analyses ({count})",
+      "title": "My RAMS ({count})",
       "empty": {
-        "title": "No SJA analyses yet",
-        "description": "Create your first SJA to ensure safe work.",
-        "cta": "Create your first SJA"
+        "title": "No RAMS yet",
+        "description": "Create your first RAMS so the work can start under an agreed safe system.",
+        "cta": "Create your first RAMS"
       }
     },
     "status": {
       "DRAFT": "Draft",
-      "ACTIVE": "Active",
-      "COMPLETED": "Completed",
+      "ACTIVE": "Live",
+      "COMPLETED": "Complete",
       "CANCELLED": "Cancelled"
     },
     "conclusion": {
       "NOT_DECIDED": "Not decided",
-      "APPROVED": "Approved - work can start",
-      "CONDITIONAL": "Conditionally approved",
-      "REJECTED": "Rejected - work cannot start"
+      "APPROVED": "Approved — work may start",
+      "CONDITIONAL": "Approved with conditions",
+      "REJECTED": "Rejected — work must not start"
     },
     "hazards": {
       "single": "{count} hazard",
@@ -1623,55 +1566,55 @@
     "planned": "Planned"
   },
   "employeeSjaNewPage": {
-    "title": "New Safe Job Analysis (SJA)",
-    "titleFromTemplate": "Complete SJA",
-    "description": "Perform an SJA before work starts to identify and manage hazards",
+    "title": "New RAMS",
+    "titleFromTemplate": "Complete RAMS",
+    "description": "Complete a risk assessment and method statement before work starts",
     "template": {
       "title": "Template: {name}",
-      "description": "- Hazards and measures are pre-filled. You MUST fill in date, participants, and assess whether there are special conditions today. You can also add or remove hazards."
+      "description": "— Hazards and controls are pre-filled. You must still fill in the date, the people doing the work, and any conditions on the day. You can add or remove hazards."
     },
     "important": {
-      "title": "Important:",
-      "description": "SJA must be carried out together with everyone participating in the work. All hazards must be identified and measures described BEFORE work starts. All participants must confirm that they understand the hazards and measures."
+      "title": "Before work starts:",
+      "description": "Complete RAMS with everyone who will do the work. Identify hazards and control measures, then brief the team so they understand the safe system of work."
     },
-    "project": "Registered on project: {name}",
-    "formTitle": "SJA form",
+    "project": "Recorded against project: {name}",
+    "formTitle": "RAMS form",
     "employeeFallback": "Employee",
     "howTo": {
-      "title": "How to complete SJA",
+      "title": "How to complete RAMS",
       "stepsTitle": "Step by step:",
       "steps": {
-        "s1": "Fill in date, work location, and all participants",
-        "s2": "Assess whether there are special conditions today (weather, new people, changes)",
-        "s3": "Review all hazards - add new ones if needed",
-        "s4": "Ensure measures are described for each hazard",
-        "s5": "Take photos of the work area if relevant",
-        "s6": "All participants must confirm that they understand"
+        "s1": "Fill in the date, work location and everyone doing the work",
+        "s2": "Record anything different today (weather, new people, changes)",
+        "s3": "Review every hazard — add new ones if needed",
+        "s4": "Describe control measures for each hazard",
+        "s5": "Photograph the work area if it helps",
+        "s6": "Confirm that everyone understands the RAMS"
       },
-      "repeatTitle": "When should SJA be redone?",
+      "repeatTitle": "When should RAMS be done again?",
       "repeat": {
-        "r1": "Even if you use a template, SJA must always be completed again each day",
-        "r2": "Conditions can change (weather, personnel, equipment)",
+        "r1": "Even with a template, complete a fresh RAMS for the day’s work",
+        "r2": "Conditions can change (weather, people, plant)",
         "r3": "New hazards may have appeared since last time"
       }
     }
   },
   "employeeSjaTemplatesPage": {
-    "title": "SJA templates",
-    "description": "Use a template to quickly create SJA for recurring work tasks",
+    "title": "RAMS templates",
+    "description": "Use a template to complete RAMS quickly for recurring work",
     "dailyUse": {
       "title": "Daily use:",
-      "description": "Choose a template and click \"Use template\" to create a new SJA with pre-filled hazards and measures. You can adjust the content as needed."
+      "description": "Choose a template and click “Use template” to start a new RAMS with pre-filled hazards and controls. Adjust the content for today’s conditions."
     },
     "empty": {
-      "title": "No templates created",
-      "description": "An administrator or HSE responsible can create SJA templates from the dashboard."
+      "title": "No templates yet",
+      "description": "An administrator or competent person can create RAMS templates from the dashboard."
     },
     "workLocation": "Work location: {value}",
     "hazards": {
       "definedSingle": "{count} hazard defined:",
       "definedMultiple": "{count} hazards defined:",
-      "measures": "Measures: {value}"
+      "measures": "Control measures: {value}"
     }
   },
   "employeeIncidentNewPage": {
@@ -1849,7 +1792,7 @@
     "toast": {
       "success": {
         "title": "✅ Incident reported",
-        "description": "Thank you for the report! HSE responsible has been notified."
+        "description": "Thank you. The competent person has been notified."
       },
       "error": {
         "title": "❌ Error",
@@ -1857,14 +1800,14 @@
       }
     },
     "incidentTypes": {
-      "ULYKKE": "Work accident",
+      "ULYKKE": "Accident / injury",
       "NESTEN": "Near miss",
-      "FARLIG_SITUASJON": "Dangerous situation / observation",
-      "YRKESSYKDOM": "Occupational disease / Work-related illness",
-      "AVVIK": "Incident",
-      "HMS": "HSE incident",
+      "FARLIG_SITUASJON": "Unsafe condition / dangerous occurrence",
+      "YRKESSYKDOM": "Occupational disease",
+      "AVVIK": "Non-conformance",
+      "HMS": "H&S non-conformance",
       "MILJO": "Environmental incident",
-      "KVALITET": "Quality incident",
+      "KVALITET": "Quality non-conformance",
       "CUSTOMER": "Customer complaint"
     },
     "contextPresets": {
@@ -2131,22 +2074,22 @@
     }
   },
   "employeeSjaTemplateActions": {
-    "fill": "Fill in SJA"
+    "fill": "Use template"
   },
   "employeeSjaDeleteTemplateButton": {
     "toast": {
       "success": {
         "title": "Template deleted",
-        "description": "Template \"{templateName}\" has been removed."
+        "description": "Template “{templateName}” has been removed."
       },
       "error": {
         "title": "Error",
-        "description": "Could not delete template."
+        "description": "Could not delete the template."
       }
     },
     "dialog": {
-      "title": "Delete SJA template?",
-      "description": "Are you sure you want to delete template \"{templateName}\"? The template will no longer be available to employees. Existing SJAs created from this template are not affected.",
+      "title": "Delete RAMS template?",
+      "description": "Delete template “{templateName}”? It will no longer be available. Existing RAMS created from it are not affected.",
       "cancel": "Cancel",
       "confirm": "Delete template"
     }
@@ -2154,30 +2097,30 @@
   "employeeSjaStatusActions": {
     "title": "Actions",
     "commentLabel": "Comment (optional)",
-    "commentPlaceholder": "Optional comment for approval...",
-    "approve": "Approve - work can start",
-    "conditional": "Conditionally approved",
-    "reject": "Reject - work CANNOT start",
-    "complete": "Complete SJA - work finished",
-    "done": "This SJA is {status}.",
+    "commentPlaceholder": "Optional note for the approval...",
+    "approve": "Approve — work may start",
+    "conditional": "Approve with conditions",
+    "reject": "Reject — work must not start",
+    "complete": "Mark RAMS complete — work finished",
+    "done": "This RAMS is {status}.",
     "status": {
-      "completed": "completed",
+      "completed": "complete",
       "cancelled": "cancelled"
     },
     "toast": {
       "success": {
-        "title": "SJA updated",
-        "description": "Status has been changed."
+        "title": "RAMS updated",
+        "description": "The status has been changed."
       },
       "error": {
         "title": "Error",
-        "description": "Could not update SJA."
+        "description": "Could not update the RAMS."
       }
     }
   },
   "employeeSjaCreateTemplateButton": {
-    "newButton": "New SJA template",
-    "dialogTitle": "Create SJA template",
+    "newButton": "New RAMS template",
+    "dialogTitle": "Create RAMS template",
     "fields": {
       "name": {
         "label": "Template name",
@@ -2224,13 +2167,13 @@
     },
     "toast": {
       "success": {
-        "title": "SJA template created",
-        "description": "Template can now be used to create new SJA analyses."
+        "title": "RAMS template created",
+        "description": "The template can now be used to create new RAMS."
       },
       "error": {
         "title": "Error",
-        "noHazards": "Add at least one hazard with activity, hazard and measures.",
-        "createFailed": "Could not create SJA template."
+        "noHazards": "Add at least one hazard with activity, hazard and control measures.",
+        "createFailed": "Could not create the RAMS template."
       }
     }
   },
@@ -2271,7 +2214,7 @@
       "participants": {
         "label": "All participants in the work",
         "placeholder": "Write names of all participants, one per line. Everyone participating in the work MUST be registered.",
-        "help": "All participants confirm that they have reviewed the SJA and understood hazards and measures"
+        "help": "Everyone named confirms they have been briefed on the RAMS and understand the hazards and controls"
       },
       "additionalConditions": {
         "title": "Consider this:",
@@ -2293,8 +2236,8 @@
       "severity": "Severity (1-5)",
       "responsible": "Responsible for measures",
       "responsiblePlaceholder": "Who is responsible?",
-      "measures": "Measures / barriers",
-      "measuresPlaceholder": "What measures should be implemented to reduce risk?",
+      "measures": "Control measures",
+      "measuresPlaceholder": "What controls will reduce the risk?",
       "addMore": "Add more hazards",
       "probabilityOptions": {
         "o1": "1 - Very low",
@@ -2318,7 +2261,7 @@
       "low": "Low"
     },
     "images": {
-      "help": "Take photos of the work area, equipment or conditions relevant to the SJA (optional, max 5)",
+      "help": "Photograph the work area, plant or conditions relevant to this RAMS (optional, max 5)",
       "maxReached": "Max 5 images",
       "takeOrChoose": "Take photo or choose from album",
       "count": "{count}/5 images added",
@@ -2328,10 +2271,10 @@
     "confirm": {
       "title": "By submitting, you confirm that:",
       "points": {
-        "p1": "All participants have reviewed this SJA together",
-        "p2": "All identified hazards have been assessed",
-        "p3": "Necessary measures are described and understood",
-        "p4": "Everyone knows who is responsible for each measure"
+        "p1": "Everyone doing the work has been briefed on this RAMS",
+        "p2": "Identified hazards have been assessed",
+        "p3": "Control measures are described and understood",
+        "p4": "Everyone knows who is responsible for each control"
       }
     },
     "ai": {
@@ -2341,8 +2284,8 @@
       "placeholder": "AI summary of key hazards, measures and follow-up is shown here."
     },
     "actions": {
-      "submitting": "Submitting SJA...",
-      "submit": "Submit SJA for approval",
+      "submitting": "Submitting RAMS...",
+      "submit": "Submit RAMS for approval",
       "cancel": "Cancel"
     },
     "toast": {
@@ -2359,8 +2302,8 @@
         "description": "Select the date when the work will be performed."
       },
       "submitSuccess": {
-        "title": "SJA submitted",
-        "description": "Safe job analysis is registered and ready for approval."
+        "title": "RAMS submitted",
+        "description": "The RAMS is recorded and ready for approval."
       },
       "aiMissingData": {
         "title": "Missing input",
@@ -2372,7 +2315,7 @@
       },
       "error": {
         "title": "Error",
-        "description": "Could not create SJA. Please try again."
+        "description": "Could not create the RAMS. Please try again."
       }
     }
   },
@@ -2387,16 +2330,20 @@
         "placeholder": "Your name"
       },
       "email": {
-        "label": "Email (login)",
-        "placeholder": "you@email.com",
-        "help": "⚠️ NOTE: Email is used for login and shared across all companies you belong to. Changing email will affect ALL your companies."
+        "label": "Email (sign-in)",
+        "placeholder": "you@company.co.uk",
+        "help": "This email is used to sign in and is shared across every company you belong to."
+      },
+      "phone": {
+        "label": "Telephone",
+        "placeholder": "07700 900000",
+        "help": "Used for urgent text alerts (accident book, overdue actions, whistleblowing)."
       },
       "preferredLocale": {
         "label": "Language",
-        "placeholder": "Select language",
+        "placeholder": "British English",
         "options": {
-          "nb": "Norwegian",
-          "en": "English"
+          "enGB": "British English"
         }
       }
     },
@@ -2436,37 +2383,48 @@
     "notLinkedTenant": "You are not linked to a tenant.",
     "header": {
       "title": "Settings",
-      "description": "Manage company, users and system"
+      "description": "Company, notifications, Microsoft 365, billing and who can see each module."
     },
     "tabs": {
       "company": "Company",
       "menu": "Simple menu",
+      "access": "Access",
       "profile": "Profile",
       "notifications": "Notifications",
       "users": "Users",
-      "office365": "Office 365",
-      "subscription": "Subscription"
+      "office365": "Microsoft 365",
+      "subscription": "Subscription",
+      "statistics": "Benchmarking",
+      "safetyBoard": "Safety board"
     }
   },
   "dashboardIncidentsPage": {
     "noTenantAccess": "No tenant access",
-    "title": "Incidents and deviations",
-    "description": "ISO 9001: Report and follow up deviations systematically",
+    "title": "Accident book",
+    "description": "Record injuries, near misses and RIDDOR-reportable events. Social Security (Claims and Payments) Regulations 1979; RIDDOR 2013.",
     "actions": {
-      "reportIncident": "Report deviation"
+      "reportIncident": "Record an incident"
     },
     "stats": {
       "total": {
         "title": "Total",
-        "description": "Registered deviations and RUH"
+        "description": "Accident book entries"
       },
       "avvik": {
-        "title": "Deviations",
-        "description": "Procedure, quality, environment"
+        "title": "Other records",
+        "description": "Quality, environment, non-conformance"
+      },
+      "accidentBook": {
+        "title": "Accident book",
+        "description": "Injury, near miss, disease, occurrence"
+      },
+      "riddor": {
+        "title": "RIDDOR",
+        "description": "Reportable to HSE"
       },
       "ruh": {
-        "title": "RUH",
-        "description": "Unwanted incidents"
+        "title": "Accident book",
+        "description": "Injury, near miss, disease, occurrence"
       },
       "open": {
         "title": "Open",
@@ -2477,22 +2435,22 @@
         "description": "Closed cases"
       }
     },
-    "allIncidents": "All deviations",
+    "allIncidents": "All entries",
     "iso": {
-      "title": "📋 ISO 9001 - 10.2 Nonconformity and corrective action",
-      "organizationShould": "The organization shall:",
-      "documentation": "Documentation:",
+      "title": "Accident book and RIDDOR",
+      "organizationShould": "The employer shall:",
+      "documentation": "Keep and report:",
       "organizationList": {
-        "react": "React to nonconformities (immediate actions)",
-        "assess": "Assess need for corrective actions",
-        "implement": "Implement necessary actions",
-        "review": "Review the effectiveness of actions"
+        "react": "Record injuries and near misses in the accident book (SSCPR 1979)",
+        "assess": "Identify RIDDOR-reportable events (death, specified injury, over-seven-day, disease, listed occurrence)",
+        "implement": "Report to HSE within the RIDDOR 2013 timescales",
+        "review": "Investigate accidents in proportion to the risk (HSE HSG245) and put control measures in place"
       },
       "documentationList": {
-        "nature": "Nature of nonconformities and subsequent actions",
-        "results": "Results of corrective actions",
-        "rootCause": "Root cause analysis",
-        "learning": "Lessons learned for improvement"
+        "nature": "What happened, when, where, and who was injured (keep 3 years)",
+        "results": "RIDDOR category and due date, if reportable",
+        "rootCause": "Investigation findings and risk control measures",
+        "learning": "Lessons learned — personal data under UK GDPR / DPA 2018"
       }
     }
   },
@@ -2516,21 +2474,21 @@
       "actions": "Actions"
     },
     "categoryLabel": {
-      "avvik": "Deviation"
+      "avvik": "Incident"
     },
     "actions": {
       "viewDetails": "View details"
     },
     "types": {
-      "AVVIK": "Deviation",
+      "AVVIK": "Non-conformance",
       "NESTEN": "Near miss",
-      "ULYKKE": "Work accident",
-      "FARLIG_SITUASJON": "Dangerous situation / observation",
+      "ULYKKE": "Accident / injury",
+      "FARLIG_SITUASJON": "Unsafe condition / dangerous occurrence",
       "YRKESSYKDOM": "Occupational disease",
       "SKADE": "Personal injury",
-      "MILJO": "Environmental deviation",
-      "KVALITET": "Quality deviation",
-      "HMS": "HSE deviation",
+      "MILJO": "Environmental incident",
+      "KVALITET": "Quality non-conformance",
+      "HMS": "H&S non-conformance",
       "CUSTOMER": "Customer complaint"
     },
     "status": {
@@ -2595,19 +2553,53 @@
     "actions": {
       "backToIncidents": "Back to incidents"
     },
+    "handling": {
+      "title": "Handling this record",
+      "description": "Accident book (SSCPR 1979 / BI 510), RIDDOR 2013 and a proportionate investigation (HSE HSG245). Keep the entry for 3 years. Personal data is processed under UK GDPR / DPA 2018.",
+      "complete": "Required information is complete. Investigate, put controls in place, then close.",
+      "open": "Complete the accident book and RIDDOR fields below, then investigate."
+    },
+    "riddor": {
+      "title": "RIDDOR 2013",
+      "notReportable": "Not RIDDOR-reportable. Keep the record in the accident book.",
+      "reportBeforeInvestigation": "Report to HSE before the investigation is finished. Death: without delay. Specified injury: 10 days. Over-seven-day injury: 15 days.",
+      "official": "Official reporting is only on",
+      "due": "Due",
+      "recordedAt": "Reported to HSE",
+      "reference": "HSE reference",
+      "notYetRecorded": "Report not yet recorded in HSEQ Nova"
+    },
+    "accidentBook": {
+      "title": "Accident book entry",
+      "description": "BI 510 fields — Social Security (Claims and Payments) Regulations 1979. Keep 3 years.",
+      "entered": "Date entered",
+      "occurred": "Date and time of accident",
+      "place": "Place",
+      "notRecorded": "Not recorded — required for the accident book",
+      "injuredPerson": "Injured / involved person",
+      "injuredHint": "Full name, occupation and address",
+      "personGivingNotice": "Person making this entry",
+      "reportedFor": "Reported on behalf of",
+      "self": "The person making the entry",
+      "witnesses": "Witnesses",
+      "none": "None recorded",
+      "injuryNature": "Cause and nature of injury",
+      "immediate": "Immediate action",
+      "keepNote": "Keep this record for 3 years. Do not share personal details beyond the competent person, HSE and (with consent) safety representatives (SRSCWR 1977)."
+    },
     "labels": {
       "severityPrefix": "Severity: {value} - {label}",
       "severityNotAssessed": "Severity: not assessed",
       "type": {
-        "AVVIK": "Deviation",
+        "AVVIK": "Non-conformance",
         "NESTEN": "Near miss",
-        "ULYKKE": "Work accident",
-        "FARLIG_SITUASJON": "Dangerous situation / observation",
+        "ULYKKE": "Accident / injury",
+        "FARLIG_SITUASJON": "Unsafe condition / dangerous occurrence",
         "YRKESSYKDOM": "Occupational disease",
         "SKADE": "Personal injury",
-        "MILJO": "Environmental deviation",
-        "KVALITET": "Quality deviation",
-        "HMS": "HSE deviation",
+        "MILJO": "Environmental incident",
+        "KVALITET": "Quality non-conformance",
+        "HMS": "H&S non-conformance",
         "CUSTOMER": "Customer complaint"
       },
       "status": {
@@ -2628,7 +2620,7 @@
     "sections": {
       "whatHappened": {
         "title": "What happened?",
-        "description": "ISO 9001: Nature of nonconformity",
+        "description": "Accident book; RIDDOR 2013 — nature of the event",
         "descriptionLabel": "Description",
         "time": "Time",
         "location": "Location",
@@ -2649,25 +2641,25 @@
         "attachments": "Attachments ({count})"
       },
       "treatment": {
-        "title": "Process incident",
-        "description": "Update type, project, status, severity and responsible person"
+        "title": "Complete the record",
+        "description": "Fill BI 510 and RIDDOR fields as facts become known. Do not wait for the full investigation to report a RIDDOR event."
       },
       "rootCause": {
-        "title": "Root Cause Analysis",
-        "description": "ISO 9001: Identify the cause of the nonconformity",
-        "mainCause": "Root cause",
+        "title": "Investigation",
+        "description": "What caused this, and what needs to change.",
+        "mainCause": "Investigation findings",
         "contributingFactors": "Contributing factors",
         "investigatedAt": "Investigated: {date}"
       },
       "measures": {
-        "title": "Corrective actions",
-        "description": "ISO 9001: Planned actions to eliminate the cause",
-        "empty": "No actions planned yet",
-        "emptyHint": "Click \"Add action\" above"
+        "title": "Risk control measures",
+        "description": "Actions to prevent recurrence, with an owner and due date",
+        "empty": "No control measures yet",
+        "emptyHint": "Add actions, or record in the investigation if existing controls are enough."
       },
       "closed": {
         "title": "Incident closed",
-        "description": "ISO 9001: Effectiveness review",
+        "description": "Actions complete and the investigation closed",
         "effectivenessReview": "Effectiveness review",
         "lessonsLearned": "Lessons learned",
         "closedAt": "Closed: {date}"
@@ -2675,53 +2667,30 @@
     }
   },
   "dashboardIncidentInvestigationForm": {
-    "title": "Root Cause Analysis",
-    "description": "ISO 9001: Assess need for actions to eliminate the cause",
-    "fiveWhy": {
-      "title": "🔍 5 Whys method",
-      "description": "Ask \"why\" repeatedly to find the root cause. For example:",
-      "steps": {
-        "s1": "Why did the accident happen? → The person fell from a ladder",
-        "s2": "Why did the person fall? → The ladder was unstable",
-        "s3": "Why was the ladder unstable? → The floor was slippery/uneven",
-        "s4": "Why was the floor slippery? → No risk assessment was performed",
-        "s5": "Root cause: Inadequate planning and risk assessment"
-      }
-    },
+    "title": "Investigation",
+    "description": "What caused this, and what needs to change? Keep it in proportion to the risk (HSE HSG245).",
     "fields": {
-      "rootCause": "Root cause *",
-      "contributingFactors": "Contributing factors",
+      "rootCause": "Findings *",
+      "contributingFactors": "Contributing factors (optional)",
       "investigatedBy": "Investigated by *"
     },
     "placeholders": {
-      "rootCause": "Structure as five whys (Q&A), then a root-cause conclusion — or use the AI button for a draft.",
-      "contributingFactors": "Other factors that contributed to the event (e.g. time pressure, lack of training, poor communication)",
-      "investigatedBy": "Select person responsible for investigation"
+      "rootCause": "Immediate cause and any underlying failings",
+      "contributingFactors": "e.g. time pressure, missing procedure, weather",
+      "investigatedBy": "Select who investigated"
     },
-    "hints": {
-      "rootCause": "Describe the root cause, not only the symptom"
-    },
-    "aiSuggest": {
-      "button": "Suggest 5 Whys (AI)",
-      "helper": "Drafts five “why” questions with possible answers and a root-cause conclusion.",
-      "loading": "Generating 5 Whys...",
-      "successTitle": "Suggestion inserted",
-      "successDescription": "Review and adjust the text before saving. Images used as context: {count}.",
-      "error": "Could not fetch AI suggestion"
-    },
-    "aiDisclaimer": "AI suggestions do not replace professional judgement. Review each step in the 5 Whys chain and adjust the conclusion so it matches the facts and internal procedures before saving.",
     "actions": {
       "saving": "Saving...",
-      "complete": "Complete root cause analysis"
+      "complete": "Save investigation"
     },
     "toasts": {
       "success": {
-        "title": "✅ Root cause analysis completed",
-        "description": "You can now plan corrective actions"
+        "title": "Investigation saved",
+        "description": "You can now add risk control measures"
       },
       "error": {
         "title": "Error",
-        "description": "Could not save root cause analysis"
+        "description": "Could not save the investigation"
       },
       "unexpected": {
         "title": "Unexpected error",
@@ -2731,28 +2700,32 @@
   },
   "dashboardIncidentCloseForm": {
     "title": "Close incident",
-    "description": "ISO 9001: Review effectiveness of corrective actions",
+    "description": "HSG245: confirm the action plan is complete and similar harm is less likely",
     "ready": {
-      "title": "✅ Ready to close",
+      "title": "Ready to close",
       "items": {
-        "i1": "Root cause analysis is completed",
-        "i2": "All corrective actions are completed",
-        "i3": "Now evaluate whether the actions were effective"
+        "i1": "Investigation is complete",
+        "i2": "All risk control measures are complete",
+        "noAction": "No action is recorded — you must explain why none is needed",
+        "i3": "Record whether the measures are working"
       }
     },
     "fields": {
       "effectivenessReview": "Effectiveness review *",
+      "noActionReason": "Why no action is needed *",
       "measureEffectiveness": "Action effectiveness",
       "lessonsLearned": "Lessons learned"
     },
     "placeholders": {
-      "effectivenessReview": "Did the actions eliminate the root cause? Can similar incidents now be prevented? Describe the evaluation.",
+      "effectivenessReview": "Did the control measures work, or why were none needed? Can a similar incident now be prevented?",
+      "noActionReason": "e.g. Near miss with no remaining risk after the immediate stop; no further control is proportionate",
       "measureEffectiveness": "Select evaluation",
       "lessonsLearned": "What did we learn from this incident? What can we improve in the future?"
     },
     "hints": {
-      "effectivenessReview": "Assess whether the corrective actions have been effective",
-      "lessonsLearned": "Document learning for future improvement"
+      "effectivenessReview": "Have the measures reduced the risk of a similar incident?",
+      "noActionReason": "MHSWR 1999 arrangements: record why closing without an action is proportionate.",
+      "lessonsLearned": "What should the organisation change next time?"
     },
     "effectiveness": {
       "effective": "Actions were effective",
@@ -2761,13 +2734,13 @@
       "notEvaluated": "Not evaluated"
     },
     "compliance": {
-      "title": "📋 ISO 9001 Compliance",
-      "description": "By closing the incident, you confirm that:",
+      "title": "Close-out (HSE HSG245)",
+      "description": "By closing this record you confirm that:",
       "items": {
-        "i1": "Root cause is identified and documented",
-        "i2": "Corrective actions are implemented",
-        "i3": "Effectiveness of actions is evaluated",
-        "i4": "Documentation is complete and retained"
+        "i1": "The investigation is documented",
+        "i2": "Risk control measures have been put in place",
+        "i3": "Those measures have been checked",
+        "i4": "The accident book entry is kept (3 years; UK GDPR / DPA 2018)"
       }
     },
     "actions": {
@@ -2790,37 +2763,37 @@
     }
   },
   "dashboardChemicalsPage": {
-    "notLinkedTenant": "You are not linked to a tenant.",
-    "title": "Chemical register",
-    "description": "HSE - Overview of chemicals and safety data sheets",
+    "notLinkedTenant": "You are not linked to an organisation.",
+    "title": "COSHH register",
+    "description": "Hazardous substances, COSHH assessments and safety data sheets",
     "actions": {
-      "scanIsocyanates": "Scan for isocyanates",
+      "scanIsocyanates": "Scan for diisocyanates",
       "scanShort": "Scan",
       "register": "Register"
     },
     "requirements": {
-      "title": "HSE requirements for chemical register",
-      "r1": "All hazardous chemicals must be registered in the chemical register",
-      "r2": "Updated safety data sheets must be available to employees",
-      "r3": "Data sheets must be reviewed at least annually",
-      "r4": "Employees must be trained in safe handling",
-      "r5": "The chemical register must be reviewed during internal audits"
+      "title": "COSHH 2002 duties",
+      "r1": "Assess the risk from hazardous substances used or generated at work",
+      "r2": "Keep safety data sheets available to employees",
+      "r3": "Review the COSHH assessment when it is no longer valid",
+      "r4": "Provide information, instruction and training on safe handling",
+      "r5": "Keep health surveillance records for 40 years where they apply"
     },
     "stats": {
       "total": {
         "title": "Total",
-        "description": "chemicals"
+        "description": "substances"
       },
       "active": {
-        "title": "Active",
+        "title": "In use",
         "description": "active products"
       },
       "isocyanates": {
         "title": "Diisocyanates",
-        "description": "requires special training"
+        "description": "training required"
       },
       "missingSds": {
-        "title": "Missing data sheet",
+        "title": "Missing SDS",
         "description": "must be uploaded"
       },
       "needsReview": {
@@ -2833,13 +2806,13 @@
       }
     },
     "list": {
-      "title": "All chemicals",
-      "description": "Overview of registered products in the chemical register"
+      "title": "All substances",
+      "description": "Registered products in the COSHH register"
     }
   },
   "dashboardInspectionsPage": {
-    "title": "Safety inspections",
-    "description": "Perform and manage safety rounds and HSE inspections",
+    "title": "Workplace inspections",
+    "description": "Record monitoring of the workplace. These records stay with the company — they are not sent to the HSE.",
     "status": {
       "planned": "Planned",
       "inProgress": "In progress",
@@ -2847,12 +2820,12 @@
       "cancelled": "Cancelled"
     },
     "types": {
-      "vernerunde": "Safety round",
-      "hmsInspection": "HSE inspection",
+      "vernerunde": "Workplace inspection",
+      "hmsInspection": "Management inspection",
       "fireDrill": "Fire drill",
-      "shaPlan": "SHA plan",
-      "safetyWalk": "Safety walk",
-      "other": "Other"
+      "shaPlan": "Construction site inspection",
+      "safetyWalk": "Safety representative inspection",
+      "other": "Statutory / other"
     },
     "actions": {
       "showIndustry": "Show industry-specific",
@@ -2870,15 +2843,15 @@
       "openFindings": "Open findings"
     },
     "list": {
-      "title": "All inspections",
-      "description": "Overview of completed and planned inspections",
-      "empty": "No inspections registered yet"
+      "title": "Inspection records",
+      "description": "Date, workplace, who inspected, findings and actions — HSE F2534 / F2533",
+      "empty": "No workplace inspections recorded yet"
     },
     "table": {
       "title": "Title",
       "type": "Type",
-      "scheduledDate": "Scheduled date",
-      "location": "Location",
+      "scheduledDate": "Date",
+      "location": "Workplace",
       "status": "Status",
       "openFindings": "Open findings",
       "actions": "Actions"
@@ -2989,8 +2962,9 @@
   "dashboardActionsPage": {
     "noTenantAccess": "No tenant access",
     "title": "Actions",
-    "description": "ISO 9001: Planned actions with owners and timelines",
+    "description": "Preventive and protective measures with an owner and due date (MHSWR 1999)",
     "projectInfo": "New actions are created for project:",
+    "fireDrillInfo": "New actions are created for fire drill:",
     "stats": {
       "total": {
         "title": "Total",
@@ -3074,13 +3048,13 @@
     }
   },
   "dashboardRoutinesPage": {
-    "title": "Routines",
-    "description": "HMS Nova provides templates and alerts. Leader/HSE roles follow up incidents and deviations in the company.",
-    "loadFailed": "Could not load routines right now.",
+    "title": "Procedures",
+    "description": "Written arrangements for how health and safety is organised and carried out. HSWA 1974 s.2(3).",
+    "loadFailed": "Could not load procedures right now.",
     "status": {
-      "active": "Active",
+      "active": "Current",
       "draft": "Draft",
-      "needsReview": "Needs review",
+      "needsReview": "Requires review",
       "archived": "Archived"
     },
     "actions": {
@@ -3089,40 +3063,40 @@
       "viewDetails": "View details"
     },
     "list": {
-      "title": "Company routines",
-      "description": "Routines created and customized for your company.",
-      "empty": "No routines yet. Go to the template library and pick a template that fits your industry."
+      "title": "Organisation procedures",
+      "description": "Procedures created and customised for your organisation.",
+      "empty": "No procedures yet. Open the template library and pick a template that fits your industry."
     },
     "table": {
-      "routine": "Routine",
+      "routine": "Procedure",
       "status": "Status",
-      "responsible": "Responsible",
+      "responsible": "Owner",
       "nextReview": "Next review",
       "action": "Action"
     },
     "notSet": "Not set"
   },
   "dashboardRoutineTemplatesPage": {
-    "title": "Routine templates",
-    "loadFailed": "Could not load routine templates right now.",
+    "title": "Procedure templates",
+    "loadFailed": "Could not load procedure templates right now.",
     "descriptionAll": "Showing the full library across industries.",
     "descriptionRecommended": "Showing recommended templates for your industry + general templates.",
-    "info": "HMS Nova provides industry-adapted templates, alerts and follow-up support. Company leader/HSE roles are responsible for actual follow-up of incidents and deviations.",
+    "info": "HSEQ Nova provides industry templates, alerts and follow-up support. Line managers and competent persons remain responsible for following up incidents.",
     "actions": {
       "showRecommended": "Show recommended",
       "showAll": "Show all templates",
-      "saveAsMine": "Save as my routine",
+      "saveAsMine": "Save as my procedure",
       "savingCopy": "Adding…"
     },
     "toasts": {
       "successTitle": "\"{title}\" has been added",
-      "successDescription": "The routine is now available under Routines.",
-      "openRoutine": "Open routine",
+      "successDescription": "The procedure is now available under Procedures.",
+      "openRoutine": "Open procedure",
       "errorGeneric": "Could not add the template. Please try again."
     },
     "list": {
       "title": "Available templates",
-      "description": "Choose a template and save it as your own routine.",
+      "description": "Choose a template and save it as your own procedure.",
       "empty": "No templates found for selected filter."
     },
     "table": {
@@ -3137,45 +3111,49 @@
     }
   },
   "dashboardSjaPage": {
-    "noTenantAccess": "No tenant access",
-    "title": "SJA - Safe Job Analysis",
-    "description": "Overview of all SJA analyses and templates",
+    "noTenantAccess": "No organisation access",
+    "title": "RAMS",
+    "description": "Risk assessments and method statements for the task (MHSWR 1999; CDM 2015)",
     "actions": {
-      "new": "New SJA"
+      "new": "New RAMS"
+    },
+    "notices": {
+      "createOnly": "You can create RAMS, but you cannot view others. RAMS you submit are reviewed by the competent person or an administrator.",
+      "ownOnly": "You can see only the RAMS you created. Submissions are reviewed and approved by a line manager."
     },
     "stats": {
       "total": {
         "title": "Total",
-        "description": "SJA analyses"
+        "description": "RAMS records"
       },
       "draft": {
         "title": "Draft",
         "description": "Waiting for approval"
       },
       "active": {
-        "title": "Active",
-        "description": "Ongoing work"
+        "title": "Live",
+        "description": "Work in progress"
       },
       "completed": {
-        "title": "Completed",
-        "description": "Fully processed"
+        "title": "Complete",
+        "description": "Closed out"
       },
       "templates": {
         "title": "Templates",
-        "description": "Reusable templates"
+        "description": "Reusable task templates"
       }
     },
     "analyses": {
-      "title": "All SJA analyses",
-      "emptyTitle": "No SJA analyses",
-      "emptyDescription": "No SJA analyses have been created yet."
+      "title": "All RAMS",
+      "emptyTitle": "No RAMS yet",
+      "emptyDescription": "Create a RAMS before work starts so hazards and controls are agreed."
     },
     "table": {
       "number": "No.",
       "title": "Title",
       "location": "Location",
       "status": "Status",
-      "conclusion": "Conclusion",
+      "conclusion": "Decision",
       "createdBy": "Created by",
       "date": "Date",
       "risk": "Risk"
@@ -3184,20 +3162,24 @@
       "DRAFT": "Draft",
       "PENDING_APPROVAL": "Pending approval",
       "APPROVED": "Approved",
-      "ACTIVE": "Active",
-      "COMPLETED": "Completed",
+      "ACTIVE": "Live",
+      "COMPLETED": "Complete",
       "CANCELLED": "Cancelled"
     },
     "conclusion": {
-      "GO": "Can proceed",
-      "GO_WITH_MEASURES": "Can proceed with measures",
-      "NO_GO": "Cannot proceed"
+      "NOT_DECIDED": "Not decided",
+      "APPROVED": "Approved — work may start",
+      "CONDITIONAL": "Approved with conditions",
+      "REJECTED": "Rejected — work must not start",
+      "GO": "Approved — work may start",
+      "GO_WITH_MEASURES": "Approved with conditions",
+      "NO_GO": "Rejected — work must not start"
     },
     "templates": {
-      "title": "SJA templates ({count})",
-      "description": "Templates make it easy for employees to create daily SJA with predefined hazards and measures",
-      "emptyTitle": "No templates created",
-      "emptyDescription": "Create a template so employees can quickly create SJA for recurring tasks.",
+      "title": "RAMS templates ({count})",
+      "description": "Templates help the workforce complete RAMS for recurring tasks with predefined hazards and controls",
+      "emptyTitle": "No templates yet",
+      "emptyDescription": "Create a template so the workforce can complete RAMS quickly for recurring work.",
       "workLocation": "Work location: {value}",
       "hazards": "{count} hazards",
       "createdBy": "Created by {name}"
@@ -3271,15 +3253,15 @@
       "expired": "Expired",
       "daysLeft": "{days} days left"
     },
-    "list": {
-      "title": "Competence overview",
-      "description": "Registered competence, courses and certifications for all employees"
-    }
+      "list": {
+        "title": "Competence files",
+        "description": "Open an employee to add courses, CVs and certificates. Use Add for a group when several people completed the same course."
+      }
   },
   "dashboardProjectsPage": {
     "noAccess": "No access",
-    "title": "Projects / Jobs",
-    "description": "Link incidents, SJA, safety inspections and actions to projects for consolidated HSE reporting",
+    "title": "Projects / sites",
+    "description": "CDM 2015 site register — attach Client, Principal Designer and Principal Contractor duties, F10, Construction Phase Plan, incidents, RAMS and inspections to each project",
     "status": {
       "planning": "Planning",
       "active": "Active",
@@ -3298,13 +3280,13 @@
     },
     "empty": {
       "title": "No projects yet",
-      "description": "Create a project to connect HSE activities to a job or assignment"
+      "description": "Create a project or site to attach CDM 2015 records and HSEQ activities"
     },
     "orderNumber": "Order: {number}",
     "ongoing": "Ongoing",
     "counters": {
       "incidents": "{count} incidents",
-      "sja": "{count} SJA",
+      "sja": "{count} RAMS",
       "inspections": "{count} inspections",
       "measures": "{count} actions"
     }
@@ -3465,7 +3447,7 @@
     "noTenantAccess": "No tenant access",
     "notFound": "Inspection not found",
     "unknown": "Unknown",
-    "details": "Inspection details",
+    "details": "Monitoring record — kept by the company, not sent to the HSE",
     "actions": {
       "back": "Back to inspections",
       "edit": "Edit",
@@ -3479,12 +3461,12 @@
       "cancelled": "Cancelled"
     },
     "types": {
-      "vernerunde": "Safety round",
-      "hmsInspection": "HSE inspection",
+      "vernerunde": "Workplace inspection",
+      "hmsInspection": "Management inspection",
       "fireDrill": "Fire drill",
-      "shaPlan": "HSE plan",
-      "safetyWalk": "Safety walk",
-      "other": "Other"
+      "shaPlan": "Construction site inspection",
+      "safetyWalk": "Safety representative inspection",
+      "other": "Statutory / other"
     },
     "riskCategories": {
       "safety": "Safety",
@@ -3515,14 +3497,15 @@
     },
     "basicInfo": {
       "title": "Basic information",
-      "scheduledDate": "Scheduled date",
+      "scheduledDate": "Date and time of inspection",
       "completed": "Completed",
-      "location": "Location"
+      "location": "Area of workplace",
+      "area": "Part of workplace"
     },
     "performedBy": {
-      "title": "Performed by",
-      "responsible": "Responsible",
-      "participants": "Participants"
+      "title": "Who took part",
+      "responsible": "Inspector / safety representative",
+      "participants": "Employer or others taking part"
     },
     "descriptionTitle": "Description",
     "findingsStats": {
@@ -3558,61 +3541,53 @@
   },
   "dashboardRisksPage": {
     "title": "Risk assessment",
-    "description": "5x5 risk matrix for systematic assessment of HSE risks",
+    "description": "5×5 risk matrix for suitable and sufficient assessment of health and safety risks (MHSWR 1999).",
     "noTenantAccess": "No tenant access",
     "actions": {
       "newRisk": "New risk assessment"
     },
     "stats": {
       "totalRiskPoints": {
-        "title": "Total risk points",
-        "description": "Points in the risk register"
+        "title": "Total risks",
+        "description": "Items in the risk register"
       },
       "criticalHigh": {
-        "title": "Critical/High (current)",
+        "title": "Critical / high (current)",
         "description": "{critical} critical, {high} high"
       },
       "open": {
         "title": "Open",
-        "description": "Pending handling"
+        "description": "Awaiting control"
       },
       "improved": {
-        "title": "Improved after measures",
+        "title": "Improved after controls",
         "description": "Risks with lower residual risk"
       }
     },
     "annualAssessments": {
-      "title": "Annual risk assessments (documents)",
-      "description": "Each assessment is an annual document with its own risk points.",
-      "riskPoints": "{count} risk point{count, plural, one {} other {s}}"
+      "title": "Risk assessments",
+      "description": "Each assessment is a documented review with its own risk items.",
+      "riskPoints": "{count} risk{count, plural, one {} other {s}}"
     },
     "registry": {
-      "title": "Risk register (all risk points)",
-      "description": "Shows all risk points across assessments, with status and follow-up of measures."
+      "title": "Risk register",
+      "description": "All risk items across assessments, with initial risk, residual risk, status and actions."
     }
   },
   "dashboardRiskDetailPage": {
-    "title": "Edit risk assessment",
+    "title": "Edit risk",
     "noTenantAccess": "No tenant access",
     "notFound": "Risk not found",
     "actions": {
       "back": "Back to risks"
     },
     "measures": {
-      "title": "Measures to reduce risk",
-      "description": "ISO 9001: Planned measures with responsible person and timeline"
-    },
-    "controls": {
-      "title": "Controls",
-      "description": "ISO 31000: document ownership and effectiveness of key controls"
+      "title": "Further action required",
+      "description": "Additional controls needed to reduce the risk, with a person responsible and a due date (MHSWR 1999)."
     },
     "documents": {
-      "title": "Document links",
-      "description": "Shows procedures, instructions and reports supporting risk management"
-    },
-    "audits": {
-      "title": "Audits and tests",
-      "description": "Link internal audits and control tests to the risk"
+      "title": "Related documents",
+      "description": "Link RAMS, procedures or work instructions that support this assessment."
     }
   },
   "dashboardProjectDetailPage": {
@@ -3635,12 +3610,16 @@
         "title": "Incidents",
         "description": "registered"
       },
+      "rams": {
+        "title": "RAMS",
+        "description": "recorded"
+      },
       "inspections": {
-        "title": "Safety rounds",
+        "title": "Workplace inspections",
         "description": "completed"
       },
       "openMeasures": {
-        "title": "Open measures",
+        "title": "Open actions",
         "description": "of {total} total"
       },
       "hours": {
@@ -4493,14 +4472,15 @@
     },
     "tabs": {
       "incidents": "Incidents",
+      "sja": "RAMS",
       "inspections": "Inspections",
-      "measures": "Measures",
+      "measures": "Actions",
       "time": "Time",
       "attachments": "Attachments",
       "forms": "Forms"
     },
     "actions": {
-      "constructionCompliance": "Construction compliance"
+      "constructionCompliance": "CDM 2015"
     },
     "incidents": {
       "description": "Incidents and events registered on this project",
@@ -4508,9 +4488,9 @@
       "actions": { "new": "Register incident" }
     },
     "sja": {
-      "description": "Safe Job Analyses for this project",
-      "empty": "No SJA analyses registered for this project",
-      "actions": { "new": "New SJA" }
+      "description": "RAMS for this project",
+      "empty": "No RAMS recorded for this project",
+      "actions": { "new": "New RAMS" }
     },
     "inspections": {
       "description": "Safety rounds and inspections on project site",
@@ -4652,13 +4632,13 @@
     }
   },
   "dashboardInspectionNewPage": {
-    "title": "New inspection",
-    "description": "Create a new safety round or HSE inspection",
+    "title": "New workplace inspection",
+    "description": "Record a monitoring visit. Keep the record here — do not send it to the HSE.",
     "card": {
-      "title": "Inspection details",
-      "description": "Fill in the information below to plan the inspection"
+      "title": "Inspection record",
+      "description": "HSE F2534: date, time, area of the workplace, and who took part."
     },
-    "projectNotice": "This safety round will be registered on the selected project.",
+    "projectNotice": "This inspection will be linked to the selected construction project (CDM 2015).",
     "loadingUsers": "Loading users...",
     "loadingTemplates": "Loading forms...",
     "noneCategory": "No category",
@@ -4666,41 +4646,42 @@
     "fields": {
       "title": "Title",
       "type": "Type",
-      "template": "📋 Template (form builder) *",
-      "conductedBy": "Conducted by",
-      "scheduledDate": "Scheduled date",
+      "template": "Checklist (optional)",
+      "conductedBy": "Inspector / safety representative",
+      "scheduledDate": "Date and time of inspection",
       "description": "Description",
       "riskCategory": "Risk category",
       "followUpBy": "Follow-up responsible",
-      "location": "Location",
-      "area": "Area / process",
-      "durationMinutes": "Estimated duration (min)",
-      "nextInspection": "Next inspection"
+      "location": "Area of workplace",
+      "area": "Part of workplace",
+      "durationMinutes": "Duration (min)",
+      "nextInspection": "Next inspection due",
+      "participants": "Others taking part"
     },
     "types": {
-      "vernerunde": "Safety round",
-      "hmsInspection": "HSE inspection",
+      "vernerunde": "Workplace inspection",
+      "hmsInspection": "Management inspection",
       "fireDrill": "Fire drill",
-      "shaPlan": "HSE plan",
-      "safetyWalk": "Safety walk",
-      "other": "Other"
+      "shaPlan": "Construction site inspection",
+      "safetyWalk": "Safety representative inspection",
+      "other": "Statutory / other"
     },
     "placeholders": {
-      "title": "E.g. Quarterly safety round - Production",
-      "selectTemplate": "Select template form",
-      "selectUser": "Select user",
-      "description": "Describe what should be inspected...",
+      "title": "E.g. Quarterly workplace inspection — warehouse",
+      "selectTemplate": "Optional checklist",
+      "selectUser": "Select who inspected",
+      "description": "What will be looked at, and why (link to the risk assessment if you can).",
       "selectOptionalCategory": "Select category (optional)",
       "selectResponsibleOptional": "Select responsible (optional)",
-      "location": "E.g. Production hall A",
-      "area": "E.g. Warehouse, Workshop",
+      "location": "E.g. Warehouse, first floor",
+      "area": "E.g. Goods in, racking",
       "duration": "E.g. 90"
     },
     "actions": {
       "cancel": "Cancel",
       "creating": "Creating...",
-      "create": "Create safety round",
-      "selectTemplate": "Select template"
+      "create": "Create inspection record",
+      "selectTemplate": "No checklist"
     },
     "toasts": {
       "missingTemplate": {

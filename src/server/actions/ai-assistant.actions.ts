@@ -365,14 +365,14 @@ export async function generateAiSjaSummary(input: {
   try {
     const { tenantId } = await getActionContext();
     const validated = sjaSummarySchema.parse(input);
-    const prompt = `Lag en kort oppsummering av denne SJA-en på norsk.
-Svar KUN med gyldig JSON:
-{ "summary": "kort oppsummering med hovedfarer, viktigste tiltak og hva som må følges opp" }
+    const prompt = `Write a short British English summary of this RAMS (risk assessment and method statement).
+Reply ONLY with valid JSON:
+{ "summary": "short summary of the main hazards, key control measures, and what must be followed up" }
 
-Arbeid: ${validated.title}
-Sted: ${validated.workLocation}
-Deltakere: ${validated.participants}
-Farer: ${JSON.stringify(validated.hazards)}`;
+Task: ${validated.title}
+Location: ${validated.workLocation}
+Workers: ${validated.participants}
+Hazards: ${JSON.stringify(validated.hazards)}`;
 
     const response = await generateAIResponse(prompt, "gpt-4o-mini", {
       cacheScope: `tenant:${tenantId}:sjaSummary`,
@@ -380,11 +380,12 @@ Farer: ${JSON.stringify(validated.hazards)}`;
       budgetScope: `tenant:${tenantId}`,
     });
     const match = response.match(/\{[\s\S]*\}/);
-    if (!match) return { success: false, error: "AI returnerte ugyldig format" };
+    if (!match) return { success: false, error: "AI returned an invalid format" };
     const parsed = JSON.parse(match[0]) as { summary?: string };
     return { success: true, data: { summary: (parsed.summary || "").trim() } };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke generere SJA-oppsummering" };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Could not generate a RAMS summary";
+    return { success: false, error: message };
   }
 }
 

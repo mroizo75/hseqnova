@@ -49,7 +49,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale";
 import {
   FIRE_DRILL_TYPE_LABELS,
   FIRE_DRILL_STATUS_LABELS,
@@ -117,10 +117,10 @@ function StatusBadge({ status }: { status: FireDrillStatus }) {
 }
 
 function formatEvacTime(seconds: number): string {
-  if (seconds < 60) return `${seconds} sek`;
+  if (seconds < 60) return `${seconds} sec`;
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
-  return s > 0 ? `${m} min ${s} sek` : `${m} min`;
+  return s > 0 ? `${m} min ${s} sec` : `${m} min`;
 }
 
 export default function FireDrillDetailPage() {
@@ -135,7 +135,7 @@ export default function FireDrillDetailPage() {
   const [users, setUsers] = useState<{ id: string; name: string | null; email: string }[]>([]);
   const [activeTab, setActiveTab] = useState("plan");
 
-  // Gjennomføring-skjema
+  // Completion-skjema
   const [completeForm, setCompleteForm] = useState({
     completedAt: new Date().toISOString().substring(0, 10),
     actualParticipantCount: "",
@@ -187,7 +187,7 @@ export default function FireDrillDetailPage() {
   const handleComplete = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!completeForm.observations || !completeForm.actualParticipantCount) {
-      toast({ title: "Fyll ut antall deltakere og observasjoner", variant: "destructive" });
+      toast({ title: "Complete participant numbers and observations", variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -208,9 +208,9 @@ export default function FireDrillDetailPage() {
       const updated: FireDrill = await res.json();
       setDrill(updated);
       setActiveTab("evaluate");
-      toast({ title: "Gjennomføring registrert", description: "Øvelsen er klar for evaluering" });
+      toast({ title: "Completion recorded", description: "The drill is ready for evaluation" });
     } catch (err) {
-      toast({ title: "Feil", description: err instanceof Error ? err.message : "Ukjent feil", variant: "destructive" });
+      toast({ title: "Could not save", description: err instanceof Error ? err.message : "Something went wrong", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -219,7 +219,7 @@ export default function FireDrillDetailPage() {
   const handleEvaluate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!evalForm.objectivesAchieved || !evalForm.evaluation || !evalForm.improvementPoints) {
-      toast({ title: "Fyll ut alle påkrevde felt", variant: "destructive" });
+      toast({ title: "Complete all required fields", variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -235,9 +235,9 @@ export default function FireDrillDetailPage() {
       if (!res.ok) throw new Error((await res.json()).error);
       const updated: FireDrill = await res.json();
       setDrill(updated);
-      toast({ title: "Evaluering fullført", description: "§ 13-dokumentasjon er nå komplett" });
+      toast({ title: "Evaluation completed", description: "Documentation is now complete" });
     } catch (err) {
-      toast({ title: "Feil", description: err instanceof Error ? err.message : "Ukjent feil", variant: "destructive" });
+      toast({ title: "Could not save", description: err instanceof Error ? err.message : "Something went wrong", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -246,18 +246,18 @@ export default function FireDrillDetailPage() {
   const handleDelete = async () => {
     try {
       const res = await fetch(`/api/fire-drills/${id}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) throw new Error("Sletting feilet");
-      toast({ title: "Øvelse slettet" });
+      if (!res.ok && res.status !== 204) throw new Error("Could not delete the drill");
+      toast({ title: "Drill deleted" });
       router.push("/dashboard/fire-drills");
     } catch {
-      toast({ title: "Feil ved sletting", variant: "destructive" });
+      toast({ title: "Could not delete the drill", variant: "destructive" });
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <div className="text-muted-foreground">Laster øvelse...</div>
+        <div className="text-muted-foreground">Loading drill...</div>
       </div>
     );
   }
@@ -276,7 +276,7 @@ export default function FireDrillDetailPage() {
           <Button variant="ghost" size="sm" asChild>
             <Link href="/dashboard/fire-drills">
               <ArrowLeft className="mr-1 h-4 w-4" />
-              Tilbake
+              Back
             </Link>
           </Button>
         </div>
@@ -285,7 +285,7 @@ export default function FireDrillDetailPage() {
             <Button variant="outline" size="sm" asChild>
               <a href={`/api/fire-drills/${id}/rapport`} target="_blank" rel="noopener noreferrer">
                 <Download className="mr-1.5 h-4 w-4" />
-                Last ned rapport
+                Download report
               </a>
             </Button>
           )}
@@ -293,20 +293,20 @@ export default function FireDrillDetailPage() {
             <AlertDialogTrigger asChild>
               <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
                 <Trash2 className="mr-1.5 h-4 w-4" />
-                Slett
+                Delete
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Slett brannøvelse?</AlertDialogTitle>
+                <AlertDialogTitle>Delete fire drill?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Dette sletter «{drill.title}» permanent, inkludert all dokumentasjon. Handlingen kan ikke angres.
+                  This permanently deletes “{drill.title}”, including all documentation. This cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-                  Slett
+                  Delete
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -320,7 +320,7 @@ export default function FireDrillDetailPage() {
           <Flame className="h-6 w-6 text-red-600" />
         </div>
         <div className="flex-1">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold">{drill.title}</h1>
             <StatusBadge status={drill.status} />
             <Badge variant="outline" className="text-xs">
@@ -328,14 +328,14 @@ export default function FireDrillDetailPage() {
             </Badge>
             {!drill.isAnnounced && (
               <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700">
-                Uvarslet
+                Unannounced
               </Badge>
             )}
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" />
-              {format(new Date(drill.plannedDate), "d. MMMM yyyy", { locale: nb })}
+              {format(new Date(drill.plannedDate), "d. MMMM yyyy", { locale: enGB })}
             </span>
             <span className="flex items-center gap-1">
               <MapPin className="h-3.5 w-3.5" />
@@ -358,17 +358,17 @@ export default function FireDrillDetailPage() {
           </TabsTrigger>
           <TabsTrigger value="complete" className="flex items-center gap-1.5" disabled={isEvaluated && !canComplete}>
             <Users className="h-4 w-4" />
-            Gjennomføring
+            Completion
             {canComplete && <span className="ml-1 h-2 w-2 rounded-full bg-orange-400" />}
           </TabsTrigger>
           <TabsTrigger value="evaluate" className="flex items-center gap-1.5">
             <CheckCircle className="h-4 w-4" />
-            Evaluering
+            Review
             {canEvaluate && <span className="ml-1 h-2 w-2 rounded-full bg-orange-400" />}
           </TabsTrigger>
           <TabsTrigger value="measures" className="flex items-center gap-1.5">
             <AlertTriangle className="h-4 w-4" />
-            Tiltak ({drill.measures.length})
+            Actions ({drill.measures.length})
           </TabsTrigger>
         </TabsList>
 
@@ -376,12 +376,12 @@ export default function FireDrillDetailPage() {
         <TabsContent value="plan" className="space-y-4 pt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Planlagte detaljer</CardTitle>
-              <CardDescription>§ 12 — grunnlag for gjennomføring og evaluering</CardDescription>
+              <CardTitle className="text-base">Planned details</CardTitle>
+              <CardDescription>Basis for carrying out and evaluating the drill</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Mål for øvelsen</p>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Drill objectives</p>
                 <p className="text-sm whitespace-pre-line">{drill.objectives}</p>
               </div>
               {drill.scenario && (
@@ -397,7 +397,7 @@ export default function FireDrillDetailPage() {
                 <>
                   <Separator />
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-1">Risikovurdering</p>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">Risk assessment</p>
                     <p className="text-sm whitespace-pre-line">{drill.riskAssessment}</p>
                   </div>
                 </>
@@ -407,24 +407,24 @@ export default function FireDrillDetailPage() {
 
           {/* Delte lokaler — § 4 tredje ledd */}
           {drill.sharedPremises && (
-            <Card className="border-amber-200 bg-amber-50/50">
+            <Card className="border bg-muted/40">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-amber-700" />
-                  Samordning — delt bygg (§ 4 tredje ledd)
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  Shared building — co-ordination (art.22)
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 {drill.buildingOwnerName && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Byggeier / samordningsansvarlig</span>
+                    <span className="text-muted-foreground">Building owner / coordinating responsible person</span>
                     <span className="font-medium">{drill.buildingOwnerName}</span>
                   </div>
                 )}
                 {drill.totalBuildingOccupants != null && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Totalt antall i bygget</span>
-                    <span className="font-medium">{drill.totalBuildingOccupants} personer</span>
+                    <span className="text-muted-foreground">People in the building</span>
+                    <span className="font-medium">{drill.totalBuildingOccupants} people</span>
                   </div>
                 )}
                 <Separator className="my-2" />
@@ -433,19 +433,19 @@ export default function FireDrillDetailPage() {
                     <span className={drill.buildingOwnerCoordinated ? "text-green-600" : "text-red-500"}>
                       {drill.buildingOwnerCoordinated ? "✓" : "✗"}
                     </span>
-                    <span className="text-muted-foreground">Byggeier koordinert og informert</span>
+                    <span className="text-muted-foreground">Building owner coordinated and informed</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={drill.otherTenantsInformed ? "text-green-600" : "text-muted-foreground"}>
                       {drill.otherTenantsInformed ? "✓" : "—"}
                     </span>
-                    <span className="text-muted-foreground">Øvrige leietakere informert</span>
+                    <span className="text-muted-foreground">Other tenants informed</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={drill.fullBuildingEvacuation ? "text-green-600" : "text-muted-foreground"}>
                       {drill.fullBuildingEvacuation ? "✓" : "—"}
                     </span>
-                    <span className="text-muted-foreground">Felles evakueringsøvelse for hele bygget</span>
+                    <span className="text-muted-foreground">Joint evacuation drill for the whole building</span>
                   </div>
                 </div>
               </CardContent>
@@ -455,7 +455,7 @@ export default function FireDrillDetailPage() {
           {canComplete && (
             <Button onClick={() => setActiveTab("complete")}>
               <Users className="mr-2 h-4 w-4" />
-              Registrer gjennomføring
+              Record completion
             </Button>
           )}
         </TabsContent>
@@ -467,28 +467,28 @@ export default function FireDrillDetailPage() {
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-600" />
-                  Gjennomføring registrert
+                  Completion recorded
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Gjennomføringsdato</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Completion date</p>
                     <p className="text-sm font-medium">
-                      {format(new Date(drill.completedAt), "d. MMMM yyyy", { locale: nb })}
+                      {format(new Date(drill.completedAt), "d. MMMM yyyy", { locale: enGB })}
                     </p>
                   </div>
                   {drill.actualParticipantCount != null && (
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1">Antall deltakere</p>
-                      <p className="text-sm font-medium">{drill.actualParticipantCount} personer</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Participants</p>
+                      <p className="text-sm font-medium">{drill.actualParticipantCount} people</p>
                     </div>
                   )}
                   {drill.evacuationTimeSeconds != null && (
                     <div>
                       <p className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
                         <Timer className="h-3 w-3" />
-                        Evakueringstid
+                        Evacuation time
                       </p>
                       <p className="text-sm font-medium">{formatEvacTime(drill.evacuationTimeSeconds)}</p>
                     </div>
@@ -498,7 +498,7 @@ export default function FireDrillDetailPage() {
                   <>
                     <Separator />
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1">Observasjoner — § 13</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Observations</p>
                       <p className="text-sm whitespace-pre-line">{drill.observations}</p>
                     </div>
                   </>
@@ -508,9 +508,9 @@ export default function FireDrillDetailPage() {
           ) : canComplete ? (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Registrer gjennomføring</CardTitle>
+                <CardTitle className="text-base">Record completion</CardTitle>
                 <CardDescription>
-                  § 13: Antall deltakere og observasjoner er lovpålagte dokumentasjonskrav
+                  Number of participants and observations are required records (Fire Safety Order 2005)
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -518,7 +518,7 @@ export default function FireDrillDetailPage() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="completedAt">
-                        Gjennomføringsdato <span className="text-destructive">*</span>
+                        Completion date <span className="text-destructive">*</span>
                       </Label>
                       <Input
                         id="completedAt"
@@ -532,7 +532,7 @@ export default function FireDrillDetailPage() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="actualParticipantCount">
-                        Antall deltakere <span className="text-destructive">*</span>
+                        Number of participants <span className="text-destructive">*</span>
                       </Label>
                       <Input
                         id="actualParticipantCount"
@@ -545,16 +545,16 @@ export default function FireDrillDetailPage() {
                             actualParticipantCount: e.target.value,
                           }))
                         }
-                        placeholder="F.eks. 24"
+                        placeholder="e.g. 24"
                         required
                       />
-                      <p className="text-xs text-muted-foreground">Lovpålagt — § 13</p>
+                      <p className="text-xs text-muted-foreground">Required — Fire Safety Order 2005</p>
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="evacuationTimeSeconds">
-                      Evakueringstid (sekunder)
+                      Evacuation time (seconds)
                     </Label>
                     <div className="flex items-center gap-2">
                       <Input
@@ -568,7 +568,7 @@ export default function FireDrillDetailPage() {
                             evacuationTimeSeconds: e.target.value,
                           }))
                         }
-                        placeholder="F.eks. 180 (= 3 min)"
+                        placeholder="e.g. 180 (3 min)"
                         className="max-w-[200px]"
                       />
                       <Timer className="h-4 w-4 text-muted-foreground" />
@@ -582,7 +582,7 @@ export default function FireDrillDetailPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="observations">
-                      Observasjoner under øvelsen <span className="text-destructive">*</span>
+                      Observations during the drill <span className="text-destructive">*</span>
                     </Label>
                     <Textarea
                       id="observations"
@@ -590,17 +590,17 @@ export default function FireDrillDetailPage() {
                       onChange={(e) =>
                         setCompleteForm((p) => ({ ...p, observations: e.target.value }))
                       }
-                      placeholder="Beskriv hva som ble observert under øvelsen. Hva fungerte? Hva fungerte ikke?"
+                      placeholder="Describe what was observed during the drill. What worked? What did not?"
                       rows={5}
                       required
                     />
-                    <p className="text-xs text-muted-foreground">Lovpålagt — § 13</p>
+                    <p className="text-xs text-muted-foreground">Required — Fire Safety Order 2005</p>
                   </div>
 
                   <div className="flex justify-end gap-3">
                     <Button type="submit" disabled={saving}>
                       <Clock className="mr-2 h-4 w-4" />
-                      {saving ? "Lagrer..." : "Registrer gjennomføring"}
+                      {saving ? "Saving..." : "Record completion"}
                     </Button>
                   </div>
                 </form>
@@ -610,9 +610,9 @@ export default function FireDrillDetailPage() {
             <Card>
               <CardContent className="py-10 text-center text-muted-foreground">
                 <Clock className="mx-auto mb-3 h-8 w-8 opacity-30" />
-                <p>Øvelsen er ikke gjennomført ennå.</p>
+                <p>The drill has not been completed yet.</p>
                 {drill.status === "PLANNED" && (
-                  <p className="text-sm mt-1">Gå til «Plan»-fanen for å starte øvelsen.</p>
+                  <p className="text-sm mt-1">Go to the Plan tab to start the drill.</p>
                 )}
               </CardContent>
             </Card>
@@ -626,20 +626,20 @@ export default function FireDrillDetailPage() {
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-600" />
-                  Evaluering fullført — § 13 oppfylt
+                  Evaluation complete — duty met
                 </CardTitle>
                 {drill.evaluatedAt && (
                   <CardDescription>
-                    Evaluert {format(new Date(drill.evaluatedAt), "d. MMMM yyyy", { locale: nb })}
+                    Reviewed {format(new Date(drill.evaluatedAt), "d MMMM yyyy", { locale: enGB })}
                     {drill.evaluatedBy && userMap[drill.evaluatedBy]
-                      ? ` av ${userMap[drill.evaluatedBy]}`
+                      ? ` by ${userMap[drill.evaluatedBy]}`
                       : ""}
                   </CardDescription>
                 )}
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Måloppnåelse</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Objectives met</p>
                   <Badge
                     variant="outline"
                     className={
@@ -657,12 +657,12 @@ export default function FireDrillDetailPage() {
                 </div>
                 <Separator />
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Evaluering — § 12e</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Review</p>
                   <p className="text-sm whitespace-pre-line">{drill.evaluation}</p>
                 </div>
                 <Separator />
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Forbedringspunkter — § 13</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Improvement points</p>
                   <p className="text-sm whitespace-pre-line">{drill.improvementPoints}</p>
                 </div>
                 {drill.procedureChangesNeeded && (
@@ -670,7 +670,7 @@ export default function FireDrillDetailPage() {
                     <Separator />
                     <div className="rounded-lg border border-orange-200 bg-orange-50 p-3">
                       <p className="text-xs font-medium text-orange-800 mb-1">
-                        Prosedyreendringer nødvendig
+                        Procedure changes needed
                       </p>
                       {drill.procedureChangesDesc && (
                         <p className="text-sm text-orange-700">{drill.procedureChangesDesc}</p>
@@ -683,23 +683,23 @@ export default function FireDrillDetailPage() {
           ) : canEvaluate ? (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Evaluer øvelsen</CardTitle>
+                <CardTitle className="text-base">Evaluate the drill</CardTitle>
                 <CardDescription>
-                  § 12e + § 13: Evaluering og forbedringspunkter er lovpålagte dokumentasjonskrav
+                  Evaluation and improvement points are required records (Fire Safety Order 2005)
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleEvaluate} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="objectivesAchieved">
-                      Ble målene nådd? <span className="text-destructive">*</span>
+                      Were the objectives met? <span className="text-destructive">*</span>
                     </Label>
                     <Select
                       value={evalForm.objectivesAchieved}
                       onValueChange={(v) => setEvalForm((p) => ({ ...p, objectivesAchieved: v }))}
                     >
                       <SelectTrigger id="objectivesAchieved">
-                        <SelectValue placeholder="Velg måloppnåelse" />
+                        <SelectValue placeholder="Select whether objectives were met" />
                       </SelectTrigger>
                       <SelectContent>
                         {Object.entries(OBJECTIVES_ACHIEVED_LABELS).map(([value, label]) => (
@@ -713,22 +713,22 @@ export default function FireDrillDetailPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="evaluation">
-                      Evaluering og vurdering <span className="text-destructive">*</span>
+                      Review notes <span className="text-destructive">*</span>
                     </Label>
                     <Textarea
                       id="evaluation"
                       value={evalForm.evaluation}
                       onChange={(e) => setEvalForm((p) => ({ ...p, evaluation: e.target.value }))}
-                      placeholder="Hva gikk bra? Hva gikk dårlig? Var øvelsen realistisk?"
+                      placeholder="What went well? What went poorly? Was the drill realistic?"
                       rows={4}
                       required
                     />
-                    <p className="text-xs text-muted-foreground">Lovpålagt — § 12e</p>
+                    <p className="text-xs text-muted-foreground">Required — Fire Safety Order 2005</p>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="improvementPoints">
-                      Forbedringspunkter <span className="text-destructive">*</span>
+                      Improvement points <span className="text-destructive">*</span>
                     </Label>
                     <Textarea
                       id="improvementPoints"
@@ -736,18 +736,18 @@ export default function FireDrillDetailPage() {
                       onChange={(e) =>
                         setEvalForm((p) => ({ ...p, improvementPoints: e.target.value }))
                       }
-                      placeholder="Hvilke konkrete forbedringer bør gjennomføres før neste øvelse?"
+                      placeholder="What concrete improvements should be made before the next drill?"
                       rows={4}
                       required
                     />
-                    <p className="text-xs text-muted-foreground">Lovpålagt — § 13</p>
+                    <p className="text-xs text-muted-foreground">Required — Fire Safety Order 2005</p>
                   </div>
 
                   <div className="flex items-center justify-between rounded-lg border p-4">
                     <div>
-                      <Label className="text-sm font-medium">Prosedyreendringer nødvendig?</Label>
+                      <Label className="text-sm font-medium">Procedure changes needed?</Label>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Avdekket øvelsen behov for å endre rutiner/prosedyrer?
+                        Did the drill identify a need to change procedures?
                       </p>
                     </div>
                     <Switch
@@ -760,14 +760,14 @@ export default function FireDrillDetailPage() {
 
                   {evalForm.procedureChangesNeeded && (
                     <div className="space-y-2">
-                      <Label htmlFor="procedureChangesDesc">Beskriv nødvendige endringer</Label>
+                      <Label htmlFor="procedureChangesDesc">Describe required changes</Label>
                       <Textarea
                         id="procedureChangesDesc"
                         value={evalForm.procedureChangesDesc}
                         onChange={(e) =>
                           setEvalForm((p) => ({ ...p, procedureChangesDesc: e.target.value }))
                         }
-                        placeholder="Hvilke prosedyrer må endres og hvordan?"
+                        placeholder="Which procedures must change and how?"
                         rows={3}
                       />
                     </div>
@@ -776,7 +776,7 @@ export default function FireDrillDetailPage() {
                   <div className="flex justify-end">
                     <Button type="submit" disabled={saving}>
                       <CheckCircle className="mr-2 h-4 w-4" />
-                      {saving ? "Lagrer..." : "Fullfør evaluering"}
+                      {saving ? "Saving..." : "Complete evaluation"}
                     </Button>
                   </div>
                 </form>
@@ -786,7 +786,7 @@ export default function FireDrillDetailPage() {
             <Card>
               <CardContent className="py-10 text-center text-muted-foreground">
                 <CheckCircle className="mx-auto mb-3 h-8 w-8 opacity-30" />
-                <p>Evalueringen er tilgjengelig etter at øvelsen er gjennomført.</p>
+                <p>Evaluation is available after the drill has been completed.</p>
               </CardContent>
             </Card>
           )}
@@ -796,14 +796,14 @@ export default function FireDrillDetailPage() {
         <TabsContent value="measures" className="space-y-4 pt-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-medium">Oppfølgingstiltak</h3>
+              <h3 className="font-medium">Follow-up actions</h3>
               <p className="text-sm text-muted-foreground">
-                § 12e: Tiltak for å rette opp og forebygge identifiserte mangler
+                Actions to correct and prevent identified shortcomings
               </p>
             </div>
             <Button variant="outline" size="sm" asChild>
               <Link href={`/dashboard/actions/new?fireDrillId=${id}`}>
-                Legg til tiltak
+                Add action
               </Link>
             </Button>
           </div>
@@ -812,9 +812,9 @@ export default function FireDrillDetailPage() {
             <Card>
               <CardContent className="py-10 text-center text-muted-foreground">
                 <AlertTriangle className="mx-auto mb-3 h-8 w-8 opacity-30" />
-                <p>Ingen tiltak registrert ennå.</p>
+                <p>No actions recorded yet.</p>
                 <p className="text-sm mt-1">
-                  Legg til oppfølgingstiltak fra forbedringspunktene i evalueringen.
+                  Add follow-up actions from the improvement points in the evaluation.
                 </p>
               </CardContent>
             </Card>
@@ -829,7 +829,7 @@ export default function FireDrillDetailPage() {
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            Frist: {format(new Date(measure.dueAt), "d. MMM yyyy", { locale: nb })}
+                            Deadline: {format(new Date(measure.dueAt), "d. MMM yyyy", { locale: enGB })}
                           </span>
                           {measure.responsible && (
                             <span className="flex items-center gap-1">
@@ -850,10 +850,10 @@ export default function FireDrillDetailPage() {
                         }
                       >
                         {measure.status === "DONE"
-                          ? "Fullført"
+                          ? "Completed"
                           : measure.status === "IN_PROGRESS"
-                            ? "Pågår"
-                            : "Venter"}
+                            ? "In progress"
+                            : "Pending"}
                       </Badge>
                     </div>
                   </CardContent>

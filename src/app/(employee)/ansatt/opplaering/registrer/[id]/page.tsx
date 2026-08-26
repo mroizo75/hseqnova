@@ -43,8 +43,9 @@ export default function RegistrerOpplaeringPage() {
       const response = await fetch(`/api/training/${id}`);
       if (response.ok) {
         const data = await response.json();
-        setTraining(data);
-        setProvider(data.provider || "");
+        const record = data.training ?? data;
+        setTraining(record);
+        setProvider(record.provider || "");
       }
     } catch (error) {
       // Intentionally silent, UI keeps loading fallback states

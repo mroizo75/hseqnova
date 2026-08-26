@@ -71,11 +71,11 @@ export function PPESelector({ defaultValue, onChange }: PPESelectorProps) {
 
       {selected.length > 0 ? (
         <p className="text-xs text-blue-700 font-medium">
-          {selected.length} verneutstyr valgt
+          {selected.length} PPE item{selected.length === 1 ? "" : "s"} selected
         </p>
       ) : (
         <p className="text-xs text-muted-foreground">
-          Klikk for å velge påkrevd verneutstyr
+          Click to select required PPE
         </p>
       )}
     </div>

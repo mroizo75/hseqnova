@@ -52,19 +52,19 @@ export function EnvironmentMeasurementForm({ aspectId, users }: EnvironmentMeasu
       const result = await createEnvironmentalMeasurement(payload);
 
       if (!result.success) {
-        throw new Error(result.error || "Kunne ikke lagre måling");
+        throw new Error(result.error || "Could not save the measurement");
       }
 
       (event.currentTarget as HTMLFormElement).reset();
       toast({
-        title: "✅ Måling registrert",
-        description: "Verdien er lagret og gjenspeiles i oversikten",
+        title: "Measurement recorded",
+        description: "The reading is saved and shown in the overview",
       });
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Feil",
-        description: error.message || "Noe gikk galt",
+        title: "Error",
+        description: error.message || "Something went wrong",
       });
     } finally {
       setLoading(false);
@@ -79,13 +79,13 @@ export function EnvironmentMeasurementForm({ aspectId, users }: EnvironmentMeasu
           <Input
             id="parameter"
             name="parameter"
-            placeholder="F.eks. CO₂ (kg), kWh, m³ vann"
+            placeholder="E.g. CO₂ (kg), kWh, m³ water"
             required
             disabled={loading}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="measuredValue">Målt verdi *</Label>
+          <Label htmlFor="measuredValue">Measured value *</Label>
           <Input
             id="measuredValue"
             name="measuredValue"
@@ -99,15 +99,15 @@ export function EnvironmentMeasurementForm({ aspectId, users }: EnvironmentMeasu
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="unit">Enhet</Label>
-          <Input id="unit" name="unit" placeholder="F.eks. kg, kWh, m³" disabled={loading} />
+          <Label htmlFor="unit">Unit</Label>
+          <Input id="unit" name="unit" placeholder="E.g. kg, kWh, m³" disabled={loading} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="method">Metode</Label>
+          <Label htmlFor="method">Method</Label>
           <Input
             id="method"
             name="method"
-            placeholder="F.eks. Målerstand, Lab-rapport"
+            placeholder="E.g. Meter reading, lab report"
             disabled={loading}
           />
         </div>
@@ -115,20 +115,20 @@ export function EnvironmentMeasurementForm({ aspectId, users }: EnvironmentMeasu
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="limitValue">Grenseverdi</Label>
+          <Label htmlFor="limitValue">Limit value</Label>
           <Input id="limitValue" name="limitValue" type="number" step="any" disabled={loading} />
-          <p className="text-xs text-muted-foreground">Overskrides denne er målingen i avvik</p>
+          <p className="text-xs text-muted-foreground">If exceeded, the measurement is non-compliant</p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="targetValue">Målverdi</Label>
+          <Label htmlFor="targetValue">Target value</Label>
           <Input id="targetValue" name="targetValue" type="number" step="any" disabled={loading} />
-          <p className="text-xs text-muted-foreground">Varsel når verdien er høyere enn målet</p>
+          <p className="text-xs text-muted-foreground">Warning when the reading is above the target</p>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="measurementDate">Dato *</Label>
+          <Label htmlFor="measurementDate">Date *</Label>
           <Input
             id="measurementDate"
             name="measurementDate"
@@ -139,13 +139,13 @@ export function EnvironmentMeasurementForm({ aspectId, users }: EnvironmentMeasu
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="responsibleId">Utført av</Label>
+          <Label htmlFor="responsibleId">Recorded by</Label>
           <Select value={responsibleId} onValueChange={setResponsibleId} disabled={loading}>
             <SelectTrigger>
-              <SelectValue placeholder="Velg ansvarlig" />
+              <SelectValue placeholder="Select person" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={NO_RESPONSIBLE_VALUE}>Ikke satt</SelectItem>
+              <SelectItem value={NO_RESPONSIBLE_VALUE}>Not set</SelectItem>
               {users.map((user) => (
                 <SelectItem key={user.id} value={user.id}>
                   {user.name || user.email}
@@ -157,11 +157,11 @@ export function EnvironmentMeasurementForm({ aspectId, users }: EnvironmentMeasu
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="notes">Notater</Label>
+        <Label htmlFor="notes">Notes</Label>
         <Textarea
           id="notes"
           name="notes"
-          placeholder="Kommentarer eller observasjoner"
+          placeholder="Comments or observations"
           rows={3}
           disabled={loading}
         />
@@ -169,7 +169,7 @@ export function EnvironmentMeasurementForm({ aspectId, users }: EnvironmentMeasu
 
       <div className="flex justify-end">
         <Button type="submit" disabled={loading}>
-          {loading ? "Lagrer..." : "Registrer måling"}
+          {loading ? "Saving..." : "Record measurement"}
         </Button>
       </div>
     </form>

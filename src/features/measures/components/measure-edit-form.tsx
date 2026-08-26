@@ -20,31 +20,31 @@ import type { ActionEffectiveness, ActionStatus, ControlFrequency, MeasureCatego
 import type { Measure } from "@prisma/client";
 
 const categoryOptions: Array<{ value: MeasureCategory; label: string }> = [
-  { value: "CORRECTIVE", label: "Korrigerende" },
-  { value: "PREVENTIVE", label: "Forebyggende" },
-  { value: "IMPROVEMENT", label: "Forbedring" },
-  { value: "MITIGATION", label: "Risikoreduserende" },
+  { value: "CORRECTIVE", label: "Corrective" },
+  { value: "PREVENTIVE", label: "Preventive" },
+  { value: "IMPROVEMENT", label: "Improvement" },
+  { value: "MITIGATION", label: "Risk reduction" },
 ];
 
 const frequencyOptions: Array<{ value: ControlFrequency; label: string }> = [
-  { value: "WEEKLY", label: "Ukentlig" },
-  { value: "MONTHLY", label: "Månedlig" },
-  { value: "QUARTERLY", label: "Kvartalsvis" },
-  { value: "ANNUAL", label: "Årlig" },
-  { value: "BIENNIAL", label: "Annet hvert år" },
+  { value: "WEEKLY", label: "Weekly" },
+  { value: "MONTHLY", label: "Monthly" },
+  { value: "QUARTERLY", label: "Quarterly" },
+  { value: "ANNUAL", label: "Annual" },
+  { value: "BIENNIAL", label: "Every two years" },
 ];
 
 const statusOptions: Array<{ value: ActionStatus; label: string }> = [
-  { value: "PENDING", label: "Ikke startet" },
-  { value: "IN_PROGRESS", label: "Pågår" },
-  { value: "DONE", label: "Fullført" },
+  { value: "PENDING", label: "Not started" },
+  { value: "IN_PROGRESS", label: "In progress" },
+  { value: "DONE", label: "Complete" },
 ];
 
 const effectivenessOptions: Array<{ value: ActionEffectiveness; label: string }> = [
-  { value: "EFFECTIVE", label: "Effektivt" },
-  { value: "PARTIALLY_EFFECTIVE", label: "Delvis effektivt" },
-  { value: "INEFFECTIVE", label: "Ikke effektivt" },
-  { value: "NOT_EVALUATED", label: "Ikke evaluert" },
+  { value: "EFFECTIVE", label: "Effective" },
+  { value: "PARTIALLY_EFFECTIVE", label: "Partially effective" },
+  { value: "INEFFECTIVE", label: "Ineffective" },
+  { value: "NOT_EVALUATED", label: "Not evaluated" },
 ];
 
 interface MeasureEditFormProps {
@@ -57,8 +57,8 @@ interface MeasureEditFormProps {
 
 function formatDateInput(date: Date | string | null): string {
   if (!date) return "";
-  const d = new Date(date);
-  return d.toISOString().split("T")[0];
+  const parsed = new Date(date);
+  return parsed.toISOString().split("T")[0];
 }
 
 export function MeasureEditForm({ measure, users }: MeasureEditFormProps) {
@@ -72,20 +72,14 @@ export function MeasureEditForm({ measure, users }: MeasureEditFormProps) {
   const [status, setStatus] = useState<ActionStatus>(measure.status);
   const [category, setCategory] = useState<MeasureCategory>(measure.category);
   const [followUpFrequency, setFollowUpFrequency] = useState<ControlFrequency>(
-    measure.followUpFrequency || "ANNUAL"
+    measure.followUpFrequency || "ANNUAL",
   );
-  const [costEstimate, setCostEstimate] = useState(
-    measure.costEstimate?.toString() ?? ""
-  );
-  const [benefitEstimate, setBenefitEstimate] = useState(
-    measure.benefitEstimate?.toString() ?? ""
-  );
+  const [costEstimate, setCostEstimate] = useState(measure.costEstimate?.toString() ?? "");
+  const [benefitEstimate, setBenefitEstimate] = useState(measure.benefitEstimate?.toString() ?? "");
   const [effectiveness, setEffectiveness] = useState<ActionEffectiveness>(
-    measure.effectiveness || "NOT_EVALUATED"
+    measure.effectiveness || "NOT_EVALUATED",
   );
-  const [effectivenessNote, setEffectivenessNote] = useState(
-    measure.effectivenessNote || ""
-  );
+  const [effectivenessNote, setEffectivenessNote] = useState(measure.effectivenessNote || "");
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -112,23 +106,23 @@ export function MeasureEditForm({ measure, users }: MeasureEditFormProps) {
 
       if (result.success) {
         toast({
-          title: "✅ Tiltak oppdatert",
-          description: "Endringene er lagret",
+          title: "Action updated",
+          description: "The changes have been saved",
           className: "bg-green-50 border-green-200",
         });
         router.refresh();
       } else {
         toast({
           variant: "destructive",
-          title: "Feil",
-          description: result.error || "Kunne ikke oppdatere tiltak",
+          title: "Error",
+          description: result.error || "Could not update the action",
         });
       }
     } catch {
       toast({
         variant: "destructive",
-        title: "Uventet feil",
-        description: "Noe gikk galt",
+        title: "Unexpected error",
+        description: "Something went wrong",
       });
     } finally {
       setLoading(false);
@@ -139,14 +133,12 @@ export function MeasureEditForm({ measure, users }: MeasureEditFormProps) {
     <form onSubmit={handleSubmit} className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Grunnleggende</CardTitle>
-          <CardDescription>
-            Tittel, beskrivelse og ansvarlig person
-          </CardDescription>
+          <CardTitle>Details</CardTitle>
+          <CardDescription>Title, description and person responsible</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">Tittel *</Label>
+            <Label htmlFor="title">Title *</Label>
             <Input
               id="title"
               value={title}
@@ -157,19 +149,19 @@ export function MeasureEditForm({ measure, users }: MeasureEditFormProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description">Beskrivelse</Label>
+            <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
               disabled={loading}
-              placeholder="Beskriv tiltaket og hva som skal gjøres"
+              placeholder="What will be done, how, and any resources needed"
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="responsibleId">Ansvarlig person *</Label>
+              <Label htmlFor="responsibleId">Owner *</Label>
               <Select
                 value={responsibleId}
                 onValueChange={setResponsibleId}
@@ -177,7 +169,7 @@ export function MeasureEditForm({ measure, users }: MeasureEditFormProps) {
                 disabled={loading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg ansvarlig" />
+                  <SelectValue placeholder="Select owner" />
                 </SelectTrigger>
                 <SelectContent>
                   {users.map((user) => (
@@ -189,7 +181,7 @@ export function MeasureEditForm({ measure, users }: MeasureEditFormProps) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="dueAt">Frist *</Label>
+              <Label htmlFor="dueAt">Due date *</Label>
               <Input
                 id="dueAt"
                 type="date"
@@ -205,26 +197,24 @@ export function MeasureEditForm({ measure, users }: MeasureEditFormProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Status og oppfølging</CardTitle>
-          <CardDescription>
-            Oppdater status og dokumenter fremgang
-          </CardDescription>
+          <CardTitle>Status and follow-up</CardTitle>
+          <CardDescription>Update status and record progress</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="status">Status *</Label>
             <Select
               value={status}
-              onValueChange={(v: ActionStatus) => setStatus(v)}
+              onValueChange={(value: ActionStatus) => setStatus(value)}
               disabled={loading}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {statusOptions.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
+                {statusOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -232,38 +222,38 @@ export function MeasureEditForm({ measure, users }: MeasureEditFormProps) {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="category">Tiltakstype</Label>
+              <Label htmlFor="category">Action type</Label>
               <Select
                 value={category}
-                onValueChange={(v: MeasureCategory) => setCategory(v)}
+                onValueChange={(value: MeasureCategory) => setCategory(value)}
                 disabled={loading}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {categoryOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
+                  {categoryOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="followUpFrequency">Oppfølgingsfrekvens</Label>
+              <Label htmlFor="followUpFrequency">Follow-up</Label>
               <Select
                 value={followUpFrequency}
-                onValueChange={(v: ControlFrequency) => setFollowUpFrequency(v)}
+                onValueChange={(value: ControlFrequency) => setFollowUpFrequency(value)}
                 disabled={loading}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {frequencyOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
+                  {frequencyOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -272,7 +262,7 @@ export function MeasureEditForm({ measure, users }: MeasureEditFormProps) {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="costEstimate">Kostnadsestimat (NOK)</Label>
+              <Label htmlFor="costEstimate">Cost estimate (GBP)</Label>
               <Input
                 id="costEstimate"
                 type="number"
@@ -283,7 +273,7 @@ export function MeasureEditForm({ measure, users }: MeasureEditFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="benefitEstimate">Forventet effekt (poeng)</Label>
+              <Label htmlFor="benefitEstimate">Expected benefit (points)</Label>
               <Input
                 id="benefitEstimate"
                 type="number"
@@ -300,40 +290,38 @@ export function MeasureEditForm({ measure, users }: MeasureEditFormProps) {
       {status === "DONE" && (
         <Card>
           <CardHeader>
-            <CardTitle>Evaluering</CardTitle>
-            <CardDescription>
-              Dokumenter effekt og resultat når tiltaket er fullført
-            </CardDescription>
+            <CardTitle>Evaluation</CardTitle>
+            <CardDescription>Record effectiveness when the action is complete</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="effectiveness">Effekt av tiltak</Label>
+              <Label htmlFor="effectiveness">Effectiveness</Label>
               <Select
                 value={effectiveness}
-                onValueChange={(v: ActionEffectiveness) => setEffectiveness(v)}
+                onValueChange={(value: ActionEffectiveness) => setEffectiveness(value)}
                 disabled={loading}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {effectivenessOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
+                  {effectivenessOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="effectivenessNote">Evaluering / notater</Label>
+              <Label htmlFor="effectivenessNote">Evaluation notes</Label>
               <Textarea
                 id="effectivenessNote"
                 value={effectivenessNote}
                 onChange={(e) => setEffectivenessNote(e.target.value)}
                 rows={3}
                 disabled={loading}
-                placeholder="Beskriv resultat, læringspunkter eller behov for oppfølging"
+                placeholder="Result, lessons learned, or further follow-up needed"
               />
             </div>
           </CardContent>
@@ -342,7 +330,7 @@ export function MeasureEditForm({ measure, users }: MeasureEditFormProps) {
 
       <div className="flex justify-end gap-2">
         <Button type="submit" disabled={loading}>
-          {loading ? "Lagrer..." : "Lagre endringer"}
+          {loading ? "Saving..." : "Save changes"}
         </Button>
       </div>
     </form>

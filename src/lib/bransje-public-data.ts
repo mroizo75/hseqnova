@@ -47,11 +47,18 @@ export interface ModuleDescription {
 }
 
 export const MODULE_DESCRIPTIONS: Record<string, ModuleDescription> = {
+  "/dashboard/health-safety-policy": {
+    path: "/dashboard/health-safety-policy",
+    name: "Health and safety policy",
+    shortName: "H&S policy",
+    description: "Living written policy: statement of intent, organisation and arrangements (HSWA s.2(3))",
+    icon: BookOpen,
+  },
   "/dashboard/hms-handbok": {
-    path: "/dashboard/hms-handbok",
-    name: "Levende HMS-håndbok",
-    shortName: "HMS-håndbok",
-    description: "Dynamisk håndbok med versjonskontroll, signering og AI-forslag",
+    path: "/dashboard/health-safety-policy",
+    name: "Health and safety policy",
+    shortName: "H&S policy",
+    description: "Living written policy: statement of intent, organisation and arrangements (HSWA s.2(3))",
     icon: BookOpen,
   },
   "/dashboard/incidents": {

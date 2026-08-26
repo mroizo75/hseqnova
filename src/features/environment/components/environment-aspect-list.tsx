@@ -3,13 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { EnvironmentalAspect, EnvironmentalMeasurement } from "@prisma/client";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { deleteEnvironmentalAspect } from "@/server/actions/environment.actions";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale";
 
 type AspectWithRelations = EnvironmentalAspect & {
   owner?: { id: string; name: string | null; email: string | null } | null;
@@ -22,10 +22,10 @@ interface EnvironmentAspectListProps {
 }
 
 const getSignificanceMeta = (score: number) => {
-  if (score >= 20) return { label: "Kritisk", className: "bg-red-100 text-red-900 border-red-300" };
-  if (score >= 12) return { label: "Høy", className: "bg-orange-100 text-orange-900 border-orange-300" };
-  if (score >= 6) return { label: "Moderat", className: "bg-yellow-100 text-yellow-900 border-yellow-300" };
-  return { label: "Lav", className: "bg-green-100 text-green-900 border-green-300" };
+  if (score >= 20) return { label: "Critical", className: "bg-red-100 text-red-900 border-red-300" };
+  if (score >= 12) return { label: "High", className: "bg-orange-100 text-orange-900 border-orange-300" };
+  if (score >= 6) return { label: "Moderate", className: "bg-yellow-100 text-yellow-900 border-yellow-300" };
+  return { label: "Low", className: "bg-green-100 text-green-900 border-green-300" };
 };
 
 const statusColors: Record<EnvironmentalAspect["status"], string> = {
@@ -44,7 +44,7 @@ const formatDate = (value?: Date | string | null) => {
   if (!value) return "-";
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
-  return format(date, "dd. MMM yyyy", { locale: nb });
+  return format(date, "d MMM yyyy", { locale: enGB });
 };
 
 export function EnvironmentAspectList({ aspects }: EnvironmentAspectListProps) {
@@ -52,7 +52,7 @@ export function EnvironmentAspectList({ aspects }: EnvironmentAspectListProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleDelete = async (aspect: AspectWithRelations) => {
-    if (!confirm(`Slette miljøaspektet "${aspect.title}"? Dette kan ikke angres.`)) {
+    if (!confirm(`Delete the environmental aspect "${aspect.title}"? This cannot be undone.`)) {
       return;
     }
 
@@ -62,14 +62,14 @@ export function EnvironmentAspectList({ aspects }: EnvironmentAspectListProps) {
 
     if (result.success) {
       toast({
-        title: "🗑️ Slettet",
-        description: `"${aspect.title}" er fjernet`,
+        title: "Deleted",
+        description: `"${aspect.title}" has been removed`,
       });
     } else {
       toast({
         variant: "destructive",
-        title: "Feil",
-        description: result.error || "Kunne ikke slette miljøaspekt",
+        title: "Error",
+        description: result.error || "Could not delete the environmental aspect",
       });
     }
   };
@@ -77,8 +77,8 @@ export function EnvironmentAspectList({ aspects }: EnvironmentAspectListProps) {
   if (aspects.length === 0) {
     return (
       <div className="text-center text-muted-foreground border rounded-lg py-12">
-        <p>Ingen miljøaspekter registrert enda.</p>
-        <p className="text-sm mt-1">Legg til første miljøaspekt for å starte ISO 14001-arbeidet.</p>
+        <p>No environmental aspects recorded yet.</p>
+        <p className="text-sm mt-1">Add the first aspect to start ISO 14001 follow-up.</p>
       </div>
     );
   }
@@ -88,51 +88,50 @@ export function EnvironmentAspectList({ aspects }: EnvironmentAspectListProps) {
       {aspects.map((aspect) => {
         const lastMeasurement = aspect.measurements[0];
         const significanceMeta = getSignificanceMeta(aspect.significanceScore);
-        const ownerLabel = aspect.owner?.name || aspect.owner?.email || "Ikke satt";
+        const ownerLabel = aspect.owner?.name || aspect.owner?.email || "Not set";
 
         return (
           <Card key={aspect.id}>
-            <CardContent className="p-5 space-y-4">
-              <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold">{aspect.title}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {aspect.description || "Ingen beskrivelse"}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className={significanceMeta.className}>
-                    Betydning: {aspect.significanceScore} · {significanceMeta.label}
-                  </Badge>
-                  <Badge variant="outline">{aspect.category}</Badge>
-                  <Badge variant="outline" className={statusColors[aspect.status]}>
-                    {aspect.status === "ACTIVE"
-                      ? "Aktiv"
-                      : aspect.status === "MONITORED"
-                        ? "Følges opp"
-                        : "Lukket"}
-                  </Badge>
-                </div>
+            <CardHeader className="space-y-0 gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 space-y-1">
+                <CardTitle className="text-lg leading-snug">{aspect.title}</CardTitle>
+                <CardDescription className="line-clamp-2">
+                  {aspect.description || "No description"}
+                </CardDescription>
               </div>
-
+              <div className="flex flex-wrap content-start gap-2 sm:max-w-[20rem] sm:justify-end">
+                <Badge variant="outline" className={significanceMeta.className}>
+                  Significance: {aspect.significanceScore} · {significanceMeta.label}
+                </Badge>
+                <Badge variant="outline">{aspect.category}</Badge>
+                <Badge variant="outline" className={statusColors[aspect.status]}>
+                  {aspect.status === "ACTIVE"
+                    ? "Active"
+                    : aspect.status === "MONITORED"
+                      ? "Monitored"
+                      : "Closed"}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-4">
                 <div>
-                  <p className="text-xs text-muted-foreground">Ansvarlig</p>
+                  <p className="text-xs text-muted-foreground">Responsible person</p>
                   <p className="font-medium">{ownerLabel}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Prosess / Sted</p>
+                  <p className="text-xs text-muted-foreground">Process / location</p>
                   <p className="font-medium">
                     {aspect.process || "-"} {aspect.location ? `· ${aspect.location}` : ""}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Neste revisjon</p>
+                  <p className="text-xs text-muted-foreground">Next review</p>
                   <p className="font-medium">{formatDate(aspect.nextReviewDate)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Tilknyttet mål</p>
-                  <p className="font-medium">{aspect.goal?.title || "Ingen"}</p>
+                  <p className="text-xs text-muted-foreground">Linked objective</p>
+                  <p className="font-medium">{aspect.goal?.title || "None"}</p>
                 </div>
               </div>
 
@@ -144,10 +143,10 @@ export function EnvironmentAspectList({ aspects }: EnvironmentAspectListProps) {
                       className={measurementStatusColors[lastMeasurement.status]}
                     >
                       {lastMeasurement.status === "COMPLIANT"
-                        ? "I samsvar"
+                        ? "Compliant"
                         : lastMeasurement.status === "WARNING"
-                          ? "Advarsel"
-                          : "Avvik"}
+                          ? "Warning"
+                          : "Non-compliant"}
                     </Badge>
                     <div className="text-sm text-muted-foreground">
                       {lastMeasurement.parameter}: {lastMeasurement.measuredValue}
@@ -157,13 +156,13 @@ export function EnvironmentAspectList({ aspects }: EnvironmentAspectListProps) {
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Ingen målinger registrert enda
+                    No measurements recorded yet
                   </p>
                 )}
 
                 <div className="flex gap-2">
                   <Button asChild size="sm" variant="outline">
-                    <Link href={`/dashboard/environment/${aspect.id}`}>Detaljer</Link>
+                    <Link href={`/dashboard/environment/${aspect.id}`}>Details</Link>
                   </Button>
                   <Button
                     size="sm"
@@ -171,7 +170,7 @@ export function EnvironmentAspectList({ aspects }: EnvironmentAspectListProps) {
                     onClick={() => handleDelete(aspect)}
                     disabled={deletingId === aspect.id}
                   >
-                    Slett
+                    Delete
                   </Button>
                 </div>
               </div>

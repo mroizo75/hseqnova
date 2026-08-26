@@ -1,7 +1,8 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { z, ZodSchema } from "zod";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { getAppUser } from "@/lib/membership";
 
 export type ActionContext = {
   user: {
@@ -58,22 +59,41 @@ export async function getCurrentUser() {
     return null;
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: {
-      tenants: {
-        where: { tenantId: session.user.tenantId },
-        include: {
-          tenant: true,
-        },
-      },
-    },
-  });
-
-  if (!user || user.tenants.length === 0) {
+  const user = await getAppUser({ email: session.user.email });
+  if (!user) {
     return null;
   }
 
-  return user;
+  const { data: membership } = await getAdminDb()
+    .from("UserTenant")
+    .select("tenantId, role")
+    .eq("userId", user.id)
+    .eq("tenantId", session.user.tenantId)
+    .maybeSingle();
+
+  if (!membership) {
+    return null;
+  }
+
+  const { data: tenant } = await getAdminDb()
+    .from("Tenant")
+    .select("*")
+    .eq("id", membership.tenantId)
+    .maybeSingle();
+
+  if (!tenant) {
+    return null;
+  }
+
+  return {
+    ...user,
+    tenants: [
+      {
+        tenantId: membership.tenantId,
+        role: membership.role,
+        tenant,
+      },
+    ],
+  };
 }
 

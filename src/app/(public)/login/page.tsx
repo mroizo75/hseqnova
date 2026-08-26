@@ -13,13 +13,13 @@ import Image from "next/image";
 
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
   AccessDenied:
-    "Microsoft-kontoen din er ikke koblet til en bedrift med aktiv SSO i HMS Nova. Kontakt administratoren din.",
+    "This Microsoft account is not linked to a company with SSO enabled. Contact your administrator.",
   OAuthAccountNotLinked:
-    "Det finnes allerede en HMS Nova-bruker med denne e-postadressen. Logg inn med e-post og passord, eller kontakt support@hmsnova.no.",
-  OAuthSignin: "Kunne ikke starte innlogging med Microsoft. Kontakt support@hmsnova.no.",
+    "An HSEQ Nova user already exists with this email. Sign in with email and password, or contact hello@hseqnova.co.uk.",
+  OAuthSignin: "Could not start Microsoft sign-in. Contact hello@hseqnova.co.uk.",
   OAuthCallback:
-    "Microsoft avviste innloggingen. Som regel betyr det at IT-ansvarlig hos dere ikke har godkjent HMS Nova ennå — be dem godkjenne appen under Innstillinger → Office 365.",
-  Configuration: "Microsoft-innlogging er ikke ferdig konfigurert. Kontakt support@hmsnova.no.",
+    "Microsoft declined the sign-in. Ask your IT administrator to approve the HSEQ Nova app.",
+  Configuration: "Microsoft sign-in is not configured. Contact hello@hseqnova.co.uk.",
 };
 
 export default function LoginPage() {
@@ -30,25 +30,30 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [verified, setVerified] = useState(false);
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
 
   // Sjekk for status-meldinger fra URL (verifisering og feil fra NextAuth)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const isVerified = params.get("verified") === "true";
+    const paid = params.get("checkout") === "success";
     const errorCode = params.get("error");
 
     if (isVerified) {
       setVerified(true);
     }
+    if (paid) {
+      setCheckoutSuccess(true);
+    }
 
     if (errorCode) {
       setError(
         AUTH_ERROR_MESSAGES[errorCode] ??
-          "Innloggingen feilet. Prøv igjen, eller kontakt support@hmsnova.no."
+          "Sign-in failed. Try again, or contact hello@hseqnova.co.uk."
       );
     }
 
-    if (isVerified || errorCode) {
+    if (isVerified || errorCode || paid) {
       window.history.replaceState({}, "", "/login");
     }
   }, []);
@@ -66,15 +71,19 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError("Ugyldig e-post eller passord");
+        setError("Invalid email or password");
       } else {
         const response = await fetch("/api/auth/session");
         const session = await response.json();
-        if (session?.user?.isSuperAdmin || session?.user?.isSupport) {
+        if (!session?.user) {
+          setError("Sign-in succeeded but no session was created. Try again.");
+          return;
+        }
+        if (session.user.isSuperAdmin || session.user.isSupport) {
           router.push("/admin");
-        } else if (session?.user?.role === "ANSATT") {
+        } else if (session.user.role === "ANSATT") {
           router.push("/ansatt");
-        } else if (session?.user?.isTavleOnly) {
+        } else if (session.user.isTavleOnly) {
           router.push("/dashboard/hms-tavle");
         } else {
           router.push("/dashboard");
@@ -82,7 +91,7 @@ export default function LoginPage() {
         router.refresh();
       }
     } catch (error) {
-      setError("Noe gikk galt. Prøv igjen.");
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -93,9 +102,9 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           {/* <CardTitle className="text-2xl font-bold">HMS Nova logg inn</CardTitle> */}
-          <Image src="/logo-nova.png" alt="HMS Nova" width={150} height={150} className="mx-auto" />
+          <Image src="/images/hseq-nova-logo.png" alt="HSEQ Nova" width={168} height={40} className="mx-auto h-10 w-auto" />
           <CardDescription className="text-center text-xl md:text-lg">
-            Logg inn med din e-post og passord
+            Sign in with your work email
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -105,7 +114,7 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="din@epost.no"
+                placeholder="you@company.co.uk"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -125,7 +134,12 @@ export default function LoginPage() {
             </div>
             {verified && (
               <div className="rounded-lg bg-green-100 p-3 text-sm text-green-800">
-                ✓ E-postadressen din er verifisert! Du kan nå logge inn.
+                Your email is verified. You can sign in now.
+              </div>
+            )}
+            {checkoutSuccess && (
+              <div className="rounded-lg bg-green-100 p-3 text-sm text-green-800">
+                Payment received. Sign in with the email and password you used to register.
               </div>
             )}
             {error && (
@@ -144,7 +158,7 @@ export default function LoginPage() {
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
                     <span className="bg-background px-2 text-muted-foreground">
-                      Eller
+                      Or
                     </span>
                   </div>
                 </div>
@@ -167,7 +181,7 @@ export default function LoginPage() {
                     <path fill="#05a6f0" d="M1 12h10v10H1z" />
                     <path fill="#ffba08" d="M12 12h10v10H12z" />
                   </svg>
-                  Logg inn med Microsoft
+                  Sign in with Microsoft
                 </Button>
               </>
             )}
@@ -177,7 +191,7 @@ export default function LoginPage() {
                 href="/forgot-password"
                 className="text-sm text-muted-foreground hover:text-foreground hover:underline"
               >
-                Glemt passord?
+                Forgot password?
               </Link>
             </div>
           </form>

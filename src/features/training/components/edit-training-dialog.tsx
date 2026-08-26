@@ -72,8 +72,8 @@ export function EditTrainingDialog({ training, trigger }: EditTrainingDialogProp
         if (!key) {
           toast({
             variant: "destructive",
-            title: "Opplasting feilet",
-            description: "Kunne ikke laste opp diplomet. Prøv igjen.",
+          title: "Upload failed",
+          description: "The certificate could not be uploaded. Try again.",
           });
           setLoading(false);
           return;
@@ -94,8 +94,8 @@ export function EditTrainingDialog({ training, trigger }: EditTrainingDialogProp
 
       if (result.success) {
         toast({
-          title: "Opplæring oppdatert",
-          description: "Endringene er lagret",
+          title: "Record updated",
+          description: "The changes have been saved",
           className: "bg-green-50 border-green-200",
         });
         setOpen(false);
@@ -103,15 +103,15 @@ export function EditTrainingDialog({ training, trigger }: EditTrainingDialogProp
       } else {
         toast({
           variant: "destructive",
-          title: "Feil",
-          description: result.error || "Kunne ikke oppdatere opplæring",
+          title: "Could not update",
+          description: result.error || "The record could not be updated",
         });
       }
     } catch {
       toast({
         variant: "destructive",
-        title: "Uventet feil",
-        description: "Noe gikk galt",
+        title: "Unexpected error",
+        description: "Something went wrong",
       });
     } finally {
       setLoading(false);
@@ -122,7 +122,7 @@ export function EditTrainingDialog({ training, trigger }: EditTrainingDialogProp
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <Button variant="ghost" size="sm" title="Rediger opplæring">
+          <Button variant="ghost" size="sm" title="Edit record">
             <Pencil className="h-4 w-4" />
           </Button>
         )}
@@ -132,7 +132,7 @@ export function EditTrainingDialog({ training, trigger }: EditTrainingDialogProp
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Pencil className="h-4 w-4" />
-            Rediger opplæring
+            Edit record
           </DialogTitle>
           <DialogDescription>
             {training.user?.name || training.user?.email} — {training.title}
@@ -141,7 +141,7 @@ export function EditTrainingDialog({ training, trigger }: EditTrainingDialogProp
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>Kurstittel</Label>
+            <Label>Course title</Label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -150,7 +150,7 @@ export function EditTrainingDialog({ training, trigger }: EditTrainingDialogProp
           </div>
 
           <div className="space-y-2">
-            <Label>Kursleverandør</Label>
+            <Label>Provider</Label>
             <Input
               value={provider}
               onChange={(e) => setProvider(e.target.value)}
@@ -160,7 +160,7 @@ export function EditTrainingDialog({ training, trigger }: EditTrainingDialogProp
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Gjennomført dato</Label>
+              <Label>Completed date</Label>
               <Input
                 type="date"
                 value={completedAt}
@@ -170,26 +170,26 @@ export function EditTrainingDialog({ training, trigger }: EditTrainingDialogProp
               />
             </div>
             <div className="space-y-2">
-              <Label>Gyldig til</Label>
+              <Label>Valid until</Label>
               <Input
                 type="date"
                 value={validUntil}
                 onChange={(e) => setValidUntil(e.target.value)}
                 disabled={loading}
               />
-              <p className="text-xs text-muted-foreground">La stå tom = utløper ikke</p>
+              <p className="text-xs text-muted-foreground">Leave blank if it does not expire</p>
             </div>
           </div>
 
           {/* Diplom-seksjon */}
           <div className="space-y-2">
-            <Label>Diplom / Sertifikat</Label>
+            <Label>Certificate / evidence</Label>
 
             {hasDiploma && !newFile && keepExisting && (
               <div className="flex items-center justify-between rounded-lg border bg-green-50 border-green-200 px-3 py-2">
                 <div className="flex items-center gap-2 text-green-700">
                   <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  <span className="text-sm font-medium">Diplom er lastet opp</span>
+                  <span className="text-sm font-medium">Certificate is on file</span>
                 </div>
                 <Button
                   type="button"
@@ -207,7 +207,7 @@ export function EditTrainingDialog({ training, trigger }: EditTrainingDialogProp
             {!hasDiploma && !newFile && (
               <div className="flex items-center gap-2 rounded-lg border border-dashed border-yellow-300 bg-yellow-50 px-3 py-2 text-sm text-yellow-700">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
-                Ingen diplom lastet opp ennå
+                No certificate uploaded yet
               </div>
             )}
 
@@ -236,10 +236,10 @@ export function EditTrainingDialog({ training, trigger }: EditTrainingDialogProp
             <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-2.5 text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors">
               <Upload className="h-4 w-4" />
               {newFile
-                ? "Bytt diplom"
+                ? "Change file"
                 : hasDiploma && keepExisting
-                ? "Erstatt eksisterende diplom"
-                : "Last opp diplom (PDF/bilde)"}
+                ? "Replace existing file"
+                : "Upload certificate (PDF or image)"}
               <input
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png"
@@ -261,16 +261,16 @@ export function EditTrainingDialog({ training, trigger }: EditTrainingDialogProp
               onClick={() => setOpen(false)}
               disabled={loading}
             >
-              Avbryt
+              Cancel
             </Button>
             <Button type="submit" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Lagrer...
+                  Saving...
                 </>
               ) : (
-                "Lagre endringer"
+                "Save changes"
               )}
             </Button>
           </div>

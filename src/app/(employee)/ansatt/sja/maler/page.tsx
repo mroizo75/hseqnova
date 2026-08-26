@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { prisma } from "@/lib/db";
+import { loadSjaTemplates } from "@/server/queries/sja.queries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { HardHat, BookTemplate, ArrowLeft } from "lucide-react";
@@ -17,16 +17,7 @@ export default async function AnsattSjaMaler() {
     redirect("/login");
   }
 
-  const templates = await prisma.sjaTemplate.findMany({
-    where: {
-      tenantId: session.user.tenantId,
-      isActive: true,
-    },
-    include: {
-      hazards: { orderBy: { sortOrder: "asc" } },
-    },
-    orderBy: { name: "asc" },
-  });
+  const templates = await loadSjaTemplates(session.user.tenantId);
 
   return (
     <div className="space-y-6">

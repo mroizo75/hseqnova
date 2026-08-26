@@ -1,35 +1,12 @@
 import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CheckCircle, Clock, MapPin } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { getTranslations } from "next-intl/server";
-
-async function getInspection(id: string, tenantId: string) {
-  return await db.inspection.findFirst({
-    where: { id, tenantId },
-    include: {
-      findings: {
-        orderBy: { createdAt: "desc" },
-      },
-      formTemplate: {
-        include: {
-          fields: {
-            orderBy: { order: "asc" },
-          },
-        },
-      },
-      formSubmission: {
-        include: {
-          fieldValues: true,
-        },
-      },
-    },
-  });
-}
+import { loadInspectionDetail } from "@/server/queries/inspections.queries";
 
 export default async function InspectionMobilePage({
   params,
@@ -44,7 +21,7 @@ export default async function InspectionMobilePage({
     return notFound();
   }
 
-  const inspection = await getInspection(id, session.user.tenantId);
+  const inspection = await loadInspectionDetail(session.user.tenantId, id);
 
   if (!inspection) {
     return notFound();

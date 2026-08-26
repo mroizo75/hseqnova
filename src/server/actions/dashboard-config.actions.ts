@@ -1,6 +1,7 @@
 "use server";
 
-import { prisma } from "@/lib/db";
+import { randomBytes } from "node:crypto";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { getDefaultWidgetIdsForIndustry } from "@/features/dashboard/lib/widget-registry";
@@ -11,7 +12,6 @@ import {
   normalizeHmsPulseItems,
   type HmsPulseItem,
 } from "@/features/dashboard/lib/hms-pulse-config";
-import { UserTenant } from "@prisma/client";
 
 export interface DashboardWidgetConfig {
   id: string;
@@ -79,7 +79,7 @@ function normalizeDashboardWidgets(input: DashboardWidgetConfig[]): DashboardWid
 }
 
 function resolveActiveTenantId(
-  tenantMemberships: UserTenant[],
+  tenantMemberships: Array<{ tenantId: string }>,
   sessionTenantId?: string
 ): string | null {
   if (sessionTenantId) {
@@ -105,6 +105,42 @@ function deriveWidgetIdsFromTenant(
   return getDefaultWidgetIdsForIndustry(tenant?.industry);
 }
 
+function createId(): string {
+  return `c${randomBytes(12).toString("hex")}`.slice(0, 25);
+}
+
+async function loadDashboardContext() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return { error: "Not signed in" as const };
+  }
+  const db = getAdminDb();
+  const { data: user } = await db.from("User").select("id").eq("email", session.user.email).maybeSingle();
+  if (!user) {
+    return { error: "No company found" as const };
+  }
+  const { data: tenants } = await db
+    .from("UserTenant")
+    .select("tenantId, role")
+    .eq("userId", user.id);
+  if (!tenants || tenants.length === 0) {
+    return { error: "No company found" as const };
+  }
+  const tenantId = resolveActiveTenantId(
+    tenants,
+    (session.user as { tenantId?: string }).tenantId,
+  );
+  if (!tenantId) {
+    return { error: "No valid company context" as const };
+  }
+  return {
+    db,
+    userId: user.id as string,
+    tenantId,
+    tenants: tenants as Array<{ tenantId: string; role: string }>,
+  };
+}
+
 export async function getDashboardConfig(): Promise<{
   success: boolean;
   data?: DashboardWidgetConfig[];
@@ -112,34 +148,18 @@ export async function getDashboardConfig(): Promise<{
   error?: string;
 }> {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return { success: false, error: "Ikke autentisert" };
+    const ctx = await loadDashboardContext();
+    if ("error" in ctx) {
+      return { success: false, error: ctx.error };
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: { tenants: true },
-    });
+    const { data: tenant } = await ctx.db
+      .from("Tenant")
+      .select("industry, simpleMenuItems, dashboardLocked, lockedDashboardConfig")
+      .eq("id", ctx.tenantId)
+      .maybeSingle();
 
-    if (!user || user.tenants.length === 0) {
-      return { success: false, error: "Ingen tenant funnet" };
-    }
-
-    const tenantId = resolveActiveTenantId(
-      user.tenants,
-      (session.user as { tenantId?: string }).tenantId
-    );
-    if (!tenantId) {
-      return { success: false, error: "Ingen gyldig tenant-kontekst" };
-    }
-
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { industry: true, simpleMenuItems: true, dashboardLocked: true, lockedDashboardConfig: true },
-    });
-
-    const membership = user.tenants.find((t) => t.tenantId === tenantId);
+    const membership = ctx.tenants.find((row) => row.tenantId === ctx.tenantId);
     const isAdmin = membership?.role === "ADMIN";
 
     if (tenant?.dashboardLocked && !isAdmin) {
@@ -159,9 +179,12 @@ export async function getDashboardConfig(): Promise<{
       };
     }
 
-    const config = await prisma.dashboardConfig.findUnique({
-      where: { userId_tenantId: { userId: user.id, tenantId } },
-    });
+    const { data: config } = await ctx.db
+      .from("DashboardConfig")
+      .select("widgets")
+      .eq("userId", ctx.userId)
+      .eq("tenantId", ctx.tenantId)
+      .maybeSingle();
 
     if (!config) {
       const widgetIds = deriveWidgetIdsFromTenant(tenant);
@@ -189,36 +212,18 @@ export async function resetDashboardToDefaults(): Promise<{
   error?: string;
 }> {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return { success: false, error: "Ikke autentisert" };
+    const ctx = await loadDashboardContext();
+    if ("error" in ctx) {
+      return { success: false, error: ctx.error };
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: { tenants: true },
-    });
+    await ctx.db.from("DashboardConfig").delete().eq("userId", ctx.userId).eq("tenantId", ctx.tenantId);
 
-    if (!user || user.tenants.length === 0) {
-      return { success: false, error: "Ingen tenant funnet" };
-    }
-
-    const tenantId = resolveActiveTenantId(
-      user.tenants,
-      (session.user as { tenantId?: string }).tenantId
-    );
-    if (!tenantId) {
-      return { success: false, error: "Ingen gyldig tenant-kontekst" };
-    }
-
-    await prisma.dashboardConfig.deleteMany({
-      where: { userId: user.id, tenantId },
-    });
-
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { industry: true, simpleMenuItems: true },
-    });
+    const { data: tenant } = await ctx.db
+      .from("Tenant")
+      .select("industry, simpleMenuItems")
+      .eq("id", ctx.tenantId)
+      .maybeSingle();
 
     const defaultWidgetIds = deriveWidgetIdsFromTenant(tenant);
     return {
@@ -235,54 +240,52 @@ export async function saveDashboardConfig(
   widgets: DashboardWidgetConfig[]
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return { success: false, error: "Ikke autentisert" };
+    const ctx = await loadDashboardContext();
+    if ("error" in ctx) {
+      return { success: false, error: ctx.error };
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: { tenants: true },
-    });
+    const { data: tenantRecord } = await ctx.db
+      .from("Tenant")
+      .select("dashboardLocked")
+      .eq("id", ctx.tenantId)
+      .maybeSingle();
 
-    if (!user || user.tenants.length === 0) {
-      return { success: false, error: "Ingen tenant funnet" };
-    }
-
-    const tenantId = resolveActiveTenantId(
-      user.tenants,
-      (session.user as { tenantId?: string }).tenantId
-    );
-    if (!tenantId) {
-      return { success: false, error: "Ingen gyldig tenant-kontekst" };
-    }
-
-    const tenantRecord = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { dashboardLocked: true },
-    });
-
-    const membership = user.tenants.find((t) => t.tenantId === tenantId);
+    const membership = ctx.tenants.find((row) => row.tenantId === ctx.tenantId);
     const isAdmin = membership?.role === "ADMIN";
 
     if (tenantRecord?.dashboardLocked && !isAdmin) {
-      return { success: false, error: "Dashboardet er låst av administrator" };
+      return { success: false, error: "The dashboard is locked by an administrator" };
     }
 
     const normalizedWidgets = normalizeDashboardWidgets(widgets);
-    const widgetsJson = normalizedWidgets as unknown as import("@prisma/client").Prisma.InputJsonValue;
+    const { data: existing } = await ctx.db
+      .from("DashboardConfig")
+      .select("id")
+      .eq("userId", ctx.userId)
+      .eq("tenantId", ctx.tenantId)
+      .maybeSingle();
 
-    await prisma.dashboardConfig.upsert({
-      where: { userId_tenantId: { userId: user.id, tenantId } },
-      update: { widgets: widgetsJson },
-      create: { userId: user.id, tenantId, widgets: widgetsJson },
-    });
+    if (existing?.id) {
+      await ctx.db
+        .from("DashboardConfig")
+        .update({ widgets: normalizedWidgets, updatedAt: new Date().toISOString() })
+        .eq("id", existing.id);
+    } else {
+      await ctx.db.from("DashboardConfig").insert({
+        id: createId(),
+        userId: ctx.userId,
+        tenantId: ctx.tenantId,
+        widgets: normalizedWidgets,
+        updatedAt: new Date().toISOString(),
+      });
+    }
 
     if (tenantRecord?.dashboardLocked && isAdmin) {
-      await prisma.tenant.update({
-        where: { id: tenantId },
-        data: { lockedDashboardConfig: widgetsJson },
-      });
+      await ctx.db
+        .from("Tenant")
+        .update({ lockedDashboardConfig: normalizedWidgets, updatedAt: new Date().toISOString() })
+        .eq("id", ctx.tenantId);
     }
 
     return { success: true };
@@ -298,31 +301,16 @@ export async function getHmsPulseConfig(): Promise<{
   error?: string;
 }> {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return { success: false, error: "Ikke autentisert" };
+    const ctx = await loadDashboardContext();
+    if ("error" in ctx) {
+      return { success: false, error: ctx.error };
     }
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: { tenants: true },
-    });
-
-    if (!user || user.tenants.length === 0) {
-      return { success: false, error: "Ingen tenant funnet" };
-    }
-
-    const tenantId = resolveActiveTenantId(
-      user.tenants,
-      (session.user as { tenantId?: string }).tenantId
-    );
-    if (!tenantId) {
-      return { success: false, error: "Ingen gyldig tenant-kontekst" };
-    }
-    const config = await prisma.dashboardConfig.findUnique({
-      where: { userId_tenantId: { userId: user.id, tenantId } },
-      select: { hmsPulseItems: true },
-    });
+    const { data: config } = await ctx.db
+      .from("DashboardConfig")
+      .select("hmsPulseItems")
+      .eq("userId", ctx.userId)
+      .eq("tenantId", ctx.tenantId)
+      .maybeSingle();
 
     if (!config?.hmsPulseItems) {
       return { success: true, data: DEFAULT_HMS_PULSE_ITEMS };
@@ -342,65 +330,55 @@ export async function saveHmsPulseConfig(
   items: HmsPulseItem[]
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return { success: false, error: "Ikke autentisert" };
+    const ctx = await loadDashboardContext();
+    if ("error" in ctx) {
+      return { success: false, error: ctx.error };
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: { tenants: true },
-    });
-
-    if (!user || user.tenants.length === 0) {
-      return { success: false, error: "Ingen tenant funnet" };
-    }
-
-    const tenantId = resolveActiveTenantId(
-      user.tenants,
-      (session.user as { tenantId?: string }).tenantId
-    );
-    if (!tenantId) {
-      return { success: false, error: "Ingen gyldig tenant-kontekst" };
-    }
-
-    const tenantData = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { dashboardLocked: true },
-    });
+    const { data: tenantData } = await ctx.db
+      .from("Tenant")
+      .select("dashboardLocked, industry")
+      .eq("id", ctx.tenantId)
+      .maybeSingle();
     if (tenantData?.dashboardLocked) {
-      const membership = user.tenants.find((t) => t.tenantId === tenantId);
+      const membership = ctx.tenants.find((row) => row.tenantId === ctx.tenantId);
       if (!membership || membership.role !== "ADMIN") {
-        return { success: false, error: "Dashboardet er låst av administrator" };
+        return { success: false, error: "The dashboard is locked by an administrator" };
       }
     }
 
     const normalizedItems = ensureMandatoryHmsPulseItems(normalizeHmsPulseItems(items));
     const safeItems = normalizedItems.length > 0 ? normalizedItems : DEFAULT_HMS_PULSE_ITEMS;
 
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { industry: true },
-    });
-    const defaultWidgetIds = getDefaultWidgetIdsForIndustry(tenant?.industry);
+    const defaultWidgetIds = getDefaultWidgetIdsForIndustry(tenantData?.industry);
     const defaultWidgets = defaultWidgetIds.map((id, index) => ({
       id,
       order: index,
       type: "builtin" as const,
     }));
 
-    await prisma.dashboardConfig.upsert({
-      where: { userId_tenantId: { userId: user.id, tenantId } },
-      update: {
-        hmsPulseItems: safeItems as unknown as import("@prisma/client").Prisma.InputJsonValue,
-      },
-      create: {
-        userId: user.id,
-        tenantId,
-        widgets: defaultWidgets as unknown as import("@prisma/client").Prisma.InputJsonValue,
-        hmsPulseItems: safeItems as unknown as import("@prisma/client").Prisma.InputJsonValue,
-      },
-    });
+    const { data: existing } = await ctx.db
+      .from("DashboardConfig")
+      .select("id")
+      .eq("userId", ctx.userId)
+      .eq("tenantId", ctx.tenantId)
+      .maybeSingle();
+
+    if (existing?.id) {
+      await ctx.db
+        .from("DashboardConfig")
+        .update({ hmsPulseItems: safeItems, updatedAt: new Date().toISOString() })
+        .eq("id", existing.id);
+    } else {
+      await ctx.db.from("DashboardConfig").insert({
+        id: createId(),
+        userId: ctx.userId,
+        tenantId: ctx.tenantId,
+        widgets: defaultWidgets,
+        hmsPulseItems: safeItems,
+        updatedAt: new Date().toISOString(),
+      });
+    }
 
     return { success: true };
   } catch (error: unknown) {

@@ -34,7 +34,7 @@ export function HandbokSignButton({ tenantId, alreadySigned, versionId }: Handbo
     const result = await signHandbook({ tenantId, versionId, comment: comment.trim() || undefined });
     setLoading(false);
     if (result.success) {
-      toast({ title: "Håndbok signert", description: "Din signatur er registrert." });
+      toast({ title: "Notification recorded", description: "You have confirmed you have been shown this policy." });
       setOpen(false);
       setComment("");
     } else {
@@ -47,22 +47,22 @@ export function HandbokSignButton({ tenantId, alreadySigned, versionId }: Handbo
       <DialogTrigger asChild>
         <Button variant={alreadySigned ? "outline" : "default"} size="sm" className="gap-2">
           <PenLine className="h-4 w-4" />
-          {alreadySigned ? "Signer på nytt" : "Signer håndbok"}
+          {alreadySigned ? "Notified again" : "I have been notified"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Signer HMS Håndbok</DialogTitle>
+          <DialogTitle>Confirm you have been notified</DialogTitle>
           <DialogDescription>
-            Ved å signere bekrefter du at du har lest og forstått innholdet i HMS-håndboken.
-            Din signatur registreres med dato og tidspunkt.
+            HSWA 1974 s.2(3) requires the employer to bring this policy to your notice. This is not
+            an approval of the policy. It records that you have been shown the current written policy.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
-          <Label htmlFor="comment">Kommentar (valgfritt)</Label>
+          <Label htmlFor="comment">Comment (optional)</Label>
           <Textarea
             id="comment"
-            placeholder="F.eks. «Gjennomgått på HMS-møte 11.08.2026»"
+            placeholder="e.g. Reviewed at the H&S meeting on 11 Aug 2026"
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             maxLength={1000}
@@ -71,11 +71,11 @@ export function HandbokSignButton({ tenantId, alreadySigned, versionId }: Handbo
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
-            Avbryt
+            Cancel
           </Button>
           <Button onClick={handleSign} disabled={loading} className="gap-2">
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Bekreft signatur
+            Confirm I have been notified
           </Button>
         </DialogFooter>
       </DialogContent>

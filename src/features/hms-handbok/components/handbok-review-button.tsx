@@ -19,16 +19,16 @@ export function HandbokReviewButton({ tenantId }: HandbokReviewButtonProps) {
     const result = await markHandbookReviewed({ tenantId });
     setLoading(false);
     if (result.success) {
-      toast({ title: "Gjennomgang registrert", description: "Dato for siste gjennomgang er oppdatert." });
+      toast({ title: "Statement signed", description: "Recorded as signed by the most senior person / review date updated." });
     } else {
-      toast({ title: "Feil", description: result.error, variant: "destructive" });
+      toast({ title: "Error", description: result.error, variant: "destructive" });
     }
   }
 
   return (
     <Button variant="outline" size="sm" onClick={handleReview} disabled={loading} className="gap-2">
       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-      Merk som gjennomgått
+      Record MD signature
     </Button>
   );
 }

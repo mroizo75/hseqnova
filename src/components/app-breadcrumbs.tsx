@@ -6,45 +6,52 @@ import { ChevronRight, Home } from "lucide-react";
 
 const segmentLabels: Record<string, string> = {
   dashboard: "Dashboard",
-  documents: "Dokumenter",
-  samsvarserklaringer: "Samsvarserklæringer",
-  "juridisk-register": "Juridisk register",
-  incidents: "Avvik",
-  statistics: "Statistikk",
-  projects: "Prosjekter",
-  "construction-compliance": "Bygg/anlegg-compliance",
-  sja: "SJA",
-  inspections: "Vernerunder",
-  training: "Opplaering",
-  actions: "Tiltak",
-  chemicals: "Stoffkartotek",
-  "exposure-register": "Eksponeringsregister",
-  fill: "Utfylling",
-  risks: "Risikovurderinger",
-  "risk-register": "Risikoregister",
-  wellbeing: "Psykososialt",
-  complaints: "Klagebehandling",
-  feedback: "Tilbakemeldinger",
-  environment: "Miljo",
-  bcm: "Beredskap",
-  audits: "Revisjoner",
-  "management-reviews": "Ledelsens gjennomgang",
-  "annual-hms-plan": "Aarsplan HMS",
-  meetings: "Moter",
-  "time-registration": "Timeregistrering",
-  whistleblowing: "Varsling",
-  goals: "Mal",
-  settings: "Innstillinger",
-  ansatt: "Ansatt",
-  profil: "Profil",
-  dokumenter: "Dokumenter",
-  avvik: "Avvik",
-  ny: "Ny registrering",
-  new: "Ny",
-  ruh: "RUH",
-  stoffkartotek: "Stoffkartotek",
-  opplaering: "Opplaering",
-  timeregistrering: "Timeregistrering",
+  documents: "Documents",
+  samsvarserklaringer: "Compliance declarations",
+  "juridisk-register": "Legal register",
+  incidents: "Accident book",
+  statistics: "Statistics",
+  projects: "Projects",
+  "construction-compliance": "CDM",
+  sja: "RAMS",
+  inspections: "Inspections",
+  training: "Training",
+  actions: "Actions",
+  chemicals: "COSHH",
+  fill: "Complete",
+  risks: "Risk assessments",
+  "risk-register": "Risk register",
+  wellbeing: "Wellbeing",
+  complaints: "Complaints",
+  feedback: "Feedback",
+  environment: "Environment",
+  bcm: "Business continuity",
+  audits: "Audits",
+  "management-reviews": "Management review",
+  "annual-hms-plan": "Annual H&S plan",
+  meetings: "Meetings",
+  "time-registration": "Time recording",
+  whistleblowing: "Whistleblowing",
+  goals: "Goals",
+  settings: "Settings",
+  users: "Users",
+  ansatt: "Employee",
+  profil: "Profile",
+  dokumenter: "Documents",
+  avvik: "Incidents",
+  ny: "New",
+  new: "New",
+  ruh: "Incident report",
+  stoffkartotek: "COSHH",
+  opplaering: "Training",
+  timeregistrering: "Time recording",
+  "hms-handbok": "Health and safety policy",
+  "health-safety-policy": "Health and safety policy",
+  "hms-tavle": "Safety board",
+  "fire-drills": "Fire drills",
+  organisasjonskart: "Organisation chart",
+  medarbeidersamtale: "Appraisals",
+  "exposure-register": "Exposure register",
 };
 
 function isLikelyEntityId(segment: string): boolean {
@@ -53,9 +60,9 @@ function isLikelyEntityId(segment: string): boolean {
 
 function formatSegmentLabel(segment: string, previousSegment?: string): string {
   if (isLikelyEntityId(segment)) {
-    if (previousSegment === "projects") return "Prosjekt";
-    if (previousSegment === "incidents") return "Avvik";
-    return "Detalj";
+    if (previousSegment === "projects") return "Project";
+    if (previousSegment === "incidents") return "Incident";
+    return "Details";
   }
 
   const mapped = segmentLabels[segment];
@@ -83,7 +90,7 @@ export function AppBreadcrumbs() {
   });
 
   return (
-    <nav aria-label="Brodsmulesti" className="mb-4 border-b pb-3 text-sm text-muted-foreground">
+    <nav aria-label="Breadcrumb" className="mb-4 border-b pb-3 text-sm text-muted-foreground">
       <ol className="flex flex-wrap items-center gap-1.5">
         {crumbs.map((crumb, index) => (
           <li key={crumb.href} className="flex items-center gap-1.5">

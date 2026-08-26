@@ -1,17 +1,15 @@
 /**
- * PDF-generator for Bygg/anlegg compliance
- * Bruker profesjonell HMS Nova-branding via pdf-brand.ts
- *
- * Hjemmel: Byggherreforskriften § 10 (forhåndsmelding), § 15 (oversiktsliste), § 7 (SHA-plan)
+ * PDF generator for CDM 2015 project compliance.
+ * Legal hook: CDM 2015 regs 6 (F10), 12 (CPP), site information.
  */
 
 import { generateBrandedPdf, type PdfSection } from "@/lib/pdf-brand";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale";
 import type {
   PreNotificationRequirementResult,
   ConstructionComplianceValidation,
-} from "@/features/construction/lib/construction-compliance";
+} from "@/lib/construction-compliance-rules";
 
 interface ConstructionCompliancePdfData {
   tenantName: string;
@@ -69,7 +67,7 @@ interface ConstructionCompliancePdfData {
 
 function fmt(date: Date | null | undefined): string {
   if (!date) return "–";
-  return format(new Date(date), "dd.MM.yyyy", { locale: nb });
+  return format(new Date(date), "d MMM yyyy", { locale: enGB });
 }
 
 export async function generateConstructionCompliancePdf(
@@ -80,24 +78,24 @@ export async function generateConstructionCompliancePdf(
 
   const sections: PdfSection[] = [
     {
-      title: "Prosjekt og compliance-status",
-      legalRef: "Byggherreforskriften § 7, § 10, § 15",
+      title: "Project and CDM status",
+      legalRef: "CDM 2015 regs 6, 12",
       content: [
         {
           type: "keyvalue",
           pairs: [
-            ["Prosjekt", data.project.name],
-            ["Arbeidssted", data.project.location ?? "–"],
-            ["Byggherre/kunde", data.project.clientName ?? "–"],
-            ["Daglig kontroll", data.isDailyCheckMissing ? "Mangler kontroll i dag" : "Oppdatert i dag"],
-            ["Siste kontroll", data.rosterChecks[0] ? fmt(data.rosterChecks[0].checkedDate) : "Ingen registrert"],
-            ["SHA-plan klar", cv.shaReadyForActive ? "Ja" : "Nei"],
-            ["Forhåndsmelding klar", cv.preNotificationReadyForSubmission ? "Ja" : "Nei"],
-            ["Meldeplikt utløst", pnr.isRequired ? "Ja" : "Nei"],
+            ["Project", data.project.name],
+            ["Site", data.project.location ?? "–"],
+            ["Client", data.project.clientName ?? "–"],
+            ["Daily check", data.isDailyCheckMissing ? "Missing today" : "Recorded today"],
+            ["Last check", data.rosterChecks[0] ? fmt(data.rosterChecks[0].checkedDate) : "None recorded"],
+            ["CPP ready", cv.shaReadyForActive ? "Yes" : "No"],
+            ["F10 ready", cv.preNotificationReadyForSubmission ? "Yes" : "No"],
+            ["F10 notifiable", pnr.isRequired ? "Yes" : "No"],
           ],
         },
         ...(data.isDailyCheckMissing
-          ? [{ type: "alert" as const, text: "Daglig kontroll mangler – oversiktslisten er ikke oppdatert i dag.", severity: "warning" as const }]
+          ? [{ type: "alert" as const, text: "Daily check is missing — the site register has not been confirmed today.", severity: "warning" as const }]
           : []),
       ],
     },
@@ -105,20 +103,20 @@ export async function generateConstructionCompliancePdf(
 
   if (data.shaPlan) {
     sections.push({
-      title: "SHA-plan",
-      legalRef: "Byggherreforskriften § 7",
+      title: "Construction Phase Plan",
+      legalRef: "CDM 2015 reg. 12",
       content: [
         {
           type: "keyvalue",
           pairs: [
             ["Status", data.shaPlan.status],
-            ["Byggherre", data.shaPlan.builderName ?? "–"],
-            ["Byggherres representant", data.shaPlan.builderRepresentativeName ?? "–"],
-            ["Koordinator prosjektering (KP)", data.shaPlan.coordinatorPlanningName ?? "–"],
-            ["Koordinator utførelse (KU)", data.shaPlan.coordinatorExecutionName ?? "–"],
-            ["Rollekonflikt dokumentert", data.shaPlan.conflictAssessmentDocumented ? "Ja" : "Nei"],
-            ["Tilgjengelig på byggeplass", data.shaPlan.availableOnSite ? "Ja" : "Nei"],
-            ["Sist gjennomgått", fmt(data.shaPlan.lastReviewedAt)],
+            ["Client", data.shaPlan.builderName ?? "–"],
+            ["Client contact", data.shaPlan.builderRepresentativeName ?? "–"],
+            ["Principal Designer", data.shaPlan.coordinatorPlanningName ?? "–"],
+            ["Principal Contractor", data.shaPlan.coordinatorExecutionName ?? "–"],
+            ["Competence / appointment recorded", data.shaPlan.conflictAssessmentDocumented ? "Yes" : "No"],
+            ["Available on site", data.shaPlan.availableOnSite ? "Yes" : "No"],
+            ["Last reviewed", fmt(data.shaPlan.lastReviewedAt)],
           ],
         },
       ],
@@ -127,21 +125,21 @@ export async function generateConstructionCompliancePdf(
 
   if (data.preNotification) {
     sections.push({
-      title: "Forhåndsmelding",
-      legalRef: "Byggherreforskriften § 10",
+      title: "F10 notification",
+      legalRef: "CDM 2015 reg. 6",
       content: [
         {
           type: "keyvalue",
           pairs: [
             ["Status", data.preNotification.status],
-            ["Adresse", data.preNotification.projectAddress],
-            ["Art av arbeid", data.preNotification.projectType],
-            ["Byggherre", data.preNotification.builderName],
-            ["Byggherre org.nr", data.preNotification.builderOrgNumber ?? "–"],
-            ["Startdato", fmt(data.preNotification.expectedStartDate)],
-            ["Sluttdato", fmt(data.preNotification.expectedEndDate)],
-            ["Maks arbeidstakere", data.preNotification.maxWorkersSimultaneous?.toString() ?? "–"],
-            ["Synlig på byggeplass", data.preNotification.visibleAtSite ? "Ja" : "Nei"],
+            ["Site address", data.preNotification.projectAddress],
+            ["Description of the project", data.preNotification.projectType],
+            ["Client", data.preNotification.builderName],
+            ["Company number", data.preNotification.builderOrgNumber ?? "–"],
+            ["Start date", fmt(data.preNotification.expectedStartDate)],
+            ["End date", fmt(data.preNotification.expectedEndDate)],
+            ["Maximum workers", data.preNotification.maxWorkersSimultaneous?.toString() ?? "–"],
+            ["F10 displayed on site", data.preNotification.visibleAtSite ? "Yes" : "No"],
           ],
         },
       ],
@@ -149,34 +147,34 @@ export async function generateConstructionCompliancePdf(
   }
 
   sections.push({
-    title: `Elektronisk oversiktsliste (${data.rosterEntries.length} personer)`,
-    legalRef: "Byggherreforskriften § 15",
+    title: `Site register (${data.rosterEntries.length} people)`,
+    legalRef: "CDM 2015 site information",
     content: data.rosterEntries.length > 0
       ? [{
           type: "table" as const,
-          headers: ["Navn", "Arbeidsgiver", "HMS-kort", "Start", "Slutt", "Status"],
+          headers: ["Name", "Employer", "CSCS / card", "Start", "End", "Status"],
           rows: data.rosterEntries.map((e) => [
             e.fullName,
             e.employerName,
-            e.hmsCardNumber ?? "Mangler",
+            e.hmsCardNumber ?? "Missing",
             fmt(e.startedAtSiteDate),
             fmt(e.endedAtSiteDate),
-            e.isActive ? "Aktiv" : "Avsluttet",
+            e.isActive ? "Active" : "Closed",
           ]),
         }]
-      : [{ type: "paragraph" as const, text: "Ingen personer i oversiktslisten." }],
+      : [{ type: "paragraph" as const, text: "No people on the site register." }],
   });
 
   if (data.rosterChecks.length > 0) {
     sections.push({
-      title: "Daglig kontrollhistorikk",
+      title: "Daily check history",
       content: [
         {
           type: "table",
-          headers: ["Dato", "Kontrollert av", "Notat"],
+          headers: ["Date", "Checked by", "Notes"],
           rows: data.rosterChecks.map((c) => [
             fmt(c.checkedDate),
-            c.checkedBy?.name ?? c.checkedBy?.email ?? "Ukjent",
+            c.checkedBy?.name ?? c.checkedBy?.email ?? "Unknown",
             c.notes ?? "–",
           ]),
         },
@@ -186,16 +184,16 @@ export async function generateConstructionCompliancePdf(
 
   return generateBrandedPdf({
     type: "formal",
-    reportLabel: "Bygg/anlegg compliance",
-    title: `Compliance-rapport – ${data.project.name}`,
-    subtitle: `Byggherreforskriften § 7, § 10, § 15`,
+    reportLabel: "CDM 2015 compliance",
+    title: `CDM report – ${data.project.name}`,
+    subtitle: "CDM 2015 regs 6 and 12",
     tenant: {
       name: data.tenantName,
       orgNumber: data.tenantOrgNumber,
       logoUrl: data.tenantLogoUrl,
     },
     generatedAt: new Date(),
-    legalReference: "Byggherreforskriften § 7, § 10, § 15",
+    legalReference: "CDM 2015 regs 6, 12",
     sections,
   });
 }

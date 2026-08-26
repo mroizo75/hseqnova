@@ -15,7 +15,7 @@ import { User, Lock } from "lucide-react";
 import type { User as PrismaUser } from "@prisma/client";
 
 interface UserProfileFormProps {
-  user: PrismaUser;
+  user: Pick<PrismaUser, "id" | "name" | "email" | "phone" | "preferredLocale">;
 }
 
 export function UserProfileForm({ user }: UserProfileFormProps) {
@@ -33,7 +33,8 @@ export function UserProfileForm({ user }: UserProfileFormProps) {
     const data = {
       name: formData.get("name") as string || undefined,
       email: formData.get("email") as string || undefined,
-      preferredLocale: formData.get("preferredLocale") as string || undefined,
+      phone: formData.get("phone") as string || undefined,
+      preferredLocale: "en-GB",
     };
 
     const result = await updateUserProfile(data);
@@ -44,7 +45,7 @@ export function UserProfileForm({ user }: UserProfileFormProps) {
         description: t("toast.profileSuccess.description"),
         className: "bg-green-50 border-green-200",
       });
-      document.cookie = `NEXT_LOCALE=${data.preferredLocale === "en" ? "en" : "nb"}; path=/; max-age=31536000; samesite=lax`;
+      document.cookie = "NEXT_LOCALE=en-GB; path=/; max-age=31536000; samesite=lax";
       router.refresh();
     } else {
       toast({
@@ -143,20 +144,34 @@ export function UserProfileForm({ user }: UserProfileFormProps) {
                 disabled={loadingProfile}
                 defaultValue={user.email}
               />
-              <p className="text-sm text-amber-600">
+              <p className="text-sm text-muted-foreground">
                 {t("fields.email.help")}
               </p>
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="phone">{t("fields.phone.label")}</Label>
+              <Input
+                id="phone"
+                name="phone"
+                type="tel"
+                placeholder={t("fields.phone.placeholder")}
+                disabled={loadingProfile}
+                defaultValue={user.phone || ""}
+              />
+              <p className="text-sm text-muted-foreground">
+                {t("fields.phone.help")}
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="preferredLocale">{t("fields.preferredLocale.label")}</Label>
-              <Select name="preferredLocale" defaultValue={user.preferredLocale || "nb"} disabled={loadingProfile}>
+              <Select name="preferredLocale" defaultValue="en-GB" disabled>
                 <SelectTrigger id="preferredLocale">
                   <SelectValue placeholder={t("fields.preferredLocale.placeholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="nb">{t("fields.preferredLocale.options.nb")}</SelectItem>
-                  <SelectItem value="en">{t("fields.preferredLocale.options.en")}</SelectItem>
+                  <SelectItem value="en-GB">{t("fields.preferredLocale.options.enGB")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

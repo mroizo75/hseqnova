@@ -2,11 +2,12 @@
 
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getPermissions } from "@/lib/permissions";
-import { BASE_SIMPLE_MODULES, BRANSJE_MODULES } from "@/lib/bransje-modules";
+import { BASE_SIMPLE_MODULES } from "@/lib/bransje-modules";
 import { menuPathsToWidgetIds } from "@/lib/menu-widget-sync";
 import type { Role } from "@prisma/client";
 
@@ -32,51 +33,41 @@ export type SetupGuideProgress = {
 
 const completeStartpakkeSchema = z.object({
   tenantId: z.string().min(1),
-  bransje: z.string().min(1),
+  bransje: z.string().optional(),
 });
 
 // ── Actions ──────────────────────────────────────────────────────────────────
 
 /**
- * Fullfør startpakke-wizard.
- * Setter simpleMenuItems basert på bransjevalg, markerer startpakkeCompleted = true.
- * Fyller IKKE inn innhold – bedriften gjør det selv.
+ * Marks onboarding complete. Industry does not change the UK menu.
  */
 export async function completeStartpakkeSetup(
   input: z.infer<typeof completeStartpakkeSchema>
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { tenantId, bransje } = completeStartpakkeSchema.parse(input);
+    const { tenantId } = completeStartpakkeSchema.parse(input);
 
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.tenantId !== tenantId) {
-      return { success: false, error: "Ikke autorisert" };
+      return { success: false, error: "Not authorised" };
     }
 
     const permissions = getPermissions(session.user.role as Role);
     if (!permissions.canUpdateSettings) {
-      return { success: false, error: "Kun admin kan fullføre startpakke" };
-    }
-
-    const bransjeConfig = BRANSJE_MODULES[bransje];
-    if (!bransjeConfig) {
-      return { success: false, error: "Ukjent bransje" };
+      return { success: false, error: "Only an administrator can finish setup" };
     }
 
     await prisma.tenant.update({
       where: { id: tenantId },
       data: {
-        simpleMenuItems: bransjeConfig.modules,
+        simpleMenuItems: BASE_SIMPLE_MODULES,
         startpakkeCompleted: true,
-        industry: bransje,
         onboardingStatus: "IN_PROGRESS",
         setupGuideHidden: false,
       },
     });
 
-    // Opprett DashboardConfig for admin-brukeren basert på bransje.
-    // Flisene speiler enkel meny ved oppstart.
-    const widgetIds = menuPathsToWidgetIds(bransjeConfig.modules);
+    const widgetIds = menuPathsToWidgetIds(BASE_SIMPLE_MODULES);
     await prisma.dashboardConfig.upsert({
       where: {
         userId_tenantId: { userId: session.user.id, tenantId },
@@ -94,31 +85,13 @@ export async function completeStartpakkeSetup(
     revalidatePath("/dashboard");
     return { success: true };
   } catch {
-    return { success: false, error: "Noe gikk galt under oppsett" };
+    return { success: false, error: "Setup could not be completed" };
   }
 }
 
-/**
- * Sjekk om startpakke-wizard skal vises for denne brukeren.
- * Vises kun til ADMIN-brukere og kun hvis startpakke ikke er fullført.
- */
-export async function shouldShowStartpakke(tenantId: string): Promise<boolean> {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.role) return false;
-
-    const permissions = getPermissions(session.user.role as Role);
-    if (!permissions.canUpdateSettings) return false;
-
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { startpakkeCompleted: true },
-    });
-
-    return !(tenant?.startpakkeCompleted ?? false);
-  } catch {
-    return false;
-  }
+/** Industry pickers are not used. */
+export async function shouldShowStartpakke(_tenantId: string): Promise<boolean> {
+  return false;
 }
 
 /**
@@ -152,37 +125,37 @@ export async function skipStartpakke(tenantId: string): Promise<{ success: boole
 const SETUP_STEPS: Omit<SetupGuideStep, "completed">[] = [
   {
     key: "add_employees",
-    title: "Legg til ansatte",
-    description: "Inviter ansatte slik at de kan delta i HMS-arbeidet",
-    href: "/dashboard/settings/users",
+    title: "Add people",
+    description: "Invite employees so they can use the accident book, training and the policy",
+    href: "/dashboard/users",
     icon: "Users",
   },
   {
     key: "org_chart",
-    title: "Fyll ut organisasjonskart",
-    description: "Definer roller, ansvar og myndighet for HMS (IK-HMS § 5 nr. 5)",
+    title: "Set out the organisation",
+    description: "Roles, responsibilities and authority (HSWA 1974 s.2(3) organisation)",
     href: "/dashboard/organisasjonskart",
     icon: "Network",
   },
   {
     key: "handbook",
-    title: "Sett opp HMS-håndboken",
-    description: "Fyll inn HMS-policy, mål og roller i håndboken",
-    href: "/dashboard/hms-handbok",
+    title: "Set up the health and safety policy",
+    description: "Statement of intent, organisation and arrangements (HSWA s.2(3))",
+    href: "/dashboard/health-safety-policy",
     icon: "BookOpen",
   },
   {
     key: "risk_assessment",
-    title: "Gjennomfør første risikovurdering",
-    description: "Kartlegg farer og vurder risiko (IK-HMS § 5 nr. 6)",
+    title: "Complete the first risk assessment",
+    description: "Suitable and sufficient assessment of risks (MHSWR 1999 reg.3)",
     href: "/dashboard/risks",
     icon: "ShieldAlert",
   },
   {
     key: "handbook_signatures",
-    title: "Få ansatte til å signere HMS-håndboken",
-    description: "Dokumenter at ansatte har lest og forstått håndboken",
-    href: "/dashboard/hms-handbok",
+    title: "Get employees to confirm they have read the policy",
+    description: "Record that employees have read and understood the policy",
+    href: "/dashboard/health-safety-policy",
     icon: "PenLine",
   },
 ];
@@ -296,10 +269,13 @@ export async function toggleSetupGuideVisibility(
       return { success: false, error: "Kun admin kan endre veiviser-visning" };
     }
 
-    await prisma.tenant.update({
-      where: { id: tenantId },
-      data: { setupGuideHidden: hidden },
-    });
+    const { error } = await getAdminDb()
+      .from("Tenant")
+      .update({ setupGuideHidden: hidden, updatedAt: new Date().toISOString() })
+      .eq("id", tenantId);
+    if (error) {
+      return { success: false, error: "Noe gikk galt" };
+    }
 
     revalidatePath("/dashboard");
     return { success: true };

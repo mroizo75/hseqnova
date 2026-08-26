@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale";
 import { Headphones, Plus, MessageSquare } from "lucide-react";
 
 import { listMySupportTickets } from "@/server/actions/support.actions";
@@ -21,8 +21,8 @@ import {
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Hjelp og support | HMS Nova",
-  description: "Chat og ticketsystem med HMS-representantene våre",
+  title: "Help and support | HSEQ Nova",
+  description: "Chat and tickets with our HSEQ representatives",
 };
 
 function statusVariant(status: string) {
@@ -52,18 +52,18 @@ export default async function SupportPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Headphones className="h-7 w-7 text-primary" />
-            Hjelp og support
+            Help and support
           </h1>
           <p className="text-muted-foreground mt-1 max-w-2xl">
-            HMS-representantene våre er tilgjengelige via chat og ticketsystem.
-            Still spørsmål om systemet, HMS-faglige forhold, faktura eller tekniske
-            problemer – vi svarer her i tråden.
+            Our HSEQ representatives are available via chat and the ticket system.
+            Ask about the product, health and safety, invoices or technical
+            issues — we reply in the thread.
           </p>
         </div>
         <Button asChild>
           <Link href="/dashboard/support/ny">
             <Plus className="mr-2 h-4 w-4" />
-            Ny sak
+            New ticket
           </Link>
         </Button>
       </div>
@@ -71,19 +71,19 @@ export default async function SupportPage() {
       {!result.success ? (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
-            Kunne ikke laste support-saker.
+            Could not load support tickets.
           </CardContent>
         </Card>
       ) : tickets.length === 0 ? (
         <Card>
           <CardContent className="p-12 text-center">
             <MessageSquare className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-            <p className="text-lg font-medium mb-2">Ingen saker ennå</p>
+            <p className="text-lg font-medium mb-2">No tickets yet</p>
             <p className="text-sm text-muted-foreground mb-6">
-              Opprett en sak for å chatte med en HMS-representant.
+              Create a ticket to chat with an HSEQ representative.
             </p>
             <Button asChild>
-              <Link href="/dashboard/support/ny">Opprett første sak</Link>
+              <Link href="/dashboard/support/ny">Create first ticket</Link>
             </Button>
           </CardContent>
         </Card>
@@ -107,11 +107,11 @@ export default async function SupportPage() {
                 </CardHeader>
                 <CardContent className="text-sm text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
                   <span>{SUPPORT_CATEGORY_LABELS[ticket.category]}</span>
-                  <span>{ticket.messageCount} meldinger</span>
+                  <span>{ticket.messageCount} messages</span>
                   <span>
-                    Sist aktivitet{" "}
-                    {format(new Date(ticket.lastMessageAt), "dd.MM.yyyy HH:mm", {
-                      locale: nb,
+                    Last activity{" "}
+                    {format(new Date(ticket.lastMessageAt), "dd/MM/yyyy HH:mm", {
+                      locale: enGB,
                     })}
                   </span>
                 </CardContent>

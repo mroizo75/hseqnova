@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { createId } from "@/lib/ids";
 import { generateSequenceNumber } from "@/lib/sequence";
 import { onIncidentCreated, onIncidentClosed } from "@/features/hms-ai/lib/event-handler";
 import { getRequiredTenantContext } from "@/lib/tenant-context";
@@ -12,40 +13,68 @@ import {
   investigateIncidentSchema,
   closeIncidentSchema,
 } from "@/features/incidents/schemas/incident.schema";
-import { createNotification, notifyUsersByRoles } from "./notification.actions";
+import { notifyUsersByRoles } from "./notification.actions";
 import { IncidentStage, IncidentStatus } from "@prisma/client";
 import {
   parseModuleVisibilityConfig,
   getNotifyRolesForModule,
 } from "@/lib/module-visibility";
 import { dispatchNewIncidentNotifications } from "@/lib/incident-notification-routing.server";
+import { CLOSE_LOOP_MESSAGES, evaluateIncidentCloseLoop } from "@/lib/incident-close-loop";
 import { normalizeProjectReference } from "@/lib/incident-project-reference";
 import { resolveIncidentProjectId } from "@/lib/incident-project-reference.server";
+import {
+  loadIncidentDetail,
+  loadIncidentsForList,
+} from "@/server/queries/incidents.queries";
 
-async function getSessionContext() {
+type SessionUser = { id: string; email: string; name: string | null };
+
+async function getSessionContext(): Promise<{ user: SessionUser; tenantId: string }> {
   const context = await getRequiredTenantContext();
+  const { data: user, error } = await getAdminDb()
+    .from("User")
+    .select("id, email, name")
+    .eq("id", context.userId)
+    .maybeSingle();
 
-  const user = await prisma.user.findUnique({
-    where: { id: context.userId },
-    select: {
-      id: true,
-      email: true,
-    },
-  });
-  
+  if (error) {
+    throw { code: "USER_LOOKUP_FAILED", message: error.message };
+  }
   if (!user) {
-    throw new Error("Unauthorized");
+    throw { code: "UNAUTHORIZED", message: "Unauthorised" };
   }
 
-  return { user, tenantId: context.tenantId };
+  return {
+    user: user as SessionUser,
+    tenantId: context.tenantId,
+  };
 }
 
 async function getTenantModuleVisibility(tenantId: string) {
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { moduleVisibilityConfig: true },
-  });
+  const { data: tenant } = await getAdminDb()
+    .from("Tenant")
+    .select("moduleVisibilityConfig")
+    .eq("id", tenantId)
+    .maybeSingle();
   return parseModuleVisibilityConfig(tenant?.moduleVisibilityConfig);
+}
+
+async function insertAuditLog(input: {
+  tenantId: string;
+  userId: string;
+  action: string;
+  resource: string;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  await getAdminDb().from("AuditLog").insert({
+    id: createId(),
+    tenantId: input.tenantId,
+    userId: input.userId,
+    action: input.action,
+    resource: input.resource,
+    metadata: input.metadata ? JSON.stringify(input.metadata) : null,
+  });
 }
 
 const sanitizeString = (value?: string | null) => {
@@ -54,7 +83,7 @@ const sanitizeString = (value?: string | null) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const parseOptionalNumber = (value: any) => {
+const parseOptionalNumber = (value: unknown) => {
   if (value === undefined || value === null || value === "") {
     return undefined;
   }
@@ -62,7 +91,7 @@ const parseOptionalNumber = (value: any) => {
   return Number.isNaN(parsed) ? undefined : parsed;
 };
 
-const parseBoolean = (value: any) => {
+const parseBoolean = (value: unknown) => {
   if (typeof value === "boolean") return value;
   if (typeof value === "string") {
     if (value.toLowerCase() === "true") return true;
@@ -71,9 +100,9 @@ const parseBoolean = (value: any) => {
   return undefined;
 };
 
-const parseOptionalDate = (value: any) => {
+const parseOptionalDate = (value: unknown) => {
   if (!value) return undefined;
-  const date = value instanceof Date ? value : new Date(value);
+  const date = value instanceof Date ? value : new Date(value as string);
   return Number.isNaN(date.getTime()) ? undefined : date;
 };
 
@@ -91,44 +120,44 @@ const assertTenantScopedRelations = async (input: {
   riskReferenceId?: string | null;
   reportedForUserId?: string | null;
 }): Promise<void> => {
+  const db = getAdminDb();
+
   if (input.projectId) {
-    const project = await prisma.project.findFirst({
-      where: {
-        id: input.projectId,
-        tenantId: input.tenantId,
-      },
-      select: { id: true },
-    });
+    const { data: project } = await db
+      .from("Project")
+      .select("id")
+      .eq("id", input.projectId)
+      .eq("tenantId", input.tenantId)
+      .maybeSingle();
     if (!project) {
-      throw new Error("Prosjekt finnes ikke i valgt tenant");
+      throw { code: "PROJECT_NOT_FOUND", message: "Project does not exist in this organisation" };
     }
   }
 
   if (input.riskReferenceId) {
-    const risk = await prisma.risk.findFirst({
-      where: {
-        id: input.riskReferenceId,
-        tenantId: input.tenantId,
-      },
-      select: { id: true },
-    });
+    const { data: risk } = await db
+      .from("Risk")
+      .select("id")
+      .eq("id", input.riskReferenceId)
+      .eq("tenantId", input.tenantId)
+      .maybeSingle();
     if (!risk) {
-      throw new Error("Risiko-referanse finnes ikke i valgt tenant");
+      throw { code: "RISK_NOT_FOUND", message: "Risk reference does not exist in this organisation" };
     }
   }
 
   if (input.reportedForUserId) {
-    const membership = await prisma.userTenant.findUnique({
-      where: {
-        userId_tenantId: {
-          userId: input.reportedForUserId,
-          tenantId: input.tenantId,
-        },
-      },
-      select: { userId: true },
-    });
+    const { data: membership } = await db
+      .from("UserTenant")
+      .select("userId")
+      .eq("userId", input.reportedForUserId)
+      .eq("tenantId", input.tenantId)
+      .maybeSingle();
     if (!membership) {
-      throw new Error("Rapportert for-bruker finnes ikke i valgt tenant");
+      throw {
+        code: "REPORTED_FOR_NOT_FOUND",
+        message: "The person this is reported for is not in this organisation",
+      };
     }
   }
 };
@@ -159,126 +188,73 @@ const buildCriticalStopWorkNotification = (incident: {
 } => {
   return {
     type: "NEW_INCIDENT",
-    title: "KRITISK: Stoppet arbeid",
-    message: `${incident.type}: ${incident.title} - stoppet arbeid krever umiddelbar oppfolging.`,
+    title: "CRITICAL: Stopped work",
+    message: `${incident.type}: ${incident.title} — stopped work needs immediate follow-up.`,
     link: `/dashboard/incidents/${incident.id}`,
   };
 };
 
-// Hent avvik for en tenant – respekterer "kun egne" for ansatte uten full lesetilgang
 export async function getIncidents(_tenantId: string) {
   try {
     const auth = await getAuthContext();
-    if (!auth) throw new Error("Ikke autentisert");
+    if (!auth) throw { code: "UNAUTHORIZED", message: "Not authenticated" };
 
     const canReadAll = auth.permissions.canReadIncidents;
     const canReadOwn = auth.permissions.canReadOwnIncidents;
 
     if (!canReadAll && !canReadOwn) {
-      throw new Error("Ikke autorisert til å se avvik");
+      throw { code: "FORBIDDEN", message: "Not authorised to view the accident book" };
     }
 
-    const { tenantId, userId } = auth;
-
-    // Ansatte uten full tilgang ser kun egne avvik (rapportBy = innlogget bruker)
-    const ownerFilter = canReadAll ? {} : { reportedBy: userId };
-
-    const incidents = await prisma.incident.findMany({
-      where: { tenantId, ...ownerFilter },
-      include: {
-        measures: {
-          select: {
-            id: true,
-            title: true,
-            status: true,
-            dueAt: true,
-          },
-        },
-        attachments: {
-          select: {
-            id: true,
-            name: true,
-            fileKey: true,
-          },
-        },
-        risk: {
-          select: {
-            id: true,
-            title: true,
-            category: true,
-            score: true,
-          },
-        },
-      },
-      orderBy: [
-        { occurredAt: "desc" },
-      ],
+    const incidents = await loadIncidentsForList({
+      tenantId: auth.tenantId,
+      reportedBy: canReadAll ? undefined : auth.userId,
     });
-    
+
     return { success: true, data: incidents, ownOnly: !canReadAll };
-  } catch (error: any) {
-    console.error("Get incidents error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente avvik" };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : (error as { message?: string })?.message;
+    return { success: false, error: message || "Could not load accident book entries" };
   }
 }
 
-// Hent et spesifikt avvik – brukere uten full tilgang ser kun egne
 export async function getIncident(id: string) {
   try {
     const auth = await getAuthContext();
-    if (!auth) throw new Error("Ikke autentisert");
+    if (!auth) throw { code: "UNAUTHORIZED", message: "Not authenticated" };
 
     const canReadAll = auth.permissions.canReadIncidents;
     const canReadOwn = auth.permissions.canReadOwnIncidents;
 
     if (!canReadAll && !canReadOwn) {
-      throw new Error("Ikke autorisert til å se avvik");
+      throw { code: "FORBIDDEN", message: "Not authorised to view the accident book" };
     }
 
-    const { userId: _userId, tenantId } = auth;
-    const user = { id: auth.userId, email: auth.userEmail };
-
-    // Ved "kun egne": legg til reportedBy-filter for å hindre henting av andres avvik
-    const ownerFilter = canReadAll ? {} : { reportedBy: auth.userId };
-    
-    const incident = await prisma.incident.findFirst({
-      where: { id, tenantId, ...ownerFilter },
-      include: {
-        measures: {
-          orderBy: { createdAt: "desc" },
-        },
-        attachments: true,
-        risk: {
-          select: {
-            id: true,
-            title: true,
-            category: true,
-            score: true,
-          },
-        },
-      },
+    const incident = await loadIncidentDetail({
+      id,
+      tenantId: auth.tenantId,
+      reportedBy: canReadAll ? undefined : auth.userId,
     });
-    
+
     if (!incident) {
-      return { success: false, error: "Avvik ikke funnet" };
+      return { success: false, error: "Incident not found" };
     }
-    
+
     return { success: true, data: incident };
-  } catch (error: any) {
-    console.error("Get incident error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente avvik" };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : (error as { message?: string })?.message;
+    return { success: false, error: message || "Could not load incident" };
   }
 }
 
-// Opprett nytt avvik (ISO 9001: Rapportere avvik)
-export async function createIncident(input: any) {
+export async function createIncident(input: Record<string, unknown>) {
   try {
     const { user, tenantId } = await getSessionContext();
     const normalizedInput = {
       ...input,
       tenantId,
       reportedBy: user.id,
-      occurredAt: new Date(input.occurredAt),
+      occurredAt: new Date(input.occurredAt as string),
       lostTimeMinutes: parseOptionalNumber(input.lostTimeMinutes),
       lostWorkdays: parseOptionalNumber(input.lostWorkdays),
       medicalAttentionRequired: parseBoolean(input.medicalAttentionRequired),
@@ -305,7 +281,6 @@ export async function createIncident(input: any) {
     );
 
     const projectReference = normalizeProjectReference(validated.projectReference);
-    // Treffer referansen et registrert prosjekt, varsles prosjektlederen for det
     const projectId = await resolveIncidentProjectId({
       tenantId,
       projectId: validated.projectId ?? null,
@@ -324,15 +299,20 @@ export async function createIncident(input: any) {
       occurredAt: validated.occurredAt,
     });
 
-    const incident = await prisma.incident.create({
-      data: {
+    const now = new Date().toISOString();
+    const incidentId = createId();
+    const db = getAdminDb();
+    const { data: incident, error } = await db
+      .from("Incident")
+      .insert({
+        id: incidentId,
         tenantId: validated.tenantId,
         avviksnummer,
         type: validated.type,
         title: validated.title,
         description: validated.description,
         severity: validated.severity ?? null,
-        occurredAt: validated.occurredAt,
+        occurredAt: validated.occurredAt.toISOString(),
         reportedBy: user.id,
         reportedForUserId: validated.reportedForUserId ?? null,
         location: sanitizeString(validated.location),
@@ -340,70 +320,71 @@ export async function createIncident(input: any) {
         immediateAction: sanitizeString(validated.immediateAction),
         injuryType: sanitizeString(validated.injuryType),
         medicalAttentionRequired: validated.medicalAttentionRequired ?? false,
-        lostTimeMinutes: validated.lostTimeMinutes,
+        lostTimeMinutes: validated.lostTimeMinutes ?? null,
         riskReferenceId: validated.riskReferenceId ?? null,
         customerName: sanitizeString(validated.customerName),
         customerEmail: sanitizeString(validated.customerEmail),
         customerPhone: sanitizeString(validated.customerPhone),
         customerTicketId: sanitizeString(validated.customerTicketId),
-        responseDeadline: validated.responseDeadline ?? null,
+        responseDeadline: validated.responseDeadline?.toISOString() ?? null,
         customerSatisfaction: validated.customerSatisfaction ?? null,
-        // Prosjektkobling
         projectId,
         projectReference,
-        // Underkategorier
         subcategoryKeys: validated.subcategoryKeys?.length
           ? JSON.stringify(validated.subcategoryKeys)
           : null,
-        // RUH-felt (AML § 5-2)
         involvedPersons: sanitizeString(validated.involvedPersons),
         injuryDescription: sanitizeString(validated.injuryDescription),
         suggestedActions: sanitizeString(validated.suggestedActions),
-        // HSE-statistikk (TRIR)
         isFatal: validated.isFatal ?? false,
         isLostTimeIncident: validated.isLostTimeIncident ?? false,
-        lostWorkdays: validated.lostWorkdays,
+        lostWorkdays: validated.lostWorkdays ?? null,
         isRestrictedWork: validated.isRestrictedWork ?? false,
         riddorReportable: riddor.reportable,
         riddorCategory: riddor.category,
-        riddorDueAt: riddor.dueAt,
+        riddorDueAt: riddor.dueAt?.toISOString() ?? null,
         overSevenDayInjury: Boolean(input.overSevenDayInjury),
         accidentBookEntry: riddor.accidentBookEntry,
         stage: IncidentStage.REPORTED,
-      },
-    });
+        updatedAt: now,
+      })
+      .select("*")
+      .maybeSingle();
+
+    if (error || !incident) {
+      throw { code: "INCIDENT_CREATE_FAILED", message: error?.message || "Could not record incident" };
+    }
 
     if (normalizedInput.aiSuggestedMeasures.length > 0) {
       const dueAt = new Date();
       dueAt.setDate(dueAt.getDate() + 14);
-      await prisma.measure.createMany({
-        data: normalizedInput.aiSuggestedMeasures.map((title) => ({
+      await db.from("Measure").insert(
+        normalizedInput.aiSuggestedMeasures.map((title) => ({
+          id: createId(),
           tenantId,
           incidentId: incident.id,
           title,
-          description: "AI-foreslått tiltak fra hendelsesanalyse. Bekreft ansvarlig og effekt.",
-          dueAt,
+          description: "AI-suggested action from incident analysis. Confirm owner and effect.",
+          dueAt: dueAt.toISOString(),
           responsibleId: user.id,
           category: "CORRECTIVE",
           followUpFrequency: "ANNUAL",
-        })),
-      });
+          updatedAt: now,
+        }))
+      );
     }
-    
-    // Fire-and-forget: audit + notifikasjoner skal ikke blokkere brukeren
+
     void (async () => {
       try {
-        await prisma.auditLog.create({
-          data: {
-            tenantId,
-            userId: user.id,
-            action: "INCIDENT_CREATED",
-            resource: `Incident:${incident.id}`,
-            metadata: JSON.stringify({
-              title: incident.title,
-              type: incident.type,
-              severity: incident.severity,
-            }),
+        await insertAuditLog({
+          tenantId,
+          userId: user.id,
+          action: "INCIDENT_CREATED",
+          resource: `Incident:${incident.id}`,
+          metadata: {
+            title: incident.title,
+            type: incident.type,
+            severity: incident.severity,
           },
         });
         const visConfig = await getTenantModuleVisibility(tenantId);
@@ -425,30 +406,27 @@ export async function createIncident(input: any) {
             buildCriticalStopWorkNotification(incident),
           );
         }
-      } catch (bgError) {
-        console.error("Background notification error:", bgError);
+      } catch {
+        // Notifications must not block the reporter
       }
     })();
 
     revalidatePath("/dashboard/incidents");
-
-    // HMS Intelligens-motor: analyser mønstre og oppdater score
     onIncidentCreated(tenantId, incident.id).catch(() => {});
 
     return { success: true, data: incident };
-  } catch (error: any) {
-    console.error("Create incident error:", error);
-    return { success: false, error: error.message || "Kunne ikke opprette avvik" };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : (error as { message?: string })?.message;
+    return { success: false, error: message || "Could not record incident" };
   }
 }
 
-// Oppdater avvik
-export async function updateIncident(input: any) {
+export async function updateIncident(input: Record<string, unknown>) {
   try {
     const { user, tenantId } = await getSessionContext();
     const normalizedInput = {
       ...input,
-      occurredAt: input.occurredAt ? new Date(input.occurredAt) : undefined,
+      occurredAt: input.occurredAt ? new Date(input.occurredAt as string) : undefined,
       lostTimeMinutes: parseOptionalNumber(input.lostTimeMinutes),
       lostWorkdays: parseOptionalNumber(input.lostWorkdays),
       medicalAttentionRequired: parseBoolean(input.medicalAttentionRequired),
@@ -465,24 +443,28 @@ export async function updateIncident(input: any) {
       projectId: validated.projectId,
       riskReferenceId: validated.riskReferenceId,
     });
-    
-    const existingIncident = await prisma.incident.findUnique({
-      where: { id: validated.id, tenantId },
-    });
-    
+
+    const db = getAdminDb();
+    const { data: existingIncident } = await db
+      .from("Incident")
+      .select("*")
+      .eq("id", validated.id)
+      .eq("tenantId", tenantId)
+      .maybeSingle();
+
     if (!existingIncident) {
-      return { success: false, error: "Avvik ikke funnet" };
+      return { success: false, error: "Incident not found" };
     }
-    
-    const updateData: Record<string, any> = {
-      updatedAt: new Date(),
+
+    const updateData: Record<string, unknown> = {
+      updatedAt: new Date().toISOString(),
     };
 
     if (validated.title) updateData.title = validated.title;
     if (validated.description) updateData.description = validated.description;
     if (validated.type) updateData.type = validated.type;
     if (validated.severity !== undefined) updateData.severity = validated.severity;
-    if (validated.occurredAt) updateData.occurredAt = validated.occurredAt;
+    if (validated.occurredAt) updateData.occurredAt = validated.occurredAt.toISOString();
     if (validated.location !== undefined) updateData.location = sanitizeString(validated.location);
     if (validated.witnessName !== undefined) updateData.witnessName = sanitizeString(validated.witnessName);
     if (validated.immediateAction !== undefined) updateData.immediateAction = sanitizeString(validated.immediateAction);
@@ -497,7 +479,9 @@ export async function updateIncident(input: any) {
     if (validated.customerEmail !== undefined) updateData.customerEmail = sanitizeString(validated.customerEmail);
     if (validated.customerPhone !== undefined) updateData.customerPhone = sanitizeString(validated.customerPhone);
     if (validated.customerTicketId !== undefined) updateData.customerTicketId = sanitizeString(validated.customerTicketId);
-    if (validated.responseDeadline !== undefined) updateData.responseDeadline = validated.responseDeadline ?? null;
+    if (validated.responseDeadline !== undefined) {
+      updateData.responseDeadline = validated.responseDeadline?.toISOString() ?? null;
+    }
     if (validated.customerSatisfaction !== undefined) updateData.customerSatisfaction = validated.customerSatisfaction ?? null;
     if (validated.projectId !== undefined) updateData.projectId = validated.projectId ?? null;
     if (validated.projectReference !== undefined) {
@@ -521,68 +505,72 @@ export async function updateIncident(input: any) {
     if (!stageToPersist && validated.status) {
       stageToPersist = stageFromStatus(validated.status);
     }
-
     if (stageToPersist && stageToPersist !== existingIncident.stage) {
       updateData.stage = stageToPersist;
     }
-
     if (validated.status) {
       updateData.status = validated.status;
     }
 
-    const incident = await prisma.incident.update({
-      where: { id: validated.id, tenantId },
-      data: updateData,
-    });
-    
+    const { data: incident, error } = await db
+      .from("Incident")
+      .update(updateData)
+      .eq("id", validated.id)
+      .eq("tenantId", tenantId)
+      .select("*")
+      .maybeSingle();
+
+    if (error || !incident) {
+      throw { code: "INCIDENT_UPDATE_FAILED", message: error?.message || "Could not update incident" };
+    }
+
     const statusChanged = existingIncident.status !== incident.status;
     const becameStopWork = existingIncident.isRestrictedWork !== true && incident.isRestrictedWork === true;
-
     const substantiveFields = [
       "injuryDescription", "involvedPersons", "rootCause", "contributingFactors",
       "immediateAction", "suggestedActions", "injuryType", "medicalAttentionRequired",
       "isFatal", "isLostTimeIncident", "measureEffectiveness",
     ] as const;
     const substantiveChange = !statusChanged && substantiveFields.some(
-      (f) => updateData[f] !== undefined && updateData[f] !== (existingIncident as any)[f],
+      (field) => updateData[field] !== undefined && updateData[field] !== existingIncident[field],
     );
 
     void (async () => {
       try {
-        await prisma.auditLog.create({
-          data: {
-            tenantId,
-            userId: user.id,
-            action: "INCIDENT_UPDATED",
-            resource: `Incident:${incident.id}`,
-            metadata: JSON.stringify({ title: incident.title }),
-          },
+        await insertAuditLog({
+          tenantId,
+          userId: user.id,
+          action: "INCIDENT_UPDATED",
+          resource: `Incident:${incident.id}`,
+          metadata: { title: incident.title },
         });
         const visConfig = await getTenantModuleVisibility(tenantId);
         if (statusChanged) {
           const notifyRoles = getNotifyRolesForModule(visConfig, "incidents", ["ADMIN", "HMS", "LEDER"]);
           await notifyUsersByRoles(tenantId, notifyRoles, {
             type: "INCIDENT_UPDATED",
-            title: "Avvik oppdatert",
-            message: `${incident.type}: ${incident.title} – Status endret til ${incident.status}`,
+            title: "Incident updated",
+            message: `${incident.type}: ${incident.title} — status changed to ${incident.status}`,
             link: `/dashboard/incidents/${incident.id}`,
           });
         } else if (substantiveChange) {
           const changedLabels: string[] = [];
-          if (updateData.injuryDescription !== undefined) changedLabels.push("skadebeskrivelse");
-          if (updateData.involvedPersons !== undefined) changedLabels.push("involverte personer");
-          if (updateData.rootCause !== undefined) changedLabels.push("årsaksanalyse");
-          if (updateData.contributingFactors !== undefined) changedLabels.push("medvirkende faktorer");
-          if (updateData.immediateAction !== undefined) changedLabels.push("strakstiltak");
-          if (updateData.suggestedActions !== undefined) changedLabels.push("foreslåtte tiltak");
-          if (updateData.measureEffectiveness !== undefined) changedLabels.push("tiltakseffektivitet");
-          if (updateData.isFatal !== undefined || updateData.isLostTimeIncident !== undefined) changedLabels.push("alvorlighetsgrad");
+          if (updateData.injuryDescription !== undefined) changedLabels.push("injury description");
+          if (updateData.involvedPersons !== undefined) changedLabels.push("people involved");
+          if (updateData.rootCause !== undefined) changedLabels.push("root cause");
+          if (updateData.contributingFactors !== undefined) changedLabels.push("contributing factors");
+          if (updateData.immediateAction !== undefined) changedLabels.push("immediate action");
+          if (updateData.suggestedActions !== undefined) changedLabels.push("suggested actions");
+          if (updateData.measureEffectiveness !== undefined) changedLabels.push("action effectiveness");
+          if (updateData.isFatal !== undefined || updateData.isLostTimeIncident !== undefined) {
+            changedLabels.push("severity / RIDDOR flags");
+          }
 
           const notifyRoles = getNotifyRolesForModule(visConfig, "incidents", ["ADMIN", "HMS"]);
           await notifyUsersByRoles(tenantId, notifyRoles, {
             type: "INCIDENT_UPDATED",
-            title: "Ny informasjon lagt til i avvik",
-            message: `${incident.type}: ${incident.title} – Oppdatert: ${changedLabels.join(", ")}`,
+            title: "New information added to incident",
+            message: `${incident.type}: ${incident.title} — updated: ${changedLabels.join(", ")}`,
             link: `/dashboard/incidents/${incident.id}`,
           });
         }
@@ -594,324 +582,335 @@ export async function updateIncident(input: any) {
             buildCriticalStopWorkNotification(incident),
           );
         }
-      } catch (bgError) {
-        console.error("Background notification error:", bgError);
+      } catch {
+        // Notifications must not block the handler
       }
     })();
 
     revalidatePath("/dashboard/incidents");
     revalidatePath(`/dashboard/incidents/${incident.id}`);
     return { success: true, data: incident };
-  } catch (error: any) {
-    console.error("Update incident error:", error);
-    return { success: false, error: error.message || "Kunne ikke oppdatere avvik" };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : (error as { message?: string })?.message;
+    return { success: false, error: message || "Could not update incident" };
   }
 }
 
-// Utred avvik (ISO 9001: Årsaksanalyse)
-export async function investigateIncident(input: any) {
+export async function investigateIncident(input: Record<string, unknown>) {
   try {
     const { user, tenantId } = await getSessionContext();
     const validated = investigateIncidentSchema.parse(input);
-    
-    const incident = await prisma.incident.update({
-      where: { id: validated.id, tenantId },
-      data: {
+    const db = getAdminDb();
+
+    const { data: incident, error } = await db
+      .from("Incident")
+      .update({
         rootCause: validated.rootCause,
         contributingFactors: validated.contributingFactors,
         investigatedBy: user.id,
-        investigatedAt: new Date(),
+        investigatedAt: new Date().toISOString(),
         status: "INVESTIGATING",
         stage: IncidentStage.ROOT_CAUSE,
-        updatedAt: new Date(),
-      },
-    });
-    
+        updatedAt: new Date().toISOString(),
+      })
+      .eq("id", validated.id)
+      .eq("tenantId", tenantId)
+      .select("*")
+      .maybeSingle();
+
+    if (error || !incident) {
+      throw { code: "INCIDENT_INVESTIGATE_FAILED", message: error?.message || "Could not save investigation" };
+    }
+
     void (async () => {
       try {
-        await prisma.auditLog.create({
-          data: {
-            tenantId,
-            userId: user.id,
-            action: "INCIDENT_INVESTIGATED",
-            resource: `Incident:${incident.id}`,
-            metadata: JSON.stringify({
-              title: incident.title,
-              rootCause: validated.rootCause,
-            }),
-          },
+        await insertAuditLog({
+          tenantId,
+          userId: user.id,
+          action: "INCIDENT_INVESTIGATED",
+          resource: `Incident:${incident.id}`,
+          metadata: { title: incident.title, rootCause: validated.rootCause },
         });
-
         const visConfig = await getTenantModuleVisibility(tenantId);
         const notifyRoles = getNotifyRolesForModule(visConfig, "incidents", ["ADMIN", "HMS", "LEDER"]);
         await notifyUsersByRoles(tenantId, notifyRoles, {
           type: "INCIDENT_UPDATED",
-          title: "Årsaksanalyse fullført",
-          message: `${incident.type}: ${incident.title} – Årsaksanalyse er gjennomført av ${user.name ?? "ukjent"}`,
+          title: "Root cause analysis completed",
+          message: `${incident.type}: ${incident.title} — investigated by ${user.name ?? "unknown"}`,
           link: `/dashboard/incidents/${incident.id}`,
         });
-      } catch (bgError) {
-        console.error("Background notification error:", bgError);
+      } catch {
+        // Notifications must not block the investigator
       }
     })();
 
     revalidatePath("/dashboard/incidents");
     revalidatePath(`/dashboard/incidents/${incident.id}`);
     return { success: true, data: incident };
-  } catch (error: any) {
-    console.error("Investigate incident error:", error);
-    return { success: false, error: error.message || "Kunne ikke utrede avvik" };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : (error as { message?: string })?.message;
+    return { success: false, error: message || "Could not save investigation" };
   }
 }
 
-// Lukk avvik (ISO 9001: Evaluere effektivitet)
-export async function closeIncident(input: any) {
+export async function closeIncident(input: Record<string, unknown>) {
   try {
     const { user, tenantId } = await getSessionContext();
     const validated = closeIncidentSchema.parse(input);
-    
-    // Sjekk at alle tiltak er fullført
-    const measures = await prisma.measure.findMany({
-      where: { incidentId: validated.id, tenantId },
+    const db = getAdminDb();
+
+    const { data: measures } = await db
+      .from("Measure")
+      .select("status")
+      .eq("incidentId", validated.id)
+      .eq("tenantId", tenantId);
+
+    const loop = evaluateIncidentCloseLoop({
+      measureStatuses: (measures ?? []).map((measure) => String(measure.status)),
+      noActionReason: validated.noActionReason,
     });
-    
-    const allMeasuresCompleted = measures.every(m => m.status === "DONE");
-    
-    if (measures.length > 0 && !allMeasuresCompleted) {
-      return {
-        success: false,
-        error: "Alle tiltak må være fullført før avviket kan lukkes",
-      };
+    if (loop.ok !== true) {
+      return { success: false, error: CLOSE_LOOP_MESSAGES[loop.code] };
     }
-    
-    const incident = await prisma.incident.update({
-      where: { id: validated.id, tenantId },
-      data: {
+
+    const { data: incident, error } = await db
+      .from("Incident")
+      .update({
         status: "CLOSED",
         closedBy: user.id,
-        closedAt: new Date(),
+        closedAt: new Date().toISOString(),
         effectivenessReview: validated.effectivenessReview,
-        lessonsLearned: validated.lessonsLearned,
+        lessonsLearned:
+          loop.path === "no_action"
+            ? [`No action: ${validated.noActionReason?.trim()}`, validated.lessonsLearned]
+                .filter(Boolean)
+                .join("\n\n")
+            : validated.lessonsLearned,
         measureEffectiveness: validated.measureEffectiveness,
         stage: IncidentStage.VERIFIED,
-        updatedAt: new Date(),
-      },
-    });
-    
+        updatedAt: new Date().toISOString(),
+      })
+      .eq("id", validated.id)
+      .eq("tenantId", tenantId)
+      .select("*")
+      .maybeSingle();
+
+    if (error || !incident) {
+      throw { code: "INCIDENT_CLOSE_FAILED", message: error?.message || "Could not close incident" };
+    }
+
     void (async () => {
       try {
-        await prisma.auditLog.create({
-          data: {
-            tenantId,
-            userId: user.id,
-            action: "INCIDENT_CLOSED",
-            resource: `Incident:${incident.id}`,
-            metadata: JSON.stringify({
-              title: incident.title,
-              effectivenessReview: validated.effectivenessReview,
-            }),
+        await insertAuditLog({
+          tenantId,
+          userId: user.id,
+          action: "INCIDENT_CLOSED",
+          resource: `Incident:${incident.id}`,
+          metadata: {
+            title: incident.title,
+            effectivenessReview: validated.effectivenessReview,
           },
         });
         const visConfig = await getTenantModuleVisibility(tenantId);
         const notifyRoles = getNotifyRolesForModule(visConfig, "incidents", ["ADMIN", "HMS", "LEDER"]);
         await notifyUsersByRoles(tenantId, notifyRoles, {
           type: "INCIDENT_CLOSED",
-          title: "Avvik lukket",
-          message: `${incident.type}: ${incident.title} er nå lukket`,
+          title: "Incident closed",
+          message: `${incident.type}: ${incident.title} is now closed`,
           link: `/dashboard/incidents/${incident.id}`,
         });
-      } catch (bgError) {
-        console.error("Background notification error:", bgError);
+      } catch {
+        // Notifications must not block closure
       }
     })();
 
     revalidatePath("/dashboard/incidents");
     revalidatePath(`/dashboard/incidents/${incident.id}`);
-
-    // HMS Intelligens-motor: oppdater score etter lukking
     onIncidentClosed(tenantId, incident.id).catch(() => {});
 
     return { success: true, data: incident };
-  } catch (error: any) {
-    console.error("Close incident error:", error);
-    return { success: false, error: error.message || "Kunne ikke lukke avvik" };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : (error as { message?: string })?.message;
+    return { success: false, error: message || "Could not close incident" };
   }
 }
 
-// Opprett avvik via filopplasting (eksternt/internt – minimalt skjema)
 export async function createUploadedIncident(formData: FormData) {
   try {
     const { user, tenantId } = await getSessionContext();
-
     const title = (formData.get("title") as string | null)?.trim() ?? "";
     const source = (formData.get("source") as string | null)?.trim() ?? "EXTERNAL";
     const file = formData.get("file") as File | null;
 
     if (!title || title.length < 3) {
-      return { success: false, error: "Tittel må være minst 3 tegn." };
+      return { success: false, error: "Title must be at least 3 characters." };
     }
     if (source !== "INTERNAL" && source !== "EXTERNAL") {
-      return { success: false, error: "Ugyldig kilde. Må være INTERNAL eller EXTERNAL." };
+      return { success: false, error: "Invalid source. Must be INTERNAL or EXTERNAL." };
     }
 
-    const avviksnummer = await generateSequenceNumber(
-      tenantId,
-      "AVVIK",
-      new Date().getFullYear()
-    );
-
-    const incident = await prisma.incident.create({
-      data: {
+    const avviksnummer = await generateSequenceNumber(tenantId, "AVVIK", new Date().getFullYear());
+    const now = new Date().toISOString();
+    const db = getAdminDb();
+    const { data: incident, error } = await db
+      .from("Incident")
+      .insert({
+        id: createId(),
         tenantId,
         avviksnummer,
         type: "AVVIK",
         title,
-        description: source === "EXTERNAL"
-          ? "Eksternt avvik – se vedlagt fil for detaljer."
-          : "Avvik opprettet via filopplasting.",
-        // Ikke vurdert – leder setter alvorlighetsgrad ved behandling
+        description:
+          source === "EXTERNAL"
+            ? "External record — see attached file for details."
+            : "Record created via file upload.",
         severity: null,
-        occurredAt: new Date(),
+        occurredAt: now,
         reportedBy: user.id,
         status: "OPEN",
         stage: IncidentStage.REPORTED,
         source,
-      },
-    });
+        accidentBookEntry: true,
+        updatedAt: now,
+      })
+      .select("*")
+      .maybeSingle();
+
+    if (error || !incident) {
+      throw { code: "INCIDENT_UPLOAD_FAILED", message: error?.message || "Could not create record" };
+    }
 
     if (file && file.size > 0) {
       const { getStorage, generateFileKey } = await import("@/lib/storage");
       const storage = getStorage();
       const fileKey = generateFileKey(tenantId, "incidents", file.name);
       await storage.upload(fileKey, file);
-      await prisma.attachment.create({
-        data: {
-          tenantId,
-          incidentId: incident.id,
-          fileKey,
-          name: file.name,
-          mime: file.type || "application/octet-stream",
-          size: file.size,
-        },
+      await db.from("Attachment").insert({
+        id: createId(),
+        tenantId,
+        incidentId: incident.id,
+        fileKey,
+        name: file.name,
+        mime: file.type || "application/octet-stream",
+        size: file.size,
       });
     }
 
     void (async () => {
       try {
-        await prisma.auditLog.create({
-          data: {
-            tenantId,
-            userId: user.id,
-            action: "INCIDENT_CREATED",
-            resource: `Incident:${incident.id}`,
-            metadata: JSON.stringify({
-              title: incident.title,
-              source,
-              uploadedFile: file?.name ?? null,
-            }),
+        await insertAuditLog({
+          tenantId,
+          userId: user.id,
+          action: "INCIDENT_CREATED",
+          resource: `Incident:${incident.id}`,
+          metadata: {
+            title: incident.title,
+            source,
+            uploadedFile: file?.name ?? null,
           },
         });
         const visConfig = await getTenantModuleVisibility(tenantId);
         const notifyRoles = getNotifyRolesForModule(visConfig, "incidents", ["ADMIN", "HMS", "LEDER"]);
         await notifyUsersByRoles(tenantId, notifyRoles, {
           type: "NEW_INCIDENT",
-          title: "Nytt avvik registrert",
-          message: `${source === "EXTERNAL" ? "Eksternt" : "Internt"} avvik: ${incident.title}`,
+          title: "New accident book entry",
+          message: `${source === "EXTERNAL" ? "External" : "Internal"} record: ${incident.title}`,
           link: `/dashboard/incidents/${incident.id}`,
         });
-      } catch (bgError) {
-        console.error("Background notification error:", bgError);
+      } catch {
+        // Notifications must not block the reporter
       }
     })();
 
     revalidatePath("/dashboard/incidents");
     return { success: true, data: incident };
-  } catch (error: any) {
-    console.error("Create uploaded incident error:", error);
-    return { success: false, error: error.message || "Kunne ikke opprette avvik" };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : (error as { message?: string })?.message;
+    return { success: false, error: message || "Could not create record" };
   }
 }
 
-// Slett avvik
 export async function deleteIncident(id: string) {
   try {
     const { user, tenantId } = await getSessionContext();
-    
-    const incident = await prisma.incident.findUnique({
-      where: { id, tenantId },
-    });
-    
+    const db = getAdminDb();
+
+    const { data: incident } = await db
+      .from("Incident")
+      .select("*")
+      .eq("id", id)
+      .eq("tenantId", tenantId)
+      .maybeSingle();
+
     if (!incident) {
-      return { success: false, error: "Avvik ikke funnet" };
+      return { success: false, error: "Incident not found" };
     }
-    
-    // Slett tilknyttede vedlegg fra storage
-    const attachments = await prisma.attachment.findMany({
-      where: { incidentId: id, tenantId },
-    });
-    
-    const storage = await import("@/lib/storage").then(m => m.getStorage());
-    for (const attachment of attachments) {
+
+    const { data: attachments } = await db
+      .from("Attachment")
+      .select("fileKey")
+      .eq("incidentId", id)
+      .eq("tenantId", tenantId);
+
+    const storage = await import("@/lib/storage").then((mod) => mod.getStorage());
+    for (const attachment of attachments ?? []) {
       await storage.delete(attachment.fileKey);
     }
-    
-    await prisma.incident.delete({
-      where: { id, tenantId },
+
+    await db.from("Attachment").delete().eq("incidentId", id).eq("tenantId", tenantId);
+    await db.from("Incident").delete().eq("id", id).eq("tenantId", tenantId);
+
+    await insertAuditLog({
+      tenantId,
+      userId: user.id,
+      action: "INCIDENT_DELETED",
+      resource: `Incident:${id}`,
+      metadata: { title: incident.title },
     });
-    
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "INCIDENT_DELETED",
-        resource: `Incident:${id}`,
-        metadata: JSON.stringify({ title: incident.title }),
-      },
-    });
-    
+
     revalidatePath("/dashboard/incidents");
     return { success: true };
-  } catch (error: any) {
-    console.error("Delete incident error:", error);
-    return { success: false, error: error.message || "Kunne ikke slette avvik" };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : (error as { message?: string })?.message;
+    return { success: false, error: message || "Could not delete incident" };
   }
 }
 
-// Få statistikk over avvik
 export async function getIncidentStats(_tenantId: string) {
   try {
     const { tenantId } = await getSessionContext();
-    
-    const incidents = await prisma.incident.findMany({
-      where: { tenantId },
-    });
-    
+    const { data: incidents } = await getAdminDb()
+      .from("Incident")
+      .select("status, type, severity, riddorReportable")
+      .eq("tenantId", tenantId);
+
+    const rows = incidents ?? [];
     const stats = {
-      total: incidents.length,
-      open: incidents.filter(i => i.status === "OPEN").length,
-      investigating: incidents.filter(i => i.status === "INVESTIGATING").length,
-      actionTaken: incidents.filter(i => i.status === "ACTION_TAKEN").length,
-      closed: incidents.filter(i => i.status === "CLOSED").length,
+      total: rows.length,
+      open: rows.filter((row) => row.status === "OPEN").length,
+      investigating: rows.filter((row) => row.status === "INVESTIGATING").length,
+      actionTaken: rows.filter((row) => row.status === "ACTION_TAKEN").length,
+      closed: rows.filter((row) => row.status === "CLOSED").length,
+      riddor: rows.filter((row) => row.riddorReportable === true).length,
       byType: {
-        avvik: incidents.filter(i => i.type === "AVVIK").length,
-        nesten: incidents.filter(i => i.type === "NESTEN").length,
-        skade: incidents.filter(i => i.type === "SKADE").length,
-        miljo: incidents.filter(i => i.type === "MILJO").length,
-        kvalitet: incidents.filter(i => i.type === "KVALITET").length,
+        ulykke: rows.filter((row) => row.type === "ULYKKE").length,
+        nesten: rows.filter((row) => row.type === "NESTEN").length,
+        sykdom: rows.filter((row) => row.type === "YRKESSYKDOM").length,
+        miljo: rows.filter((row) => row.type === "MILJO").length,
+        kvalitet: rows.filter((row) => row.type === "KVALITET").length,
       },
       bySeverity: {
-        critical: incidents.filter(i => (i.severity ?? 0) >= 5).length,
-        high: incidents.filter(i => i.severity === 4).length,
-        medium: incidents.filter(i => i.severity === 3).length,
-        low: incidents.filter(i => i.severity !== null && i.severity <= 2).length,
-        notAssessed: incidents.filter(i => i.severity === null).length,
+        critical: rows.filter((row) => (row.severity ?? 0) >= 5).length,
+        high: rows.filter((row) => row.severity === 4).length,
+        medium: rows.filter((row) => row.severity === 3).length,
+        low: rows.filter((row) => row.severity !== null && row.severity <= 2).length,
+        notAssessed: rows.filter((row) => row.severity === null).length,
       },
     };
-    
+
     return { success: true, data: stats };
-  } catch (error: any) {
-    console.error("Get incident stats error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente statistikk" };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : (error as { message?: string })?.message;
+    return { success: false, error: message || "Could not load statistics" };
   }
 }
-

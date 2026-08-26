@@ -1,6 +1,13 @@
-import { prisma } from "@/lib/db";
 import { hasTenantFeature } from "@/lib/tenant-features";
-import { createNotification } from "@/server/actions/notification.actions";
+import { publishNotification } from "@/lib/redis-pubsub";
+import {
+  findExistingTrainingAlert,
+  insertTrainingAlertNotification,
+  loadPeopleByIds,
+  loadRequiredTrainingsExpiringBy,
+  loadTenantsForHealthcareAlerts,
+  loadTrainingAlertRecipients,
+} from "@/server/queries/training.queries";
 
 type AlertRunResult = {
   tenantId: string;
@@ -21,20 +28,7 @@ export async function runHealthcareTrainingExpiryAlerts(options?: {
   const dayStart = new Date(now);
   dayStart.setHours(0, 0, 0, 0);
 
-  const tenantFilter = options?.tenantId
-    ? { id: options.tenantId }
-    : { status: "ACTIVE" as const };
-
-  const tenants = await prisma.tenant.findMany({
-    where: tenantFilter,
-    select: {
-      id: true,
-      name: true,
-      industry: true,
-      status: true,
-    },
-  });
-
+  const tenants = await loadTenantsForHealthcareAlerts(options?.tenantId);
   const healthcareTenants = tenants.filter((tenant) =>
     hasTenantFeature(tenant.industry, "helseforetak"),
   );
@@ -42,59 +36,22 @@ export async function runHealthcareTrainingExpiryAlerts(options?: {
   const results: AlertRunResult[] = [];
 
   for (const tenant of healthcareTenants) {
-    const trainings = await prisma.training.findMany({
-      where: {
-        tenantId: tenant.id,
-        isRequired: true,
-        validUntil: {
-          lte: in30Days,
-        },
-      },
-      orderBy: {
-        validUntil: "asc",
-      },
-      take: 200,
-    });
-
+    const trainings = await loadRequiredTrainingsExpiringBy(tenant.id, in30Days);
     if (trainings.length === 0) {
-      results.push({
-        tenantId: tenant.id,
-        tenantName: tenant.name,
-        sent: 0,
-      });
+      results.push({ tenantId: tenant.id, tenantName: tenant.name, sent: 0 });
       continue;
     }
 
-    const recipients = await prisma.userTenant.findMany({
-      where: {
-        tenantId: tenant.id,
-        role: {
-          in: ["ADMIN", "HMS", "LEDER"],
-        },
-      },
-      select: { userId: true },
-    });
-
-    let tenantSent = 0;
-    const employeeIds = Array.from(new Set(trainings.map((training) => training.userId)));
-    const employees = await prisma.user.findMany({
-      where: {
-        id: {
-          in: employeeIds,
-        },
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-      },
-    });
+    const recipients = (await loadTrainingAlertRecipients(tenant.id)).filter(
+      (recipient) => recipient.notifyTraining,
+    );
+    const employeeIds = [...new Set(trainings.map((training) => training.userId))];
+    const employees = await loadPeopleByIds(employeeIds);
     const employeeById = new Map(employees.map((employee) => [employee.id, employee]));
 
+    let tenantSent = 0;
     for (const training of trainings) {
-      if (!training.validUntil) {
-        continue;
-      }
+      if (!training.validUntil) continue;
 
       const validUntil = new Date(training.validUntil);
       const daysUntilExpiry = Math.ceil(
@@ -102,36 +59,26 @@ export async function runHealthcareTrainingExpiryAlerts(options?: {
       );
       const isExpired = daysUntilExpiry <= 0;
       const type = isExpired ? "TRAINING_EXPIRED" : "TRAINING_DUE";
-      const title = isExpired
-        ? "Kompetanse utløpt (helse)"
-        : "Kompetanse utløper snart (helse)";
+      const title = isExpired ? "Competence expired (healthcare)" : "Competence expiring soon (healthcare)";
       const employee = employeeById.get(training.userId);
-      const employeeName = employee?.name || employee?.email || "Ukjent ansatt";
+      const employeeName = employee?.name || employee?.email || "Unknown employee";
       const message = isExpired
-        ? `${training.title} for ${employeeName} er utløpt og må fornyes.`
-        : `${training.title} for ${employeeName} utløper om ${daysUntilExpiry} dager.`;
+        ? `${training.title} for ${employeeName} has expired and must be renewed.`
+        : `${training.title} for ${employeeName} expires in ${daysUntilExpiry} days.`;
       const link = `/dashboard/training?trainingId=${training.id}`;
 
       for (const recipient of recipients) {
-        const existing = await prisma.notification.findFirst({
-          where: {
-            tenantId: tenant.id,
-            userId: recipient.userId,
-            type,
-            title,
-            link,
-            createdAt: {
-              gte: dayStart,
-            },
-          },
-          select: { id: true },
+        const exists = await findExistingTrainingAlert({
+          tenantId: tenant.id,
+          userId: recipient.userId,
+          type,
+          title,
+          link,
+          createdSince: dayStart,
         });
+        if (exists) continue;
 
-        if (existing) {
-          continue;
-        }
-
-        const created = await createNotification({
+        const created = await insertTrainingAlertNotification({
           tenantId: tenant.id,
           userId: recipient.userId,
           type,
@@ -139,18 +86,25 @@ export async function runHealthcareTrainingExpiryAlerts(options?: {
           message,
           link,
         });
-
-        if (created.success) {
-          tenantSent += 1;
-        }
+        await publishNotification(
+          recipient.userId,
+          {
+            id: created.id,
+            tenantId: tenant.id,
+            userId: recipient.userId,
+            type,
+            title,
+            message,
+            link,
+            isRead: false,
+          },
+          tenant.id,
+        );
+        tenantSent += 1;
       }
     }
 
-    results.push({
-      tenantId: tenant.id,
-      tenantName: tenant.name,
-      sent: tenantSent,
-    });
+    results.push({ tenantId: tenant.id, tenantName: tenant.name, sent: tenantSent });
   }
 
   return {
@@ -159,4 +113,3 @@ export async function runHealthcareTrainingExpiryAlerts(options?: {
     results,
   };
 }
-

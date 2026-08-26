@@ -1,39 +1,20 @@
 "use server";
 
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { getAuthContext } from "@/lib/server-authorization";
+import { createId } from "@/lib/ids";
 import { revalidatePath } from "next/cache";
 import type { Role } from "@prisma/client";
-import { getRequiredTenantContext } from "@/lib/tenant-context";
 
 async function getSessionContext() {
-  const tenantContext = await getRequiredTenantContext().catch(() => null);
-  if (!tenantContext) {
-    return { error: "Ikke autentisert" };
+  const auth = await getAuthContext();
+  if (!auth) {
+    return { error: "Not signed in" };
   }
-
-  const user = await prisma.user.findUnique({
-    where: { id: tenantContext.userId },
-    include: {
-      tenants: { take: 1 },
-    },
-  });
-
-  if (!user || user.tenants.length === 0) {
-    return { error: "Ingen tenant funnet" };
+  if (auth.role !== "ADMIN") {
+    return { error: "Only administrators can change Microsoft 365 sign-in" };
   }
-
-  const membership = user.tenants.find((tenant) => tenant.tenantId === tenantContext.tenantId);
-  if (!membership) {
-    return { error: "Ingen tenant funnet" };
-  }
-  const tenantId = membership.tenantId;
-  const role = membership.role;
-
-  if (role !== "ADMIN") {
-    return { error: "Kun administratorer kan endre Azure AD-innstillinger" };
-  }
-
-  return { user, tenantId, role };
+  return { userId: auth.userId, tenantId: auth.tenantId, role: auth.role };
 }
 
 const allowedRoles: Role[] = ["ADMIN", "HMS", "LEDER", "VERNEOMBUD", "ANSATT", "BHT", "REVISOR"];
@@ -59,7 +40,7 @@ export async function updateAzureAdSettings(data: {
     if (data.azureAdEnabled && !data.azureAdDomain) {
       return {
         success: false,
-        error: "E-postdomene er påkrevd for å aktivere SSO",
+        error: "Email domain is required to turn on Microsoft sign-in",
       };
     }
 
@@ -68,7 +49,7 @@ export async function updateAzureAdSettings(data: {
       if (!domainRegex.test(data.azureAdDomain)) {
         return {
           success: false,
-          error: "Ugyldig domene-format. Eksempel: bedrift.no (uten @)",
+          error: "Invalid domain. Example: company.co.uk (no @)",
         };
       }
     }
@@ -76,18 +57,22 @@ export async function updateAzureAdSettings(data: {
     if (data.azureAdAutoRole && !allowedRoles.includes(data.azureAdAutoRole as Role)) {
       return {
         success: false,
-        error: "Ugyldig rolle for automatisk tildeling",
+        error: "Invalid default role",
       };
     }
 
-    await prisma.tenant.update({
-      where: { id: tenantId },
-      data: {
+    const { error } = await getAdminDb()
+      .from("Tenant")
+      .update({
         azureAdEnabled: data.azureAdEnabled,
         azureAdDomain: data.azureAdDomain?.toLowerCase(),
         azureAdAutoRole: data.azureAdAutoRole ? (data.azureAdAutoRole as Role) : null,
-      },
-    });
+        updatedAt: new Date().toISOString(),
+      })
+      .eq("id", tenantId);
+    if (error) {
+      throw { code: "TENANT_UPDATE_FAILED", message: error.message };
+    }
 
     revalidatePath("/dashboard/settings");
     
@@ -96,7 +81,7 @@ export async function updateAzureAdSettings(data: {
     console.error("Error updating Azure AD settings:", error);
     return {
       success: false,
-      error: "Kunne ikke oppdatere Microsoft SSO-innstillinger",
+      error: "Could not save Microsoft 365 settings",
     };
   }
 }
@@ -116,16 +101,11 @@ export async function syncAzureAdUsers() {
     const { tenantId } = context;
 
     // Hent tenant med Azure AD konfigurasjon
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: {
-        id: true,
-        azureAdTenantId: true,
-        azureAdEnabled: true,
-        azureAdDomain: true,
-        azureAdAutoRole: true,
-      },
-    });
+    const { data: tenant } = await getAdminDb()
+      .from("Tenant")
+      .select("id, azureAdTenantId, azureAdEnabled, azureAdDomain, azureAdAutoRole")
+      .eq("id", tenantId)
+      .maybeSingle();
 
     if (!tenant?.azureAdEnabled || !tenant.azureAdTenantId) {
       return {
@@ -157,66 +137,80 @@ export async function syncAzureAdUsers() {
       if (!email) continue;
 
       // Sjekk om bruker allerede eksisterer
-      const existingUser = await prisma.user.findUnique({
-        where: { email: email.toLowerCase() },
-        include: {
-          tenants: {
-            where: { tenantId: tenant.id },
-          },
-        },
-      });
+      const { data: existingUser } = await getAdminDb()
+        .from("User")
+        .select("id, name")
+        .eq("email", email.toLowerCase())
+        .maybeSingle();
 
       if (existingUser) {
-        // Oppdater eksisterende bruker
-        if (existingUser.tenants.length === 0) {
-          // Bruker eksisterer, men ikke i denne tenanten - legg til
-          await prisma.userTenant.create({
-            data: {
-              userId: existingUser.id,
-              tenantId: tenant.id,
-              role: (tenant.azureAdAutoRole as Role) || "ANSATT",
-              department: azureUser.department || undefined,
-            },
+        const { data: membership } = await getAdminDb()
+          .from("UserTenant")
+          .select("id")
+          .eq("userId", existingUser.id)
+          .eq("tenantId", tenant.id)
+          .maybeSingle();
+
+        if (!membership) {
+          const { error } = await getAdminDb().from("UserTenant").insert({
+            id: createId(),
+            userId: existingUser.id,
+            tenantId: tenant.id,
+            role: (tenant.azureAdAutoRole as Role) || "ANSATT",
+            department: azureUser.department || undefined,
+            updatedAt: new Date().toISOString(),
           });
-          createdCount++;
-        } else {
-          // Bruker eksisterer allerede i tenant - oppdater navn hvis endret
-          if (azureUser.displayName && existingUser.name !== azureUser.displayName) {
-            await prisma.user.update({
-              where: { id: existingUser.id },
-              data: { name: azureUser.displayName },
-            });
-            updatedCount++;
+          if (error) {
+            throw { code: "MEMBERSHIP_CREATE_FAILED", message: error.message };
           }
+          createdCount++;
+        } else if (azureUser.displayName && existingUser.name !== azureUser.displayName) {
+          const { error } = await getAdminDb()
+            .from("User")
+            .update({ name: azureUser.displayName, updatedAt: new Date().toISOString() })
+            .eq("id", existingUser.id);
+          if (error) {
+            throw { code: "USER_UPDATE_FAILED", message: error.message };
+          }
+          updatedCount++;
         }
       } else {
-        // Opprett ny bruker
-        await prisma.user.create({
-          data: {
-            email: email.toLowerCase(),
-            name: azureUser.displayName,
-            emailVerified: new Date(), // Azure AD brukere er automatisk verifisert
-            phone: azureUser.mobilePhone || azureUser.businessPhones?.[0] || undefined,
-            tenants: {
-              create: {
-                tenantId: tenant.id,
-                role: (tenant.azureAdAutoRole as Role) || "ANSATT",
-                department: azureUser.department || undefined,
-              },
-            },
-          },
+        const userId = createId();
+        const stamp = new Date().toISOString();
+        const { error: userError } = await getAdminDb().from("User").insert({
+          id: userId,
+          email: email.toLowerCase(),
+          name: azureUser.displayName,
+          emailVerified: stamp,
+          phone: azureUser.mobilePhone || azureUser.businessPhones?.[0] || undefined,
+          updatedAt: stamp,
         });
+        if (userError) {
+          throw { code: "USER_CREATE_FAILED", message: userError.message };
+        }
+        const { error: membershipError } = await getAdminDb().from("UserTenant").insert({
+          id: createId(),
+          userId,
+          tenantId: tenant.id,
+          role: (tenant.azureAdAutoRole as Role) || "ANSATT",
+          department: azureUser.department || undefined,
+          updatedAt: stamp,
+        });
+        if (membershipError) {
+          throw { code: "MEMBERSHIP_CREATE_FAILED", message: membershipError.message };
+        }
         createdCount++;
       }
     }
 
     // Oppdater sist synkronisert
-    await prisma.tenant.update({
-      where: { id: tenantId },
-      data: {
-        azureAdLastSync: new Date(),
-      },
-    });
+    const { error } = await getAdminDb()
+      .from("Tenant")
+      .update({ azureAdLastSync: new Date().toISOString(), updatedAt: new Date().toISOString() })
+      .eq("id", tenantId);
+    if (error) {
+      throw { code: "TENANT_UPDATE_FAILED", message: error.message };
+    }
 
     revalidatePath("/dashboard/settings");
 
@@ -262,18 +256,12 @@ export async function validateAzureAdLogin(
     console.log(`🔍 Validating SSO: UPN domain="${domain}", primaryEmail="${primaryEmail || upnOrEmail}"`);
 
     // Finn tenant med matching domene og aktivert Azure AD
-    const tenant = await prisma.tenant.findFirst({
-      where: {
-        azureAdEnabled: true,
-        azureAdDomain: domain.toLowerCase(),
-      },
-      select: {
-        id: true,
-        azureAdAutoRole: true,
-        status: true,
-        name: true,
-      },
-    });
+    const { data: tenant } = await getAdminDb()
+      .from("Tenant")
+      .select("id, azureAdAutoRole, status, name")
+      .eq("azureAdEnabled", true)
+      .eq("azureAdDomain", domain.toLowerCase())
+      .maybeSingle();
 
     if (!tenant) {
       console.log(`❌ No tenant found for domain: ${domain}`);
@@ -298,19 +286,19 @@ export async function validateAzureAdLogin(
 
     // Sjekk om bruker allerede eksisterer (med HVILKEN SOM HELST e-post)
     // Dette håndterer tilfeller hvor bruker har byttet fra gmail.com til bedrift.no
-    const existingUser = await prisma.user.findUnique({
-      where: { email: userEmail },
-      include: {
-        tenants: {
-          where: {
-            tenantId: tenant.id,
-          },
-        },
-      },
-    });
+    const { data: existingUser } = await getAdminDb()
+      .from("User")
+      .select("id")
+      .eq("email", userEmail)
+      .maybeSingle();
 
-    if (existingUser && existingUser.tenants.length > 0) {
-      const tenantMembership = existingUser.tenants.find((membership) => membership.tenantId === tenant.id);
+    if (existingUser) {
+      const { data: tenantMembership } = await getAdminDb()
+        .from("UserTenant")
+        .select("tenantId, role")
+        .eq("userId", existingUser.id)
+        .eq("tenantId", tenant.id)
+        .maybeSingle();
       if (!tenantMembership) {
         return {
           allowed: true,

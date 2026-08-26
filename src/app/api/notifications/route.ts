@@ -1,32 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-
-async function resolveTenantId(userId: string, sessionTenantId?: string | null) {
-  if (sessionTenantId) {
-    const membership = await prisma.userTenant.findUnique({
-      where: {
-        userId_tenantId: {
-          userId,
-          tenantId: sessionTenantId,
-        },
-      },
-      select: { tenantId: true },
-    });
-
-    if (membership) {
-      return membership.tenantId;
-    }
-  }
-
-  const fallbackMembership = await prisma.userTenant.findFirst({
-    where: { userId },
-    select: { tenantId: true },
-  });
-
-  return fallbackMembership?.tenantId ?? null;
-}
+import { getAdminDb } from "@/lib/supabase/admin";
+import { resolveTenantId } from "@/lib/membership";
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,39 +21,43 @@ export async function GET(request: NextRequest) {
 
     const tenantId = await resolveTenantId(session.user.id, session.user.tenantId);
     if (!tenantId) {
-      return NextResponse.json(
-        { error: "No tenant found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "No tenant found" }, { status: 404 });
     }
 
-    const where = {
-      userId: session.user.id,
-      tenantId,
-      ...(unreadOnly && { isRead: false }),
-    };
+    const db = getAdminDb();
+    let query = db
+      .from("Notification")
+      .select("*")
+      .eq("userId", session.user.id)
+      .eq("tenantId", tenantId)
+      .order("createdAt", { ascending: false })
+      .limit(limit);
 
-    const notifications = await prisma.notification.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      take: limit,
-    });
+    if (unreadOnly) {
+      query = query.eq("isRead", false);
+    }
 
-    const unreadCount = await prisma.notification.count({
-      where: {
-        userId: session.user.id,
-        tenantId,
-        isRead: false,
-      },
-    });
+    const { data: notifications, error } = await query;
+    if (error) {
+      throw { code: "NOTIFICATION_LOOKUP_FAILED", message: error.message };
+    }
 
-    return NextResponse.json({ notifications, unreadCount });
-  } catch (error: any) {
+    const { count, error: countError } = await db
+      .from("Notification")
+      .select("id", { count: "exact", head: true })
+      .eq("userId", session.user.id)
+      .eq("tenantId", tenantId)
+      .eq("isRead", false);
+
+    if (countError) {
+      throw { code: "NOTIFICATION_COUNT_FAILED", message: countError.message };
+    }
+
+    return NextResponse.json({ notifications: notifications ?? [], unreadCount: count ?? 0 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : (error as { message?: string })?.message;
     console.error("GET notifications error:", error);
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: message || "Internal server error" }, { status: 500 });
   }
 }
 
@@ -94,67 +74,48 @@ export async function PATCH(request: NextRequest) {
 
     const tenantId = await resolveTenantId(session.user.id, session.user.tenantId);
     if (!tenantId) {
-      return NextResponse.json(
-        { error: "No tenant found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "No tenant found" }, { status: 404 });
     }
 
+    const db = getAdminDb();
+
     if (markAll) {
-      // Merk alle som lest
-      await prisma.notification.updateMany({
-        where: {
-          userId: session.user.id,
-          tenantId,
-          isRead: false,
-        },
-        data: {
-          isRead: true,
-          readAt: new Date(),
-        },
-      });
+      await db
+        .from("Notification")
+        .update({ isRead: true, readAt: new Date().toISOString() })
+        .eq("userId", session.user.id)
+        .eq("tenantId", tenantId)
+        .eq("isRead", false);
 
       return NextResponse.json({ success: true });
     }
 
     if (notificationId) {
-      // Merk enkelt varsling som lest
-      const notification = await prisma.notification.findFirst({
-        where: {
-          id: notificationId,
-          userId: session.user.id,
-          tenantId,
-        },
-      });
+      const { data: notification } = await db
+        .from("Notification")
+        .select("id")
+        .eq("id", notificationId)
+        .eq("userId", session.user.id)
+        .eq("tenantId", tenantId)
+        .maybeSingle();
 
       if (!notification) {
-        return NextResponse.json(
-          { error: "Notification not found" },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: "Notification not found" }, { status: 404 });
       }
 
-      await prisma.notification.update({
-        where: { id: notificationId },
-        data: {
-          isRead: true,
-          readAt: new Date(),
-        },
-      });
+      await db
+        .from("Notification")
+        .update({ isRead: true, readAt: new Date().toISOString() })
+        .eq("id", notificationId);
 
       return NextResponse.json({ success: true });
     }
 
-    return NextResponse.json(
-      { error: "Invalid request" },
-      { status: 400 }
-    );
-  } catch (error: any) {
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : (error as { message?: string })?.message;
     console.error("PATCH notifications error:", error);
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: message || "Internal server error" }, { status: 500 });
   }
 }
 
@@ -170,46 +131,33 @@ export async function DELETE(request: NextRequest) {
     const notificationId = searchParams.get("id");
 
     if (!notificationId) {
-      return NextResponse.json(
-        { error: "Missing notification ID" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing notification ID" }, { status: 400 });
     }
 
     const tenantId = await resolveTenantId(session.user.id, session.user.tenantId);
     if (!tenantId) {
-      return NextResponse.json(
-        { error: "No tenant found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "No tenant found" }, { status: 404 });
     }
 
-    const notification = await prisma.notification.findFirst({
-      where: {
-        id: notificationId,
-        userId: session.user.id,
-        tenantId,
-      },
-    });
+    const db = getAdminDb();
+    const { data: notification } = await db
+      .from("Notification")
+      .select("id")
+      .eq("id", notificationId)
+      .eq("userId", session.user.id)
+      .eq("tenantId", tenantId)
+      .maybeSingle();
 
     if (!notification) {
-      return NextResponse.json(
-        { error: "Notification not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Notification not found" }, { status: 404 });
     }
 
-    await prisma.notification.delete({
-      where: { id: notificationId },
-    });
+    await db.from("Notification").delete().eq("id", notificationId);
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : (error as { message?: string })?.message;
     console.error("DELETE notification error:", error);
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: message || "Internal server error" }, { status: 500 });
   }
 }
-

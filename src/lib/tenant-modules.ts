@@ -1,13 +1,13 @@
 export const CORE_MODULE_KEYS = [
   "dashboard",
   "hmsHandbok",
+  "documents",
   "incidents",
   "risks",
-  "routines",
   "inspections",
   "training",
+  "actions",
   "fireDrills",
-  "annualHmsPlan",
   "settings",
 ] as const;
 
@@ -21,14 +21,6 @@ export const ADDON_MODULE_KEYS = [
   "hmsTavle",
   "audits",
   "environment",
-  "meetings",
-  "whistleblowing",
-  "timeRegistration",
-  "ikMat",
-  "aktivitetssikkerhet",
-  "transport",
-  "bhtNattarbeid",
-  "electro",
   "coshh",
   "cdm",
   "permitToWork",
@@ -42,29 +34,21 @@ const CORE_SET = new Set<string>(CORE_MODULE_KEYS);
 export const NAV_PERMISSION_TO_MODULE_KEY: Record<string, ModuleKey> = {
   dashboard: "dashboard",
   hmsHandbok: "hmsHandbok",
+  documents: "documents",
   incidents: "incidents",
-  hseStatistics: "incidents",
   risks: "risks",
-  routines: "routines",
   inspections: "inspections",
   training: "training",
-  annualHmsPlan: "annualHmsPlan",
+  actions: "actions",
   settings: "settings",
   sja: "sja",
   chemicals: "chemicals",
-  exposureRegister: "exposureRegister",
+  exposureRegister: "chemicals",
   constructionCompliance: "constructionCompliance",
   hmsTavle: "hmsTavle",
   audits: "audits",
   managementReviews: "audits",
   environment: "environment",
-  meetings: "meetings",
-  whistleblowing: "whistleblowing",
-  timeRegistration: "timeRegistration",
-  ikMat: "ikMat",
-  aktivitetssikkerhet: "aktivitetssikkerhet",
-  transport: "transport",
-  bhtNattarbeid: "bhtNattarbeid",
 };
 
 export function isCoreModule(moduleKey: string): boolean {
@@ -79,5 +63,19 @@ export function tenantHasModule(
     return true;
   }
   const enabled = new Set(enabledKeys);
+  if (moduleKey === "chemicals") {
+    return enabled.has("chemicals") || enabled.has("coshh");
+  }
+  if (moduleKey === "constructionCompliance") {
+    return enabled.has("constructionCompliance") || enabled.has("cdm");
+  }
   return enabled.has(moduleKey);
+}
+
+/** Projects live under CDM 2015 — not core HSEQ. */
+export function tenantHasProjectsAddon(enabledKeys: Iterable<string>): boolean {
+  return (
+    tenantHasModule(enabledKeys, "constructionCompliance") ||
+    tenantHasModule(enabledKeys, "cdm")
+  );
 }

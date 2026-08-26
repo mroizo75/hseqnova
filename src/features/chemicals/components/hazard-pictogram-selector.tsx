@@ -70,11 +70,11 @@ export function HazardPictogramSelector({ defaultValue, onChange }: HazardPictog
 
       {selected.length > 0 ? (
         <p className="text-xs text-orange-700 font-medium">
-          {selected.length} faresymbol{selected.length !== 1 ? "er" : ""} valgt
+          {selected.length} hazard pictogram{selected.length === 1 ? "" : "s"} selected
         </p>
       ) : (
         <p className="text-xs text-muted-foreground">
-          Klikk for å velge faresymboler fra sikkerhetsdatabladet
+          Click to select pictograms from the safety data sheet
         </p>
       )}
     </div>

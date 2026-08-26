@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { generateFileKey, getStorage } from "@/lib/storage";
+import { insertProjectAttachment, loadProjectById } from "@/server/queries/projects.queries";
 
 const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 
@@ -16,20 +16,17 @@ export async function POST(
 
     if (!session?.user || !tenantId) {
       return NextResponse.json(
-        { code: "UNAUTHORIZED", message: "Ikke autorisert" },
+        { code: "UNAUTHORIZED", message: "Unauthorised" },
         { status: 401 }
       );
     }
 
     const { id: projectId } = await params;
-    const project = await prisma.project.findUnique({
-      where: { id: projectId, tenantId },
-      select: { id: true },
-    });
+    const project = await loadProjectById(projectId, tenantId);
 
     if (!project) {
       return NextResponse.json(
-        { code: "PROJECT_NOT_FOUND", message: "Prosjekt ikke funnet" },
+        { code: "PROJECT_NOT_FOUND", message: "Project not found" },
         { status: 404 }
       );
     }
@@ -39,7 +36,7 @@ export async function POST(
 
     if (files.length === 0) {
       return NextResponse.json(
-        { code: "NO_FILES", message: "Ingen filer ble sendt med" },
+        { code: "NO_FILES", message: "No files were sent" },
         { status: 400 }
       );
     }
@@ -56,7 +53,7 @@ export async function POST(
         return NextResponse.json(
           {
             code: "FILE_TOO_LARGE",
-            message: `Filen "${file.name}" overskrider maksgrensen på 50 MB`,
+            message: `The file "${file.name}" exceeds the 50 MB limit`,
           },
           { status: 400 }
         );
@@ -65,27 +62,15 @@ export async function POST(
       const fileKey = generateFileKey(tenantId, `projects/${projectId}/attachments`, file.name);
       await storage.upload(fileKey, file);
       try {
-        const attachment = await prisma.attachment.create({
-          data: {
-            tenantId,
-            // Lovforankring: AML § 3-1 + Internkontrollforskriften § 5 (dokumentert HMS-oppfolging).
-            objectType: "PROJECT",
-            objectId: projectId,
-            fileKey,
-            name: file.name,
-            mime: file.type || "application/octet-stream",
-            size: file.size,
-          },
-          select: {
-            id: true,
-            fileKey: true,
-            name: true,
-            mime: true,
-            size: true,
-            createdAt: true,
-          },
+        // HSWA 1974 s.2 — documented organisation and arrangements for the site.
+        const attachment = await insertProjectAttachment({
+          tenantId,
+          projectId,
+          fileKey,
+          name: file.name,
+          mime: file.type || "application/octet-stream",
+          size: file.size,
         });
-
         created.push(attachment);
       } catch (error) {
         await storage.delete(fileKey);
@@ -95,14 +80,14 @@ export async function POST(
 
     return NextResponse.json({
       code: "OK",
-      message: "Vedlegg lastet opp",
+      message: "Attachments uploaded",
       attachments: created,
     });
   } catch (error: any) {
     return NextResponse.json(
       {
         code: "UPLOAD_FAILED",
-        message: "Kunne ikke laste opp vedlegg",
+        message: "Could not upload attachments",
         details: error?.message,
       },
       { status: 500 }

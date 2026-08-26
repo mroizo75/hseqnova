@@ -76,17 +76,17 @@ function LiveClock({ large = false }: { large?: boolean }) {
     return (
       <div className="text-right">
         <div className="font-mono tabular-nums text-4xl font-bold text-white leading-none">
-          {time.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" })}
+          {time.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
         </div>
         <div className="text-blue-200 text-sm mt-1 capitalize">
-          {time.toLocaleDateString("nb-NO", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          {time.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
         </div>
       </div>
     );
   }
   return (
     <span className="font-mono tabular-nums">
-      {time.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" })}
+      {time.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
     </span>
   );
 }
@@ -170,7 +170,7 @@ function TavleLogo({ logoUrl, name }: { logoUrl?: string | null; name?: string }
         <Shield className="h-6 w-6 text-white" />
       </div>
       <span className="text-white font-bold text-sm leading-tight">
-        DIGITAL<br /><span className="text-blue-300 font-normal">HMS Tavle</span>
+        DIGITAL<br /><span className="text-blue-300 font-normal">Safety board</span>
       </span>
     </div>
   );
@@ -218,17 +218,17 @@ function FixedSidebar({
       {/* ── Nødetater – alltid øverst ─────────────────────────── */}
       <div className="bg-red-900/90 rounded-xl border border-red-700 p-3">
         <p className="text-red-300 text-[10px] font-bold uppercase tracking-widest mb-2">
-          🚨 Nødetater
+          🚨 Emergency
         </p>
         <div className="space-y-1.5">
           {[
-            { label: "Brann", nr: "110", icon: Flame, color: "text-orange-400" },
-            { label: "Ambulanse", nr: "113", icon: Siren, color: "text-green-400" },
-            { label: "Politi", nr: "112", icon: ShieldAlert, color: "text-blue-400" },
+            { label: "Fire", nr: "999", icon: Flame, color: "text-orange-400" },
+            { label: "Ambulance", nr: "999", icon: Siren, color: "text-green-400" },
+            { label: "Police", nr: "999", icon: ShieldAlert, color: "text-blue-400" },
           ].map((e) => {
             const Icon = e.icon;
             return (
-              <a key={e.nr} href={`tel:${e.nr}`} className="flex items-center justify-between group">
+              <a key={e.label} href={`tel:${e.nr}`} className="flex items-center justify-between group">
                 <div className="flex items-center gap-2">
                   <Icon className={cn("h-3.5 w-3.5", e.color)} />
                   <span className="text-white text-xs">{e.label}</span>
@@ -245,25 +245,25 @@ function FixedSidebar({
       {/* ── SHA-plan status ───────────────────────────────────── */}
       <div className="bg-white/10 rounded-xl p-3 border border-white/20">
         <p className="text-blue-200 text-[10px] font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1">
-          <ClipboardList className="h-3 w-3" /> SHA-plan
+          <ClipboardList className="h-3 w-3" /> Construction phase plan
         </p>
         {shaStatus === "godkjent" ? (
           <div className="flex items-center gap-1.5">
             <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0" />
-            <span className="text-green-300 text-xs font-semibold leading-tight">Godkjent</span>
+            <span className="text-green-300 text-xs font-semibold leading-tight">Approved</span>
           </div>
         ) : shaStatus === "under-arbeid" ? (
           <div className="flex items-center gap-1.5">
             <AlertTriangle className="h-4 w-4 text-yellow-400 shrink-0" />
-            <span className="text-yellow-300 text-xs font-semibold leading-tight">Under arbeid</span>
+            <span className="text-yellow-300 text-xs font-semibold leading-tight">In progress</span>
           </div>
         ) : (
-          <span className="text-white/40 text-xs italic">Ikke satt</span>
+          <span className="text-white/40 text-xs italic">Not set</span>
         )}
         {shaCfg.pdfUrl && (
           <a href={shaCfg.pdfUrl} target="_blank" rel="noopener noreferrer"
             className="mt-2 flex items-center gap-1.5 text-blue-300 text-xs hover:text-white transition-colors border border-blue-500/30 rounded-lg px-2 py-1.5 bg-blue-900/20">
-            <FileText className="h-3.5 w-3.5 shrink-0" /> Åpne SHA-plan (PDF)
+            <FileText className="h-3.5 w-3.5 shrink-0" /> Open CPP (PDF)
           </a>
         )}
       </div>
@@ -272,10 +272,10 @@ function FixedSidebar({
       <div className="bg-white/10 rounded-xl p-3 border border-white/20">
         <p className="text-blue-200 text-[10px] font-bold uppercase tracking-widest mb-2 flex items-center gap-1.5">
           <Phone className="h-3 w-3" />
-          Kontaktpersoner
+          Contacts
         </p>
         {contacts.length === 0 ? (
-          <p className="text-white/50 text-xs italic">Ingen kontakter registrert</p>
+          <p className="text-white/50 text-xs italic">No contacts registered</p>
         ) : (
           <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
             {contacts.map((c: any, i: number) => (
@@ -307,6 +307,21 @@ function FixedSidebar({
 const SNARVEI_ICONS: Record<string, LucideIcon> = {
   AlertTriangle, Shield, ClipboardList, Search, UserCheck,
   FolderOpen, FlaskConical, GraduationCap, Gauge, Wrench, Clock, Bell,
+};
+
+const SNARVEI_LABELS_UK: Record<string, string> = {
+  avvik: "Incident",
+  sja: "RAMS",
+  sha_plan: "Construction phase plan",
+  vernerunde: "Workplace inspection",
+  innsjekk: "Check-in",
+  dokumenter: "Documents",
+  stoffkartotek: "COSHH",
+  opplaering: "Training",
+  risiko: "Risk assessment",
+  tiltak: "Actions",
+  timeregistrering: "Time recording",
+  varsling: "Whistleblowing",
 };
 
 // ─── Roterende seksjonskomponenter ───────────────────────────────
@@ -373,7 +388,7 @@ function SectionCard({
     case "GJESTESERVICE_STATUS":
       return <GjesteserviceStatusSection title={title} config={config} stats={guestStats} locale={locale} />;
     default:
-      return <Wrapper icon={<BarChart3 className="h-6 w-6" />} title={title ?? type}><p className="text-white/50">Ingen data</p></Wrapper>;
+      return <Wrapper icon={<BarChart3 className="h-6 w-6" />} title={title ?? type}><p className="text-white/50">No data</p></Wrapper>;
   }
 }
 
@@ -398,16 +413,16 @@ function SnarveierSection({ title, config, isAddon, publicToken, appUrl }: {
   const harNoe = aktive.length > 0 || custom.length > 0;
 
   return (
-    <Wrapper icon={<CheckSquare className="h-6 w-6" />} title={title ?? "Hurtigtilganger"}>
+    <Wrapper icon={<CheckSquare className="h-6 w-6" />} title={title ?? "Shortcuts"}>
       {!harNoe ? (
-        <p className="text-white/50 text-sm">Ingen snarveier aktivert.</p>
+        <p className="text-white/50 text-sm">No shortcuts enabled.</p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {aktive.map((s) => {
             const def = ALLE_SNARVEIER.find((d) => d.id === s.id);
             if (!def) return null;
             const url = getUrl(s)!;
-            const label = s.customLabel || def.label;
+            const label = s.customLabel || SNARVEI_LABELS_UK[s.id] || def.label;
             const Icon = SNARVEI_ICONS[def.icon] ?? Shield;
             return (
               <a key={s.id} href={url} target={s.externalUrl ? "_blank" : "_self"} rel="noopener noreferrer">
@@ -476,7 +491,7 @@ function SnarveierKompaktBar({ config, isAddon, publicToken, appUrl: _appUrl }: 
         const def = ALLE_SNARVEIER.find((d) => d.id === s.id);
         if (!def) return null;
         const url = getUrl(s)!;
-        const label = s.customLabel || def.label;
+        const label = s.customLabel || SNARVEI_LABELS_UK[s.id] || def.label;
         const Icon = SNARVEI_ICONS[def.icon] ?? Shield;
         return (
           <a key={s.id} href={url} target={s.externalUrl ? "_blank" : "_self"} rel="noopener noreferrer">
@@ -527,9 +542,9 @@ function Wrapper({ icon, title, badge, children }: { icon: React.ReactNode; titl
 function KontaktDetaljerSection({ title, config, tavle }: { title: string | null; config: any; tavle: any }) {
   const contacts: any[] = config?.contacts ?? tavle.manualContacts ?? [];
   return (
-    <Wrapper icon={<Phone className="h-6 w-6" />} title={title ?? "Alle kontaktpersoner"}>
+    <Wrapper icon={<Phone className="h-6 w-6" />} title={title ?? "All contacts"}>
       {contacts.length === 0 ? (
-        <p className="text-white/50">Ingen kontakter registrert — legg til via innstillinger</p>
+        <p className="text-white/50">No contacts registered — add them in settings</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {contacts.map((c: any, i: number) => (
@@ -556,15 +571,15 @@ function KontaktDetaljerSection({ title, config, tavle }: { title: string | null
 
 function BeredskapsSection({ title, config }: { title: string | null; config: any }) {
   const steps: string[] = config?.customSteps ?? [
-    "1. Varsle berørte – ring 113",
-    "2. Sikre ulykkesstedet",
-    "3. Varsle arbeidsgiver og Arbeidstilsynet",
+    "1. Alert those affected – call 999",
+    "2. Make the scene safe",
+    "3. Notify the employer and HSE where RIDDOR applies",
   ];
   return (
-    <Wrapper icon={<Shield className="h-6 w-6" />} title={title ?? "Beredskapsplan"} badge="AML § 5-2">
+    <Wrapper icon={<Shield className="h-6 w-6" />} title={title ?? "Emergency plan"} badge="HSWA 1974">
       <div className="space-y-4">
         <div className="bg-red-900/50 border border-red-700/50 rounded-xl p-4 space-y-2">
-          <p className="text-red-300 font-semibold">Ved ulykke:</p>
+          <p className="text-red-300 font-semibold">In an accident:</p>
           {steps.map((step, i) => (
             <p key={i} className="text-white text-sm">{step}</p>
           ))}
@@ -572,11 +587,11 @@ function BeredskapsSection({ title, config }: { title: string | null; config: an
         {config?.pdfUrl && (
           <a href={config.pdfUrl} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 text-blue-300 hover:text-white transition-colors">
-            <FileText className="h-5 w-5" /> Se beredskapsplan (PDF)
+            <FileText className="h-5 w-5" /> View emergency plan (PDF)
           </a>
         )}
         {config?.imageUrl && (
-          <img src={toImageUrl(config.imageUrl)} alt="Beredskapsplan" className="w-full rounded-xl object-contain max-h-48" />
+          <img src={toImageUrl(config.imageUrl)} alt="Emergency plan" className="w-full rounded-xl object-contain max-h-48" />
         )}
       </div>
     </Wrapper>
@@ -590,21 +605,21 @@ function ShaPlanSection({ title, config, tavle, isAddon }: { title: string | nul
     : (config?.status as string | undefined);
 
   return (
-    <Wrapper icon={<ClipboardList className="h-6 w-6" />} title={title ?? "SHA-plan"} badge="§ 7+8">
+    <Wrapper icon={<ClipboardList className="h-6 w-6" />} title={title ?? "Construction phase plan"} badge="CDM 2015">
       <div className="space-y-3">
         {/* Status */}
         {status === "godkjent" ? (
           <div className="flex items-center gap-3 text-xl font-bold rounded-xl p-3 bg-green-900/50 text-green-300">
-            <CheckCircle2 className="h-7 w-7" /> Godkjent og aktiv
+            <CheckCircle2 className="h-7 w-7" /> Approved and active
             {config?.version && <span className="ml-auto text-white/50 text-sm font-normal">v{config.version}</span>}
           </div>
         ) : status === "under-arbeid" ? (
           <div className="flex items-center gap-3 text-xl font-bold rounded-xl p-3 bg-yellow-900/50 text-yellow-300">
-            <AlertTriangle className="h-7 w-7" /> Under arbeid
+            <AlertTriangle className="h-7 w-7" /> In progress
           </div>
         ) : (
           <div className="flex items-center gap-3 text-lg rounded-xl p-3 bg-white/10 text-white/60">
-            <ClipboardList className="h-6 w-6" /> Ikke koblet til
+            <ClipboardList className="h-6 w-6" /> Not linked
           </div>
         )}
 
@@ -612,12 +627,12 @@ function ShaPlanSection({ title, config, tavle, isAddon }: { title: string | nul
         {config?.pdfUrl && (
           <a href={config.pdfUrl} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 text-blue-300 hover:text-white transition-colors text-sm bg-blue-900/30 border border-blue-500/30 rounded-lg px-3 py-2">
-            <FileText className="h-4 w-4 shrink-0" /> Åpne SHA-plan (PDF)
+            <FileText className="h-4 w-4 shrink-0" /> Open CPP (PDF)
           </a>
         )}
 
         {config?.approvedDate && (
-          <p className="text-white/50 text-xs">Godkjent: {new Date(config.approvedDate).toLocaleDateString("nb-NO")}</p>
+          <p className="text-white/50 text-xs">Approved: {new Date(config.approvedDate).toLocaleDateString("en-GB")}</p>
         )}
 
       </div>
@@ -654,7 +669,7 @@ function HeaderMannskapsBlock({
       <a href={checkinUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 group">
         {qrDataUrl ? (
           <div className="bg-white rounded-lg p-1 group-hover:scale-105 transition-transform">
-            <img src={qrDataUrl} alt="QR innsjekk" className="w-12 h-12 block" />
+            <img src={qrDataUrl} alt="QR check-in" className="w-12 h-12 block" />
           </div>
         ) : (
           <div className="w-12 h-12 bg-white/10 rounded-lg animate-pulse" />
@@ -664,8 +679,8 @@ function HeaderMannskapsBlock({
       {/* Teller + label */}
       <div className="flex flex-col items-start">
         <span className="text-white text-3xl font-black tabular-nums leading-none">{checkins.length}</span>
-        <span className="text-blue-300 text-xs leading-tight">innsjekket i dag</span>
-        <span className="text-white/40 text-[10px] leading-tight">Skann QR for innsjekk</span>
+        <span className="text-blue-300 text-xs leading-tight">checked in today</span>
+        <span className="text-white/40 text-[10px] leading-tight">Scan QR to check in</span>
       </div>
 
     </div>
@@ -693,17 +708,17 @@ function MannskapslisteSection({ title, checkins, tavle, appUrl, publicToken }: 
   const paaPlassen = checkins.filter((c: any) => !c.checkedOutAt);
 
   return (
-    <Wrapper icon={<Users className="h-6 w-6" />} title={title ?? "Mannskapsliste"} badge="§ 15">
+    <Wrapper icon={<Users className="h-6 w-6" />} title={title ?? "Site register"} badge="CDM 2015">
       <div className="flex gap-4 h-full">
         {/* Venstre: teller + navn */}
         <div className="flex-1 min-w-0 space-y-3">
           <div className="flex items-end gap-2">
             <span className="text-white text-5xl font-black tabular-nums">{paaPlassen.length}</span>
-            <span className="text-blue-300 text-sm mb-1.5">på plassen nå</span>
+            <span className="text-blue-300 text-sm mb-1.5">on site now</span>
           </div>
           {checkins.length > paaPlassen.length && (
             <p className="text-white/50 text-xs">
-              {checkins.length} innsjekket i dag, {checkins.length - paaPlassen.length} utsjekket
+              {checkins.length} checked in today, {checkins.length - paaPlassen.length} checked out
             </p>
           )}
           <div className="grid grid-cols-1 gap-1.5 overflow-hidden max-h-40">
@@ -723,7 +738,7 @@ function MannskapslisteSection({ title, checkins, tavle, appUrl, publicToken }: 
             ))}
           </div>
           {checkins.length > 10 && (
-            <p className="text-white/50 text-xs">+{checkins.length - 10} til registrert</p>
+            <p className="text-white/50 text-xs">+{checkins.length - 10} more registered</p>
           )}
         </div>
 
@@ -732,13 +747,13 @@ function MannskapslisteSection({ title, checkins, tavle, appUrl, publicToken }: 
           {qrDataUrl ? (
             <a href={checkinUrl} target="_blank" rel="noopener noreferrer" className="group">
               <div className="bg-white rounded-xl p-2 shadow-lg group-hover:scale-105 transition-transform">
-                <img src={qrDataUrl} alt="QR innsjekk" className="w-28 h-28 block" />
+                <img src={qrDataUrl} alt="QR check-in" className="w-28 h-28 block" />
               </div>
             </a>
           ) : (
             <div className="w-28 h-28 bg-white/10 rounded-xl animate-pulse" />
           )}
-          <p className="text-white/60 text-xs text-center leading-tight">Skann for<br />innsjekk</p>
+          <p className="text-white/60 text-xs text-center leading-tight">Scan to<br />check in</p>
         </div>
       </div>
     </Wrapper>
@@ -763,30 +778,30 @@ function AvvikSection({ title, config, isAddon, live }: {
   return (
     <Wrapper
       icon={<AlertTriangle className="h-6 w-6" />}
-      title={title ?? "Avvik og RUH"}
-      badge={isAddon && live ? "HMS Nova" : undefined}
+      title={title ?? "Incidents"}
+      badge={isAddon && live ? "HSEQ Nova" : undefined}
     >
       {!hasData ? (
-        <p className="text-white/50 text-sm">Ingen statistikk registrert ennå — oppdater via innstillinger.</p>
+        <p className="text-white/50 text-sm">No statistics recorded yet — update in settings.</p>
       ) : (
         <div className="space-y-3">
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <div className="bg-red-900/50 border border-red-700/40 rounded-xl p-2 sm:p-3 text-center">
               <p className="text-red-300 text-2xl sm:text-3xl font-black tabular-nums">{openCount ?? 0}</p>
-              <p className="text-white/60 text-[11px] sm:text-xs mt-1">Åpne avvik</p>
+              <p className="text-white/60 text-[11px] sm:text-xs mt-1">Open incidents</p>
             </div>
             <div className="bg-orange-900/50 border border-orange-700/40 rounded-xl p-2 sm:p-3 text-center">
               <p className="text-orange-300 text-2xl sm:text-3xl font-black tabular-nums">{criticalCount ?? 0}</p>
-              <p className="text-white/60 text-[11px] sm:text-xs mt-1">Kritiske</p>
+              <p className="text-white/60 text-[11px] sm:text-xs mt-1">Critical</p>
             </div>
             <div className="bg-green-900/50 border border-green-700/40 rounded-xl p-2 sm:p-3 text-center">
               <p className="text-green-300 text-2xl sm:text-3xl font-black tabular-nums">{closedThisMonth ?? 0}</p>
-              <p className="text-white/60 text-[11px] sm:text-xs mt-1">Lukket mnd.</p>
+              <p className="text-white/60 text-[11px] sm:text-xs mt-1">Closed this month</p>
             </div>
           </div>
           {lastUpdated && (
             <p className="text-white/40 text-xs text-right">
-              Oppdatert: {new Date(lastUpdated).toLocaleDateString("nb-NO")}
+              Updated: {new Date(lastUpdated).toLocaleDateString("en-GB")}
             </p>
           )}
         </div>
@@ -800,7 +815,7 @@ function DokumentHubSection({ title, config, tavle }: { title: string | null; co
   // config kan ha imageUrl/pdfUrl for riggplan e.l., resten hentes fra externalLinks
   const items = links.slice(0, 8).map((l: any) => ({ key: l.id, href: l.url, label: l.title }));
   return (
-    <Wrapper icon={<BookOpen className="h-6 w-6" />} title={title ?? "Dokumenthub"}>
+    <Wrapper icon={<BookOpen className="h-6 w-6" />} title={title ?? "Document hub"}>
       <div className="space-y-3">
         {config?.imageUrl && (
           <img src={toImageUrl(config.imageUrl)} alt="Dokument" className="w-full rounded-xl object-contain max-h-48 border border-white/10" />
@@ -821,7 +836,7 @@ function DokumentHubSection({ title, config, tavle }: { title: string | null; co
             </a>
           ))}
           {!config?.pdfUrl && items.length === 0 && (
-            <p className="text-white/50 sm:col-span-2">Ingen dokumenter lagt til</p>
+            <p className="text-white/50 sm:col-span-2">No documents added</p>
           )}
         </div>
       </div>
@@ -832,7 +847,7 @@ function DokumentHubSection({ title, config, tavle }: { title: string | null; co
 function EksternLenkeSection({ title, tavle }: { title: string | null; tavle: any }) {
   const links = tavle.externalLinks ?? [];
   return (
-    <Wrapper icon={<ExternalLink className="h-6 w-6" />} title={title ?? "Systemer og lenker"}>
+    <Wrapper icon={<ExternalLink className="h-6 w-6" />} title={title ?? "Systems and links"}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {links.map((l: any) => (
           <a key={l.id} href={l.url} target="_blank" rel="noopener noreferrer"
@@ -841,7 +856,7 @@ function EksternLenkeSection({ title, tavle }: { title: string | null; tavle: an
             <span className="text-sm font-medium truncate">{l.title}</span>
           </a>
         ))}
-        {links.length === 0 && <p className="text-white/50 sm:col-span-2">Ingen lenker konfigurert</p>}
+        {links.length === 0 && <p className="text-white/50 sm:col-span-2">No links configured</p>}
       </div>
     </Wrapper>
   );
@@ -850,22 +865,22 @@ function EksternLenkeSection({ title, tavle }: { title: string | null; tavle: an
 function VaermeldingSection({ title, location, weatherData }: {
   title: string | null; location?: string; weatherData: WeatherData | null;
 }) {
-  const DAY_NAMES = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"];
+  const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   if (!location) {
     return (
-      <Wrapper icon={<Cloud className="h-6 w-6" />} title={title ?? "Værvarsling"}>
-        <p className="text-white/50 text-sm">Legg til sted i innstillinger for å vise værvarsling.</p>
+      <Wrapper icon={<Cloud className="h-6 w-6" />} title={title ?? "Weather"}>
+        <p className="text-white/50 text-sm">Add a location in settings to show the weather forecast.</p>
       </Wrapper>
     );
   }
 
   if (!weatherData) {
     return (
-      <Wrapper icon={<Cloud className="h-6 w-6" />} title={title ?? `Værvarsling – ${location}`}>
+      <Wrapper icon={<Cloud className="h-6 w-6" />} title={title ?? `Weather – ${location}`}>
         <div className="flex items-center gap-3 text-white/50">
           <Cloud className="h-5 w-5 animate-pulse" />
-          <span className="text-sm">Henter værdata...</span>
+          <span className="text-sm">Fetching weather...</span>
         </div>
       </Wrapper>
     );
@@ -876,7 +891,7 @@ function VaermeldingSection({ title, location, weatherData }: {
   const nextDays = forecast.slice(1, 4);
 
   return (
-    <Wrapper icon={<Cloud className="h-6 w-6" />} title={title ?? `Værvarsling – ${location}`}>
+    <Wrapper icon={<Cloud className="h-6 w-6" />} title={title ?? `Weather – ${location}`}>
       <div className="space-y-4">
         {/* Nåværende vær */}
         <div className="bg-sky-900/50 border border-sky-700/40 rounded-xl p-4">
@@ -980,9 +995,9 @@ function MeldingsTicker({ items }: { items: TickerItem[] }) {
 function NyheterSection({ title, config }: { title: string | null; config: any }) {
   const messages: string[] = config?.messages ?? [];
   return (
-    <Wrapper icon={<BarChart3 className="h-6 w-6" />} title={title ?? "Meldinger fra ledelsen"}>
+    <Wrapper icon={<BarChart3 className="h-6 w-6" />} title={title ?? "Messages from management"}>
       {messages.length === 0 ? (
-        <p className="text-white/50">Ingen meldinger</p>
+        <p className="text-white/50">No messages</p>
       ) : (
         <ul className="space-y-3">
           {messages.map((m, i) => (
@@ -1002,7 +1017,7 @@ function LovkravSection({ title, tavle, isAddon, checkins }: {
   const bransje = tavle?.bransje ?? null;
   const items = getLovkravItems(bransje, isAddon, tavle, checkins.length);
   return (
-    <Wrapper icon={<CheckSquare className="h-6 w-6" />} title={title ?? "Lovkrav-sjekkliste"}>
+    <Wrapper icon={<CheckSquare className="h-6 w-6" />} title={title ?? "Legal checklist"}>
       <div className="space-y-3">
         {items.map((item, i) => (
           <div key={i} className={cn("flex items-center gap-3 rounded-xl px-4 py-3",
@@ -1017,7 +1032,7 @@ function LovkravSection({ title, tavle, isAddon, checkins }: {
               {item.label}
             </span>
             {item.ref && <span className="text-white/30 text-xs shrink-0">{item.ref}</span>}
-            {item.ok === null && !item.ref && <span className="ml-auto text-white/40 text-sm">Manuell</span>}
+            {item.ok === null && !item.ref && <span className="ml-auto text-white/40 text-sm">Manual</span>}
           </div>
         ))}
       </div>
@@ -1055,42 +1070,42 @@ function KpiSection({ title, config, isAddon, live }: {
   return (
     <Wrapper
       icon={<BarChart3 className="h-6 w-6" />}
-      title={title ?? "KPI og nøkkeltall"}
-      badge={data ? "HMS Nova" : undefined}
+      title={title ?? "KPI and key figures"}
+      badge={data ? "HSEQ Nova" : undefined}
     >
       {!data && !harManuelt ? (
         <p className="text-white/50 text-sm">
-          Ingen nøkkeltall registrert ennå — oppdater via innstillinger.
+          No key figures recorded yet — update in settings.
         </p>
       ) : (
         <div className="space-y-3">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             <StatTile
               value={data ? data.openIncidents : manuelt.openIncidents ?? 0}
-              label="Åpne avvik"
+              label="Open incidents"
               tone="red"
             />
             <StatTile
               value={data ? data.criticalIncidents : manuelt.criticalIncidents ?? 0}
-              label="Kritiske"
+              label="Critical"
               tone="orange"
             />
             <StatTile
               value={data ? data.openMeasures : manuelt.openMeasures ?? 0}
-              label="Åpne tiltak"
+              label="Open actions"
               tone="blue"
             />
             <StatTile
               value={
                 (data ? data.daysSinceLastIncident : manuelt.daysSinceLastIncident) ?? "–"
               }
-              label="Dager siden hendelse"
+              label="Days since last incident"
               tone="green"
             />
           </div>
           {data && (
             <p className="text-white/40 text-xs text-right">
-              {data.closedThisMonth} lukket denne måneden
+              {data.closedThisMonth} closed this month
             </p>
           )}
         </div>
@@ -1117,12 +1132,12 @@ function SjaSection({ title, config, isAddon, live }: {
   return (
     <Wrapper
       icon={<ClipboardList className="h-6 w-6" />}
-      title={title ?? "Aktive SJA"}
-      badge={isAddon && live.length > 0 ? "HMS Nova" : undefined}
+      title={title ?? "Active RAMS"}
+      badge={isAddon && live.length > 0 ? "HSEQ Nova" : undefined}
     >
       {items.length === 0 ? (
         <p className="text-white/50 text-sm">
-          Ingen aktive sikker jobb-analyser registrert.
+          No active RAMS recorded.
         </p>
       ) : (
         <div className="space-y-2">
@@ -1134,7 +1149,7 @@ function SjaSection({ title, config, isAddon, live }: {
                 </p>
                 {item.plannedDate && (
                   <span className="text-blue-300 text-xs shrink-0 tabular-nums">
-                    {new Date(item.plannedDate).toLocaleDateString("nb-NO", {
+                    {new Date(item.plannedDate).toLocaleDateString("en-GB", {
                       day: "2-digit",
                       month: "2-digit",
                     })}
@@ -1163,9 +1178,9 @@ function VernerundeSection({ title, config, isAddon, live }: {
 
   if (!sisteDato && !nesteDato && apneFunn === undefined) {
     return (
-      <Wrapper icon={<CheckSquare className="h-6 w-6" />} title={title ?? "Vernerunde"}>
+      <Wrapper icon={<CheckSquare className="h-6 w-6" />} title={title ?? "Workplace inspection"}>
         <p className="text-white/50 text-sm">
-          Ingen vernerunde registrert ennå — oppdater via innstillinger.
+          No workplace inspection recorded yet — update in settings.
         </p>
       </Wrapper>
     );
@@ -1174,29 +1189,29 @@ function VernerundeSection({ title, config, isAddon, live }: {
   return (
     <Wrapper
       icon={<CheckSquare className="h-6 w-6" />}
-      title={title ?? "Vernerunde"}
-      badge={data ? "HMS Nova" : undefined}
+      title={title ?? "Workplace inspection"}
+      badge={data ? "HSEQ Nova" : undefined}
     >
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <div className="bg-white/10 rounded-xl p-3">
-            <p className="text-white/50 text-xs">Sist gjennomført</p>
+            <p className="text-white/50 text-xs">Last completed</p>
             <p className="text-white font-bold text-lg leading-tight mt-0.5">
-              {sisteDato ? new Date(sisteDato).toLocaleDateString("nb-NO") : "–"}
+              {sisteDato ? new Date(sisteDato).toLocaleDateString("en-GB") : "–"}
             </p>
           </div>
           <div className="bg-white/10 rounded-xl p-3">
-            <p className="text-white/50 text-xs">Neste planlagt</p>
+            <p className="text-white/50 text-xs">Next planned</p>
             <p className="text-white font-bold text-lg leading-tight mt-0.5">
-              {nesteDato ? new Date(nesteDato).toLocaleDateString("nb-NO") : "Ikke satt"}
+              {nesteDato ? new Date(nesteDato).toLocaleDateString("en-GB") : "Not set"}
             </p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:gap-3">
-          <StatTile value={apneFunn ?? 0} label="Åpne funn" tone={apneFunn ? "orange" : "green"} />
+          <StatTile value={apneFunn ?? 0} label="Open findings" tone={apneFunn ? "orange" : "green"} />
           <StatTile
             value={data ? data.completedLast12Months : config?.completedLast12Months ?? "–"}
-            label="Siste 12 mnd."
+            label="Last 12 months"
             tone="blue"
           />
         </div>
@@ -1215,9 +1230,9 @@ function OpplaringSection({ title, config, isAddon, live }: {
 
   if (!data && !harManuelt) {
     return (
-      <Wrapper icon={<GraduationCap className="h-6 w-6" />} title={title ?? "Opplæring"}>
+      <Wrapper icon={<GraduationCap className="h-6 w-6" />} title={title ?? "Training"}>
         <p className="text-white/50 text-sm">
-          Ingen opplæring registrert ennå — oppdater via innstillinger.
+          No training recorded yet — update in settings.
         </p>
       </Wrapper>
     );
@@ -1228,22 +1243,22 @@ function OpplaringSection({ title, config, isAddon, live }: {
   return (
     <Wrapper
       icon={<GraduationCap className="h-6 w-6" />}
-      title={title ?? "Opplæring og kompetanse"}
-      badge={data ? "HMS Nova" : undefined}
+      title={title ?? "Training and competence"}
+      badge={data ? "HSEQ Nova" : undefined}
     >
       <div className="space-y-3">
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          <StatTile value={data ? data.valid : manuelt.valid ?? 0} label="Gyldige bevis" tone="green" />
+          <StatTile value={data ? data.valid : manuelt.valid ?? 0} label="Valid certificates" tone="green" />
           <StatTile
             value={data ? data.expiringSoon : manuelt.expiringSoon ?? 0}
-            label="Utløper snart"
+            label="Expiring soon"
             tone="orange"
           />
-          <StatTile value={utlopt} label="Utløpt" tone={utlopt ? "red" : "green"} />
+          <StatTile value={utlopt} label="Expired" tone={utlopt ? "red" : "green"} />
         </div>
         {utlopt > 0 && (
           <p className="text-orange-300 text-xs">
-            Utløpte bevis må fornyes før arbeid utføres — AML § 3-2.
+            Expired certificates must be renewed before work is carried out — HSWA 1974 s.2(2)(c).
           </p>
         )}
       </div>
@@ -1261,9 +1276,9 @@ function AarshjulSection({ title, config, isAddon, live }: {
 
   if (completed === undefined || total === undefined || !total) {
     return (
-      <Wrapper icon={<CalendarClock className="h-6 w-6" />} title={title ?? "HMS-årshjul"}>
+      <Wrapper icon={<CalendarClock className="h-6 w-6" />} title={title ?? "Annual H&S plan"}>
         <p className="text-white/50 text-sm">
-          Ingen årsplan registrert ennå — oppdater via innstillinger.
+          No annual plan recorded yet — update in settings.
         </p>
       </Wrapper>
     );
@@ -1275,13 +1290,13 @@ function AarshjulSection({ title, config, isAddon, live }: {
   return (
     <Wrapper
       icon={<CalendarClock className="h-6 w-6" />}
-      title={title ?? "HMS-årshjul"}
-      badge={data ? "HMS Nova" : undefined}
+      title={title ?? "Annual H&S plan"}
+      badge={data ? "HSEQ Nova" : undefined}
     >
       <div className="space-y-3">
         <div className="flex items-end gap-2">
           <span className="text-white text-5xl font-black tabular-nums">{prosent}%</span>
-          <span className="text-blue-300 text-sm mb-1.5">fullført i {aar}</span>
+          <span className="text-blue-300 text-sm mb-1.5">completed in {aar}</span>
         </div>
         <div className="h-3 w-full rounded-full bg-white/10 overflow-hidden">
           <div
@@ -1293,7 +1308,7 @@ function AarshjulSection({ title, config, isAddon, live }: {
           />
         </div>
         <p className="text-white/50 text-xs">
-          {completed} av {total} punkter gjennomført
+          {completed} of {total} items completed
         </p>
       </div>
     </Wrapper>
@@ -1302,25 +1317,25 @@ function AarshjulSection({ title, config, isAddon, live }: {
 
 function FremdriftsplanSection({ title, config }: { title: string | null; config: any }) {
   return (
-    <Wrapper icon={<Map className="h-6 w-6" />} title={title ?? "Fremdriftsplan"}>
+    <Wrapper icon={<Map className="h-6 w-6" />} title={title ?? "Programme"}>
       <div className="space-y-3">
         {config?.imageUrl ? (
-          <img src={toImageUrl(config.imageUrl)} alt="Fremdriftsplan" className="w-full rounded-xl object-contain max-h-64 border border-white/10" />
+          <img src={toImageUrl(config.imageUrl)} alt="Programme" className="w-full rounded-xl object-contain max-h-64 border border-white/10" />
         ) : config?.pdfUrl ? null : (
-          <p className="text-white/50 text-sm">Last opp fremdriftsplan under innstillinger.</p>
+          <p className="text-white/50 text-sm">Upload the programme in settings.</p>
         )}
         {config?.description && (
           <p className="text-white/70 text-sm">{config.description}</p>
         )}
         {config?.startDate && config?.endDate && (
           <p className="text-blue-300 text-xs">
-            {new Date(config.startDate).toLocaleDateString("nb-NO")} – {new Date(config.endDate).toLocaleDateString("nb-NO")}
+            {new Date(config.startDate).toLocaleDateString("en-GB")} – {new Date(config.endDate).toLocaleDateString("en-GB")}
           </p>
         )}
         {config?.pdfUrl && !config?.imageUrl && (
           <a href={config.pdfUrl} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 text-blue-300 hover:text-white text-sm">
-            <FileText className="h-4 w-4" /> Åpne fremdriftsplan (PDF)
+            <FileText className="h-4 w-4" /> Open programme (PDF)
           </a>
         )}
       </div>
@@ -1330,17 +1345,17 @@ function FremdriftsplanSection({ title, config }: { title: string | null; config
 
 function RisikomatriseSection({ title, config }: { title: string | null; config: any }) {
   return (
-    <Wrapper icon={<AlertTriangle className="h-6 w-6" />} title={title ?? "Risikomatrise"}>
+    <Wrapper icon={<AlertTriangle className="h-6 w-6" />} title={title ?? "Risk matrix"}>
       <div className="space-y-3">
         {config?.imageUrl ? (
-          <img src={toImageUrl(config.imageUrl)} alt="Risikomatrise" className="w-full rounded-xl object-contain max-h-64 border border-white/10" />
+          <img src={toImageUrl(config.imageUrl)} alt="Risk matrix" className="w-full rounded-xl object-contain max-h-64 border border-white/10" />
         ) : config?.pdfUrl ? (
           <a href={config.pdfUrl} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 text-blue-300 hover:text-white text-sm">
-            <FileText className="h-4 w-4" /> Åpne risikomatrise (PDF)
+            <FileText className="h-4 w-4" /> Open risk matrix (PDF)
           </a>
         ) : (
-          <p className="text-white/50 text-sm">Last opp risikomatrise under innstillinger.</p>
+          <p className="text-white/50 text-sm">Upload the risk matrix in settings.</p>
         )}
         {config?.description && <p className="text-white/60 text-sm">{config.description}</p>}
       </div>
@@ -1354,14 +1369,14 @@ function RisikomatriseSection({ title, config }: { title: string | null; config:
 type GuestType = "AVVIK" | "KLAGE" | "MATFORGIFTNING" | "SPORSMAAL" | "TILBAKEMELDING";
 
 const GUEST_TYPES: { value: GuestType; label: string; emoji: string; color: string }[] = [
-  { value: "AVVIK",          label: "Avvik / hendelse",    emoji: "⚠️",  color: "bg-orange-500/20 border-orange-500/40 text-orange-300 hover:bg-orange-500/30" },
-  { value: "KLAGE",          label: "Klage",               emoji: "📣",  color: "bg-red-500/20 border-red-500/40 text-red-300 hover:bg-red-500/30" },
-  { value: "MATFORGIFTNING", label: "Matforgiftning",      emoji: "🤒",  color: "bg-red-700/20 border-red-700/40 text-red-200 hover:bg-red-700/30" },
-  { value: "SPORSMAAL",      label: "Spørsmål",            emoji: "❓",  color: "bg-blue-500/20 border-blue-500/40 text-blue-300 hover:bg-blue-500/30" },
-  { value: "TILBAKEMELDING", label: "Tilbakemelding",      emoji: "💬",  color: "bg-green-500/20 border-green-500/40 text-green-300 hover:bg-green-500/30" },
+  { value: "AVVIK",          label: "Incident",            emoji: "⚠️",  color: "bg-orange-500/20 border-orange-500/40 text-orange-300 hover:bg-orange-500/30" },
+  { value: "KLAGE",          label: "Complaint",           emoji: "📣",  color: "bg-red-500/20 border-red-500/40 text-red-300 hover:bg-red-500/30" },
+  { value: "MATFORGIFTNING", label: "Food poisoning",      emoji: "🤒",  color: "bg-red-700/20 border-red-700/40 text-red-200 hover:bg-red-700/30" },
+  { value: "SPORSMAAL",      label: "Question",            emoji: "❓",  color: "bg-blue-500/20 border-blue-500/40 text-blue-300 hover:bg-blue-500/30" },
+  { value: "TILBAKEMELDING", label: "Feedback",            emoji: "💬",  color: "bg-green-500/20 border-green-500/40 text-green-300 hover:bg-green-500/30" },
 ];
 
-function GjestSkjemaSection({ title, config, publicToken, appUrl, locale = "nb" }: {
+function GjestSkjemaSection({ title, config, publicToken, appUrl, locale = "en" }: {
   title: string | null; config: any; publicToken: string; appUrl: string; locale?: "nb" | "en";
 }) {
   const isEn = locale === "en";
@@ -1431,7 +1446,7 @@ function GjestSkjemaSection({ title, config, publicToken, appUrl, locale = "nb" 
 // GDPR art. 5: kun aggregerte tall vises offentlig. Tall skjules under
 // TRUST_PANEL_MIN_VOLUME saker slik at enkeltsaker ikke kan utledes.
 
-function GjesteserviceStatusSection({ title, config, stats, locale = "nb" }: {
+function GjesteserviceStatusSection({ title, config, stats, locale = "en" }: {
   title: string | null;
   config: any;
   stats: GuestServiceStats | null;
@@ -1531,8 +1546,8 @@ function RiggplanSection({ title, config }: { title: string | null; config: any 
 
   if (images.length === 0 && !config?.pdfUrl) {
     return (
-      <Wrapper icon={<Map className="h-6 w-6" />} title={title ?? "Riggplan / situasjonskart"}>
-        <p className="text-white/50 text-sm">Last opp riggplan under innstillinger (⚙-knappen).</p>
+      <Wrapper icon={<Map className="h-6 w-6" />} title={title ?? "Site layout"}>
+        <p className="text-white/50 text-sm">Upload the site layout in settings (gear button).</p>
       </Wrapper>
     );
   }
@@ -1542,9 +1557,9 @@ function RiggplanSection({ title, config }: { title: string | null; config: any 
     <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10 shrink-0 gap-2">
       <div className="flex items-center gap-2 min-w-0">
         <Map className="h-4 w-4 text-blue-300 shrink-0" />
-        <span className="text-white font-semibold text-sm truncate">{title ?? "Riggplan / situasjonskart"}</span>
+        <span className="text-white font-semibold text-sm truncate">{title ?? "Site layout"}</span>
         {images.length > 1 && (
-          <span className="text-blue-300/60 text-xs shrink-0">{images.length} bilder</span>
+          <span className="text-blue-300/60 text-xs shrink-0">{images.length} images</span>
         )}
         {images.length === 1 && images[0].caption && (
           <span className="text-blue-300/70 text-xs truncate hidden sm:block">— {images[0].caption}</span>
@@ -1553,7 +1568,7 @@ function RiggplanSection({ title, config }: { title: string | null; config: any 
       <div className="flex items-center gap-2 shrink-0">
         {config?.updatedDate && (
           <span className="text-white/40 text-xs hidden md:block">
-            Rev. {new Date(config.updatedDate).toLocaleDateString("nb-NO")}
+            Rev. {new Date(config.updatedDate).toLocaleDateString("en-GB")}
           </span>
         )}
         {config?.pdfUrl && (
@@ -1563,7 +1578,7 @@ function RiggplanSection({ title, config }: { title: string | null; config: any 
             rel="noopener noreferrer"
             className="flex items-center gap-1 text-blue-300 hover:text-white text-xs border border-blue-500/40 rounded px-2 py-1 bg-blue-900/30 transition-colors"
           >
-            <FileText className="h-3 w-3" /> Åpne PDF
+            <FileText className="h-3 w-3" /> Open PDF
           </a>
         )}
       </div>
@@ -1576,7 +1591,7 @@ function RiggplanSection({ title, config }: { title: string | null; config: any 
       <div className="h-full flex flex-col bg-white/10 rounded-2xl border border-white/20 overflow-hidden">
         {header}
         <div className="flex-1 flex items-center justify-center p-6">
-          <p className="text-white/40 text-sm text-center">Klikk «Åpne PDF» for å se riggplan</p>
+          <p className="text-white/40 text-sm text-center">Click “Open PDF” to view the site layout</p>
         </div>
       </div>
     );
@@ -1590,7 +1605,7 @@ function RiggplanSection({ title, config }: { title: string | null; config: any 
         <div className="flex-1 relative min-h-0 bg-white/5">
           <img
             src={images[0].url}
-            alt={images[0].caption ?? "Riggplan"}
+            alt={images[0].caption ?? "Site layout"}
             className="absolute inset-0 w-full h-full object-contain p-2"
           />
         </div>
@@ -1613,7 +1628,7 @@ function RiggplanSection({ title, config }: { title: string | null; config: any 
               )}
               <img
                 src={img.url}
-                alt={img.caption ?? `Riggplan ${i + 1}`}
+                alt={img.caption ?? `Site layout ${i + 1}`}
                 className="w-full h-full object-contain p-1.5"
               />
             </div>
@@ -1632,7 +1647,7 @@ function RiggplanSection({ title, config }: { title: string | null; config: any 
           <img
             key={i}
             src={img.url}
-            alt={img.caption ?? `Riggplan ${i + 1}`}
+            alt={img.caption ?? `Site layout ${i + 1}`}
             className={cn(
               "absolute inset-0 w-full h-full object-contain p-2 transition-opacity duration-700",
               i === activeImg ? "opacity-100" : "opacity-0"
@@ -1676,12 +1691,12 @@ function RiggplanSection({ title, config }: { title: string | null; config: any 
 
 // ─── Bygg ticker-meldinger fra alle seksjoner ────────────────────
 const HMS_SIKKERHETSMELDINGER = [
-  "Bruk påkrevd verneutstyr til enhver tid",
-  "Meld fra om farlige forhold umiddelbart",
-  "Følg arbeidsinstrukser og prosedyrer",
-  "Ryddet arbeidsområde er et trygt arbeidsområde",
-  "Ingen jobber alene ved farlig arbeid",
-  "Stopp arbeidet ved usikre forhold — sikkerhet går foran fremdrift",
+  "Wear required PPE at all times",
+  "Report unsafe conditions immediately",
+  "Follow work instructions and procedures",
+  "A tidy workplace is a safe workplace",
+  "Nobody works alone on high-risk tasks",
+  "Stop work if conditions are unsafe — safety before programme",
 ];
 
 function buildTickerItems(allSections: any[]): TickerItem[] {
@@ -1689,21 +1704,21 @@ function buildTickerItems(allSections: any[]): TickerItem[] {
 
   // HMS-sikkerhets meldinger (alltid med)
   for (const msg of HMS_SIKKERHETSMELDINGER) {
-    items.push({ label: "⚠ HMS", text: msg, color: "text-yellow-400" });
+    items.push({ label: "⚠ HSEQ", text: msg, color: "text-yellow-400" });
   }
 
   // Meldinger fra NYHETER_MELDINGER-seksjon
   const nyheterSection = allSections.find((s: any) => s.type === "NYHETER_MELDINGER");
   const msgs: string[] = nyheterSection?.config?.messages ?? [];
   for (const msg of msgs) {
-    if (msg?.trim()) items.push({ label: "📢 Melding", text: msg.trim(), color: "text-blue-400" });
+    if (msg?.trim()) items.push({ label: "📢 Message", text: msg.trim(), color: "text-blue-400" });
   }
 
   // Beredskapsplan-trinn om konfigurert
   const beredskapsSection = allSections.find((s: any) => s.type === "BEREDSKAPSPLAN");
   const steps: string[] = beredskapsSection?.config?.customSteps ?? [];
   for (const step of steps) {
-    if (step?.trim()) items.push({ label: "🆘 Beredskap", text: step.trim(), color: "text-red-400" });
+    if (step?.trim()) items.push({ label: "🆘 Emergency", text: step.trim(), color: "text-red-400" });
   }
 
   return items;
@@ -1725,7 +1740,7 @@ export function TavlePublicDisplay({ tavle, checkins, plan, publicToken, forceKi
   const router = useRouter();
   const [kioskActive, setKioskActive] = useState(forceKiosk);
   const [activeIdx, setActiveIdx] = useState(0);
-  const [locale, setLocale] = useState<"nb" | "en">("nb");
+  const [locale, setLocale] = useState<"nb" | "en">("en");
 
   // ─── SSE: sanntidsoppdatering ────────────────────────────────────
   useEffect(() => {
@@ -1800,7 +1815,7 @@ export function TavlePublicDisplay({ tavle, checkins, plan, publicToken, forceKi
                   {tavle.project.name}
                 </p>
               ) : (
-                <p className="text-white/30 text-[10px] uppercase tracking-widest mt-0.5">Digital HMS Tavle</p>
+                <p className="text-white/30 text-[10px] uppercase tracking-widest mt-0.5">Digital safety board</p>
               )}
             </div>
           </div>
@@ -1821,7 +1836,7 @@ export function TavlePublicDisplay({ tavle, checkins, plan, publicToken, forceKi
             {tavle.subcontractorPortal && (
               <Link href={`/tavle/${publicToken}/rapporter`}
                 className="text-blue-300 border border-blue-500/50 rounded-lg px-3 py-1.5 text-sm hover:bg-white/10">
-                Meld avvik
+                Report incident
               </Link>
             )}
             <WeatherMini data={weatherData} location={weatherLocation} />
@@ -1923,7 +1938,7 @@ export function TavlePublicDisplay({ tavle, checkins, plan, publicToken, forceKi
               {/* Fallback om ingen seksjoner i det hele tatt */}
               {!riggplanSection && rotatingSections.length === 0 && !fokusSection && otherFastSections.length === 0 && (
                 <div className="flex-1 h-full flex items-center justify-center text-white/20 text-base">
-                  Legg til seksjoner i admin-panelet
+                  Add sections in the admin panel
                 </div>
               )}
             </div>
@@ -1981,10 +1996,10 @@ export function TavlePublicDisplay({ tavle, checkins, plan, publicToken, forceKi
             <LiveClock />
           </div>
           {tavle.subcontractorPortal && (
-            <Link href={`/tavle/${publicToken}/rapporter`} className="text-blue-300 border border-blue-500/50 rounded px-2 py-1 text-xs hover:bg-white/10">Meld avvik</Link>
+            <Link href={`/tavle/${publicToken}/rapporter`} className="text-blue-300 border border-blue-500/50 rounded px-2 py-1 text-xs hover:bg-white/10">Report incident</Link>
           )}
           {canKiosk && (
-            <button onClick={() => setKioskActive(true)} className="p-1 rounded text-white/60 hover:bg-white/10 hover:text-white" title="Kiosk-modus">
+            <button onClick={() => setKioskActive(true)} className="p-1 rounded text-white/60 hover:bg-white/10 hover:text-white" title="Kiosk mode">
               <Maximize2 className="h-4 w-4" />
             </button>
           )}
@@ -2038,7 +2053,7 @@ export function TavlePublicDisplay({ tavle, checkins, plan, publicToken, forceKi
       </div>
 
       <div className="border-t border-white/10 p-3 text-center text-xs text-white/30">
-        Digital HMS Tavle · HMS Nova · {new Date().toLocaleDateString("nb-NO", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+        Digital safety board · HSEQ Nova · {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
       </div>
     </div>
   );

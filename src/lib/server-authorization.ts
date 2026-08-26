@@ -6,7 +6,8 @@
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { getAppUser, resolveTenantId } from "@/lib/membership";
 import { Role } from "@prisma/client";
 import { type RolePermissions } from "@/lib/permissions";
 import {
@@ -33,10 +34,11 @@ export async function resolveEffectivePermissions(
   tenantId: string,
   role: Role
 ): Promise<RolePermissions> {
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { moduleVisibilityConfig: true },
-  });
+  const { data: tenant } = await getAdminDb()
+    .from("Tenant")
+    .select("moduleVisibilityConfig")
+    .eq("id", tenantId)
+    .maybeSingle();
 
   return getEffectivePermissions(
     role,
@@ -55,41 +57,37 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     return null;
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    select: {
-      id: true,
-      email: true,
-    },
-  });
+  const user = session.user.id
+    ? await getAppUser({ id: session.user.id })
+    : await getAppUser({ email: session.user.email });
 
   if (!user) {
     return null;
   }
 
-  const userTenant = session.user.tenantId
-    ? await prisma.userTenant.findUnique({
-        where: {
-          userId_tenantId: {
-            userId: user.id,
-            tenantId: session.user.tenantId,
-          },
-        },
-      })
-    : await prisma.userTenant.findFirst({
-        where: { userId: user.id },
-      });
+  const tenantId = await resolveTenantId(user.id, session.user.tenantId);
+  if (!tenantId) {
+    return null;
+  }
+
+  const { data: userTenant } = await getAdminDb()
+    .from("UserTenant")
+    .select("tenantId, role")
+    .eq("userId", user.id)
+    .eq("tenantId", tenantId)
+    .maybeSingle();
 
   if (!userTenant) {
     return null;
   }
 
-  const role = userTenant.role;
+  const role = userTenant.role as Role;
 
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: userTenant.tenantId },
-    select: { moduleVisibilityConfig: true },
-  });
+  const { data: tenant } = await getAdminDb()
+    .from("Tenant")
+    .select("moduleVisibilityConfig")
+    .eq("id", userTenant.tenantId)
+    .maybeSingle();
 
   const moduleVisibilityConfig = parseModuleVisibilityConfig(
     tenant?.moduleVisibilityConfig
@@ -162,28 +160,28 @@ export async function requireResourceAccess(
 
   switch (resourceType) {
     case "document":
-      resource = await prisma.document.findUnique({ where: { id: resourceId } });
+      resource = (await getAdminDb().from("Document").select("tenantId").eq("id", resourceId).maybeSingle()).data;
       break;
     case "risk":
-      resource = await prisma.risk.findUnique({ where: { id: resourceId } });
+      resource = (await getAdminDb().from("Risk").select("tenantId").eq("id", resourceId).maybeSingle()).data;
       break;
     case "incident":
-      resource = await prisma.incident.findUnique({ where: { id: resourceId } });
+      resource = (await getAdminDb().from("Incident").select("tenantId").eq("id", resourceId).maybeSingle()).data;
       break;
     case "measure":
-      resource = await prisma.measure.findUnique({ where: { id: resourceId } });
+      resource = (await getAdminDb().from("Measure").select("tenantId").eq("id", resourceId).maybeSingle()).data;
       break;
     case "audit":
-      resource = await prisma.audit.findUnique({ where: { id: resourceId } });
+      resource = (await getAdminDb().from("Audit").select("tenantId").eq("id", resourceId).maybeSingle()).data;
       break;
     case "training":
-      resource = await prisma.training.findUnique({ where: { id: resourceId } });
+      resource = (await getAdminDb().from("Training").select("tenantId").eq("id", resourceId).maybeSingle()).data;
       break;
     case "goal":
-      resource = await prisma.goal.findUnique({ where: { id: resourceId } });
+      resource = (await getAdminDb().from("Goal").select("tenantId").eq("id", resourceId).maybeSingle()).data;
       break;
     case "chemical":
-      resource = await prisma.chemical.findUnique({ where: { id: resourceId } });
+      resource = (await getAdminDb().from("Chemical").select("tenantId").eq("id", resourceId).maybeSingle()).data;
       break;
   }
 

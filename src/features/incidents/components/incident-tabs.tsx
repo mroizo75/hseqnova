@@ -16,41 +16,39 @@ interface IncidentTabsProps {
 }
 
 export function IncidentTabs({ incidents }: IncidentTabsProps) {
-  const [tab, setTab] = useState<"ALL" | "AVVIK" | "RUH">("ALL");
+  const [tab, setTab] = useState<"ALL" | "ACCIDENT_BOOK" | "OTHER">("ALL");
 
-  const { avvikIncidents, ruhIncidents } = useMemo(() => {
-    const avvik: IncidentWithRelations[] = [];
-    const ruh: IncidentWithRelations[] = [];
+  const { accidentBook, otherRecords } = useMemo(() => {
+    const accident: IncidentWithRelations[] = [];
+    const other: IncidentWithRelations[] = [];
     for (const incident of incidents) {
       if (getMainCategory(incident.type) === "RUH") {
-        ruh.push(incident);
+        accident.push(incident);
       } else {
-        avvik.push(incident);
+        other.push(incident);
       }
     }
-    return { avvikIncidents: avvik, ruhIncidents: ruh };
+    return { accidentBook: accident, otherRecords: other };
   }, [incidents]);
 
   const displayedIncidents =
-    tab === "AVVIK"
-      ? avvikIncidents
-      : tab === "RUH"
-        ? ruhIncidents
+    tab === "ACCIDENT_BOOK"
+      ? accidentBook
+      : tab === "OTHER"
+        ? otherRecords
         : incidents;
 
   return (
-    <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+    <Tabs value={tab} onValueChange={(value) => setTab(value as typeof tab)}>
       <TabsList>
-        <TabsTrigger value="ALL">
-          Alle ({incidents.length})
-        </TabsTrigger>
-        <TabsTrigger value="AVVIK" className="gap-1.5">
-          <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
-          Avvik ({avvikIncidents.length})
-        </TabsTrigger>
-        <TabsTrigger value="RUH" className="gap-1.5">
+        <TabsTrigger value="ALL">All ({incidents.length})</TabsTrigger>
+        <TabsTrigger value="ACCIDENT_BOOK" className="gap-1.5">
           <span className="inline-block h-2 w-2 rounded-full bg-orange-500" />
-          RUH ({ruhIncidents.length})
+          Accident book ({accidentBook.length})
+        </TabsTrigger>
+        <TabsTrigger value="OTHER" className="gap-1.5">
+          <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
+          Other records ({otherRecords.length})
         </TabsTrigger>
       </TabsList>
       <TabsContent value={tab} className="mt-4">

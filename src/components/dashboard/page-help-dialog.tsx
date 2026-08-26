@@ -80,7 +80,7 @@ export function PageHelpDialog({ content }: PageHelpDialogProps) {
             <Card className="border-purple-200 bg-purple-50">
               <CardContent className="pt-6">
                 <h3 className="font-semibold mb-2 text-purple-900">
-                  📋 Relevante ISO-standarder
+                  Legal basis and standards
                 </h3>
                 <ul className="text-sm text-purple-800 space-y-1.5">
                   {content.isoStandards.map((standard, idx) => (

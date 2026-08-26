@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { createId } from "@/lib/ids";
 
 /**
  * Audit Log Utility
@@ -36,16 +38,15 @@ export class AuditLog {
     userAgent?: string
   ): Promise<void> {
     try {
-      await prisma.auditLog.create({
-        data: {
-          tenantId,
-          userId,
-          action,
-          resource: `${resource}:${resourceId}`,
-          metadata: metadata ? JSON.stringify(metadata) : null,
-          ipAddress,
-          userAgent,
-        },
+      await getAdminDb().from("AuditLog").insert({
+        id: createId(),
+        tenantId,
+        userId,
+        action,
+        resource: `${resource}:${resourceId}`,
+        metadata: metadata ? JSON.stringify(metadata) : null,
+        ipAddress,
+        userAgent,
       });
     } catch (error) {
       // Log til console hvis database-logging feiler

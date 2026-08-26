@@ -2,7 +2,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
-import { prisma } from "@/lib/db";
+import { uniqueByCourseKey } from "@/features/training/schemas/training.schema";
+import { loadRequiredTrainings, loadTrainingsForTenant } from "@/server/queries/training.queries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,38 +16,18 @@ export default async function AnsattOpplaering() {
   const locale = await getLocale();
   const dateLocale = locale === "en" ? "en-US" : "nb-NO";
 
-  if (!session?.user?.tenantId) {
+  if (!session?.user?.tenantId || !session.user.id) {
     redirect("/login");
   }
 
-  // Hent alle påkrevde kurs for denne tenanten
-  // (Vi viser unique kurs basert på courseKey)
-  const allTrainings = await prisma.training.findMany({
-    where: {
-      tenantId: session.user.tenantId,
-      isRequired: true,
-    },
-    orderBy: {
-      title: "asc",
-    },
-  });
-
-  // Finn unike kurs basert på courseKey
-  const availableTrainings = allTrainings.filter(
-    (training, index, self) =>
-      index === self.findIndex((t) => t.courseKey === training.courseKey)
-  );
-
-  // Hent ansattes egne opplæringer (registrerte av ansatt selv)
-  const myTrainings = await prisma.training.findMany({
-    where: {
-      tenantId: session.user.tenantId,
+  const [allTrainings, myTrainings] = await Promise.all([
+    loadRequiredTrainings(session.user.tenantId),
+    loadTrainingsForTenant(session.user.tenantId, {
       userId: session.user.id,
-    },
-    orderBy: {
-      completedAt: "desc",
-    },
-  });
+      orderBy: "completedAt",
+    }),
+  ]);
+  const availableTrainings = uniqueByCourseKey(allTrainings);
 
   return (
     <div className="space-y-6">

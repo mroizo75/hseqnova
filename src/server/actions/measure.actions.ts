@@ -1,234 +1,202 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/db";
 import { getRequiredTenantContext } from "@/lib/tenant-context";
-import { createMeasureSchema, updateMeasureSchema, completeMeasureSchema } from "@/features/measures/schemas/measure.schema";
-import { IncidentStage } from "@prisma/client";
+import {
+  createMeasureSchema,
+  updateMeasureSchema,
+  completeMeasureSchema,
+  isMeasureOverdue,
+} from "@/features/measures/schemas/measure.schema";
+import {
+  closeRiskIfAllMeasuresDone,
+  deleteMeasureRecord,
+  incidentMeasuresAllDone,
+  insertMeasure,
+  loadFireDrillForTenant,
+  loadMeasureById,
+  loadMeasuresForTenant,
+  loadProjectForTenant,
+  logMeasureAction,
+  markRiskMitigating,
+  updateIncidentActionStage,
+  updateMeasureRecord,
+} from "@/server/queries/measures.queries";
 
-async function getSessionContext() {
-  const tenantContext = await getRequiredTenantContext();
-
-  const user = await prisma.user.findUnique({
-    where: { id: tenantContext.userId },
-    include: { tenants: true },
-  });
-  
-  if (!user || user.tenants.length === 0) {
-    throw new Error("User not associated with a tenant");
+function errorMessage(error: unknown, fallback: string): string {
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
+    return error.message;
   }
-  
-  return { user, tenantId: tenantContext.tenantId };
+  if (error instanceof Error) return error.message;
+  return fallback;
 }
 
-const parseOptionalNumber = (value: any) => {
+const parseOptionalNumber = (value: unknown) => {
   if (value === undefined || value === null || value === "") return undefined;
   const parsed = Number(value);
   return Number.isNaN(parsed) ? undefined : parsed;
 };
 
-// Hent alle tiltak for en tenant
+function revalidateMeasurePaths(input: {
+  projectId?: string | null;
+  riskId?: string | null;
+  incidentId?: string | null;
+  fireDrillId?: string | null;
+  measureId?: string | null;
+}) {
+  revalidatePath("/dashboard/risks");
+  revalidatePath("/dashboard/actions");
+  if (input.measureId) {
+    revalidatePath(`/dashboard/measures/${input.measureId}`);
+  }
+  if (input.projectId) {
+    revalidatePath(`/dashboard/projects/${input.projectId}`);
+  }
+  if (input.riskId) {
+    revalidatePath(`/dashboard/risks/${input.riskId}`);
+  }
+  if (input.incidentId) {
+    revalidatePath(`/dashboard/incidents/${input.incidentId}`);
+  }
+  if (input.fireDrillId) {
+    revalidatePath(`/dashboard/fire-drills/${input.fireDrillId}`);
+  }
+}
+
 export async function getMeasures(_tenantId: string) {
   try {
-    const { tenantId } = await getSessionContext();
-    
-    const measures = await prisma.measure.findMany({
-      where: { tenantId },
-      include: {
-        risk: { select: { id: true, title: true } },
-        incident: { select: { id: true, title: true } },
-        audit: { select: { id: true, title: true } },
-        goal: { select: { id: true, title: true } },
-      },
-      orderBy: [
-        { status: "asc" },
-        { dueAt: "asc" },
-      ],
-    });
-    
-    // Sjekk om tiltak er forfalte
-    const updatedMeasures = measures.map(measure => {
-      if (measure.status !== "DONE" && new Date() > new Date(measure.dueAt)) {
-        return { ...measure, status: "OVERDUE" as const };
-      }
-      return measure;
-    });
-    
-    return { success: true, data: updatedMeasures };
-  } catch (error: any) {
-    console.error("Get measures error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente tiltak" };
+    const { tenantId } = await getRequiredTenantContext();
+    const measures = await loadMeasuresForTenant(tenantId);
+    const data = measures.map((measure) =>
+      isMeasureOverdue(measure.dueAt, measure.status) ? { ...measure, status: "OVERDUE" as const } : measure,
+    );
+    return { success: true, data };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load actions") };
   }
 }
 
-// Hent ett tiltak
 export async function getMeasure(id: string) {
   try {
-    const { tenantId } = await getSessionContext();
-
-    const measure = await prisma.measure.findUnique({
-      where: { id, tenantId },
-      include: {
-        risk: { select: { id: true, title: true } },
-        incident: { select: { id: true, title: true } },
-        audit: { select: { id: true, title: true } },
-        goal: { select: { id: true, title: true } },
-        responsible: { select: { id: true, name: true, email: true } },
-      },
-    });
-
+    const { tenantId } = await getRequiredTenantContext();
+    const measure = await loadMeasureById(id, tenantId);
     if (!measure) {
-      return { success: false, error: "Tiltak ikke funnet", data: null };
+      return { success: false, error: "Action not found", data: null };
     }
-
     return { success: true, data: measure };
   } catch (error: unknown) {
-    const err = error as Error;
-    console.error("Get measure error:", err);
-    return { success: false, error: err.message || "Kunne ikke hente tiltak", data: null };
+    return { success: false, error: errorMessage(error, "Could not load actions"), data: null };
   }
 }
 
-// Hent tiltak for en spesifikk risiko
 export async function getMeasuresByRisk(riskId: string) {
   try {
-    const { user, tenantId } = await getSessionContext();
-    
-    const measures = await prisma.measure.findMany({
-      where: { riskId, tenantId },
-      orderBy: { createdAt: "desc" },
-    });
-    
+    const { tenantId } = await getRequiredTenantContext();
+    const measures = await loadMeasuresForTenant(tenantId, { riskId });
     return { success: true, data: measures };
-  } catch (error: any) {
-    console.error("Get measures by risk error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente tiltak" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load actions") };
   }
 }
 
-// Opprett nytt tiltak
-export async function createMeasure(input: any) {
+export async function createMeasure(input: unknown) {
   try {
-    const { user, tenantId } = await getSessionContext();
-    const normalizedInput = {
-      ...input,
+    const { userId, tenantId } = await getRequiredTenantContext();
+    const raw = (input ?? {}) as Record<string, unknown>;
+    const validated = createMeasureSchema.parse({
+      ...raw,
       tenantId,
-      dueAt: new Date(input.dueAt),
-      costEstimate: parseOptionalNumber(input.costEstimate),
-      benefitEstimate: parseOptionalNumber(input.benefitEstimate),
-    };
-    const validated = createMeasureSchema.parse(normalizedInput);
+      dueAt: new Date(String(raw.dueAt)),
+      costEstimate: parseOptionalNumber(raw.costEstimate),
+      benefitEstimate: parseOptionalNumber(raw.benefitEstimate),
+    });
+
     if (validated.projectId) {
-      const project = await prisma.project.findFirst({
-        where: {
-          id: validated.projectId,
-          tenantId,
-        },
-        select: { id: true },
-      });
+      const project = await loadProjectForTenant(validated.projectId, tenantId);
       if (!project) {
-        return { success: false, error: "Prosjekt ikke funnet for valgt tenant" };
+        return { success: false, error: "Project not found" };
       }
     }
-    
-    const measure = await prisma.measure.create({
-      data: {
-        tenantId: validated.tenantId,
-        projectId: validated.projectId,
-        riskId: validated.riskId,
-        incidentId: validated.incidentId,
-        auditId: validated.auditId,
-        goalId: validated.goalId,
-        title: validated.title,
-        description: validated.description,
-        dueAt: validated.dueAt,
-        responsibleId: validated.responsibleId,
-        status: validated.status,
-        category: validated.category,
-        followUpFrequency: validated.followUpFrequency,
-        costEstimate: validated.costEstimate,
-        benefitEstimate: validated.benefitEstimate,
-      },
+
+    if (validated.fireDrillId) {
+      const fireDrill = await loadFireDrillForTenant(validated.fireDrillId, tenantId);
+      if (!fireDrill) {
+        return { success: false, error: "Fire drill not found" };
+      }
+    }
+
+    const measure = await insertMeasure({
+      tenantId,
+      projectId: validated.projectId,
+      riskId: validated.riskId,
+      incidentId: validated.incidentId,
+      auditId: validated.auditId,
+      goalId: validated.goalId,
+      fireDrillId: validated.fireDrillId,
+      title: validated.title,
+      description: validated.description,
+      dueAt: validated.dueAt,
+      responsibleId: validated.responsibleId,
+      status: validated.status,
+      category: validated.category,
+      followUpFrequency: validated.followUpFrequency,
+      costEstimate: validated.costEstimate,
+      benefitEstimate: validated.benefitEstimate,
     });
-    
-    // Oppdater risikostatus hvis tiltaket er knyttet til en risiko
+
     if (validated.riskId) {
-      await prisma.risk.update({
-        where: { id: validated.riskId },
-        data: { status: "MITIGATING" },
-      });
+      await markRiskMitigating(validated.riskId, tenantId);
     }
 
     if (validated.incidentId) {
-      await prisma.incident.update({
-        where: { id: validated.incidentId, tenantId },
-        data: {
-          stage: IncidentStage.ACTIONS_DEFINED,
-          status: "ACTION_TAKEN",
-        },
-      });
+      await updateIncidentActionStage(validated.incidentId, tenantId, "ACTIONS_DEFINED", "ACTION_TAKEN");
     }
-    
-    // Audit log
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "MEASURE_CREATED",
-        resource: `Measure:${measure.id}`,
-        metadata: JSON.stringify({
-          title: measure.title,
-          riskId: validated.riskId,
-          responsibleId: validated.responsibleId,
-        }),
+
+    await logMeasureAction({
+      tenantId,
+      userId,
+      action: "MEASURE_CREATED",
+      resource: `Measure:${measure.id}`,
+      metadata: {
+        title: measure.title,
+        riskId: validated.riskId,
+        responsibleId: validated.responsibleId,
       },
     });
-    
-    revalidatePath("/dashboard/risks");
-    revalidatePath("/dashboard/actions");
-    if (validated.projectId) {
-      revalidatePath(`/dashboard/projects/${validated.projectId}`);
-    }
-    if (validated.riskId) {
-      revalidatePath(`/dashboard/risks/${validated.riskId}`);
-    }
-    
+
+    revalidateMeasurePaths({
+      projectId: validated.projectId,
+      riskId: validated.riskId,
+      incidentId: validated.incidentId,
+      fireDrillId: validated.fireDrillId,
+      measureId: measure.id,
+    });
+
     return { success: true, data: measure };
-  } catch (error: any) {
-    console.error("Create measure error:", error);
-    return { success: false, error: error.message || "Kunne ikke opprette tiltak" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not create the action") };
   }
 }
 
-// Oppdater tiltak
-export async function updateMeasure(input: any) {
+export async function updateMeasure(input: unknown) {
   try {
-    const { user, tenantId } = await getSessionContext();
-    const normalizedInput = {
-      ...input,
-      dueAt: input.dueAt ? new Date(input.dueAt) : undefined,
-      costEstimate: parseOptionalNumber(input.costEstimate),
-      benefitEstimate: parseOptionalNumber(input.benefitEstimate),
-      completedAt: input.completedAt ? new Date(input.completedAt) : undefined,
-    };
-    const validated = updateMeasureSchema.parse(normalizedInput);
-
-    const existingMeasure = await prisma.measure.findUnique({
-      where: { id: validated.id, tenantId },
+    const { userId, tenantId } = await getRequiredTenantContext();
+    const raw = (input ?? {}) as Record<string, unknown>;
+    const validated = updateMeasureSchema.parse({
+      ...raw,
+      dueAt: raw.dueAt ? new Date(String(raw.dueAt)) : undefined,
+      costEstimate: parseOptionalNumber(raw.costEstimate),
+      benefitEstimate: parseOptionalNumber(raw.benefitEstimate),
+      completedAt: raw.completedAt ? new Date(String(raw.completedAt)) : undefined,
     });
 
+    const existingMeasure = await loadMeasureById(validated.id, tenantId);
     if (!existingMeasure) {
-      return { success: false, error: "Tiltak ikke funnet" };
+      return { success: false, error: "Action not found" };
     }
 
-    const data: Record<string, unknown> = {
-      ...validated,
-      costEstimate: validated.costEstimate,
-      benefitEstimate: validated.benefitEstimate,
-      effectiveness: validated.effectiveness,
-      effectivenessNote: validated.effectivenessNote,
-      updatedAt: new Date(),
-    };
+    const { id, ...rest } = validated;
+    const data: Record<string, unknown> = { ...rest };
 
     if (validated.status === "DONE") {
       data.completedAt = validated.completedAt ?? new Date();
@@ -238,179 +206,139 @@ export async function updateMeasure(input: any) {
       data.effectivenessNote = null;
     }
 
-    const measure = await prisma.measure.update({
-      where: { id: validated.id, tenantId },
-      data: Object.fromEntries(
-        Object.entries(data).filter(([k, v]) => v !== undefined && k !== "id")
-      ) as any,
-    });
-    
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "MEASURE_UPDATED",
-        resource: `Measure:${measure.id}`,
-        metadata: JSON.stringify({ title: measure.title }),
-      },
+    const measure = await updateMeasureRecord(
+      id,
+      tenantId,
+      Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined)),
+    );
+
+    await logMeasureAction({
+      tenantId,
+      userId,
+      action: "MEASURE_UPDATED",
+      resource: `Measure:${measure.id}`,
+      metadata: { title: measure.title },
     });
 
-    revalidatePath("/dashboard/risks");
-    revalidatePath("/dashboard/actions");
-    revalidatePath(`/dashboard/measures/${measure.id}`);
-    if (measure.riskId) {
-      revalidatePath(`/dashboard/risks/${measure.riskId}`);
-    }
+    revalidateMeasurePaths({
+      riskId: measure.riskId,
+      incidentId: measure.incidentId,
+      fireDrillId: measure.fireDrillId,
+      measureId: measure.id,
+    });
 
     return { success: true, data: measure };
-  } catch (error: any) {
-    console.error("Update measure error:", error);
-    return { success: false, error: error.message || "Kunne ikke oppdatere tiltak" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not update the action") };
   }
 }
 
-// Fullfør tiltak (ISO 9001: Evaluering av tiltak)
-export async function completeMeasure(input: any) {
+export async function completeMeasure(input: unknown) {
   try {
-    const { user, tenantId } = await getSessionContext();
-    const normalizedInput = {
-      ...input,
-      completedAt: new Date(input.completedAt),
-    };
-    const validated = completeMeasureSchema.parse(normalizedInput);
-    
-    const measure = await prisma.measure.update({
-      where: { id: validated.id, tenantId },
-      data: {
-        status: "DONE",
-        completedAt: validated.completedAt,
-        effectiveness: validated.effectiveness,
-        effectivenessNote: validated.completionNote,
-        updatedAt: new Date(),
-      },
+    const { userId, tenantId } = await getRequiredTenantContext();
+    const raw = (input ?? {}) as Record<string, unknown>;
+    const validated = completeMeasureSchema.parse({
+      ...raw,
+      completedAt: new Date(String(raw.completedAt)),
     });
-    
-    // Sjekk om alle tiltak for risikoen er fullført
+
+    const existing = await loadMeasureById(validated.id, tenantId);
+    if (!existing) {
+      return { success: false, error: "Action not found" };
+    }
+
+    const measure = await updateMeasureRecord(validated.id, tenantId, {
+      status: "DONE",
+      completedAt: validated.completedAt,
+      effectiveness: validated.effectiveness,
+      effectivenessNote: validated.completionNote,
+    });
+
     if (measure.riskId) {
-      const allMeasures = await prisma.measure.findMany({
-        where: { riskId: measure.riskId, tenantId },
-      });
-      
-      const allCompleted = allMeasures.every(m => m.status === "DONE");
-      
-      if (allCompleted) {
-        await prisma.risk.update({
-          where: { id: measure.riskId },
-          data: { status: "CLOSED" },
-        });
-      }
+      await closeRiskIfAllMeasuresDone(measure.riskId, tenantId);
     }
 
     if (measure.incidentId) {
-      const incidentMeasures = await prisma.measure.findMany({
-        where: { incidentId: measure.incidentId, tenantId },
-      });
-      
-      const incidentAllCompleted = incidentMeasures.every(m => m.status === "DONE");
-      
-      await prisma.incident.update({
-        where: { id: measure.incidentId, tenantId },
-        data: {
-          stage: incidentAllCompleted ? IncidentStage.ACTIONS_COMPLETE : IncidentStage.ACTIONS_DEFINED,
-        },
-      });
-    }
-    
-    await prisma.auditLog.create({
-      data: {
+      const allDone = await incidentMeasuresAllDone(measure.incidentId, tenantId);
+      await updateIncidentActionStage(
+        measure.incidentId,
         tenantId,
-        userId: user.id,
-        action: "MEASURE_COMPLETED",
-        resource: `Measure:${measure.id}`,
-        metadata: JSON.stringify({
-          title: measure.title,
-          completionNote: validated.completionNote,
-        }),
+        allDone ? "ACTIONS_COMPLETE" : "ACTIONS_DEFINED",
+      );
+    }
+
+    await logMeasureAction({
+      tenantId,
+      userId,
+      action: "MEASURE_COMPLETED",
+      resource: `Measure:${measure.id}`,
+      metadata: {
+        title: measure.title,
+        completionNote: validated.completionNote,
       },
     });
-    
-    revalidatePath("/dashboard/risks");
-    revalidatePath("/dashboard/actions");
-    if (measure.riskId) {
-      revalidatePath(`/dashboard/risks/${measure.riskId}`);
-    }
-    
+
+    revalidateMeasurePaths({
+      riskId: measure.riskId,
+      incidentId: measure.incidentId,
+      fireDrillId: measure.fireDrillId,
+      measureId: measure.id,
+    });
+
     return { success: true, data: measure };
-  } catch (error: any) {
-    console.error("Complete measure error:", error);
-    return { success: false, error: error.message || "Kunne ikke fullføre tiltak" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not complete the action") };
   }
 }
 
-// Slett tiltak
 export async function deleteMeasure(id: string) {
   try {
-    const { user, tenantId } = await getSessionContext();
-    
-    const measure = await prisma.measure.findUnique({
-      where: { id, tenantId },
-    });
-    
+    const { userId, tenantId } = await getRequiredTenantContext();
+    const measure = await loadMeasureById(id, tenantId);
     if (!measure) {
-      return { success: false, error: "Tiltak ikke funnet" };
+      return { success: false, error: "Action not found" };
     }
-    
-    await prisma.measure.delete({
-      where: { id, tenantId },
+
+    await deleteMeasureRecord(id, tenantId);
+
+    await logMeasureAction({
+      tenantId,
+      userId,
+      action: "MEASURE_DELETED",
+      resource: `Measure:${id}`,
+      metadata: { title: measure.title },
     });
-    
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "MEASURE_DELETED",
-        resource: `Measure:${id}`,
-        metadata: JSON.stringify({ title: measure.title }),
-      },
+
+    revalidateMeasurePaths({
+      riskId: measure.riskId,
+      incidentId: measure.incidentId,
+      fireDrillId: measure.fireDrillId,
     });
-    
-    revalidatePath("/dashboard/risks");
-    revalidatePath("/dashboard/actions");
-    if (measure.riskId) {
-      revalidatePath(`/dashboard/risks/${measure.riskId}`);
-    }
-    
+
     return { success: true };
-  } catch (error: any) {
-    console.error("Delete measure error:", error);
-    return { success: false, error: error.message || "Kunne ikke slette tiltak" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not delete the action") };
   }
 }
 
-// Få statistikk over tiltak
 export async function getMeasureStats(_tenantId: string) {
   try {
-    const { tenantId } = await getSessionContext();
-    
-    const measures = await prisma.measure.findMany({
-      where: { tenantId },
-    });
-    
+    const { tenantId } = await getRequiredTenantContext();
+    const measures = await loadMeasuresForTenant(tenantId);
     const now = new Date();
-    const overdue = measures.filter(m => m.status !== "DONE" && new Date(m.dueAt) < now).length;
-    
-    const stats = {
-      total: measures.length,
-      pending: measures.filter(m => m.status === "PENDING").length,
-      inProgress: measures.filter(m => m.status === "IN_PROGRESS").length,
-      done: measures.filter(m => m.status === "DONE").length,
-      overdue,
+    const overdue = measures.filter((measure) => measure.status !== "DONE" && new Date(measure.dueAt) < now).length;
+
+    return {
+      success: true,
+      data: {
+        total: measures.length,
+        pending: measures.filter((measure) => measure.status === "PENDING").length,
+        inProgress: measures.filter((measure) => measure.status === "IN_PROGRESS").length,
+        done: measures.filter((measure) => measure.status === "DONE").length,
+        overdue,
+      },
     };
-    
-    return { success: true, data: stats };
-  } catch (error: any) {
-    console.error("Get measure stats error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente statistikk" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load statistics") };
   }
 }
-

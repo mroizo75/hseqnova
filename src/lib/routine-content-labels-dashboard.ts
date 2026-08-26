@@ -1,14 +1,14 @@
 import type { RoutineStructuredLabels } from "@/features/routines/components/routine-structured-blocks";
 
 export const ROUTINE_DASHBOARD_CONTENT_LABELS: RoutineStructuredLabels = {
-  formaal: "Formål",
-  omfang: "Omfang",
-  ansvar: "Ansvar",
-  gjennomforing: "Gjennomføring",
-  dokumentasjon: "Dokumentasjon",
-  avvikOppfolging: "Avvik og oppfølging",
-  revisjon: "Revisjon",
-  kilder: "Kilder",
-  emptyMessage: "Ingen rutinetekst er lagt inn i disse feltene.",
-  legacyTextTitle: "Øvrig innhold (fra tidligere versjon)",
+  formaal: "Purpose",
+  omfang: "Scope",
+  ansvar: "Responsibilities",
+  gjennomforing: "Method",
+  dokumentasjon: "Records",
+  avvikOppfolging: "Incidents and follow-up",
+  revisjon: "Review",
+  kilder: "Sources",
+  emptyMessage: "No procedure text has been added in these fields.",
+  legacyTextTitle: "Other content (from a previous version)",
 };

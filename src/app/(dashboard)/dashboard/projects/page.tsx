@@ -1,14 +1,14 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, FolderOpen, Building2, MapPin, User, CalendarDays, AlertCircle, HardHat, ClipboardCheck, ListTodo } from "lucide-react";
 import Link from "next/link";
 import type { ProjectStatus } from "@prisma/client";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
+import { loadProjectsForTenant } from "@/server/queries/projects.queries";
 
 function getStatusConfig(
   t: Awaited<ReturnType<typeof getTranslations>>
@@ -24,34 +24,11 @@ function getStatusConfig(
 
 export default async function ProjectsPage() {
   const t = await getTranslations("dashboardProjectsPage");
-  const locale = await getLocale();
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) redirect("/login");
+  if (!session?.user?.tenantId) redirect("/login");
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { tenants: true },
-  });
-  if (!user || user.tenants.length === 0) return <div>{t("noAccess")}</div>;
-
-  const selectedMembership = user.tenants.find(
-    (membership) => membership.tenantId === session.user.tenantId,
-  );
-  if (!selectedMembership) {
-    return <div>{t("noAccess")}</div>;
-  }
-  const tenantId = selectedMembership.tenantId;
-
-  const projects = await prisma.project.findMany({
-    where: { tenantId },
-    include: {
-      projectManager: { select: { name: true, email: true } },
-      _count: {
-        select: { incidents: true, sjaAnalyses: true, inspections: true, measures: true },
-      },
-    },
-    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-  });
+  const tenantId = session.user.tenantId;
+  const projects = await loadProjectsForTenant(tenantId);
 
   const active = projects.filter((p) => p.status === "ACTIVE").length;
   const planning = projects.filter((p) => p.status === "PLANNING").length;
@@ -99,7 +76,6 @@ export default async function ProjectsPage() {
         </Card>
       </div>
 
-      {/* Prosjektliste */}
       {projects.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center">
@@ -164,11 +140,11 @@ export default async function ProjectsPage() {
                           <CalendarDays className="h-3.5 w-3.5 shrink-0" />
                           <span className="text-xs">
                             {project.startDate
-                              ? new Date(project.startDate).toLocaleDateString(locale === "en" ? "en-US" : "nb-NO")
+                              ? new Date(project.startDate).toLocaleDateString("en-GB")
                               : "—"}
                             {" → "}
                             {project.endDate
-                              ? new Date(project.endDate).toLocaleDateString(locale === "en" ? "en-US" : "nb-NO")
+                              ? new Date(project.endDate).toLocaleDateString("en-GB")
                               : t("ongoing")}
                           </span>
                         </div>

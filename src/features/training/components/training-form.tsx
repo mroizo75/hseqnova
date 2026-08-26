@@ -133,9 +133,9 @@ export function TrainingForm({ tenantId, users, courseTemplates, trigger, open: 
       )}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Registrer opplæring</DialogTitle>
+          <DialogTitle>Add competence</DialogTitle>
           <DialogDescription>
-            ISO 9001: Dokumenter kompetanse basert på utdanning, opplæring eller erfaring
+            Record a course or qualification for one employee, with optional certificate.
           </DialogDescription>
         </DialogHeader>
 

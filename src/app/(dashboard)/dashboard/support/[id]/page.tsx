@@ -51,7 +51,7 @@ export default async function SupportTicketDetailPage({
       <Button asChild variant="ghost" className="px-0">
         <Link href="/dashboard/support">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Alle saker
+          All tickets
         </Link>
       </Button>
 

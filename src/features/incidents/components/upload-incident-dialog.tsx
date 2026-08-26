@@ -47,8 +47,8 @@ export function UploadIncidentDialog() {
     if (!title.trim()) {
       toast({
         variant: "destructive",
-        title: "Mangler tittel",
-        description: "Skriv inn en tittel for avviket.",
+        title: "Title required",
+        description: "Enter a title for the accident book entry.",
       });
       return;
     }
@@ -66,8 +66,8 @@ export function UploadIncidentDialog() {
 
       if (result.success) {
         toast({
-          title: "Avvik opprettet",
-          description: `Avviket "${title}" er registrert.`,
+          title: "Record created",
+          description: `"${title}" has been added to the accident book.`,
         });
         setOpen(false);
         reset();
@@ -75,15 +75,15 @@ export function UploadIncidentDialog() {
       } else {
         toast({
           variant: "destructive",
-          title: "Feil",
-          description: result.error || "Kunne ikke opprette avvik.",
+          title: "Error",
+          description: result.error || "Could not create the record.",
         });
       }
     } catch {
       toast({
         variant: "destructive",
-        title: "Feil",
-        description: "Noe gikk galt. Prøv igjen.",
+        title: "Error",
+        description: "Something went wrong. Please try again.",
       });
     } finally {
       setIsSubmitting(false);
@@ -91,51 +91,51 @@ export function UploadIncidentDialog() {
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
+    <Dialog open={open} onOpenChange={(value) => { setOpen(value); if (!value) reset(); }}>
       <DialogTrigger asChild>
         <Button variant="outline">
           <Upload className="mr-2 h-4 w-4" />
-          Last opp avvik
+          Upload record
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Last opp avvik</DialogTitle>
+          <DialogTitle>Upload accident book record</DialogTitle>
           <DialogDescription>
-            Registrer et avvik med minimal informasjon. Detaljer fylles inn ved behandling.
+            Create a record with a title and optional file. Details can be completed during handling.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div>
-            <Label htmlFor="upload-title">Tittel</Label>
+            <Label htmlFor="upload-title">Title</Label>
             <Input
               id="upload-title"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Kort beskrivelse av avviket"
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder="Short description of the incident"
               disabled={isSubmitting}
             />
           </div>
 
           <div>
-            <Label>Kilde</Label>
+            <Label>Source</Label>
             <Select
               value={source}
-              onValueChange={(v) => setSource(v as "INTERNAL" | "EXTERNAL")}
+              onValueChange={(value) => setSource(value as "INTERNAL" | "EXTERNAL")}
               disabled={isSubmitting}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="EXTERNAL">Ekstern (mottatt utenfra)</SelectItem>
-                <SelectItem value="INTERNAL">Intern (registrert internt)</SelectItem>
+                <SelectItem value="EXTERNAL">External (received from outside)</SelectItem>
+                <SelectItem value="INTERNAL">Internal (recorded in-house)</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div>
-            <Label htmlFor="upload-file">Fil (valgfritt)</Label>
+            <Label htmlFor="upload-file">File (optional)</Label>
             <div className="mt-1">
               <label
                 htmlFor="upload-file"
@@ -147,7 +147,7 @@ export function UploadIncidentDialog() {
                     <p className="text-sm font-medium truncate">{file.name}</p>
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      Klikk for å velge fil (PDF, bilde, etc.)
+                      Click to choose a file (PDF, image, etc.)
                     </p>
                   )}
                 </div>
@@ -158,7 +158,7 @@ export function UploadIncidentDialog() {
                 type="file"
                 className="sr-only"
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
                 disabled={isSubmitting}
               />
             </div>
@@ -172,10 +172,10 @@ export function UploadIncidentDialog() {
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Oppretter...
+                Creating...
               </>
             ) : (
-              "Opprett avvik"
+              "Create record"
             )}
           </Button>
         </div>

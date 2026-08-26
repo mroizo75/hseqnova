@@ -12,7 +12,6 @@ import {
   ORGANIZATION_SCHEMA,
   ROBOTS_CONFIG,
 } from "@/lib/seo-config";
-import { LOCAL_BUSINESS_SCHEMA } from "@/lib/seo-schemas";
 import { MultipleStructuredData } from "@/components/seo/structured-data";
 import "./globals.css";
 
@@ -77,7 +76,7 @@ export default async function RootLayout({
   return (
     <html lang={locale} className="overflow-x-hidden">
       <head>
-        <MultipleStructuredData dataArray={[ORGANIZATION_SCHEMA, LOCAL_BUSINESS_SCHEMA]} />
+        <MultipleStructuredData dataArray={[ORGANIZATION_SCHEMA]} />
       </head>
       <body className="min-h-dvh overflow-x-hidden">
         <Providers locale={locale} messages={messages} session={session} nowISO={nowISO}>

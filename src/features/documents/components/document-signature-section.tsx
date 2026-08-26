@@ -36,9 +36,9 @@ interface DocumentSignatureSectionProps {
 }
 
 const ROLE_CONFIG: Record<DocumentSignerRole, { label: string; icon: typeof PenLine; color: string }> = {
-  UTARBEIDET_AV: { label: "Utarbeidet av", icon: PenLine, color: "bg-blue-100 text-blue-800" },
-  KONTROLLERT_AV: { label: "Kontrollert av", icon: UserCheck, color: "bg-yellow-100 text-yellow-800" },
-  GODKJENT_AV: { label: "Godkjent av", icon: ShieldCheck, color: "bg-green-100 text-green-800" },
+  UTARBEIDET_AV: { label: "Prepared by", icon: PenLine, color: "bg-blue-100 text-blue-800" },
+  KONTROLLERT_AV: { label: "Reviewed by", icon: UserCheck, color: "bg-yellow-100 text-yellow-800" },
+  GODKJENT_AV: { label: "Approved by", icon: ShieldCheck, color: "bg-green-100 text-green-800" },
 };
 
 export function DocumentSignatureSection({
@@ -46,7 +46,6 @@ export function DocumentSignatureSection({
   signatures,
   canSign,
   canApprove,
-  currentUserId,
 }: DocumentSignatureSectionProps) {
   const [showSignForm, setShowSignForm] = useState(false);
   const [selectedRole, setSelectedRole] = useState<DocumentSignerRole>("UTARBEIDET_AV");
@@ -69,11 +68,14 @@ export function DocumentSignatureSection({
       });
 
       if (result.success) {
-        toast({ title: "Signatur registrert", description: `Dokumentet er signert som ${ROLE_CONFIG[selectedRole].label.toLowerCase()}` });
+        toast({
+          title: "Signature recorded",
+          description: `Signed as ${ROLE_CONFIG[selectedRole].label.toLowerCase()}.`,
+        });
         setShowSignForm(false);
         setComment("");
       } else {
-        toast({ title: "Feil", description: result.error, variant: "destructive" });
+        toast({ title: "Could not sign", description: result.error, variant: "destructive" });
       }
     });
   }
@@ -82,9 +84,9 @@ export function DocumentSignatureSection({
     startTransition(async () => {
       const result = await removeDocumentSignature(signatureId);
       if (result.success) {
-        toast({ title: "Signatur fjernet" });
+        toast({ title: "Signature removed" });
       } else {
-        toast({ title: "Feil", description: result.error, variant: "destructive" });
+        toast({ title: "Could not remove signature", description: result.error, variant: "destructive" });
       }
     });
   }
@@ -100,19 +102,19 @@ export function DocumentSignatureSection({
           <div>
             <CardTitle className="flex items-center gap-2">
               <FileCheck className="h-5 w-5" />
-              Signaturside
+              Signatures
             </CardTitle>
             <CardDescription>
-              IK-HMS § 5: Dokumenter skal signeres av utarbeider, kontrollør og godkjenner
+              Controlled documents are prepared, reviewed and approved. HSWA 1974 s.2(3) requires a written
+              health and safety policy with organisation and arrangements.
             </CardDescription>
           </div>
           {allSigned && (
-            <Badge className="bg-green-100 text-green-800">Fullstendig signert</Badge>
+            <Badge className="bg-green-100 text-green-800">Fully signed</Badge>
           )}
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Signaturoversikt */}
         <div className="grid gap-4 md:grid-cols-3">
           {requiredRoles.map((role) => {
             const config = ROLE_CONFIG[role];
@@ -147,7 +149,7 @@ export function DocumentSignatureSection({
                     <div className="bg-white border rounded p-2">
                       <Image
                         src={sig.signatureImg}
-                        alt={`Signatur: ${sig.signedBy.name || sig.signedBy.email}`}
+                        alt={`Signature: ${sig.signedBy.name || sig.signedBy.email}`}
                         width={240}
                         height={80}
                         className="w-full h-auto object-contain"
@@ -157,7 +159,7 @@ export function DocumentSignatureSection({
                     <div className="text-sm space-y-1">
                       <p className="font-medium">{sig.signedBy.name || sig.signedBy.email}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(sig.signedAt).toLocaleDateString("nb-NO", {
+                        {new Date(sig.signedAt).toLocaleDateString("en-GB", {
                           day: "2-digit",
                           month: "long",
                           year: "numeric",
@@ -172,7 +174,7 @@ export function DocumentSignatureSection({
                   </>
                 ) : (
                   <div className="text-center py-4 text-sm text-muted-foreground">
-                    Mangler signatur
+                    Signature outstanding
                   </div>
                 )}
               </div>
@@ -180,11 +182,10 @@ export function DocumentSignatureSection({
           })}
         </div>
 
-        {/* Signer-skjema */}
         {canSign && !showSignForm && (
-          <Button onClick={() => setShowSignForm(true)} variant="outline" className="w-full">
+          <Button onClick={() => setShowSignForm(true)} variant="outline" className="w-full bg-transparent">
             <PenLine className="h-4 w-4 mr-2" />
-            Signer dokument
+            Sign document
           </Button>
         )}
 
@@ -192,7 +193,7 @@ export function DocumentSignatureSection({
           <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Signaturrolle</Label>
+                <Label>Signing role</Label>
                 <Select
                   value={selectedRole}
                   onValueChange={(v) => setSelectedRole(v as DocumentSignerRole)}
@@ -210,11 +211,11 @@ export function DocumentSignatureSection({
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Kommentar (valgfritt)</Label>
+                <Label>Comment (optional)</Label>
                 <Input
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="F.eks. 'Gjennomgått og godkjent'"
+                  placeholder="e.g. Reviewed and approved"
                 />
               </div>
             </div>
@@ -226,7 +227,7 @@ export function DocumentSignatureSection({
               onClick={() => setShowSignForm(false)}
               className="w-full"
             >
-              Avbryt
+              Cancel
             </Button>
           </div>
         )}

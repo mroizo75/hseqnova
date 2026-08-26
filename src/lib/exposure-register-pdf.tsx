@@ -357,18 +357,18 @@ const styles = StyleSheet.create({
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 const EXPOSURE_TYPE_LABELS: Record<string, string> = {
-  INHALATION: "Innånding",
-  SKIN: "Hudkontakt",
-  NOISE: "Støy",
-  VIBRATION: "Vibrasjon",
-  BIOLOGICAL: "Biologisk",
-  RADIATION: "Stråling",
-  OTHER: "Annet",
+  INHALATION: "Inhalation",
+  SKIN: "Skin contact",
+  NOISE: "Noise",
+  VIBRATION: "Vibration",
+  BIOLOGICAL: "Biological",
+  RADIATION: "Radiation",
+  OTHER: "Other",
 };
 
 function fmtDate(d: Date | string | null | undefined): string {
   if (!d) return "–";
-  return new Date(d).toLocaleDateString("nb-NO", {
+  return new Date(d).toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -378,8 +378,8 @@ function fmtDate(d: Date | string | null | undefined): string {
 function StatusPill({ status }: { status: string }) {
   const cfg =
     status === "ACTIVE"
-      ? { bg: BRAND.orangeBg, border: BRAND.orangeBorder, color: BRAND.orange, label: "Pågående" }
-      : { bg: BRAND.slateLight, border: BRAND.border, color: BRAND.slate, label: "Avsluttet" };
+      ? { bg: BRAND.orangeBg, border: BRAND.orangeBorder, color: BRAND.orange, label: "Ongoing" }
+      : { bg: BRAND.slateLight, border: BRAND.border, color: BRAND.slate, label: "Ended" };
   return (
     <View style={[styles.statusPill, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
       <Text style={[styles.statusText, { color: cfg.color }]}>{cfg.label}</Text>
@@ -462,11 +462,11 @@ function PageFooter({ employeeName }: { employeeName: string }) {
   return (
     <View style={styles.footer} fixed>
       <Text style={styles.footerLeft}>
-        Eksponeringsregister – {employeeName} · Konfidensielt personaldokument
+        Health records – {employeeName} · Confidential personnel document
       </Text>
       <Text
         style={styles.footerRight}
-        render={({ pageNumber, totalPages }) => `Side ${pageNumber} av ${totalPages}`}
+        render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
       />
     </View>
   );
@@ -475,10 +475,10 @@ function PageFooter({ employeeName }: { employeeName: string }) {
 function ExposureDocument({ employeeName, companyName, generatedAt, entries }: DocProps) {
   return (
     <Document
-      title={`Eksponeringsregister – ${employeeName}`}
-      author="HMS Nova"
-      creator="HMS Nova"
-      subject="Personlig eksponeringsdokumentasjon"
+      title={`Health records – ${employeeName}`}
+      author="HSEQ Nova"
+      creator="HSEQ Nova"
+      subject="Personal health and exposure records"
     >
       {/* ── Side 1: Forside + info ───────────────────────────────────── */}
       <Page size="A4" style={styles.page}>
@@ -486,16 +486,16 @@ function ExposureDocument({ employeeName, companyName, generatedAt, entries }: D
         <View style={styles.headerStripe}>
           <View style={styles.headerRow}>
             <View>
-              <Text style={styles.headerTitle}>Eksponeringsregister</Text>
+              <Text style={styles.headerTitle}>Health records</Text>
               <Text style={styles.headerSubtitle}>
-                Personlig eksponeringsdokumentasjon · HMS Nova
+                Personal health and exposure records · HSEQ Nova
               </Text>
             </View>
             <View style={styles.headerRight}>
               <View style={styles.headerBadge}>
-                <Text style={styles.headerBadgeText}>KONFIDENSIELT</Text>
+                <Text style={styles.headerBadgeText}>CONFIDENTIAL</Text>
               </View>
-              <Text style={styles.headerMeta}>Generert {generatedAt}</Text>
+              <Text style={styles.headerMeta}>Generated {generatedAt}</Text>
             </View>
           </View>
         </View>
@@ -503,19 +503,19 @@ function ExposureDocument({ employeeName, companyName, generatedAt, entries }: D
         {/* Meta bar */}
         <View style={styles.metaBar}>
           <View style={styles.metaItem}>
-            <Text style={styles.metaLabel}>Arbeidstaker</Text>
+            <Text style={styles.metaLabel}>Employee</Text>
             <Text style={styles.metaValue}>{employeeName}</Text>
           </View>
           <View style={styles.metaItem}>
-            <Text style={styles.metaLabel}>Virksomhet</Text>
+            <Text style={styles.metaLabel}>Organisation</Text>
             <Text style={styles.metaValue}>{companyName}</Text>
           </View>
           <View style={styles.metaItem}>
-            <Text style={styles.metaLabel}>Antall registreringer</Text>
+            <Text style={styles.metaLabel}>Number of records</Text>
             <Text style={styles.metaValue}>{entries.length}</Text>
           </View>
           <View style={styles.metaItem}>
-            <Text style={styles.metaLabel}>Oppbevares til</Text>
+            <Text style={styles.metaLabel}>Retained until</Text>
             <Text style={styles.metaValue}>
               {entries.length > 0
                 ? Math.max(...entries.map((e) => new Date(e.retentionUntilDate).getFullYear()).filter(Boolean)).toString()
@@ -530,12 +530,11 @@ function ExposureDocument({ employeeName, companyName, generatedAt, entries }: D
           <View style={styles.legalBox}>
             <View style={styles.legalDot} />
             <Text style={styles.legalText}>
-              <Text style={styles.legalBold}>Juridisk grunnlag: </Text>
-              Dette dokumentet er utlevert i henhold til arbeidstakers rett til innsyn i egne
-              opplysninger i eksponeringsregisteret, jf. arbeidsmiljøloven § 4-5 og forskrift om
-              utførelse av arbeid kap. 31. Registeret oppbevares i minst 40–60 år og kan fremlegges
-              som dokumentasjon ved yrkessykdom, erstatningskrav eller tilsyn fra Arbeidstilsynet.
-              Dokumentet er konfidensielt og bør oppbevares sikkert.
+              <Text style={styles.legalBold}>Legal basis: </Text>
+              This document is issued under the employee&apos;s right of access to their own
+              personal data (UK GDPR / DPA 2018). Health records required by COSHH 2002 are kept
+              for 40 years and may be produced as evidence of occupational disease or for HSE
+              inspection. The document is confidential and should be stored securely.
             </Text>
           </View>
 
@@ -543,13 +542,13 @@ function ExposureDocument({ employeeName, companyName, generatedAt, entries }: D
           <View style={{ marginBottom: 16 }}>
             <View style={styles.sectionHeading}>
               <View style={styles.sectionAccent} />
-              <Text style={styles.sectionTitle}>Regelverkshenvisninger</Text>
+              <Text style={styles.sectionTitle}>Legal references</Text>
             </View>
             {[
-              "Arbeidsmiljøloven § 4-5 – Særlig farlig arbeid og risikovurdering",
-              "Forskrift om utførelse av arbeid, kap. 31 – Register over eksponerte arbeidstakere",
-              "REACH-forordningen – Stoffer av svært høy bekymring (SVHC)",
-              "Arbeidstilsynet: Register over eksponerte arbeidstakere (Carc./Mut./Repr. kat. 1A/1B)",
+              "COSHH 2002 regulation 11 — health surveillance and health records (40 years)",
+              "Control of Lead at Work 2002 / Control of Asbestos Regulations 2012 — 40-year records",
+              "UK REACH — substances of very high concern (SVHC)",
+              "HSE: health surveillance for hazardous substances",
             ].map((ref, i) => (
               <View key={i} style={{ flexDirection: "row", gap: 5, marginBottom: 3 }}>
                 <Text style={{ fontSize: 8, color: BRAND.blue, marginTop: 1 }}>›</Text>
@@ -561,7 +560,7 @@ function ExposureDocument({ employeeName, companyName, generatedAt, entries }: D
           {/* Empty state på forside */}
           {entries.length === 0 && (
             <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>Ingen eksponeringer registrert</Text>
+              <Text style={styles.emptyText}>No exposures recorded</Text>
             </View>
           )}
         </View>
@@ -576,7 +575,7 @@ function ExposureDocument({ employeeName, companyName, generatedAt, entries }: D
           <View style={[styles.headerStripe, { paddingTop: 14, paddingBottom: 12 }]}>
             <View style={styles.headerRow}>
               <Text style={[styles.headerTitle, { fontSize: 14 }]}>
-                Registrerte eksponeringer
+                Recorded exposures
               </Text>
               <Text style={styles.headerMeta}>{employeeName} · {companyName}</Text>
             </View>
@@ -590,16 +589,16 @@ function ExposureDocument({ employeeName, companyName, generatedAt, entries }: D
               const cas = entry.chemical?.casNumber ?? null;
               const periodEnd = entry.exposureEndDate
                 ? fmtDate(entry.exposureEndDate)
-                : "pågående";
+                : "ongoing";
 
-              let healthLabel = "Ikke påkrevd";
+              let healthLabel = "Not required";
               let healthStyle = styles.healthNeutral;
               if (entry.healthCheckRequired) {
                 if (entry.healthCheckDone) {
-                  healthLabel = `Utført${entry.healthCheckDate ? "  " + fmtDate(entry.healthCheckDate) : ""}`;
+                  healthLabel = `Completed${entry.healthCheckDate ? "  " + fmtDate(entry.healthCheckDate) : ""}`;
                   healthStyle = styles.healthGood;
                 } else {
-                  healthLabel = "Ikke gjennomført";
+                  healthLabel = "Not completed";
                   healthStyle = styles.healthBad;
                 }
               }
@@ -616,37 +615,37 @@ function ExposureDocument({ employeeName, companyName, generatedAt, entries }: D
                   {/* Card body */}
                   <View style={styles.entryBody}>
                     <View style={styles.fieldGrid}>
-                      <Field label="Eksponeringsfaktor" value={chemical} size="half" />
-                      {cas && <Field label="CAS-nummer" value={cas} mono size="third" />}
+                      <Field label="Substance / agent" value={chemical} size="half" />
+                      {cas && <Field label="CAS number" value={cas} mono size="third" />}
                       <Field
-                        label="Type eksponering"
+                        label="Type of exposure"
                         value={EXPOSURE_TYPE_LABELS[entry.exposureType] ?? entry.exposureType}
                         size="third"
                       />
-                      <Field label="Fra" value={fmtDate(entry.exposureStartDate)} size="third" />
-                      <Field label="Til" value={periodEnd} size="third" />
+                      <Field label="From" value={fmtDate(entry.exposureStartDate)} size="third" />
+                      <Field label="To" value={periodEnd} size="third" />
                       {entry.duration && (
-                        <Field label="Varighet" value={entry.duration} size="third" />
+                        <Field label="Duration" value={entry.duration} size="third" />
                       )}
-                      <Field label="Arbeidssted" value={entry.workLocation} size="half" />
-                      <Field label="Stilling" value={entry.jobTitle} size="half" />
+                      <Field label="Workplace" value={entry.workLocation} size="half" />
+                      <Field label="Job title" value={entry.jobTitle} size="half" />
                       {entry.department && (
-                        <Field label="Avdeling" value={entry.department} size="half" />
+                        <Field label="Department" value={entry.department} size="half" />
                       )}
                       {entry.ppeUsed && (
-                        <Field label="Verneutstyr" value={entry.ppeUsed} size="full" />
+                        <Field label="PPE" value={entry.ppeUsed} size="full" />
                       )}
                     </View>
 
                     {/* Helsekontroll */}
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 6 }}>
-                      <Text style={styles.fieldLabel}>HELSEKONTROLL</Text>
+                      <Text style={styles.fieldLabel}>HEALTH SURVEILLANCE</Text>
                       <Text style={healthStyle}>{healthLabel}</Text>
                     </View>
 
                     {/* Oppbevaring */}
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 6 }}>
-                      <Text style={styles.fieldLabel}>OPPBEVARES TIL</Text>
+                      <Text style={styles.fieldLabel}>RETAINED UNTIL</Text>
                       <Text style={styles.fieldValue}>{fmtDate(entry.retentionUntilDate)}</Text>
                     </View>
 
@@ -656,7 +655,7 @@ function ExposureDocument({ employeeName, companyName, generatedAt, entries }: D
                         {entry.ruhReport && (
                           <View style={[styles.linkPill, { backgroundColor: "#eff6ff", borderColor: "#93c5fd" }]}>
                             <Text style={[styles.linkPillText, { color: "#1d4ed8" }]}>
-                              RUH {entry.ruhReport.ruhNummer ?? ""} – {entry.ruhReport.title}
+                              Accident book {entry.ruhReport.ruhNummer ?? ""} – {entry.ruhReport.title}
                             </Text>
                           </View>
                         )}
@@ -676,7 +675,7 @@ function ExposureDocument({ employeeName, companyName, generatedAt, entries }: D
                     {/* Kommentar */}
                     {entry.comment && (
                       <View style={{ marginTop: 6 }}>
-                        <Text style={styles.fieldLabel}>KOMMENTAR</Text>
+                        <Text style={styles.fieldLabel}>NOTES</Text>
                         <Text style={[styles.fieldValue, { fontFamily: "Helvetica-Oblique", color: BRAND.textSecondary }]}>
                           {entry.comment}
                         </Text>
@@ -695,7 +694,7 @@ function ExposureDocument({ employeeName, companyName, generatedAt, entries }: D
       {/* ── Signaturside ─────────────────────────────────────────────── */}
       <Page size="A4" style={styles.page}>
         <View style={[styles.headerStripe, { paddingTop: 14, paddingBottom: 12 }]}>
-          <Text style={[styles.headerTitle, { fontSize: 14 }]}>Bekreftelse og innsyn</Text>
+          <Text style={[styles.headerTitle, { fontSize: 14 }]}>Confirmation and access</Text>
         </View>
 
         <View style={styles.signaturePage}>
@@ -703,28 +702,28 @@ function ExposureDocument({ employeeName, companyName, generatedAt, entries }: D
 
           {/* Innsynstekst */}
           <View style={styles.signatureBox}>
-            <Text style={styles.signatureTitle}>Om dette dokumentet</Text>
+            <Text style={styles.signatureTitle}>About this document</Text>
             <Text style={[styles.fieldValue, { lineHeight: 1.6 }]}>
-              Arbeidstaker bekrefter å ha mottatt innsyn i egne opplysninger i eksponeringsregisteret,
-              jf. Forskrift om utførelse av arbeid § 31-2.{"\n\n"}
-              Dette dokumentet kan fremlegges for lege, bedriftshelsetjeneste eller Arbeidstilsynet
-              som dokumentasjon på eksponering for helseskadelige stoffer og faktorer i arbeidsforholdet.{"\n\n"}
-              Dokumentet er generert av HMS Nova og er en offisiell utskrift av eksponeringsregisteret.
+              The employee confirms they have received access to their own health records
+              under UK GDPR / DPA 2018.{"\n\n"}
+              This document may be shown to a doctor, occupational health or the HSE as
+              evidence of exposure to hazardous substances at work.{"\n\n"}
+              The document is generated by HSEQ Nova and is an official print of the health record.
             </Text>
           </View>
 
           {/* Signaturer */}
           <View style={styles.signatureBox}>
-            <Text style={styles.signatureTitle}>Signaturer</Text>
+            <Text style={styles.signatureTitle}>Signatures</Text>
 
             <View style={styles.signatureGrid}>
               <View style={styles.signatureCell}>
-                <Text style={[styles.fieldLabel, { marginBottom: 16 }]}>ARBEIDSTAKERS SIGNATUR</Text>
+                <Text style={[styles.fieldLabel, { marginBottom: 16 }]}>EMPLOYEE SIGNATURE</Text>
                 <View style={styles.signatureLine} />
                 <Text style={styles.signatureLineLabel}>{employeeName}</Text>
               </View>
               <View style={[styles.signatureCell, { maxWidth: 100 }]}>
-                <Text style={[styles.fieldLabel, { marginBottom: 16 }]}>DATO</Text>
+                <Text style={[styles.fieldLabel, { marginBottom: 16 }]}>DATE</Text>
                 <View style={styles.signatureLine} />
                 <Text style={styles.signatureLineLabel}> </Text>
               </View>
@@ -734,12 +733,12 @@ function ExposureDocument({ employeeName, companyName, generatedAt, entries }: D
 
             <View style={styles.signatureGrid}>
               <View style={styles.signatureCell}>
-                <Text style={[styles.fieldLabel, { marginBottom: 16 }]}>HMS-ANSVARLIG SIGNATUR</Text>
+                <Text style={[styles.fieldLabel, { marginBottom: 16 }]}>HSE MANAGER SIGNATURE</Text>
                 <View style={styles.signatureLine} />
                 <Text style={styles.signatureLineLabel}>{companyName}</Text>
               </View>
               <View style={[styles.signatureCell, { maxWidth: 100 }]}>
-                <Text style={[styles.fieldLabel, { marginBottom: 16 }]}>DATO</Text>
+                <Text style={[styles.fieldLabel, { marginBottom: 16 }]}>DATE</Text>
                 <View style={styles.signatureLine} />
                 <Text style={styles.signatureLineLabel}> </Text>
               </View>
@@ -750,8 +749,8 @@ function ExposureDocument({ employeeName, companyName, generatedAt, entries }: D
           <View style={[styles.legalBox, { marginTop: 4 }]}>
             <View style={styles.legalDot} />
             <Text style={styles.legalText}>
-              Hjemmel: Arbeidsmiljøloven § 4-5 · Forskrift om utførelse av arbeid, kap. 31
-              (Arbeidstilsynet) · Generert av HMS Nova {generatedAt}
+              Legal basis: COSHH 2002 regulation 11 · UK GDPR / DPA 2018
+              · Generated by HSEQ Nova {generatedAt}
             </Text>
           </View>
         </View>

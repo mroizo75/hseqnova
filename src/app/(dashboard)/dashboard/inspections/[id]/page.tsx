@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,11 +18,16 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { enUS, nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale";
 import { InspectionFindingList } from "@/features/inspections/components/inspection-finding-list";
 import { UpdateInspectionStatusForm } from "@/features/inspections/components/update-inspection-status-form";
 import { DeleteInspectionButton } from "@/features/inspections/components/delete-inspection-button";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
+import {
+  loadInspectionDetail,
+  loadInspectionPeople,
+  parseParticipantIds,
+} from "@/server/queries/inspections.queries";
 
 export const dynamic = "force-dynamic";
 
@@ -84,72 +88,27 @@ export default async function InspectionDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const t = await getTranslations("dashboardInspectionDetailPage");
-  const locale = await getLocale();
-  const dateLocale = locale === "en" ? enUS : nb;
+  const dateLocale = enGB;
   const { id } = await params;
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.email) {
+  if (!session?.user?.email || !session.user.tenantId) {
     redirect("/login");
   }
 
   const permissions = getPermissions(session.user.role ?? "ANSATT");
+  const tenantId = session.user.tenantId;
 
-  const currentUser = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { tenants: true },
-  });
-
-  if (!currentUser || currentUser.tenants.length === 0) {
-    return <div>{t("noTenantAccess")}</div>;
-  }
-
-  const selectedMembership = currentUser.tenants.find(
-    (membership) => membership.tenantId === session.user.tenantId,
-  );
-  if (!selectedMembership) {
-    return <div>{t("noTenantAccess")}</div>;
-  }
-
-  const tenantId = selectedMembership.tenantId;
-
-  const inspection = await prisma.inspection.findUnique({
-    where: { id, tenantId },
-    include: {
-      findings: {
-        orderBy: { createdAt: "desc" },
-      },
-      formTemplate: {
-        include: {
-          fields: {
-            orderBy: { order: "asc" },
-          },
-        },
-      },
-      formSubmission: {
-        include: {
-          fieldValues: true,
-        },
-      },
-    },
-  });
+  const inspection = await loadInspectionDetail(tenantId, id);
 
   if (!inspection) {
     return <div>{t("notFound")}</div>;
   }
 
-  // Hent gjennomfører
-  const conductedByUser = await prisma.user.findUnique({
-    where: { id: inspection.conductedBy },
-    select: { id: true, name: true, email: true },
-  });
-
-  // Hent deltakere
-  const participantIds = inspection.participants ? JSON.parse(inspection.participants) : [];
-  const participants = await prisma.user.findMany({
-    where: { id: { in: participantIds } },
-    select: { id: true, name: true, email: true },
-  });
+  const participantIds = parseParticipantIds(inspection.participants);
+  const people = await loadInspectionPeople([inspection.conductedBy, ...participantIds]);
+  const conductedByUser = people.find((person) => person.id === inspection.conductedBy) ?? null;
+  const participants = people.filter((person) => participantIds.includes(person.id));
 
   // Finding statistics
   const findingStats = {
@@ -176,6 +135,10 @@ export default async function InspectionDetailPage({
           <div>
             <h1 className="text-3xl font-bold">{inspection.title}</h1>
             <p className="text-muted-foreground">{t("details")}</p>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              This record does not imply that conditions are safe and healthy or that
+              welfare arrangements are satisfactory (HSE F2534).
+            </p>
           </div>
           <div className="flex items-center gap-2">
             {getTypeBadge(inspection.type, t)}
@@ -271,7 +234,7 @@ export default async function InspectionDetailPage({
               <div className="flex-1">
                 <p className="text-sm font-medium text-muted-foreground">{t("basicInfo.scheduledDate")}</p>
                 <p className="font-medium">
-                  {format(new Date(inspection.scheduledDate), "d. MMMM yyyy", { locale: dateLocale })}
+                  {format(new Date(inspection.scheduledDate), "d MMMM yyyy, HH:mm", { locale: dateLocale })}
                 </p>
               </div>
             </div>
@@ -297,6 +260,15 @@ export default async function InspectionDetailPage({
                 </div>
               </div>
             )}
+            {inspection.area ? (
+              <div className="flex items-start gap-3">
+                <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-muted-foreground">{t("basicInfo.area")}</p>
+                  <p className="font-medium">{inspection.area}</p>
+                </div>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 

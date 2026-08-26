@@ -1,49 +1,26 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { validateApiKey, logApiRequest, checkPermission } from "@/lib/intelligence-api-auth";
 
-export const dynamic = "force-dynamic";
+/** Not offered in the UK product. */
+function notAvailable() {
+  return NextResponse.json({ error: "Not available" }, { status: 404 });
+}
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ metric: string }> },
-) {
-  const startTime = Date.now();
-  const authResult = await validateApiKey(request);
-  if (authResult instanceof NextResponse) return authResult;
+export async function GET() {
+  return notAvailable();
+}
 
-  const { metric } = await params;
+export async function POST() {
+  return notAvailable();
+}
 
-  const permCheck = checkPermission(authResult, undefined, metric);
-  if (permCheck) return permCheck;
+export async function PUT() {
+  return notAvailable();
+}
 
-  const url = new URL(request.url);
-  const period = url.searchParams.get("period");
+export async function PATCH() {
+  return notAvailable();
+}
 
-  const whereClause: { metric: string; period?: string; industry: { not: null } } = {
-    metric,
-    industry: { not: null },
-  };
-
-  if (period) {
-    whereClause.period = period;
-  }
-
-  const dataPoints = await prisma.trendDataPoint.findMany({
-    where: whereClause,
-    orderBy: [{ period: "desc" }, { industry: "asc" }],
-    take: 100,
-  });
-
-  const results = dataPoints.map((d) => ({
-    industry: d.industry,
-    period: d.period,
-    value: d.value,
-    previousValue: d.prevValue,
-    changePercent: d.changePercent,
-  }));
-
-  await logApiRequest(authResult.apiKeyId, `/v1/metrics/${metric}`, { period }, startTime);
-
-  return NextResponse.json({ metric, data: results });
+export async function DELETE() {
+  return notAvailable();
 }

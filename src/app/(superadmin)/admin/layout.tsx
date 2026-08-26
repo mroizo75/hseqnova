@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { SuperAdminNav } from "@/components/superadmin-nav";
 
 export default async function SuperAdminLayout({
@@ -15,24 +15,32 @@ export default async function SuperAdminLayout({
     redirect("/login");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-  });
+  const db = getAdminDb();
+  const { data: user } = await db
+    .from("User")
+    .select("isSuperAdmin, isSupport")
+    .eq("email", session.user.email)
+    .maybeSingle();
 
-  if (!user?.isSuperAdmin && !user?.isSupport) {
+  if (!user) {
     redirect("/dashboard");
   }
 
-  const openSupportCount = await prisma.supportTicket.count({
-    where: { status: { in: ["OPEN", "IN_PROGRESS"] } },
-  });
+  if (!user.isSuperAdmin && !user.isSupport) {
+    redirect("/dashboard");
+  }
+
+  const { count: openSupportCount } = await db
+    .from("SupportTicket")
+    .select("id", { count: "exact", head: true })
+    .in("status", ["OPEN", "IN_PROGRESS"]);
 
   return (
     <div className="flex min-h-dvh flex-col overflow-hidden lg:flex-row">
-      <SuperAdminNav 
-        isSuperAdmin={user.isSuperAdmin} 
-        isSupport={user.isSupport}
-        openSupportCount={openSupportCount}
+      <SuperAdminNav
+        isSuperAdmin={Boolean(user.isSuperAdmin)}
+        isSupport={Boolean(user.isSupport)}
+        openSupportCount={openSupportCount ?? 0}
       />
       <main className="min-w-0 flex-1 overflow-y-auto bg-muted/30 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4 lg:p-8">
         {children}

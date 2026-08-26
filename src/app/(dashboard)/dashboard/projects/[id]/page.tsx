@@ -1,19 +1,19 @@
 import { redirect, notFound } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   ArrowLeft, Building2, MapPin, User, CalendarDays,
-  Edit, AlertCircle, HardHat, ClipboardCheck, ListTodo,
-  Clock, FileText, BarChart3, Plus,
+  Edit, FileText,
 } from "lucide-react";
 import Link from "next/link";
 import type { ProjectStatus } from "@prisma/client";
 import { ProjectTabs } from "@/features/projects/components/project-tabs";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
+import { loadDutyHoldersForProject, loadProjectDetail } from "@/server/queries/projects.queries";
+import { CDM_DUTY_HOLDER_LABELS, type CdmDutyHolderRoleKey } from "@/features/projects/lib/cdm-duty-holders";
 
 function getStatusConfig(
   t: Awaited<ReturnType<typeof getTranslations>>
@@ -33,120 +33,19 @@ export default async function ProjectDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const t = await getTranslations("dashboardProjectDetailPage");
-  const locale = await getLocale();
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) redirect("/login");
+  if (!session?.user?.tenantId) redirect("/login");
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { tenants: true },
-  });
-  if (!user || user.tenants.length === 0) return <div>{t("noAccess")}</div>;
-
-  const selectedMembership = user.tenants.find(
-    (membership) => membership.tenantId === session.user.tenantId,
-  );
-  if (!selectedMembership) return <div>{t("noAccess")}</div>;
-
-  const tenantId = selectedMembership.tenantId;
   const { id } = await params;
-
-  const project = await prisma.project.findUnique({
-    where: { id, tenantId },
-    include: {
-      createdBy: { select: { name: true, email: true } },
-      projectManager: { select: { name: true, email: true } },
-      incidents: {
-        orderBy: { occurredAt: "desc" },
-        select: {
-          id: true, avviksnummer: true, title: true, type: true,
-          severity: true, status: true, occurredAt: true,
-          isFatal: true, isLostTimeIncident: true, lostWorkdays: true,
-          isRestrictedWork: true, medicalAttentionRequired: true,
-        },
-      },
-      sjaAnalyses: {
-        orderBy: { plannedDate: "desc" },
-        select: {
-          id: true, sjaNummer: true, title: true, status: true,
-          plannedDate: true, workLocation: true,
-        },
-      },
-      inspections: {
-        orderBy: { scheduledDate: "desc" },
-        select: {
-          id: true, title: true, type: true, status: true,
-          scheduledDate: true, location: true,
-        },
-      },
-      measures: {
-        orderBy: { dueAt: "asc" },
-        select: {
-          id: true, title: true, status: true, dueAt: true, category: true,
-          riskId: true, incidentId: true, projectId: true,
-        },
-      },
-      timeEntries: {
-        orderBy: { date: "desc" },
-        select: {
-          id: true,
-          date: true,
-          hours: true,
-          timeType: true,
-          comment: true,
-          user: { select: { name: true, email: true } },
-        },
-        take: 20,
-      },
-      formSubmissions: {
-        where: { tenantId },
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          submissionNumber: true,
-          status: true,
-          createdAt: true,
-          formTemplateId: true,
-          formTemplate: {
-            select: {
-              title: true,
-            },
-          },
-          submittedBy: {
-            select: {
-              name: true,
-              email: true,
-            },
-          },
-        },
-        take: 20,
-      },
-    },
-  });
-
+  const [project, dutyHolders] = await Promise.all([
+    loadProjectDetail(id, session.user.tenantId),
+    loadDutyHoldersForProject(id, session.user.tenantId),
+  ]);
   if (!project) notFound();
-
-  const attachments = await prisma.attachment.findMany({
-    where: {
-      tenantId,
-      objectType: "PROJECT",
-      objectId: project.id,
-    },
-    select: {
-      id: true,
-      fileKey: true,
-      name: true,
-      mime: true,
-      size: true,
-      createdAt: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
 
   const sc = getStatusConfig(t)[project.status];
   const manHours = project.timeEntries.reduce((s, e) => s + e.hours, 0);
 
-  // HSE-statistikk for prosjektet
   const hseIncidents = project.incidents.filter((i) =>
     ["ULYKKE", "NESTEN", "YRKESSYKDOM"].includes(i.type)
   );
@@ -166,7 +65,6 @@ export default async function ProjectDetailPage({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
           <Button variant="ghost" size="icon" asChild className="mt-1">
@@ -208,11 +106,11 @@ export default async function ProjectDetailPage({
                 <span className="flex items-center gap-1">
                   <CalendarDays className="h-3.5 w-3.5" />
                   {project.startDate
-                    ? new Date(project.startDate).toLocaleDateString(locale === "en" ? "en-US" : "nb-NO")
+                    ? new Date(project.startDate).toLocaleDateString("en-GB")
                     : "—"}
                   {" → "}
                   {project.endDate
-                    ? new Date(project.endDate).toLocaleDateString(locale === "en" ? "en-US" : "nb-NO")
+                    ? new Date(project.endDate).toLocaleDateString("en-GB")
                     : t("ongoing")}
                 </span>
               )}
@@ -235,7 +133,27 @@ export default async function ProjectDetailPage({
         </div>
       </div>
 
-      {/* KPI-kort */}
+      {dutyHolders.length > 0 ? (
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">CDM 2015 duty holders</p>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              {dutyHolders.map((holder) => (
+                <div key={holder.id}>
+                  <p className="text-xs text-muted-foreground">
+                    {CDM_DUTY_HOLDER_LABELS[holder.role as CdmDutyHolderRoleKey] ?? holder.role}
+                  </p>
+                  <p className="text-sm font-medium">{holder.organisationName}</p>
+                  {holder.contactName ? (
+                    <p className="text-xs text-muted-foreground">{holder.contactName}</p>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <Card className="lg:col-span-1">
           <CardContent className="pt-4 pb-3">
@@ -246,9 +164,9 @@ export default async function ProjectDetailPage({
         </Card>
         <Card className="lg:col-span-1">
           <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">SJA</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("cards.rams.title")}</p>
             <p className="text-2xl font-bold text-amber-600 mt-0.5">{project.sjaAnalyses.length}</p>
-            <p className="text-xs text-muted-foreground">analyser</p>
+            <p className="text-xs text-muted-foreground">{t("cards.rams.description")}</p>
           </CardContent>
         </Card>
         <Card className="lg:col-span-1">
@@ -271,7 +189,7 @@ export default async function ProjectDetailPage({
           <CardContent className="pt-4 pb-3">
             <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("cards.hours.title")}</p>
             <p className="text-2xl font-bold mt-0.5">
-              {manHours > 0 ? Math.round(manHours).toLocaleString(locale === "en" ? "en-US" : "nb-NO") : "—"}
+              {manHours > 0 ? Math.round(manHours).toLocaleString("en-GB") : "—"}
             </p>
             <p className="text-xs text-muted-foreground">{t("cards.hours.description")}</p>
           </CardContent>
@@ -294,7 +212,6 @@ export default async function ProjectDetailPage({
         </Card>
       </div>
 
-      {/* Faner med innhold */}
       <ProjectTabs
         projectId={project.id}
         incidents={project.incidents as any}
@@ -302,7 +219,7 @@ export default async function ProjectDetailPage({
         inspections={project.inspections as any}
         measures={project.measures as any}
         timeEntries={project.timeEntries as any}
-        attachments={attachments}
+        attachments={project.attachments}
         formSubmissions={project.formSubmissions as any}
       />
     </div>

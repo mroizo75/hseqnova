@@ -45,8 +45,8 @@ import {
   Radar,
   BookOpenCheck,
 } from "lucide-react";
-import { BRANSJE_MODULES } from "@/lib/bransje-modules";
 import { menuPathsToWidgetIds } from "@/lib/menu-widget-sync";
+import { CORE_HSEQ_NAV_HREFS } from "@/lib/dashboard-nav-config";
 
 export interface WidgetDefinition {
   id: string;
@@ -72,21 +72,21 @@ export type WidgetCategory =
   | "spesial";
 
 export const WIDGET_CATEGORIES: Record<WidgetCategory, { label: string; color: string }> = {
-  hms: { label: "HMS Kjerne", color: "text-blue-700" },
-  sikkerhet: { label: "Sikkerhet & Beredskap", color: "text-red-700" },
-  helse: { label: "Helse & Miljø", color: "text-emerald-700" },
-  dokumenter: { label: "Dokumenter & Rutiner", color: "text-slate-700" },
-  personal: { label: "Personal & Administrasjon", color: "text-amber-700" },
-  kvalitet: { label: "Kvalitet & Forbedring", color: "text-indigo-700" },
-  spesial: { label: "Dashboard-widgeter", color: "text-purple-700" },
+  hms: { label: "HSEQ core", color: "text-blue-700" },
+  sikkerhet: { label: "Safety & emergency", color: "text-red-700" },
+  helse: { label: "Health & environment", color: "text-emerald-700" },
+  dokumenter: { label: "Documents & procedures", color: "text-slate-700" },
+  personal: { label: "People & organisation", color: "text-amber-700" },
+  kvalitet: { label: "Quality & improvement", color: "text-indigo-700" },
+  spesial: { label: "Dashboard widgets", color: "text-purple-700" },
 };
 
 export const WIDGET_REGISTRY: WidgetDefinition[] = [
   // HMS Kjerne
   {
     id: "incidents",
-    label: "Avvik",
-    description: "Hendelser, avvik og uønskede hendelser (AML § 5-2)",
+    label: "Accident book",
+    description: "Injuries, near misses and RIDDOR-reportable events",
     icon: AlertTriangle,
     href: "/dashboard/incidents",
     category: "hms",
@@ -97,8 +97,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "risks",
-    label: "Risiko­kartlegging",
-    description: "Risikovurderinger og risikomatrise",
+    label: "Risk assessments",
+    description: "Suitable and sufficient risk assessments (MHSWR 1999)",
     icon: ShieldAlert,
     href: "/dashboard/risks",
     category: "hms",
@@ -110,8 +110,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "actions",
-    label: "Tiltak",
-    description: "Korrigerende og forebyggende tiltak",
+    label: "Actions",
+    description: "Corrective and preventive actions",
     icon: CheckSquare,
     href: "/dashboard/actions",
     category: "hms",
@@ -122,8 +122,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "inspections",
-    label: "Vernerunde",
-    description: "Vernerunder og inspeksjoner",
+    label: "Inspections",
+    description: "Workplace inspections and safety tours",
     icon: ClipboardCheck,
     href: "/dashboard/inspections",
     category: "hms",
@@ -134,8 +134,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "sja",
-    label: "SJA",
-    description: "Sikker Jobb Analyse",
+    label: "RAMS",
+    description: "Risk assessment and method statement",
     icon: HardHat,
     href: "/dashboard/sja",
     category: "hms",
@@ -146,8 +146,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "ruh",
-    label: "RUH",
-    description: "Rapport uønsket hendelse",
+    label: "Incident reports",
+    description: "Accident and dangerous occurrence reports",
     icon: FileWarning,
     href: "/dashboard/ruh",
     category: "hms",
@@ -158,8 +158,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "training",
-    label: "Opplæring",
-    description: "Opplæring og kompetanse for ansatte",
+    label: "Training",
+    description: "Training and competence records (HSWA s.2)",
     icon: GraduationCap,
     href: "/dashboard/training",
     category: "hms",
@@ -172,8 +172,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   // Sikkerhet & Beredskap
   {
     id: "fire-safety",
-    label: "Brannøvelse",
-    description: "Planlegg, gjennomfør og evaluer brannøvelser (§ 12 og § 13)",
+    label: "Fire drills",
+    description: "Plan, run and record fire drills (Fire Safety Order 2005)",
     icon: Flame,
     href: "/dashboard/fire-drills",
     category: "sikkerhet",
@@ -184,8 +184,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "electrical",
-    label: "Samsvarserklæringer",
-    description: "Elektro, rørlegger, ventilasjon og andre fag",
+    label: "Compliance certificates",
+    description: "Electrical, plumbing, ventilation and other trades",
     icon: Zap,
     href: "/dashboard/samsvarserklaringer",
     category: "sikkerhet",
@@ -195,10 +195,10 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "water-safety",
-    label: "Vann",
-    description: "Vannsikkerhet og legionella-kontroll",
+    label: "Water",
+    description: "Water safety and legionella control",
     icon: Droplets,
-    href: "/dashboard/rutiner?q=vann",
+    href: "/dashboard/procedures?q=vann",
     category: "sikkerhet",
     color: "text-cyan-600",
     bgColor: "bg-cyan-50",
@@ -206,10 +206,10 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "elevator",
-    label: "Heis",
-    description: "Heiskontroll og vedlikehold",
+    label: "Lifts",
+    description: "Lift inspection and maintenance",
     icon: Building2,
-    href: "/dashboard/rutiner?q=heis",
+    href: "/dashboard/procedures?q=heis",
     category: "sikkerhet",
     color: "text-slate-600",
     bgColor: "bg-slate-50",
@@ -217,8 +217,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "bcm",
-    label: "Beredskap",
-    description: "Beredskapsplaner og krisehåndtering (BCM)",
+    label: "Emergency planning",
+    description: "Emergency plans and business continuity",
     icon: ShieldCheck,
     href: "/dashboard/bcm",
     category: "sikkerhet",
@@ -232,8 +232,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   // Helse & Miljø
   {
     id: "chemicals",
-    label: "Kjemikalier",
-    description: "Stoffkartotek og kjemikaliehåndtering",
+    label: "COSHH",
+    description: "Hazardous substances assessments and SDS (COSHH 2002)",
     icon: Beaker,
     href: "/dashboard/chemicals",
     category: "helse",
@@ -244,10 +244,10 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "medicine",
-    label: "Medisin",
-    description: "Medisinhåndtering og oversikt",
+    label: "Medicines",
+    description: "Medicine handling and records",
     icon: Stethoscope,
-    href: "/dashboard/rutiner?q=medisin",
+    href: "/dashboard/procedures?q=medisin",
     category: "helse",
     color: "text-pink-600",
     bgColor: "bg-pink-50",
@@ -255,10 +255,10 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "medical-equipment",
-    label: "Medisinsk utstyr",
-    description: "Oversikt over medisinsk utstyr og vedlikehold",
+    label: "Medical devices",
+    description: "Medical equipment register and maintenance",
     icon: Siren,
-    href: "/dashboard/rutiner?q=medisinsk%20utstyr",
+    href: "/dashboard/procedures?q=medisinsk%20utstyr",
     category: "helse",
     color: "text-rose-600",
     bgColor: "bg-rose-50",
@@ -266,10 +266,10 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "cleaning",
-    label: "Renhold",
-    description: "Renholdskontroll og hygiene",
+    label: "Cleaning",
+    description: "Cleaning checks and hygiene",
     icon: SprayCan,
-    href: "/dashboard/rutiner?q=renhold",
+    href: "/dashboard/procedures?q=renhold",
     category: "helse",
     color: "text-sky-600",
     bgColor: "bg-sky-50",
@@ -277,10 +277,10 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "food-safety",
-    label: "Mat",
-    description: "Matsikkerhet og hygienekontroll",
+    label: "Food safety",
+    description: "Food safety and hygiene controls",
     icon: UtensilsCrossed,
-    href: "/dashboard/rutiner?q=mat",
+    href: "/dashboard/procedures?q=mat",
     category: "helse",
     color: "text-green-600",
     bgColor: "bg-green-50",
@@ -288,8 +288,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "wellbeing",
-    label: "Arbeidsmiljø",
-    description: "Psykososialt arbeidsmiljø og trivsel",
+    label: "Wellbeing",
+    description: "Psychosocial working environment and wellbeing",
     icon: Heart,
     href: "/dashboard/wellbeing",
     category: "helse",
@@ -300,8 +300,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "environment",
-    label: "Miljø",
-    description: "Miljøstyring og ytre miljø (ISO 14001)",
+    label: "Environment",
+    description: "Environmental management (ISO 14001)",
     icon: Leaf,
     href: "/dashboard/environment",
     category: "helse",
@@ -315,8 +315,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   // Dokumenter & Rutiner
   {
     id: "documents",
-    label: "Dokumenter",
-    description: "Dokumentstyring og versjonsadministrasjon",
+    label: "Documents",
+    description: "Controlled documents and version history",
     icon: FileText,
     href: "/dashboard/documents",
     category: "dokumenter",
@@ -327,10 +327,10 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "routines",
-    label: "Rutiner og instrukser",
-    description: "Bedriftens rutiner, instrukser og prosedyrer",
+    label: "Procedures",
+    description: "Company procedures, instructions and arrangements",
     icon: BookOpen,
-    href: "/dashboard/rutiner",
+    href: "/dashboard/procedures",
     category: "dokumenter",
     color: "text-indigo-600",
     bgColor: "bg-indigo-50",
@@ -340,8 +340,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   // Personal & Administrasjon
   {
     id: "absence",
-    label: "Ferie/Fravær",
-    description: "Fravær, ferie og permisjoner",
+    label: "Leave / absence",
+    description: "Absence, annual leave and time off",
     icon: CalendarDays,
     href: "/dashboard/time-registration",
     category: "personal",
@@ -351,8 +351,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "organization",
-    label: "Organisasjon",
-    description: "Organisasjonskart og hierarki (AML § 3-1)",
+    label: "Organisation",
+    description: "Organisation chart (HSWA s.2 — organisation)",
     icon: Users,
     href: "/dashboard/organisasjonskart",
     category: "personal",
@@ -362,8 +362,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "meetings",
-    label: "Møter",
-    description: "AMU-møter, verneombudsmøter og referat",
+    label: "Meetings",
+    description: "Safety committee and safety representative meetings",
     icon: CalendarDays,
     href: "/dashboard/meetings",
     category: "personal",
@@ -377,8 +377,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   // Kvalitet & Forbedring
   {
     id: "audits",
-    label: "Revisjoner",
-    description: "Interne og eksterne revisjoner",
+    label: "Audits",
+    description: "Internal and external audits",
     icon: Search,
     href: "/dashboard/audits",
     category: "kvalitet",
@@ -390,8 +390,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "goals",
-    label: "Mål",
-    description: "HMS-mål og KPI-oppfølging",
+    label: "Goals",
+    description: "H&S objectives and KPI follow-up",
     icon: Target,
     href: "/dashboard/goals",
     category: "kvalitet",
@@ -403,8 +403,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "complaints",
-    label: "Klager",
-    description: "Kundeklager og reklamasjoner",
+    label: "Complaints",
+    description: "Customer complaints and quality issues",
     icon: MessageSquareWarning,
     href: "/dashboard/complaints",
     category: "kvalitet",
@@ -416,8 +416,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "feedback",
-    label: "Tilbake­meldinger",
-    description: "Kundetilbakemeldinger og forbedringsforslag",
+    label: "Feedback",
+    description: "Customer feedback and improvement ideas",
     icon: MessageSquare,
     href: "/dashboard/feedback",
     category: "kvalitet",
@@ -429,8 +429,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "risk-register",
-    label: "Risiko­register",
-    description: "Samlet risikooversikt for virksomheten",
+    label: "Risk register",
+    description: "Company-wide risk register",
     icon: ScrollText,
     href: "/dashboard/risk-register",
     category: "kvalitet",
@@ -444,8 +444,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   // Ledelse & Oversikt
   {
     id: "hms-cockpit",
-    label: "HMS Cockpit",
-    description: "Samlet HMS-score, trender og forbedringsforslag",
+    label: "HSEQ overview",
+    description: "HSEQ score, trends and improvement actions",
     icon: Gauge,
     href: "/dashboard/hms-cockpit",
     category: "kvalitet",
@@ -456,10 +456,10 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "hms-handbok",
-    label: "HMS-håndbok",
-    description: "Bedriftens levende HMS-håndbok (IK-HMS § 5)",
+    label: "Health and safety policy",
+    description: "Living health and safety policy (HSWA s.2)",
     icon: BookOpenCheck,
-    href: "/dashboard/hms-handbok",
+    href: "/dashboard/health-safety-policy",
     category: "dokumenter",
     color: "text-blue-700",
     bgColor: "bg-blue-50",
@@ -468,8 +468,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "annual-hms-plan",
-    label: "Årsplan HMS",
-    description: "Årsplan for HMS-arbeid (IK-HMS § 5 nr. 5)",
+    label: "Annual H&S plan",
+    description: "Annual plan for health and safety work",
     icon: CalendarDays,
     href: "/dashboard/annual-hms-plan",
     category: "kvalitet",
@@ -480,8 +480,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "management-reviews",
-    label: "Ledelsens gjennomgang",
-    description: "Ledelsens gjennomgang av HMS-systemet (ISO 45001)",
+    label: "Management review",
+    description: "Management review of the HSEQ system (ISO 45001)",
     icon: Users,
     href: "/dashboard/management-reviews",
     category: "kvalitet",
@@ -493,8 +493,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "legal-register",
-    label: "Juridisk register",
-    description: "Lover og forskrifter som gjelder bedriften",
+    label: "Legal register",
+    description: "Laws and regulations that apply to the company",
     icon: Scale,
     href: "/dashboard/juridisk-register",
     category: "dokumenter",
@@ -505,8 +505,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "whistleblowing",
-    label: "Varsling",
-    description: "Varslingskanal for kritikkverdige forhold (AML § 2A)",
+    label: "Whistleblowing",
+    description: "Confidential reporting channel (PIDA 1998)",
     icon: Megaphone,
     href: "/dashboard/whistleblowing",
     category: "kvalitet",
@@ -518,8 +518,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "employee-reviews",
-    label: "Medarbeidersamtale",
-    description: "Planlegging og gjennomføring av medarbeidersamtaler",
+    label: "Appraisals",
+    description: "Plan and record employee appraisals",
     icon: UserCheck,
     href: "/dashboard/medarbeidersamtale",
     category: "personal",
@@ -533,8 +533,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   // Bransje-spesifikke moduler
   {
     id: "exposure-register",
-    label: "Eksponeringsregister",
-    description: "Register over arbeidstakeres eksponering for helseskadelige stoffer",
+    label: "Exposure register",
+    description: "Health surveillance records for hazardous substances (COSHH 40 years)",
     icon: Radar,
     href: "/dashboard/exposure-register",
     category: "helse",
@@ -545,8 +545,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "construction-compliance",
-    label: "SHA / Byggherreforskriften",
-    description: "Sikkerhet, helse og arbeidsmiljø på bygge-/anleggsplasser",
+    label: "CDM",
+    description: "Construction Design and Management 2015 — duty holders, CPP, F10",
     icon: HardHat,
     href: "/dashboard/construction-compliance",
     category: "sikkerhet",
@@ -557,8 +557,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "ik-mat",
-    label: "IK-Mat",
-    description: "Internkontroll for mattrygghet (IK-Mat-forskriften)",
+    label: "Food safety / HACCP",
+    description: "Food safety management and HACCP",
     icon: UtensilsCrossed,
     href: "/dashboard/ik-mat",
     category: "helse",
@@ -569,8 +569,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "aktivitetssikkerhet",
-    label: "Aktivitetssikkerhet",
-    description: "Sikkerhet ved aktiviteter og opplevelser (Produktkontrolloven)",
+    label: "Activity safety",
+    description: "Safety for activities and visitor experiences",
     icon: PersonStanding,
     href: "/dashboard/aktivitetssikkerhet",
     category: "sikkerhet",
@@ -582,7 +582,7 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   {
     id: "transport",
     label: "Transport",
-    description: "Transportløyver, sjåfør- og kjøretøykontroll",
+    description: "Operator licences, driver and vehicle checks",
     icon: Truck,
     href: "/dashboard/transport",
     category: "sikkerhet",
@@ -593,8 +593,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "bht-nattarbeid",
-    label: "BHT / Nattarbeid",
-    description: "Bedriftshelsetjeneste og nattarbeid (AML § 3-3, § 10-11)",
+    label: "Occupational health / night work",
+    description: "Occupational health and night-work arrangements",
     icon: Moon,
     href: "/dashboard/bht-nattarbeid",
     category: "helse",
@@ -605,8 +605,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "beredskap-reiseliv",
-    label: "Beredskapsplan reiseliv",
-    description: "Beredskapsplan for reiselivsbedrifter",
+    label: "Tourism emergency plan",
+    description: "Emergency plan for tourism and hospitality sites",
     icon: MapPin,
     href: "/dashboard/beredskap-reiseliv",
     category: "sikkerhet",
@@ -617,8 +617,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "projects",
-    label: "Prosjekter",
-    description: "Prosjektstyring og prosjektbaserte avvik",
+    label: "Projects",
+    description: "Project control and site-linked incidents",
     icon: TreePine,
     href: "/dashboard/projects",
     category: "kvalitet",
@@ -631,8 +631,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   // Spesial-widgeter (dashboard-spesifikke)
   {
     id: "widget-task-center",
-    label: "Oppgavesenter",
-    description: "Varsling for oppgaver som trenger oppfølging",
+    label: "Task centre",
+    description: "Actions that need follow-up",
     icon: ListTodo,
     href: "/dashboard/actions",
     category: "spesial",
@@ -642,8 +642,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "widget-hms-score",
-    label: "HMS-puls",
-    description: "Overordnet HMS-status for tilsyn og revisjon",
+    label: "HSEQ pulse",
+    description: "Overall HSEQ status for inspection and audit",
     icon: BarChart3,
     href: "/dashboard/hms-pulse",
     category: "spesial",
@@ -653,8 +653,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "widget-ai-assistant",
-    label: "AI-assistent",
-    description: "Varsler og anbefalinger",
+    label: "AI assistant",
+    description: "Alerts and recommendations",
     icon: Sparkles,
     href: "/dashboard/notifications",
     category: "spesial",
@@ -664,8 +664,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "widget-activity-feed",
-    label: "Aktivitet",
-    description: "Siste aktivitet som varsling",
+    label: "Activity",
+    description: "Latest activity as alerts",
     icon: Activity,
     href: "/dashboard/notifications",
     category: "spesial",
@@ -675,8 +675,8 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   },
   {
     id: "widget-my-tasks",
-    label: "Mine oppgaver",
-    description: "Personlige oppgaver og frister",
+    label: "My tasks",
+    description: "Your actions and due dates",
     icon: Clock,
     href: "/dashboard/actions",
     category: "spesial",
@@ -687,35 +687,11 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
 ];
 
 // Fallback-sett for helt ukjent bransje
-export const DEFAULT_WIDGET_IDS = [
-  "hms-cockpit",
-  "incidents",
-  "actions",
-  "inspections",
-  "training",
-  "routines",
-  "documents",
-  "hms-handbok",
-  "widget-task-center",
-  "widget-hms-score",
-  "fire-safety",
-  "electrical",
-  "risks",
-];
+export const DEFAULT_WIDGET_IDS = menuPathsToWidgetIds([...CORE_HSEQ_NAV_HREFS]);
 
-/**
- * Returnerer standard widget-IDer for en gitt bransje.
- * Bruker BRANSJE_MODULES som én kilde slik at enkel meny
- * og dashboard-fliser alltid er i synk.
- */
-export function getDefaultWidgetIdsForIndustry(industry: string | null | undefined): string[] {
-  const key = (industry || "").trim().toLowerCase();
-  if (!key) return DEFAULT_WIDGET_IDS;
-
-  const config = BRANSJE_MODULES[key];
-  if (!config) return DEFAULT_WIDGET_IDS;
-
-  return menuPathsToWidgetIds(config.modules);
+/** Industry does not change dashboard tiles. Core HSEQ is the same for every employer. */
+export function getDefaultWidgetIdsForIndustry(_industry?: string | null): string[] {
+  return DEFAULT_WIDGET_IDS;
 }
 
 export function getWidgetById(id: string): WidgetDefinition | undefined {

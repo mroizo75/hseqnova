@@ -11,22 +11,19 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const tenantId = session.user.tenantId;
-    if (!tenantId) {
-      return NextResponse.json({ error: "Ingen tenant tilgang" }, { status: 403 });
+    if (!session.user.tenantId) {
+      return NextResponse.json({ error: "No organisation access" }, { status: 403 });
     }
 
-    const result = await getSjaAnalyses(tenantId);
+    const result = await getSjaAnalyses(session.user.tenantId);
     if (!result.success) {
-      return NextResponse.json({ error: result.error ?? "Kunne ikke hente SJA" }, { status: 400 });
+      return NextResponse.json({ error: result.error ?? "Could not load RAMS" }, { status: 400 });
     }
 
     return NextResponse.json({ success: true, data: result.data ?? [] });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || "Intern feil ved henting av SJA" },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Could not load RAMS";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -40,14 +37,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const result = await createSjaAnalysis(body);
     if (!result.success) {
-      return NextResponse.json({ error: result.error ?? "Kunne ikke opprette SJA" }, { status: 400 });
+      return NextResponse.json({ error: result.error ?? "Could not create RAMS" }, { status: 400 });
     }
 
     return NextResponse.json({ success: true, data: result.data }, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || "Intern feil ved opprettelse av SJA" },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Could not create RAMS";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

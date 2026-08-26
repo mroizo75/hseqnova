@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { NotificationType, Role, RoutineStatus } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { createId } from "@/lib/ids";
 import { matchesIndustryScope, toIndustryScopeJson } from "@/lib/industry-scope";
 import { requirePermission } from "@/lib/server-authorization";
 import { createNotification } from "@/server/actions/notification.actions";
@@ -12,6 +13,15 @@ import { canCreateInspectionTemplate } from "@/lib/template-policy";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import type { SessionUser } from "@/types";
+import {
+  loadRoutineDetail,
+  loadRoutineTemplates,
+  loadRoutinesForList,
+} from "@/server/queries/routines.queries";
+
+const PROCEDURES_PATH = "/dashboard/procedures";
+
+type ActionError = { code: string; message: string; details?: unknown };
 
 type RoutineTemplateListInput = {
   query?: string;
@@ -32,13 +42,11 @@ type RoutineUpdateInput = {
   lastReviewedAt?: Date | null;
 };
 
-async function getTenantIndustry(tenantId: string): Promise<string | null> {
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { industry: true },
-  });
-
-  return tenant?.industry?.trim().toLowerCase() ?? null;
+function toIso(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
 }
 
 function normalizeQuery(query?: string): string | undefined {
@@ -46,33 +54,33 @@ function normalizeQuery(query?: string): string | undefined {
   return value && value.length > 0 ? value : undefined;
 }
 
-async function notifyLeadersAndHms(
-  tenantId: string,
-  title: string,
-  message: string,
-  link: string
-) {
-  const recipients = await prisma.userTenant.findMany({
-    where: {
-      tenantId,
-      role: {
-        in: [Role.ADMIN, Role.HMS, Role.LEDER],
-      },
-    },
-    select: { userId: true },
-    distinct: ["userId"],
-  });
+async function getTenantIndustry(tenantId: string): Promise<string | null> {
+  const { data: tenant } = await getAdminDb()
+    .from("Tenant")
+    .select("industry")
+    .eq("id", tenantId)
+    .maybeSingle();
+  return tenant?.industry?.trim().toLowerCase() ?? null;
+}
 
+async function notifyLeadersAndHms(tenantId: string, title: string, message: string, link: string) {
+  const { data: recipients } = await getAdminDb()
+    .from("UserTenant")
+    .select("userId, role")
+    .eq("tenantId", tenantId)
+    .in("role", [Role.ADMIN, Role.HMS, Role.LEDER]);
+
+  const userIds = [...new Set(((recipients ?? []) as Array<{ userId: string }>).map((row) => row.userId))];
   await Promise.all(
-    recipients.map((recipient) =>
+    userIds.map((userId) =>
       createNotification({
         tenantId,
-        userId: recipient.userId,
+        userId,
         type: NotificationType.ROUTINE_REVIEW_DUE,
         title,
         message,
         link,
-      })
+      }).catch(() => undefined)
     )
   );
 }
@@ -80,162 +88,106 @@ async function notifyLeadersAndHms(
 export async function listRecommendedRoutineTemplates(input: RoutineTemplateListInput = {}) {
   try {
     await ensureGlobalRoutineTemplateLibrarySeeded();
-    const context = await requirePermission("canReadDocuments");
+    const context = await requirePermission("canReadRoutines");
     const query = normalizeQuery(input.query);
     const tenantIndustry = await getTenantIndustry(context.tenantId);
-
-    const templates = await prisma.routineTemplate.findMany({
-      where: {
-        OR: [{ tenantId: context.tenantId }, { isGlobal: true }],
-        isActive: input.includeInactive ? undefined : true,
-        category: input.category || undefined,
-        title: query ? { contains: query } : undefined,
-      },
-      orderBy: [{ isGlobal: "desc" }, { createdAt: "desc" }],
+    const templates = await loadRoutineTemplates({
+      tenantId: context.tenantId,
+      query,
+      category: input.category,
+      includeInactive: input.includeInactive,
     });
-
     const filteredTemplates = templates.filter((template) =>
       matchesIndustryScope(template.industryScope, tenantIndustry)
     );
-
-    return { success: true, data: filteredTemplates };
-  } catch (error: any) {
-    console.error("listRecommendedRoutineTemplates error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente anbefalte rutinemaler" };
+    return { success: true as const, data: filteredTemplates };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return {
+      success: false as const,
+      error: err.message || "Could not load recommended procedure templates.",
+    };
   }
 }
 
 export async function listAllRoutineTemplates(input: RoutineTemplateListInput = {}) {
   try {
     await ensureGlobalRoutineTemplateLibrarySeeded();
-    const context = await requirePermission("canReadDocuments");
-    const query = normalizeQuery(input.query);
-
-    const templates = await prisma.routineTemplate.findMany({
-      where: {
-        OR: [{ tenantId: context.tenantId }, { isGlobal: true }],
-        isActive: input.includeInactive ? undefined : true,
-        category: input.category || undefined,
-        title: query ? { contains: query } : undefined,
-      },
-      orderBy: [{ isGlobal: "desc" }, { createdAt: "desc" }],
+    const context = await requirePermission("canReadRoutines");
+    const templates = await loadRoutineTemplates({
+      tenantId: context.tenantId,
+      query: normalizeQuery(input.query),
+      category: input.category,
+      includeInactive: input.includeInactive,
     });
-
-    return { success: true, data: templates };
-  } catch (error: any) {
-    console.error("listAllRoutineTemplates error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente rutinemaler" };
+    return { success: true as const, data: templates };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not load procedure templates." };
   }
 }
 
-const employeeVisibleRoutineStatuses: RoutineStatus[] = [RoutineStatus.ACTIVE, RoutineStatus.NEEDS_REVIEW];
-
-export async function listTenantRoutines(
-  query?: string,
-  options?: { forEmployee?: boolean }
-) {
+export async function listTenantRoutines(query?: string, options?: { forEmployee?: boolean }) {
   try {
-    const context = await requirePermission("canReadDocuments");
-    const normalizedQuery = normalizeQuery(query);
-
-    const routines = await prisma.routine.findMany({
-      where: {
-        tenantId: context.tenantId,
-        ...(options?.forEmployee
-          ? { status: { in: employeeVisibleRoutineStatuses } }
-          : {}),
-        title: normalizedQuery ? { contains: normalizedQuery } : undefined,
-      },
-      include: {
-        responsibleUser: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        template: {
-          select: {
-            id: true,
-            title: true,
-            isGlobal: true,
-            industryScope: true,
-          },
-        },
-      },
-      orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
+    const context = await requirePermission("canReadRoutines");
+    const routines = await loadRoutinesForList({
+      tenantId: context.tenantId,
+      query: normalizeQuery(query),
+      forEmployee: options?.forEmployee,
     });
-
-    return { success: true, data: routines };
-  } catch (error: any) {
-    console.error("listTenantRoutines error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente rutiner" };
+    return { success: true as const, data: routines };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not load procedures." };
   }
 }
 
-export async function getRoutineById(
-  routineId: string,
-  options?: { forEmployee?: boolean }
-) {
+export async function getRoutineById(routineId: string, options?: { forEmployee?: boolean }) {
   try {
-    const context = await requirePermission("canReadDocuments");
-
-    const routine = await prisma.routine.findFirst({
-      where: {
-        id: routineId,
-        tenantId: context.tenantId,
-        ...(options?.forEmployee
-          ? { status: { in: employeeVisibleRoutineStatuses } }
-          : {}),
-      },
-      include: {
-        responsibleUser: {
-          select: { id: true, name: true, email: true },
-        },
-        template: true,
-      },
+    const context = await requirePermission("canReadRoutines");
+    const routine = await loadRoutineDetail({
+      id: routineId,
+      tenantId: context.tenantId,
+      forEmployee: options?.forEmployee,
     });
-
     if (!routine) {
-      return { success: false, error: "Rutine ikke funnet" };
+      return { success: false as const, error: "Procedure not found." };
     }
-
-    return { success: true, data: routine };
-  } catch (error: any) {
-    console.error("getRoutineById error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente rutine" };
+    return { success: true as const, data: routine };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not load the procedure." };
   }
 }
 
 export async function createRoutineFromTemplate(templateId: string) {
   try {
-    const context = await requirePermission("canCreateDocuments");
+    const context = await requirePermission("canCreateRoutines");
+    const db = getAdminDb();
+    const { data: template } = await db
+      .from("RoutineTemplate")
+      .select("*")
+      .eq("id", templateId)
+      .eq("isActive", true)
+      .maybeSingle();
 
-    const template = await prisma.routineTemplate.findFirst({
-      where: {
-        id: templateId,
-        OR: [{ tenantId: context.tenantId }, { isGlobal: true }],
-        isActive: true,
-      },
-    });
-
-    if (!template) {
-      return { success: false, error: "Rutinemal ikke funnet" };
+    if (!template || (template.tenantId !== context.tenantId && !template.isGlobal)) {
+      return { success: false as const, error: "Procedure template not found." };
     }
 
-    const existingCount = await prisma.routine.count({
-      where: {
-        tenantId: context.tenantId,
-        title: {
-          contains: template.title,
-        },
-      },
-    });
+    const { count } = await db
+      .from("Routine")
+      .select("id", { count: "exact", head: true })
+      .eq("tenantId", context.tenantId)
+      .ilike("title", `%${template.title}%`);
 
+    const existingCount = count ?? 0;
     const title = existingCount === 0 ? template.title : `${template.title} (${existingCount + 1})`;
-
-    const routine = await prisma.routine.create({
-      data: {
+    const now = new Date().toISOString();
+    const { data: routine, error } = await db
+      .from("Routine")
+      .insert({
+        id: createId(),
         tenantId: context.tenantId,
         templateId: template.id,
         title,
@@ -244,115 +196,126 @@ export async function createRoutineFromTemplate(templateId: string) {
         content: template.content,
         legalReference: template.legalReference,
         createdBy: context.userId,
-      },
-    });
+        createdAt: now,
+        updatedAt: now,
+      })
+      .select("*")
+      .single();
 
-    revalidatePath("/dashboard/rutiner");
-    revalidatePath("/dashboard/rutiner/maler");
-    return { success: true, data: routine };
-  } catch (error: any) {
-    console.error("createRoutineFromTemplate error:", error);
-    return { success: false, error: error.message || "Kunne ikke opprette rutine fra mal" };
+    if (error || !routine) {
+      throw { code: "ROUTINE_CREATE_FAILED", message: error?.message || "Could not create the procedure." };
+    }
+
+    revalidatePath(PROCEDURES_PATH);
+    revalidatePath(`${PROCEDURES_PATH}/templates`);
+    return { success: true as const, data: routine };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not create the procedure from the template." };
   }
 }
 
 export async function updateRoutine(input: RoutineUpdateInput) {
   try {
-    const context = await requirePermission("canCreateDocuments");
-
-    const existing = await prisma.routine.findFirst({
-      where: {
-        id: input.id,
-        tenantId: context.tenantId,
-      },
-      select: { id: true },
-    });
+    const context = await requirePermission("canCreateRoutines");
+    const db = getAdminDb();
+    const { data: existing } = await db
+      .from("Routine")
+      .select("id")
+      .eq("id", input.id)
+      .eq("tenantId", context.tenantId)
+      .maybeSingle();
 
     if (!existing) {
-      return { success: false, error: "Rutine ikke funnet" };
+      return { success: false as const, error: "Procedure not found." };
     }
 
-    const routine = await prisma.routine.update({
-      where: { id: input.id },
-      data: {
-        title: input.title,
-        description: input.description,
-        category: input.category,
-        content: input.content as any,
-        legalReference: input.legalReference,
-        ...(input.status !== undefined ? { status: input.status } : {}),
-        ...(input.reviewIntervalMonths !== undefined
-          ? { reviewIntervalMonths: input.reviewIntervalMonths }
-          : {}),
-        ...(input.nextReviewAt !== undefined ? { nextReviewAt: input.nextReviewAt } : {}),
-        ...(input.lastReviewedAt !== undefined ? { lastReviewedAt: input.lastReviewedAt } : {}),
-        updatedBy: context.userId,
-      },
-    });
+    const payload: Record<string, unknown> = {
+      updatedBy: context.userId,
+      updatedAt: new Date().toISOString(),
+    };
+    if (input.title !== undefined) payload.title = input.title;
+    if (input.description !== undefined) payload.description = input.description;
+    if (input.category !== undefined) payload.category = input.category;
+    if (input.content !== undefined) payload.content = input.content;
+    if (input.legalReference !== undefined) payload.legalReference = input.legalReference;
+    if (input.status !== undefined) payload.status = input.status;
+    if (input.reviewIntervalMonths !== undefined) payload.reviewIntervalMonths = input.reviewIntervalMonths;
+    if (input.nextReviewAt !== undefined) payload.nextReviewAt = toIso(input.nextReviewAt);
+    if (input.lastReviewedAt !== undefined) payload.lastReviewedAt = toIso(input.lastReviewedAt);
 
-    revalidatePath("/dashboard/rutiner");
-    revalidatePath(`/dashboard/rutiner/${routine.id}`);
+    const { data: routine, error } = await db
+      .from("Routine")
+      .update(payload)
+      .eq("id", input.id)
+      .select("*")
+      .single();
 
-    // HMS Intelligens-motor: oppdater score etter rutineendring
-    onRoutineUpdated(context.tenantId, routine.id).catch(() => {});
+    if (error || !routine) {
+      throw { code: "ROUTINE_UPDATE_FAILED", message: error?.message || "Could not update the procedure." };
+    }
 
-    return { success: true, data: routine };
-  } catch (error: any) {
-    console.error("updateRoutine error:", error);
-    return { success: false, error: error.message || "Kunne ikke oppdatere rutine" };
+    revalidatePath(PROCEDURES_PATH);
+    revalidatePath(`${PROCEDURES_PATH}/${routine.id}`);
+    onRoutineUpdated(context.tenantId, routine.id).catch(() => undefined);
+    return { success: true as const, data: routine };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not update the procedure." };
   }
 }
 
 export async function assignRoutineResponsible(routineId: string, responsibleUserId: string) {
   try {
-    const context = await requirePermission("canCreateDocuments");
-
-    const [routine, member] = await Promise.all([
-      prisma.routine.findFirst({
-        where: {
-          id: routineId,
-          tenantId: context.tenantId,
-        },
-      }),
-      prisma.userTenant.findUnique({
-        where: {
-          userId_tenantId: {
-            userId: responsibleUserId,
-            tenantId: context.tenantId,
-          },
-        },
-      }),
+    const context = await requirePermission("canCreateRoutines");
+    const db = getAdminDb();
+    const [{ data: routine }, { data: member }] = await Promise.all([
+      db.from("Routine").select("*").eq("id", routineId).eq("tenantId", context.tenantId).maybeSingle(),
+      db
+        .from("UserTenant")
+        .select("userId")
+        .eq("userId", responsibleUserId)
+        .eq("tenantId", context.tenantId)
+        .maybeSingle(),
     ]);
 
     if (!routine) {
-      return { success: false, error: "Rutine ikke funnet" };
+      return { success: false as const, error: "Procedure not found." };
     }
     if (!member) {
-      return { success: false, error: "Ansvarlig bruker er ikke medlem i virksomheten" };
+      return { success: false as const, error: "That person is not a member of this organisation." };
     }
 
-    const updated = await prisma.routine.update({
-      where: { id: routineId },
-      data: {
+    const now = new Date().toISOString();
+    const { data: updated, error } = await db
+      .from("Routine")
+      .update({
         responsibleId: responsibleUserId,
         updatedBy: context.userId,
-      },
-    });
+        updatedAt: now,
+      })
+      .eq("id", routineId)
+      .select("*")
+      .single();
+
+    if (error || !updated) {
+      throw { code: "ROUTINE_ASSIGN_FAILED", message: error?.message || "Could not assign the owner." };
+    }
 
     await createNotification({
       tenantId: context.tenantId,
       userId: responsibleUserId,
       type: NotificationType.ROUTINE_ASSIGNED,
-      title: "Ny rutine tildelt",
-      message: `Du er satt som ansvarlig for rutinen "${updated.title}".`,
-      link: `/dashboard/rutiner/${updated.id}`,
-    });
+      title: "Procedure assigned",
+      message: `You are the owner of “${updated.title}”.`,
+      link: `${PROCEDURES_PATH}/${updated.id}`,
+    }).catch(() => undefined);
 
-    revalidatePath(`/dashboard/rutiner/${updated.id}`);
-    return { success: true, data: updated };
-  } catch (error: any) {
-    console.error("assignRoutineResponsible error:", error);
-    return { success: false, error: error.message || "Kunne ikke tildele ansvarlig" };
+    revalidatePath(`${PROCEDURES_PATH}/${updated.id}`);
+    return { success: true as const, data: updated };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not assign the owner." };
   }
 }
 
@@ -362,42 +325,50 @@ export async function scheduleRoutineFollowUp(
   reviewIntervalMonths?: number
 ) {
   try {
-    const context = await requirePermission("canCreateDocuments");
-
-    const routine = await prisma.routine.findFirst({
-      where: {
-        id: routineId,
-        tenantId: context.tenantId,
-      },
-    });
+    const context = await requirePermission("canCreateRoutines");
+    const db = getAdminDb();
+    const { data: routine } = await db
+      .from("Routine")
+      .select("*")
+      .eq("id", routineId)
+      .eq("tenantId", context.tenantId)
+      .maybeSingle();
 
     if (!routine) {
-      return { success: false, error: "Rutine ikke funnet" };
+      return { success: false as const, error: "Procedure not found." };
     }
 
-    const updated = await prisma.routine.update({
-      where: { id: routineId },
-      data: {
-        nextReviewAt,
+    const now = new Date().toISOString();
+    const { data: updated, error } = await db
+      .from("Routine")
+      .update({
+        nextReviewAt: toIso(nextReviewAt),
         reviewIntervalMonths: reviewIntervalMonths ?? routine.reviewIntervalMonths,
         status: RoutineStatus.ACTIVE,
         updatedBy: context.userId,
-      },
-    });
+        updatedAt: now,
+      })
+      .eq("id", routineId)
+      .select("*")
+      .single();
+
+    if (error || !updated) {
+      throw { code: "ROUTINE_SCHEDULE_FAILED", message: error?.message || "Could not set the review date." };
+    }
 
     await notifyLeadersAndHms(
       context.tenantId,
-      "Revisjonsfrist oppdatert",
-      `Rutinen "${updated.title}" har fått ny dato for neste revisjon.`,
-      `/dashboard/rutiner/${updated.id}`
+      "Review date updated",
+      `“${updated.title}” has a new review date.`,
+      `${PROCEDURES_PATH}/${updated.id}`
     );
 
-    revalidatePath("/dashboard/rutiner");
-    revalidatePath(`/dashboard/rutiner/${updated.id}`);
-    return { success: true, data: updated };
-  } catch (error: any) {
-    console.error("scheduleRoutineFollowUp error:", error);
-    return { success: false, error: error.message || "Kunne ikke planlegge oppfolging" };
+    revalidatePath(PROCEDURES_PATH);
+    revalidatePath(`${PROCEDURES_PATH}/${updated.id}`);
+    return { success: true as const, data: updated };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not schedule the review." };
   }
 }
 
@@ -411,34 +382,44 @@ export async function createRoutineTemplate(input: {
   industryScope?: string[];
 }) {
   try {
-    const context = await requirePermission("canCreateDocuments");
+    const context = await requirePermission("canCreateRoutines");
     const session = await getServerSession(authOptions);
     const isSuperAdmin = Boolean((session?.user as SessionUser | undefined)?.isSuperAdmin);
     if (!canCreateInspectionTemplate(isSuperAdmin)) {
       return {
-        success: false,
+        success: false as const,
         error: "New templates are set up by HSEQ Nova. You can edit the text on existing templates.",
       };
     }
 
-    const template = await prisma.routineTemplate.create({
-      data: {
+    const now = new Date().toISOString();
+    const { data: template, error } = await getAdminDb()
+      .from("RoutineTemplate")
+      .insert({
+        id: createId(),
         tenantId: input.isGlobal ? null : context.tenantId,
         title: input.title,
         description: input.description,
         category: input.category,
-        content: input.content as any,
+        content: input.content,
         legalReference: input.legalReference,
         isGlobal: !!input.isGlobal,
         industryScope: toIndustryScopeJson(input.industryScope),
         createdBy: context.userId,
-      },
-    });
+        createdAt: now,
+        updatedAt: now,
+      })
+      .select("*")
+      .single();
 
-    revalidatePath("/dashboard/rutiner/maler");
-    return { success: true, data: template };
-  } catch (error: any) {
-    console.error("createRoutineTemplate error:", error);
-    return { success: false, error: error.message || "Kunne ikke opprette rutinemal" };
+    if (error || !template) {
+      throw { code: "ROUTINE_TEMPLATE_CREATE_FAILED", message: error?.message || "Could not create the template." };
+    }
+
+    revalidatePath(`${PROCEDURES_PATH}/templates`);
+    return { success: true as const, data: template };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not create the procedure template." };
   }
 }

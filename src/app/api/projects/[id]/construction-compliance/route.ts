@@ -3,13 +3,15 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
+import { getAuthMembership } from "@/lib/auth-db";
+import { AuditLog } from "@/lib/audit-log";
 import {
   buildConstructionComplianceValidation,
   evaluatePreNotificationRequirement,
   validatePreNotificationForSubmission,
   validateShaPlanForActive,
 } from "@/lib/construction-compliance-rules";
-import { prisma } from "@/lib/db";
+import type { Role } from "@prisma/client";
 import { getPermissions } from "@/lib/permissions";
 import {
   createErrorResponse,
@@ -17,6 +19,24 @@ import {
   ErrorCodes,
   handleApiError,
 } from "@/lib/validations/api";
+import { loadProjectSummary } from "@/server/queries/projects.queries";
+import {
+  insertRosterEntry,
+  loadCdmChangeLogs,
+  loadCdmEmployees,
+  loadPreNotification,
+  loadRosterChecks,
+  loadRosterEntries,
+  loadRosterEntry,
+  loadShaPlan,
+  loadTenantOrg,
+  loadUsersByIds,
+  toDateOnly,
+  updateRosterEntry,
+  upsertDailyCheck,
+  upsertPreNotification,
+  upsertShaPlan,
+} from "@/server/queries/construction-compliance.queries";
 
 const shaPlanSchema = z.object({
   status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional(),
@@ -152,29 +172,15 @@ function parseAuditMetadata(metadata: string | null) {
   }
 }
 
-async function getTenantAndProject(projectId: string, userId: string) {
-  const userTenant = await prisma.userTenant.findFirst({
-    where: { userId },
-    select: { tenantId: true, role: true },
-  });
-  if (!userTenant) return null;
+async function getTenantAndProject(projectId: string, userId: string, tenantId: string | null | undefined) {
+  if (!tenantId) return null;
+  const membership = await getAuthMembership(userId, tenantId);
+  if (!membership) return null;
 
-  const project = await prisma.project.findFirst({
-    where: {
-      id: projectId,
-      tenantId: userTenant.tenantId,
-    },
-    select: {
-      id: true,
-      tenantId: true,
-      name: true,
-      location: true,
-      clientName: true,
-    },
-  });
+  const project = await loadProjectSummary(projectId, tenantId);
   if (!project) return null;
 
-  return { tenantId: userTenant.tenantId, role: userTenant.role, project };
+  return { tenantId, role: membership.role, project };
 }
 
 export async function GET(
@@ -184,98 +190,31 @@ export async function GET(
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Ikke autentisert", 401);
+      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Not authenticated", 401);
     }
 
     const { id } = await params;
-    const context = await getTenantAndProject(id, session.user.id);
+    const context = await getTenantAndProject(id, session.user.id, session.user.tenantId);
     if (!context) {
-      return createErrorResponse(ErrorCodes.NOT_FOUND, "Prosjekt ikke funnet", 404);
+      return createErrorResponse(ErrorCodes.NOT_FOUND, "Project not found", 404);
     }
-    const permissions = getPermissions(context.role);
+    const permissions = getPermissions(context.role as Role);
     if (!permissions.canReadConstructionCompliance) {
-      return createErrorResponse(ErrorCodes.FORBIDDEN, "Manglende tilgang", 403);
+      return createErrorResponse(ErrorCodes.FORBIDDEN, "Insufficient access", 403);
     }
 
-    const [tenant, shaPlan, preNotification, rosterEntries, rosterChecks, availableEmployees] = await Promise.all([
-      prisma.tenant.findUnique({
-        where: { id: context.tenantId },
-        select: { name: true, orgNumber: true },
-      }),
-      prisma.constructionShaPlan.findUnique({
-        where: { projectId: context.project.id },
-      }),
-      prisma.constructionPreNotification.findUnique({
-        where: { projectId: context.project.id },
-      }),
-      prisma.constructionRosterEntry.findMany({
-        where: { projectId: context.project.id },
-        orderBy: [{ isActive: "desc" }, { fullName: "asc" }],
-      }),
-      prisma.constructionRosterDailyCheck.findMany({
-        where: { projectId: context.project.id },
-        include: {
-          checkedBy: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-        },
-        orderBy: { checkedDate: "desc" },
-        take: 30,
-      }),
-      prisma.userTenant.findMany({
-        where: {
-          tenantId: context.tenantId,
-        },
-        select: {
-          userId: true,
-          employeeNumber: true,
-          displayName: true,
-          phone: true,
-          user: {
-            select: {
-              name: true,
-              email: true,
-              phone: true,
-            },
-          },
-        },
-        orderBy: {
-          displayName: "asc",
-        },
-      }),
-    ]);
+    const [tenant, shaPlan, preNotification, rosterEntries, rosterChecks, availableEmployees, changeLogs] =
+      await Promise.all([
+        loadTenantOrg(context.tenantId),
+        loadShaPlan(context.project.id),
+        loadPreNotification(context.project.id),
+        loadRosterEntries(context.project.id, context.tenantId),
+        loadRosterChecks(context.project.id, context.tenantId, 30),
+        loadCdmEmployees(context.tenantId),
+        loadCdmChangeLogs(context.tenantId, context.project.id),
+      ]);
 
-    const changeLogs = await prisma.auditLog.findMany({
-      where: {
-        tenantId: context.tenantId,
-        resource: `Project:${context.project.id}`,
-        action: {
-          in: ["CONSTRUCTION_SHA_PLAN_UPDATED", "CONSTRUCTION_PRE_NOTIFICATION_UPDATED"],
-        },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 30,
-      select: {
-        id: true,
-        action: true,
-        userId: true,
-        metadata: true,
-        createdAt: true,
-      },
-    });
-    const userIds = [...new Set(changeLogs.map((entry) => entry.userId))];
-    const users = userIds.length
-      ? await prisma.user.findMany({
-          where: { id: { in: userIds } },
-          select: { id: true, name: true, email: true },
-        })
-      : [];
-    const userMap = new Map(users.map((user) => [user.id, user]));
-
+    const userMap = await loadUsersByIds(changeLogs.map((entry) => entry.userId));
     const latestCheck = rosterChecks[0];
     const todayKey = formatDateOnly(new Date());
     const latestCheckKey = latestCheck ? formatDateOnly(new Date(latestCheck.checkedDate)) : null;
@@ -287,16 +226,16 @@ export async function GET(
     const format = request.nextUrl.searchParams.get("format");
     if (format === "csv") {
       const headers = [
-        "Navn",
-        "Fodselsdato",
-        "Arbeidsgiver",
-        "Orgnummer",
-        "Innleievirksomhet",
-        "HMS-kortnummer",
-        "Startdato",
-        "Sluttdato",
-        "Aktiv",
-        "Notat",
+        "Name",
+        "Date of birth",
+        "Employer",
+        "Company number",
+        "Labour-hire company",
+        "CSCS / card number",
+        "Start date",
+        "End date",
+        "Active",
+        "Notes",
       ];
       const lines = rosterEntries.map((entry) =>
         [
@@ -308,7 +247,7 @@ export async function GET(
           entry.hmsCardNumber,
           entry.startedAtSiteDate ? formatDateOnly(new Date(entry.startedAtSiteDate)) : "",
           entry.endedAtSiteDate ? formatDateOnly(new Date(entry.endedAtSiteDate)) : "",
-          entry.isActive ? "Ja" : "Nei",
+          entry.isActive ? "Yes" : "No",
           entry.notes,
         ]
           .map((value) => toCsvValue(value))
@@ -319,7 +258,7 @@ export async function GET(
         status: 200,
         headers: {
           "Content-Type": "text/csv; charset=utf-8",
-          "Content-Disposition": `attachment; filename=\"oversiktsliste-${context.project.id}.csv\"`,
+          "Content-Disposition": `attachment; filename=\"site-register-${context.project.id}.csv\"`,
         },
       });
     }
@@ -331,13 +270,7 @@ export async function GET(
       preNotification,
       rosterEntries,
       rosterChecks,
-      availableEmployees: availableEmployees.map((member) => ({
-        userId: member.userId,
-        name: member.displayName || member.user.name || member.user.email,
-        email: member.user.email,
-        employeeNumber: member.employeeNumber,
-        phone: member.phone || member.user.phone,
-      })),
+      availableEmployees,
       isDailyCheckMissing,
       latestCheckDate: latestCheck?.checkedDate ?? null,
       preNotificationRequirement,
@@ -348,7 +281,7 @@ export async function GET(
           id: entry.id,
           action: entry.action,
           createdAt: entry.createdAt,
-          changedBy: user?.name || user?.email || "Ukjent bruker",
+          changedBy: user?.name || user?.email || "Unknown user",
           changedByEmail: user?.email ?? null,
           metadata: parseAuditMetadata(entry.metadata),
         };
@@ -366,31 +299,27 @@ export async function PUT(
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Ikke autentisert", 401);
+      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Not authenticated", 401);
     }
 
     const payload = updatePayloadSchema.parse(await request.json());
     if (!payload.shaPlan && !payload.preNotification) {
-      return createErrorResponse(ErrorCodes.VALIDATION_ERROR, "Mangler oppdateringsdata", 400);
+      return createErrorResponse(ErrorCodes.VALIDATION_ERROR, "No update data provided", 400);
     }
 
     const { id } = await params;
-    const context = await getTenantAndProject(id, session.user.id);
+    const context = await getTenantAndProject(id, session.user.id, session.user.tenantId);
     if (!context) {
-      return createErrorResponse(ErrorCodes.NOT_FOUND, "Prosjekt ikke funnet", 404);
+      return createErrorResponse(ErrorCodes.NOT_FOUND, "Project not found", 404);
     }
-    const permissions = getPermissions(context.role);
+    const permissions = getPermissions(context.role as Role);
     if (!permissions.canManageConstructionCompliance) {
-      return createErrorResponse(ErrorCodes.FORBIDDEN, "Manglende tilgang", 403);
+      return createErrorResponse(ErrorCodes.FORBIDDEN, "Insufficient access", 403);
     }
 
     const [existingShaPlan, existingPreNotification] = await Promise.all([
-      prisma.constructionShaPlan.findUnique({
-        where: { projectId: context.project.id },
-      }),
-      prisma.constructionPreNotification.findUnique({
-        where: { projectId: context.project.id },
-      }),
+      loadShaPlan(context.project.id),
+      loadPreNotification(context.project.id),
     ]);
 
     const nextShaPlan = payload.shaPlan
@@ -411,7 +340,7 @@ export async function PUT(
       if (!shaValidation.isValid) {
         return createErrorResponse(
           ErrorCodes.VALIDATION_ERROR,
-          `SHA-plan mangler obligatoriske felt før aktivering: ${shaValidation.missingFields.join(", ")}`,
+          `Construction Phase Plan is missing required fields before it can be set active: ${shaValidation.missingFields.join(", ")}`,
           400
         );
       }
@@ -426,194 +355,165 @@ export async function PUT(
       if (!preValidation.isValid) {
         return createErrorResponse(
           ErrorCodes.VALIDATION_ERROR,
-          `Forhåndsmelding mangler obligatoriske felt før innsending: ${preValidation.missingFields.join(", ")}`,
+          `F10 is missing required fields before submission: ${preValidation.missingFields.join(", ")}`,
           400
         );
       }
     }
 
-    const operations: Promise<unknown>[] = [];
-
     if (payload.shaPlan) {
-      operations.push(
-        prisma.constructionShaPlan.upsert({
-          where: { projectId: context.project.id },
-          create: {
-            tenantId: context.tenantId,
-            projectId: context.project.id,
-            status: payload.shaPlan.status ?? "DRAFT",
-            organizationChart: payload.shaPlan.organizationChart ?? null,
-            progressPlan: payload.shaPlan.progressPlan ?? null,
-            specificMeasures: payload.shaPlan.specificMeasures ?? null,
-            changeProcedure: payload.shaPlan.changeProcedure ?? null,
-            builderName: payload.shaPlan.builderName ?? context.project.clientName ?? null,
-            builderRepresentativeName: payload.shaPlan.builderRepresentativeName ?? null,
-            builderRepresentativeContact: payload.shaPlan.builderRepresentativeContact ?? null,
-            coordinatorPlanningName: payload.shaPlan.coordinatorPlanningName ?? null,
-            coordinatorExecutionName: payload.shaPlan.coordinatorExecutionName ?? null,
-            conflictAssessmentDocumented: payload.shaPlan.conflictAssessmentDocumented ?? false,
-            availableOnSite: payload.shaPlan.availableOnSite ?? false,
-            lastReviewedAt: payload.shaPlan.lastReviewedAt
-              ? new Date(payload.shaPlan.lastReviewedAt)
-              : null,
-          },
-          update: {
-            ...(payload.shaPlan.status !== undefined && { status: payload.shaPlan.status }),
-            ...(payload.shaPlan.organizationChart !== undefined && {
-              organizationChart: payload.shaPlan.organizationChart,
-            }),
-            ...(payload.shaPlan.progressPlan !== undefined && {
-              progressPlan: payload.shaPlan.progressPlan,
-            }),
-            ...(payload.shaPlan.specificMeasures !== undefined && {
-              specificMeasures: payload.shaPlan.specificMeasures,
-            }),
-            ...(payload.shaPlan.changeProcedure !== undefined && {
-              changeProcedure: payload.shaPlan.changeProcedure,
-            }),
-            ...(payload.shaPlan.builderName !== undefined && { builderName: payload.shaPlan.builderName }),
-            ...(payload.shaPlan.builderRepresentativeName !== undefined && {
-              builderRepresentativeName: payload.shaPlan.builderRepresentativeName,
-            }),
-            ...(payload.shaPlan.builderRepresentativeContact !== undefined && {
-              builderRepresentativeContact: payload.shaPlan.builderRepresentativeContact,
-            }),
-            ...(payload.shaPlan.coordinatorPlanningName !== undefined && {
-              coordinatorPlanningName: payload.shaPlan.coordinatorPlanningName,
-            }),
-            ...(payload.shaPlan.coordinatorExecutionName !== undefined && {
-              coordinatorExecutionName: payload.shaPlan.coordinatorExecutionName,
-            }),
-            ...(payload.shaPlan.conflictAssessmentDocumented !== undefined && {
-              conflictAssessmentDocumented: payload.shaPlan.conflictAssessmentDocumented,
-            }),
-            ...(payload.shaPlan.availableOnSite !== undefined && {
-              availableOnSite: payload.shaPlan.availableOnSite,
-            }),
-            ...(payload.shaPlan.lastReviewedAt !== undefined && {
-              lastReviewedAt: payload.shaPlan.lastReviewedAt
-                ? new Date(payload.shaPlan.lastReviewedAt)
-                : null,
-            }),
-          },
-        })
-      );
+      await upsertShaPlan({
+        tenantId: context.tenantId,
+        projectId: context.project.id,
+        create: {
+          status: payload.shaPlan.status ?? "DRAFT",
+          organizationChart: payload.shaPlan.organizationChart ?? null,
+          progressPlan: payload.shaPlan.progressPlan ?? null,
+          specificMeasures: payload.shaPlan.specificMeasures ?? null,
+          changeProcedure: payload.shaPlan.changeProcedure ?? null,
+          builderName: payload.shaPlan.builderName ?? context.project.clientName ?? null,
+          builderRepresentativeName: payload.shaPlan.builderRepresentativeName ?? null,
+          builderRepresentativeContact: payload.shaPlan.builderRepresentativeContact ?? null,
+          coordinatorPlanningName: payload.shaPlan.coordinatorPlanningName ?? null,
+          coordinatorExecutionName: payload.shaPlan.coordinatorExecutionName ?? null,
+          conflictAssessmentDocumented: payload.shaPlan.conflictAssessmentDocumented ?? false,
+          availableOnSite: payload.shaPlan.availableOnSite ?? false,
+          lastReviewedAt: payload.shaPlan.lastReviewedAt ?? null,
+        },
+        update: {
+          ...(payload.shaPlan.status !== undefined && { status: payload.shaPlan.status }),
+          ...(payload.shaPlan.organizationChart !== undefined && {
+            organizationChart: payload.shaPlan.organizationChart,
+          }),
+          ...(payload.shaPlan.progressPlan !== undefined && {
+            progressPlan: payload.shaPlan.progressPlan,
+          }),
+          ...(payload.shaPlan.specificMeasures !== undefined && {
+            specificMeasures: payload.shaPlan.specificMeasures,
+          }),
+          ...(payload.shaPlan.changeProcedure !== undefined && {
+            changeProcedure: payload.shaPlan.changeProcedure,
+          }),
+          ...(payload.shaPlan.builderName !== undefined && { builderName: payload.shaPlan.builderName }),
+          ...(payload.shaPlan.builderRepresentativeName !== undefined && {
+            builderRepresentativeName: payload.shaPlan.builderRepresentativeName,
+          }),
+          ...(payload.shaPlan.builderRepresentativeContact !== undefined && {
+            builderRepresentativeContact: payload.shaPlan.builderRepresentativeContact,
+          }),
+          ...(payload.shaPlan.coordinatorPlanningName !== undefined && {
+            coordinatorPlanningName: payload.shaPlan.coordinatorPlanningName,
+          }),
+          ...(payload.shaPlan.coordinatorExecutionName !== undefined && {
+            coordinatorExecutionName: payload.shaPlan.coordinatorExecutionName,
+          }),
+          ...(payload.shaPlan.conflictAssessmentDocumented !== undefined && {
+            conflictAssessmentDocumented: payload.shaPlan.conflictAssessmentDocumented,
+          }),
+          ...(payload.shaPlan.availableOnSite !== undefined && {
+            availableOnSite: payload.shaPlan.availableOnSite,
+          }),
+          ...(payload.shaPlan.lastReviewedAt !== undefined && {
+            lastReviewedAt: payload.shaPlan.lastReviewedAt,
+          }),
+        },
+      });
     }
 
     if (payload.preNotification) {
-      operations.push(
-        prisma.constructionPreNotification.upsert({
-          where: { projectId: context.project.id },
-          create: {
-            tenantId: context.tenantId,
-            projectId: context.project.id,
-            status: payload.preNotification.status ?? "DRAFT",
-            sentAt: payload.preNotification.sentAt ? new Date(payload.preNotification.sentAt) : null,
-            submissionDate: payload.preNotification.submissionDate
-              ? new Date(payload.preNotification.submissionDate)
-              : null,
-            projectAddress: payload.preNotification.projectAddress ?? context.project.location ?? "Mangler adresse",
-            projectType: payload.preNotification.projectType ?? "Bygge- og anleggsarbeid",
-            builderName: payload.preNotification.builderName ?? context.project.clientName ?? "Uspesifisert byggherre",
-            builderOrgNumber: payload.preNotification.builderOrgNumber ?? null,
-            builderAddress: payload.preNotification.builderAddress ?? null,
-            builderPhone: payload.preNotification.builderPhone ?? null,
-            builderRepresentativeName: payload.preNotification.builderRepresentativeName ?? null,
-            builderRepresentativePhone: payload.preNotification.builderRepresentativePhone ?? null,
-            coordinators: payload.preNotification.coordinators ?? null,
-            designers: payload.preNotification.designers ?? null,
-            contractors: payload.preNotification.contractors ?? null,
-            expectedStartDate: payload.preNotification.expectedStartDate
-              ? new Date(payload.preNotification.expectedStartDate)
-              : new Date(),
-            expectedEndDate: payload.preNotification.expectedEndDate
-              ? new Date(payload.preNotification.expectedEndDate)
-              : null,
-            maxWorkersSimultaneous: payload.preNotification.maxWorkersSimultaneous ?? null,
-            plannedBusinessesCount: payload.preNotification.plannedBusinessesCount ?? null,
-            visibleAtSite: payload.preNotification.visibleAtSite ?? false,
-          },
-          update: {
-            ...(payload.preNotification.status !== undefined && { status: payload.preNotification.status }),
-            ...(payload.preNotification.sentAt !== undefined && {
-              sentAt: payload.preNotification.sentAt ? new Date(payload.preNotification.sentAt) : null,
-            }),
-            ...(payload.preNotification.submissionDate !== undefined && {
-              submissionDate: payload.preNotification.submissionDate
-                ? new Date(payload.preNotification.submissionDate)
-                : null,
-            }),
-            ...(payload.preNotification.projectAddress !== undefined && {
-              projectAddress: payload.preNotification.projectAddress,
-            }),
-            ...(payload.preNotification.projectType !== undefined && {
-              projectType: payload.preNotification.projectType,
-            }),
-            ...(payload.preNotification.builderName !== undefined && {
-              builderName: payload.preNotification.builderName,
-            }),
-            ...(payload.preNotification.builderOrgNumber !== undefined && {
-              builderOrgNumber: payload.preNotification.builderOrgNumber,
-            }),
-            ...(payload.preNotification.builderAddress !== undefined && {
-              builderAddress: payload.preNotification.builderAddress,
-            }),
-            ...(payload.preNotification.builderPhone !== undefined && {
-              builderPhone: payload.preNotification.builderPhone,
-            }),
-            ...(payload.preNotification.builderRepresentativeName !== undefined && {
-              builderRepresentativeName: payload.preNotification.builderRepresentativeName,
-            }),
-            ...(payload.preNotification.builderRepresentativePhone !== undefined && {
-              builderRepresentativePhone: payload.preNotification.builderRepresentativePhone,
-            }),
-            ...(payload.preNotification.coordinators !== undefined && {
-              coordinators: payload.preNotification.coordinators,
-            }),
-            ...(payload.preNotification.designers !== undefined && {
-              designers: payload.preNotification.designers,
-            }),
-            ...(payload.preNotification.contractors !== undefined && {
-              contractors: payload.preNotification.contractors,
-            }),
-            ...(payload.preNotification.expectedStartDate !== undefined && {
-              expectedStartDate: new Date(payload.preNotification.expectedStartDate),
-            }),
-            ...(payload.preNotification.expectedEndDate !== undefined && {
-              expectedEndDate: payload.preNotification.expectedEndDate
-                ? new Date(payload.preNotification.expectedEndDate)
-                : null,
-            }),
-            ...(payload.preNotification.maxWorkersSimultaneous !== undefined && {
-              maxWorkersSimultaneous: payload.preNotification.maxWorkersSimultaneous,
-            }),
-            ...(payload.preNotification.plannedBusinessesCount !== undefined && {
-              plannedBusinessesCount: payload.preNotification.plannedBusinessesCount,
-            }),
-            ...(payload.preNotification.visibleAtSite !== undefined && {
-              visibleAtSite: payload.preNotification.visibleAtSite,
-            }),
-          },
-        })
-      );
+      await upsertPreNotification({
+        tenantId: context.tenantId,
+        projectId: context.project.id,
+        create: {
+          status: payload.preNotification.status ?? "DRAFT",
+          sentAt: payload.preNotification.sentAt ?? null,
+          submissionDate: payload.preNotification.submissionDate ?? null,
+          projectAddress: payload.preNotification.projectAddress ?? context.project.location ?? "Address missing",
+          projectType: payload.preNotification.projectType ?? "Construction work",
+          builderName: payload.preNotification.builderName ?? context.project.clientName ?? "Unspecified client",
+          builderOrgNumber: payload.preNotification.builderOrgNumber ?? null,
+          builderAddress: payload.preNotification.builderAddress ?? null,
+          builderPhone: payload.preNotification.builderPhone ?? null,
+          builderRepresentativeName: payload.preNotification.builderRepresentativeName ?? null,
+          builderRepresentativePhone: payload.preNotification.builderRepresentativePhone ?? null,
+          coordinators: payload.preNotification.coordinators ?? null,
+          designers: payload.preNotification.designers ?? null,
+          contractors: payload.preNotification.contractors ?? null,
+          expectedStartDate: payload.preNotification.expectedStartDate ?? new Date().toISOString(),
+          expectedEndDate: payload.preNotification.expectedEndDate ?? null,
+          maxWorkersSimultaneous: payload.preNotification.maxWorkersSimultaneous ?? null,
+          plannedBusinessesCount: payload.preNotification.plannedBusinessesCount ?? null,
+          visibleAtSite: payload.preNotification.visibleAtSite ?? false,
+        },
+        update: {
+          ...(payload.preNotification.status !== undefined && { status: payload.preNotification.status }),
+          ...(payload.preNotification.sentAt !== undefined && {
+            sentAt: payload.preNotification.sentAt,
+          }),
+          ...(payload.preNotification.submissionDate !== undefined && {
+            submissionDate: payload.preNotification.submissionDate,
+          }),
+          ...(payload.preNotification.projectAddress !== undefined && {
+            projectAddress: payload.preNotification.projectAddress,
+          }),
+          ...(payload.preNotification.projectType !== undefined && {
+            projectType: payload.preNotification.projectType,
+          }),
+          ...(payload.preNotification.builderName !== undefined && {
+            builderName: payload.preNotification.builderName,
+          }),
+          ...(payload.preNotification.builderOrgNumber !== undefined && {
+            builderOrgNumber: payload.preNotification.builderOrgNumber,
+          }),
+          ...(payload.preNotification.builderAddress !== undefined && {
+            builderAddress: payload.preNotification.builderAddress,
+          }),
+          ...(payload.preNotification.builderPhone !== undefined && {
+            builderPhone: payload.preNotification.builderPhone,
+          }),
+          ...(payload.preNotification.builderRepresentativeName !== undefined && {
+            builderRepresentativeName: payload.preNotification.builderRepresentativeName,
+          }),
+          ...(payload.preNotification.builderRepresentativePhone !== undefined && {
+            builderRepresentativePhone: payload.preNotification.builderRepresentativePhone,
+          }),
+          ...(payload.preNotification.coordinators !== undefined && {
+            coordinators: payload.preNotification.coordinators,
+          }),
+          ...(payload.preNotification.designers !== undefined && {
+            designers: payload.preNotification.designers,
+          }),
+          ...(payload.preNotification.contractors !== undefined && {
+            contractors: payload.preNotification.contractors,
+          }),
+          ...(payload.preNotification.expectedStartDate !== undefined && {
+            expectedStartDate: payload.preNotification.expectedStartDate,
+          }),
+          ...(payload.preNotification.expectedEndDate !== undefined && {
+            expectedEndDate: payload.preNotification.expectedEndDate,
+          }),
+          ...(payload.preNotification.maxWorkersSimultaneous !== undefined && {
+            maxWorkersSimultaneous: payload.preNotification.maxWorkersSimultaneous,
+          }),
+          ...(payload.preNotification.plannedBusinessesCount !== undefined && {
+            plannedBusinessesCount: payload.preNotification.plannedBusinessesCount,
+          }),
+          ...(payload.preNotification.visibleAtSite !== undefined && {
+            visibleAtSite: payload.preNotification.visibleAtSite,
+          }),
+        },
+      });
     }
 
-    await Promise.all(operations);
-    const auditLogOperations: Promise<unknown>[] = [];
     if (payload.shaPlan) {
       const changedFields = buildChangedFields(existingShaPlan, payload.shaPlan as Record<string, unknown>);
-      auditLogOperations.push(
-        prisma.auditLog.create({
-          data: {
-            tenantId: context.tenantId,
-            userId: session.user.id,
-            action: "CONSTRUCTION_SHA_PLAN_UPDATED",
-            resource: `Project:${context.project.id}`,
-            metadata: JSON.stringify({
-              changedFields,
-            }),
-          },
-        })
+      await AuditLog.log(
+        context.tenantId,
+        session.user.id,
+        "CONSTRUCTION_SHA_PLAN_UPDATED",
+        "Project",
+        context.project.id,
+        { changedFields },
       );
     }
     if (payload.preNotification) {
@@ -622,34 +522,24 @@ export async function PUT(
         payload.preNotification as Record<string, unknown>
       );
       const requirement = evaluatePreNotificationRequirement(nextPreNotification);
-      auditLogOperations.push(
-        prisma.auditLog.create({
-          data: {
-            tenantId: context.tenantId,
-            userId: session.user.id,
-            action: "CONSTRUCTION_PRE_NOTIFICATION_UPDATED",
-            resource: `Project:${context.project.id}`,
-            metadata: JSON.stringify({
-              changedFields,
-              requirement,
-            }),
-          },
-        })
+      await AuditLog.log(
+        context.tenantId,
+        session.user.id,
+        "CONSTRUCTION_PRE_NOTIFICATION_UPDATED",
+        "Project",
+        context.project.id,
+        { changedFields, requirement },
       );
     }
-    auditLogOperations.push(
-      prisma.auditLog.create({
-        data: {
-          tenantId: context.tenantId,
-          userId: session.user.id,
-          action: "CONSTRUCTION_COMPLIANCE_UPDATED",
-          resource: `Project:${context.project.id}`,
-        },
-      })
+    await AuditLog.log(
+      context.tenantId,
+      session.user.id,
+      "CONSTRUCTION_COMPLIANCE_UPDATED",
+      "Project",
+      context.project.id,
     );
-    await Promise.all(auditLogOperations);
 
-    return createSuccessResponse(undefined, "Bygg/anlegg-compliance oppdatert");
+    return createSuccessResponse(undefined, "CDM 2015 records updated");
   } catch (error) {
     return handleApiError(error);
   }
@@ -662,82 +552,64 @@ export async function POST(
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Ikke autentisert", 401);
+      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Not authenticated", 401);
     }
 
     const payload = postPayloadSchema.parse(await request.json());
     const { id } = await params;
-    const context = await getTenantAndProject(id, session.user.id);
+    const context = await getTenantAndProject(id, session.user.id, session.user.tenantId);
     if (!context) {
-      return createErrorResponse(ErrorCodes.NOT_FOUND, "Prosjekt ikke funnet", 404);
+      return createErrorResponse(ErrorCodes.NOT_FOUND, "Project not found", 404);
     }
-    const permissions = getPermissions(context.role);
+    const permissions = getPermissions(context.role as Role);
     if (!permissions.canManageConstructionCompliance) {
-      return createErrorResponse(ErrorCodes.FORBIDDEN, "Manglende tilgang", 403);
+      return createErrorResponse(ErrorCodes.FORBIDDEN, "Insufficient access", 403);
     }
 
     if (payload.action === "ADD_ROSTER_ENTRY") {
-      const entry = await prisma.constructionRosterEntry.create({
-        data: {
-          tenantId: context.tenantId,
-          projectId: context.project.id,
-          fullName: payload.data.fullName,
-          birthDate: new Date(payload.data.birthDate),
-          employerName: payload.data.employerName,
-          employerOrgNumber: payload.data.employerOrgNumber ?? null,
-          hiringCompanyName: payload.data.hiringCompanyName ?? null,
-          hmsCardNumber: payload.data.hmsCardNumber ?? null,
-          startedAtSiteDate: payload.data.startedAtSiteDate
-            ? new Date(payload.data.startedAtSiteDate)
-            : null,
-          endedAtSiteDate: payload.data.endedAtSiteDate ? new Date(payload.data.endedAtSiteDate) : null,
-          isActive: payload.data.isActive ?? true,
-          notes: payload.data.notes ?? null,
-        },
-      });
-
-      await prisma.auditLog.create({
-        data: {
-          tenantId: context.tenantId,
-          userId: session.user.id,
-          action: "CONSTRUCTION_ROSTER_ENTRY_CREATED",
-          resource: `ConstructionRosterEntry:${entry.id}`,
-        },
-      });
-
-      return createSuccessResponse({ entry }, "Person lagt til i elektronisk oversiktsliste", 201);
-    }
-
-    const check = await prisma.constructionRosterDailyCheck.upsert({
-      where: {
-        projectId_checkedDate: {
-          projectId: context.project.id,
-          checkedDate: new Date(payload.data.checkedDate),
-        },
-      },
-      create: {
+      const entry = await insertRosterEntry({
         tenantId: context.tenantId,
         projectId: context.project.id,
-        checkedDate: new Date(payload.data.checkedDate),
-        checkedById: session.user.id,
+        fullName: payload.data.fullName,
+        birthDate: toDateOnly(payload.data.birthDate),
+        employerName: payload.data.employerName,
+        employerOrgNumber: payload.data.employerOrgNumber ?? null,
+        hiringCompanyName: payload.data.hiringCompanyName ?? null,
+        hmsCardNumber: payload.data.hmsCardNumber ?? null,
+        startedAtSiteDate: toDateOnly(payload.data.startedAtSiteDate ?? null),
+        endedAtSiteDate: toDateOnly(payload.data.endedAtSiteDate ?? null),
+        isActive: payload.data.isActive ?? true,
         notes: payload.data.notes ?? null,
-      },
-      update: {
-        checkedById: session.user.id,
-        notes: payload.data.notes ?? null,
-      },
+      });
+
+      await AuditLog.log(
+        context.tenantId,
+        session.user.id,
+        "CONSTRUCTION_ROSTER_ENTRY_CREATED",
+        "ConstructionRosterEntry",
+        entry.id,
+      );
+
+      return createSuccessResponse({ entry }, "Person added to the site register", 201);
+    }
+
+    const check = await upsertDailyCheck({
+      tenantId: context.tenantId,
+      projectId: context.project.id,
+      checkedDate: payload.data.checkedDate,
+      checkedById: session.user.id,
+      notes: payload.data.notes ?? null,
     });
 
-    await prisma.auditLog.create({
-      data: {
-        tenantId: context.tenantId,
-        userId: session.user.id,
-        action: "CONSTRUCTION_ROSTER_DAILY_CHECK",
-        resource: `ConstructionRosterDailyCheck:${check.id}`,
-      },
-    });
+    await AuditLog.log(
+      context.tenantId,
+      session.user.id,
+      "CONSTRUCTION_ROSTER_DAILY_CHECK",
+      "ConstructionRosterDailyCheck",
+      check.id,
+    );
 
-    return createSuccessResponse({ check }, "Daglig kontroll registrert", 201);
+    return createSuccessResponse({ check }, "Daily check recorded", 201);
   } catch (error) {
     return handleApiError(error);
   }
@@ -750,95 +622,77 @@ export async function PATCH(
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Ikke autentisert", 401);
+      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Not authenticated", 401);
     }
 
     const payload = patchPayloadSchema.parse(await request.json());
     const { id } = await params;
-    const context = await getTenantAndProject(id, session.user.id);
+    const context = await getTenantAndProject(id, session.user.id, session.user.tenantId);
     if (!context) {
-      return createErrorResponse(ErrorCodes.NOT_FOUND, "Prosjekt ikke funnet", 404);
+      return createErrorResponse(ErrorCodes.NOT_FOUND, "Project not found", 404);
     }
-    const permissions = getPermissions(context.role);
+    const permissions = getPermissions(context.role as Role);
     if (!permissions.canManageConstructionCompliance) {
-      return createErrorResponse(ErrorCodes.FORBIDDEN, "Manglende tilgang", 403);
+      return createErrorResponse(ErrorCodes.FORBIDDEN, "Insufficient access", 403);
     }
 
-    const existingEntry = await prisma.constructionRosterEntry.findFirst({
-      where: {
-        id: payload.rosterEntryId,
-        projectId: context.project.id,
-        tenantId: context.tenantId,
-      },
-    });
+    const existingEntry = await loadRosterEntry(payload.rosterEntryId, context.project.id, context.tenantId);
     if (!existingEntry) {
-      return createErrorResponse(ErrorCodes.NOT_FOUND, "Mannskapslinje ikke funnet", 404);
+      return createErrorResponse(ErrorCodes.NOT_FOUND, "Site register entry not found", 404);
     }
 
     if (payload.action === "UPDATE_ROSTER_ENTRY") {
-      const updated = await prisma.constructionRosterEntry.update({
-        where: { id: existingEntry.id },
-        data: {
-          ...(payload.data.fullName !== undefined && { fullName: payload.data.fullName }),
-          ...(payload.data.birthDate !== undefined && {
-            birthDate: new Date(payload.data.birthDate),
-          }),
-          ...(payload.data.employerName !== undefined && { employerName: payload.data.employerName }),
-          ...(payload.data.employerOrgNumber !== undefined && {
-            employerOrgNumber: payload.data.employerOrgNumber,
-          }),
-          ...(payload.data.hiringCompanyName !== undefined && {
-            hiringCompanyName: payload.data.hiringCompanyName,
-          }),
-          ...(payload.data.hmsCardNumber !== undefined && {
-            hmsCardNumber: payload.data.hmsCardNumber,
-          }),
-          ...(payload.data.startedAtSiteDate !== undefined && {
-            startedAtSiteDate: payload.data.startedAtSiteDate
-              ? new Date(payload.data.startedAtSiteDate)
-              : null,
-          }),
-          ...(payload.data.endedAtSiteDate !== undefined && {
-            endedAtSiteDate: payload.data.endedAtSiteDate
-              ? new Date(payload.data.endedAtSiteDate)
-              : null,
-          }),
-          ...(payload.data.isActive !== undefined && { isActive: payload.data.isActive }),
-          ...(payload.data.notes !== undefined && { notes: payload.data.notes }),
-        },
+      const updated = await updateRosterEntry(existingEntry.id, {
+        ...(payload.data.fullName !== undefined && { fullName: payload.data.fullName }),
+        ...(payload.data.birthDate !== undefined && {
+          birthDate: toDateOnly(payload.data.birthDate),
+        }),
+        ...(payload.data.employerName !== undefined && { employerName: payload.data.employerName }),
+        ...(payload.data.employerOrgNumber !== undefined && {
+          employerOrgNumber: payload.data.employerOrgNumber,
+        }),
+        ...(payload.data.hiringCompanyName !== undefined && {
+          hiringCompanyName: payload.data.hiringCompanyName,
+        }),
+        ...(payload.data.hmsCardNumber !== undefined && {
+          hmsCardNumber: payload.data.hmsCardNumber,
+        }),
+        ...(payload.data.startedAtSiteDate !== undefined && {
+          startedAtSiteDate: toDateOnly(payload.data.startedAtSiteDate ?? null),
+        }),
+        ...(payload.data.endedAtSiteDate !== undefined && {
+          endedAtSiteDate: toDateOnly(payload.data.endedAtSiteDate ?? null),
+        }),
+        ...(payload.data.isActive !== undefined && { isActive: payload.data.isActive }),
+        ...(payload.data.notes !== undefined && { notes: payload.data.notes }),
       });
 
-      await prisma.auditLog.create({
-        data: {
-          tenantId: context.tenantId,
-          userId: session.user.id,
-          action: "CONSTRUCTION_ROSTER_ENTRY_UPDATED",
-          resource: `ConstructionRosterEntry:${updated.id}`,
-        },
-      });
+      await AuditLog.log(
+        context.tenantId,
+        session.user.id,
+        "CONSTRUCTION_ROSTER_ENTRY_UPDATED",
+        "ConstructionRosterEntry",
+        updated.id,
+      );
 
-      return createSuccessResponse({ entry: updated }, "Mannskapslinje oppdatert");
+      return createSuccessResponse({ entry: updated }, "Site register entry updated");
     }
 
-    const closed = await prisma.constructionRosterEntry.update({
-      where: { id: existingEntry.id },
-      data: {
-        isActive: false,
-        endedAtSiteDate: payload.endedAtSiteDate ? new Date(payload.endedAtSiteDate) : new Date(),
-        ...(payload.notes !== undefined && { notes: payload.notes }),
-      },
+    const closed = await updateRosterEntry(existingEntry.id, {
+      isActive: false,
+      endedAtSiteDate: toDateOnly(payload.endedAtSiteDate ?? new Date()),
+      ...(payload.notes !== undefined && { notes: payload.notes }),
     });
 
-    await prisma.auditLog.create({
-      data: {
-        tenantId: context.tenantId,
-        userId: session.user.id,
-        action: "CONSTRUCTION_ROSTER_ENTRY_CLOSED",
-        resource: `ConstructionRosterEntry:${closed.id}`,
-      },
-    });
+    await AuditLog.log(
+      context.tenantId,
+      session.user.id,
+      "CONSTRUCTION_ROSTER_ENTRY_CLOSED",
+      "ConstructionRosterEntry",
+      closed.id,
+    );
 
-    return createSuccessResponse({ entry: closed }, "Mannskapslinje avsluttet");
+    return createSuccessResponse({ entry: closed }, "Site register entry closed");
   } catch (error) {
     return handleApiError(error);
   }

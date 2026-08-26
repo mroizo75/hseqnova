@@ -27,12 +27,12 @@ interface TenantSelectorProps {
 function getRoleLabel(role: string): string {
   const labels: Record<string, string> = {
     ADMIN: "Administrator",
-    HMS: "HMS-ansvarlig",
-    LEDER: "Leder",
-    VERNEOMBUD: "Verneombud",
-    ANSATT: "Ansatt",
-    BHT: "Bedriftshelsetjeneste",
-    REVISOR: "Revisor",
+    HMS: "HSE manager",
+    LEDER: "Line manager",
+    VERNEOMBUD: "Safety representative",
+    ANSATT: "Employee",
+    BHT: "Occupational health",
+    REVISOR: "Auditor",
   };
   return labels[role] || role;
 }

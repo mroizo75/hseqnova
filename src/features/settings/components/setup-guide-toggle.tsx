@@ -40,16 +40,16 @@ export function SetupGuideToggle({
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Compass className="h-4 w-4" />
-          Tilsynsklar-veiviser
+          Setup guide
         </CardTitle>
         <CardDescription>
-          En steg-for-steg guide som hjelper dere bli klare for tilsyn fra Arbeidstilsynet
+          A short checklist to get the written policy, organisation and accident book in place (HSWA s.2 / MHSWR).
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
           <Label htmlFor="setup-guide-toggle" className="cursor-pointer">
-            Vis veiviser på dashboardet
+            Show the guide on the dashboard
           </Label>
           <div className="flex items-center gap-2">
             {isPending && <Loader2 className="h-4 w-4 animate-spin" />}

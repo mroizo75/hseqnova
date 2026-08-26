@@ -11,21 +11,18 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const tenantId = session.user.tenantId;
-    if (!tenantId) {
-      return NextResponse.json({ error: "Ingen tenant tilgang" }, { status: 403 });
+    if (!session.user.tenantId) {
+      return NextResponse.json({ error: "No organisation access" }, { status: 403 });
     }
 
-    const result = await getSjaTemplates(tenantId);
+    const result = await getSjaTemplates(session.user.tenantId);
     if (!result.success) {
-      return NextResponse.json({ error: result.error ?? "Kunne ikke hente SJA-maler" }, { status: 400 });
+      return NextResponse.json({ error: result.error ?? "Could not load RAMS templates" }, { status: 400 });
     }
 
     return NextResponse.json({ success: true, data: result.data ?? [] });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || "Intern feil ved henting av SJA-maler" },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Could not load RAMS templates";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

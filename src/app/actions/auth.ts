@@ -20,7 +20,7 @@ export async function loginAction(
   const { data: profile } = await admin
     .from("User")
     .select("isSuperAdmin, isSupport")
-    .eq("id", authData.user.id)
+    .or(`id.eq.${authData.user.id},supabaseUserId.eq.${authData.user.id}`)
     .maybeSingle();
 
   if (profile?.isSuperAdmin || profile?.isSupport) {

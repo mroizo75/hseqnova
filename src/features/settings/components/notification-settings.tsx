@@ -1,20 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Bell, Mail, Smartphone, Calendar, ClipboardCheck, AlertCircle, Target, TestTube } from "lucide-react";
+import {
+  Bell,
+  Mail,
+  Smartphone,
+  Calendar,
+  ClipboardCheck,
+  AlertCircle,
+  ListTodo,
+  TestTube,
+  BookOpen,
+  GraduationCap,
+  FileText,
+  ShieldAlert,
+  Newspaper,
+} from "lucide-react";
 import type { Role, User, UserTenant } from "@prisma/client";
 import { updateNotificationSettings } from "@/server/actions/notification-settings.actions";
-import Link from "next/link";
 
 interface NotificationSettingsProps {
-  user: User;
+  user: Pick<User, "id" | "email" | "phone">;
   userTenant: UserTenant;
   tenant: {
     constructionDailyCheckAlertsEnabled: boolean;
@@ -23,12 +37,24 @@ interface NotificationSettingsProps {
   isAdmin: boolean;
 }
 
-export function NotificationSettings({ user, userTenant, tenant, isAdmin }: NotificationSettingsProps) {
+function reminderLabel(days: number): string {
+  if (days === 0) return "on the day";
+  if (days === 1) return "1 day before";
+  if (days === 7) return "1 week before";
+  if (days === 14) return "2 weeks before";
+  return `${days} days before`;
+}
+
+export function NotificationSettings({
+  user,
+  userTenant,
+  tenant,
+  isAdmin,
+}: NotificationSettingsProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  
-  // Bruk innstillinger fra UserTenant (tenant-spesifikk)
+
   const [notifyByEmail, setNotifyByEmail] = useState(userTenant.notifyByEmail);
   const [notifyBySms, setNotifyBySms] = useState(userTenant.notifyBySms);
   const [reminderDaysBefore, setReminderDaysBefore] = useState(userTenant.reminderDaysBefore);
@@ -36,6 +62,12 @@ export function NotificationSettings({ user, userTenant, tenant, isAdmin }: Noti
   const [notifyInspections, setNotifyInspections] = useState(userTenant.notifyInspections);
   const [notifyAudits, setNotifyAudits] = useState(userTenant.notifyAudits);
   const [notifyMeasures, setNotifyMeasures] = useState(userTenant.notifyMeasures);
+  const [notifyIncidents, setNotifyIncidents] = useState(userTenant.notifyIncidents);
+  const [notifyDocuments, setNotifyDocuments] = useState(userTenant.notifyDocuments);
+  const [notifyTraining, setNotifyTraining] = useState(userTenant.notifyTraining);
+  const [notifyRisks, setNotifyRisks] = useState(userTenant.notifyRisks);
+  const [dailyDigest, setDailyDigest] = useState(userTenant.dailyDigest);
+  const [weeklyDigest, setWeeklyDigest] = useState(userTenant.weeklyDigest);
   const [constructionDailyCheckAlertsEnabled, setConstructionDailyCheckAlertsEnabled] = useState(
     tenant.constructionDailyCheckAlertsEnabled
   );
@@ -43,8 +75,7 @@ export function NotificationSettings({ user, userTenant, tenant, isAdmin }: Noti
     tenant.constructionDailyCheckAlertRole
   );
 
-  // Sjekk telefonnummer fra både UserTenant og User (fallback)
-  const hasPhoneNumber = !!userTenant.phone || !!user.phone;
+  const hasPhoneNumber = Boolean(userTenant.phone || user.phone);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,8 +84,8 @@ export function NotificationSettings({ user, userTenant, tenant, isAdmin }: Noti
     if (notifyBySms && !hasPhoneNumber) {
       toast({
         variant: "destructive",
-        title: "Mangler telefonnummer",
-        description: "Du må legge til telefonnummer i profilen for å motta SMS-varsler",
+        title: "Telephone number required",
+        description: "Add a number on your profile before turning on text messages.",
       });
       setLoading(false);
       return;
@@ -68,22 +99,28 @@ export function NotificationSettings({ user, userTenant, tenant, isAdmin }: Noti
       notifyInspections,
       notifyAudits,
       notifyMeasures,
+      notifyIncidents,
+      notifyDocuments,
+      notifyTraining,
+      notifyRisks,
+      dailyDigest,
+      weeklyDigest,
       constructionDailyCheckAlertsEnabled,
       constructionDailyCheckAlertRole,
     });
 
     if (result.success) {
       toast({
-        title: "✅ Innstillinger lagret",
-        description: "Varslingsinnstillingene dine er oppdatert",
+        title: "Notifications saved",
+        description: "Your choices apply to this company.",
         className: "bg-green-50 border-green-200",
       });
       router.refresh();
     } else {
       toast({
         variant: "destructive",
-        title: "Feil",
-        description: result.error || "Kunne ikke lagre innstillinger",
+        title: "Could not save",
+        description: result.error || "Could not save notification settings",
       });
     }
 
@@ -92,15 +129,15 @@ export function NotificationSettings({ user, userTenant, tenant, isAdmin }: Noti
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Header */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
             <Bell className="h-6 w-6 text-primary" />
             <div>
-              <CardTitle>Varslingsinnstillinger</CardTitle>
+              <CardTitle>Notifications</CardTitle>
               <CardDescription>
-                Velg hvordan og når du vil motta påminnelser
+                How and when HSEQ Nova contacts you. Accident book and RIDDOR items can be sent
+                immediately; other reminders follow the lead time below.
               </CardDescription>
             </div>
           </div>
@@ -110,19 +147,20 @@ export function NotificationSettings({ user, userTenant, tenant, isAdmin }: Noti
       {isAdmin ? (
         <Card>
           <CardHeader>
-            <CardTitle>Bygg/anlegg-varsler (tenant)</CardTitle>
+            <CardTitle>CDM site daily check (company)</CardTitle>
             <CardDescription>
-              Styr daglig varsel om manglende kontroll av elektronisk oversiktsliste.
+              CDM 2015: remind the chosen role when a site has people on it but no daily check has
+              been recorded that day.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
                 <Label htmlFor="constructionDailyCheckAlertsEnabled">
-                  Aktiver daglig bygg/anlegg-varsel
+                  Send the daily site check reminder
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  Sender varsel når prosjekt har aktive personer, men ingen daglig kontroll i dag.
+                  Applies to construction projects with people currently on site.
                 </p>
               </div>
               <Switch
@@ -134,7 +172,7 @@ export function NotificationSettings({ user, userTenant, tenant, isAdmin }: Noti
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="constructionDailyCheckAlertRole">Hvilken rolle skal varsles?</Label>
+              <Label htmlFor="constructionDailyCheckAlertRole">Role to notify</Label>
               <Select
                 value={constructionDailyCheckAlertRole}
                 onValueChange={(value) => setConstructionDailyCheckAlertRole(value as Role)}
@@ -144,9 +182,9 @@ export function NotificationSettings({ user, userTenant, tenant, isAdmin }: Noti
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="HMS">HMS-ansvarlig</SelectItem>
+                  <SelectItem value="HMS">HSE manager</SelectItem>
                   <SelectItem value="ADMIN">Administrator</SelectItem>
-                  <SelectItem value="LEDER">Leder</SelectItem>
+                  <SelectItem value="LEDER">Line manager</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -154,24 +192,18 @@ export function NotificationSettings({ user, userTenant, tenant, isAdmin }: Noti
         </Card>
       ) : null}
 
-      {/* Varslingsmetoder */}
       <Card>
         <CardHeader>
-          <CardTitle>Varslingsmetoder</CardTitle>
-          <CardDescription>
-            Hvordan vil du motta varsler?
-          </CardDescription>
+          <CardTitle>Channels</CardTitle>
+          <CardDescription>Email is the default. Text messages are for urgent items only.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* E-post */}
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="flex items-center gap-3">
               <Mail className="h-5 w-5 text-muted-foreground" />
               <div className="space-y-0.5">
-                <Label htmlFor="notifyByEmail">E-postvarsler</Label>
-                <p className="text-sm text-muted-foreground">
-                  Motta påminnelser på e-post ({user.email})
-                </p>
+                <Label htmlFor="notifyByEmail">Email</Label>
+                <p className="text-sm text-muted-foreground">Send to {user.email}</p>
               </div>
             </div>
             <Switch
@@ -182,21 +214,20 @@ export function NotificationSettings({ user, userTenant, tenant, isAdmin }: Noti
             />
           </div>
 
-          {/* SMS */}
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="flex items-center gap-3">
               <Smartphone className="h-5 w-5 text-muted-foreground" />
               <div className="space-y-0.5">
-                <Label htmlFor="notifyBySms">SMS-varsler</Label>
+                <Label htmlFor="notifyBySms">Text message (SMS)</Label>
                 <p className="text-sm text-muted-foreground">
                   {hasPhoneNumber
-                    ? `Motta påminnelser på SMS (${userTenant.phone || user.phone})`
-                    : "Legg til telefonnummer i profilen for å aktivere SMS"}
+                    ? `Send to ${userTenant.phone || user.phone}`
+                    : "Add a telephone number on your profile first"}
                 </p>
                 {notifyBySms && !hasPhoneNumber && (
-                  <p className="text-sm text-amber-600 flex items-center gap-1 mt-1">
+                  <p className="mt-1 flex items-center gap-1 text-sm text-amber-600">
                     <AlertCircle className="h-3 w-3" />
-                    SMS krever telefonnummer
+                    A telephone number is required
                   </p>
                 )}
               </div>
@@ -209,135 +240,167 @@ export function NotificationSettings({ user, userTenant, tenant, isAdmin }: Noti
             />
           </div>
 
-          {/* Påminnelsestid */}
           <div className="space-y-3">
-            <Label htmlFor="reminderDaysBefore">Når vil du ha påminnelser?</Label>
+            <Label htmlFor="reminderDaysBefore">Reminder lead time</Label>
             <Select
               value={reminderDaysBefore.toString()}
-              onValueChange={(value) => setReminderDaysBefore(parseInt(value))}
+              onValueChange={(value) => setReminderDaysBefore(parseInt(value, 10))}
               disabled={loading}
             >
-              <SelectTrigger>
+              <SelectTrigger id="reminderDaysBefore">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="0">Samme dag</SelectItem>
-                <SelectItem value="1">1 dag før</SelectItem>
-                <SelectItem value="2">2 dager før</SelectItem>
-                <SelectItem value="3">3 dager før</SelectItem>
-                <SelectItem value="7">1 uke før</SelectItem>
-                <SelectItem value="14">2 uker før</SelectItem>
+                <SelectItem value="0">On the day</SelectItem>
+                <SelectItem value="1">1 day before</SelectItem>
+                <SelectItem value="2">2 days before</SelectItem>
+                <SelectItem value="3">3 days before</SelectItem>
+                <SelectItem value="7">1 week before</SelectItem>
+                <SelectItem value="14">2 weeks before</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">
-              Du vil motta varsler {reminderDaysBefore === 0 ? "samme dag" : `${reminderDaysBefore} dag${reminderDaysBefore > 1 ? "er" : ""} før`} planlagte hendelser
+              Scheduled items (inspections, meetings, training expiry) are sent {reminderLabel(reminderDaysBefore)}.
             </p>
           </div>
         </CardContent>
       </Card>
 
-      {/* Hva vil du få varsler om */}
       <Card>
         <CardHeader>
-          <CardTitle>Hva vil du få varsler om?</CardTitle>
+          <CardTitle>What to notify me about</CardTitle>
           <CardDescription>
-            Velg hvilke typer hendelser du vil bli varslet om
+            Unticked topics are not emailed or texted. In-app notifications still appear.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Møter */}
+          <TopicSwitch
+            id="notifyIncidents"
+            icon={<AlertCircle className="h-5 w-5 text-red-600" />}
+            label="Accident book"
+            description="New injuries, near misses, RIDDOR-reportable events and overdue investigations. Social Security (Claims and Payments) Regulations 1979; RIDDOR 2013."
+            checked={notifyIncidents}
+            onCheckedChange={setNotifyIncidents}
+            disabled={loading}
+          />
+          <TopicSwitch
+            id="notifyInspections"
+            icon={<ClipboardCheck className="h-5 w-5 text-green-600" />}
+            label="Workplace inspections and fire drills"
+            description="Scheduled inspections, overdue findings and fire drill reminders. MHSWR 1999; Fire Safety Order 2005."
+            checked={notifyInspections}
+            onCheckedChange={setNotifyInspections}
+            disabled={loading}
+          />
+          <TopicSwitch
+            id="notifyTraining"
+            icon={<GraduationCap className="h-5 w-5 text-indigo-600" />}
+            label="Training and competence"
+            description="Assigned training, certificates due to expire, and expired competence. HSWA s.2(2)(c)."
+            checked={notifyTraining}
+            onCheckedChange={setNotifyTraining}
+            disabled={loading}
+          />
+          <TopicSwitch
+            id="notifyMeasures"
+            icon={<ListTodo className="h-5 w-5 text-orange-600" />}
+            label="Actions"
+            description="Actions assigned to you, due soon, or overdue."
+            checked={notifyMeasures}
+            onCheckedChange={setNotifyMeasures}
+            disabled={loading}
+          />
+          <TopicSwitch
+            id="notifyRisks"
+            icon={<ShieldAlert className="h-5 w-5 text-amber-600" />}
+            label="Risk assessments and COSHH"
+            description="Risk review due, high residual risk, COSHH SDS review and expired assessments. MHSWR 1999; COSHH 2002."
+            checked={notifyRisks}
+            onCheckedChange={setNotifyRisks}
+            disabled={loading}
+          />
+          <TopicSwitch
+            id="notifyDocuments"
+            icon={<FileText className="h-5 w-5 text-slate-600" />}
+            label="Documents and procedures"
+            description="Review due, expired controlled documents, procedure assignments, and legal-register alerts."
+            checked={notifyDocuments}
+            onCheckedChange={setNotifyDocuments}
+            disabled={loading}
+          />
+          <TopicSwitch
+            id="notifyMeetings"
+            icon={<Calendar className="h-5 w-5 text-blue-600" />}
+            label="Consultation meetings"
+            description="Safety committee, management review and other scheduled meetings. SRSCWR 1977 / HSCER 1996."
+            checked={notifyMeetings}
+            onCheckedChange={setNotifyMeetings}
+            disabled={loading}
+          />
+          <TopicSwitch
+            id="notifyAudits"
+            icon={<BookOpen className="h-5 w-5 text-purple-600" />}
+            label="Audits"
+            description="Scheduled audits, reminders and open findings. ISO 45001."
+            checked={notifyAudits}
+            onCheckedChange={setNotifyAudits}
+            disabled={loading}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Email digest</CardTitle>
+          <CardDescription>
+            A summary in addition to immediate emails for urgent accident-book and whistleblowing items.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="flex items-center gap-3">
-              <Calendar className="h-5 w-5 text-blue-600" />
+              <Newspaper className="h-5 w-5 text-muted-foreground" />
               <div className="space-y-0.5">
-                <Label htmlFor="notifyMeetings">Møter</Label>
-                <p className="text-sm text-muted-foreground">
-                  AMU/VO møter, BHT møter, ledelsens gjennomgang
-                </p>
+                <Label htmlFor="dailyDigest">Daily digest</Label>
+                <p className="text-sm text-muted-foreground">One email each working day with open items.</p>
               </div>
             </div>
             <Switch
-              id="notifyMeetings"
-              checked={notifyMeetings}
-              onCheckedChange={setNotifyMeetings}
+              id="dailyDigest"
+              checked={dailyDigest}
+              onCheckedChange={setDailyDigest}
               disabled={loading}
             />
           </div>
-
-          {/* Vernerunder/Inspeksjoner */}
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="flex items-center gap-3">
-              <ClipboardCheck className="h-5 w-5 text-green-600" />
+              <Newspaper className="h-5 w-5 text-muted-foreground" />
               <div className="space-y-0.5">
-                <Label htmlFor="notifyInspections">Vernerunder & Inspeksjoner</Label>
-                <p className="text-sm text-muted-foreground">
-                  Planlagte vernerunder, HMS-inspeksjoner, sikkerhetsvandringer
-                </p>
+                <Label htmlFor="weeklyDigest">Weekly digest</Label>
+                <p className="text-sm text-muted-foreground">Monday summary of the week ahead.</p>
               </div>
             </div>
             <Switch
-              id="notifyInspections"
-              checked={notifyInspections}
-              onCheckedChange={setNotifyInspections}
-              disabled={loading}
-            />
-          </div>
-
-          {/* Revisjoner */}
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-orange-600" />
-              <div className="space-y-0.5">
-                <Label htmlFor="notifyAudits">Revisjoner</Label>
-                <p className="text-sm text-muted-foreground">
-                  Internrevisjoner, eksterne revisjoner, sertifiseringsrevisjoner
-                </p>
-              </div>
-            </div>
-            <Switch
-              id="notifyAudits"
-              checked={notifyAudits}
-              onCheckedChange={setNotifyAudits}
-              disabled={loading}
-            />
-          </div>
-
-          {/* Tiltak */}
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div className="flex items-center gap-3">
-              <Target className="h-5 w-5 text-red-600" />
-              <div className="space-y-0.5">
-                <Label htmlFor="notifyMeasures">Tiltak som forfaller</Label>
-                <p className="text-sm text-muted-foreground">
-                  Korrigerende tiltak, handlingsplaner, oppgaver du er ansvarlig for
-                </p>
-              </div>
-            </div>
-            <Switch
-              id="notifyMeasures"
-              checked={notifyMeasures}
-              onCheckedChange={setNotifyMeasures}
+              id="weeklyDigest"
+              checked={weeklyDigest}
+              onCheckedChange={setWeeklyDigest}
               disabled={loading}
             />
           </div>
         </CardContent>
       </Card>
 
-      {/* Info om SMS */}
       {notifyBySms && (
         <Card className="border-blue-200 bg-blue-50/50">
           <CardContent className="pt-6">
             <div className="flex gap-3">
-              <Smartphone className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <Smartphone className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
               <div className="space-y-2 text-sm">
-                <p className="font-medium text-blue-900">
-                  Om SMS-varsler
-                </p>
-                <ul className="list-disc list-inside space-y-1 text-blue-800">
-                  <li>SMS sendes via norsk leverandør (Link Mobility)</li>
-                  <li>Du mottar kun de viktigste påminnelsene på SMS</li>
-                  <li>Alle varsler sendes også på e-post</li>
-                  <li>Du kan når som helst slå av SMS-varsler</li>
+                <p className="font-medium text-blue-900">About text messages</p>
+                <ul className="list-disc space-y-1 pl-4 text-blue-800">
+                  <li>Sent only for urgent items: new accident book entries, overdue actions, expired training, whistleblowing.</li>
+                  <li>Email is still sent for those items when email is on.</li>
+                  <li>UK GDPR / DPA 2018: the number is used only to send these operational alerts.</li>
                 </ul>
               </div>
             </div>
@@ -345,19 +408,48 @@ export function NotificationSettings({ user, userTenant, tenant, isAdmin }: Noti
         </Card>
       )}
 
-      {/* Actions */}
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <Link href="/dashboard/settings/test-notifications">
-          <Button type="button" variant="outline">
+          <Button type="button" variant="outline" className="bg-transparent">
             <TestTube className="mr-2 h-4 w-4" />
-            Test e-postvarsling
+            Send a test email
           </Button>
         </Link>
         <Button type="submit" disabled={loading}>
-          {loading ? "Lagrer..." : "Lagre innstillinger"}
+          {loading ? "Saving…" : "Save notifications"}
         </Button>
       </div>
     </form>
   );
 }
 
+function TopicSwitch({
+  id,
+  icon,
+  label,
+  description,
+  checked,
+  onCheckedChange,
+  disabled,
+}: {
+  id: string;
+  icon: ReactNode;
+  label: string;
+  description: string;
+  checked: boolean;
+  onCheckedChange: (value: boolean) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5">{icon}</div>
+        <div className="space-y-0.5">
+          <Label htmlFor={id}>{label}</Label>
+          <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} />
+    </div>
+  );
+}

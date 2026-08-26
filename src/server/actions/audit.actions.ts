@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/db";
 import { getRequiredTenantContext } from "@/lib/tenant-context";
 import {
   createAuditSchema,
@@ -10,429 +9,304 @@ import {
   updateFindingSchema,
 } from "@/features/audits/schemas/audit.schema";
 import { AuditLog } from "@/lib/audit-log";
+import {
+  deleteAuditRecord,
+  deleteFindingRecord,
+  insertAudit,
+  insertFinding,
+  loadAudit,
+  loadAudits,
+  loadFindingWithAudit,
+  updateAuditRecord,
+  updateFindingRecord,
+} from "@/server/queries/audits.queries";
 
-async function getSessionContext() {
-  const tenantContext = await getRequiredTenantContext();
-
-  const user = await prisma.user.findUnique({
-    where: { id: tenantContext.userId },
-    include: { tenants: true },
-  });
-
-  if (!user || user.tenants.length === 0) {
-    throw new Error("User not associated with a tenant");
+function errorMessage(error: unknown, fallback: string): string {
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
+    return error.message;
   }
-
-  return { user, tenantId: tenantContext.tenantId };
+  if (error instanceof Error) return error.message;
+  return fallback;
 }
 
-// ============================================================================
-// AUDITS (ISO 9001 - 9.2 Internrevisjon)
-// ============================================================================
-
-// Hent alle revisjoner
 export async function getAudits(_tenantId: string) {
   try {
-    const { tenantId } = await getSessionContext();
-
-    const audits = await prisma.audit.findMany({
-      where: { tenantId },
-      include: {
-        findings: {
-          orderBy: { createdAt: "desc" },
-        },
-      },
-      orderBy: { scheduledDate: "desc" },
-    });
-
+    const { tenantId } = await getRequiredTenantContext();
+    const audits = await loadAudits(tenantId);
     return { success: true, data: audits };
-  } catch (error: any) {
-    console.error("Get audits error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente revisjoner" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load audits") };
   }
 }
 
-// Hent en spesifikk revisjon
 export async function getAudit(auditId: string) {
   try {
-    const { user, tenantId } = await getSessionContext();
-
-    const audit = await prisma.audit.findUnique({
-      where: { id: auditId, tenantId },
-      include: {
-        findings: {
-          orderBy: { createdAt: "desc" },
-        },
-        measures: {
-          orderBy: { createdAt: "desc" },
-        },
-      },
-    });
-
+    const { tenantId } = await getRequiredTenantContext();
+    const audit = await loadAudit(auditId, tenantId);
     if (!audit) {
-      return { success: false, error: "Revisjon ikke funnet" };
+      return { success: false, error: "Audit not found" };
     }
-
     return { success: true, data: audit };
-  } catch (error: any) {
-    console.error("Get audit error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente revisjon" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load the audit") };
   }
 }
 
-// Opprett ny revisjon (ISO 9001: Planlegging)
-export async function createAudit(input: any) {
+export async function createAudit(input: Record<string, unknown>) {
   try {
-    const { user, tenantId } = await getSessionContext();
+    const { userId, tenantId } = await getRequiredTenantContext();
     const validated = createAuditSchema.parse({
       ...input,
       tenantId,
-      scheduledDate: new Date(input.scheduledDate),
+      scheduledDate: new Date(input.scheduledDate as string),
     });
 
-    const audit = await prisma.audit.create({
-      data: {
-        tenantId: validated.tenantId,
-        title: validated.title,
-        auditType: validated.auditType,
-        scope: validated.scope,
-        criteria: validated.criteria,
-        leadAuditorId: validated.leadAuditorId,
-        teamMemberIds: validated.teamMemberIds
-          ? JSON.stringify(validated.teamMemberIds)
-          : null,
-        scheduledDate: validated.scheduledDate,
-        area: validated.area,
-        department: validated.department,
-        status: validated.status,
-      },
+    const audit = await insertAudit({
+      tenantId: validated.tenantId,
+      title: validated.title,
+      auditType: validated.auditType,
+      scope: validated.scope,
+      criteria: validated.criteria,
+      leadAuditorId: validated.leadAuditorId,
+      teamMemberIds: validated.teamMemberIds,
+      scheduledDate: validated.scheduledDate,
+      area: validated.area,
+      department: validated.department,
+      status: validated.status,
     });
 
-    await AuditLog.log(
-      tenantId,
-      user.id,
-      "AUDIT_CREATED",
-      "Audit",
-      audit.id,
-      { title: audit.title, scheduledDate: audit.scheduledDate }
-    );
+    await AuditLog.log(tenantId, userId, "AUDIT_CREATED", "Audit", audit.id, {
+      title: audit.title,
+      scheduledDate: audit.scheduledDate,
+    });
 
     revalidatePath("/dashboard/audits");
     return { success: true, data: audit };
-  } catch (error: any) {
-    console.error("Create audit error:", error);
-    return { success: false, error: error.message || "Kunne ikke opprette revisjon" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not create the audit") };
   }
 }
 
-// Oppdater revisjon
-export async function updateAudit(input: any) {
+export async function updateAudit(input: Record<string, unknown>) {
   try {
-    const { user, tenantId } = await getSessionContext();
+    const { userId, tenantId } = await getRequiredTenantContext();
     const validated = updateAuditSchema.parse({
       ...input,
-      scheduledDate: input.scheduledDate ? new Date(input.scheduledDate) : undefined,
-      completedAt: input.completedAt ? new Date(input.completedAt) : undefined,
+      scheduledDate: input.scheduledDate ? new Date(input.scheduledDate as string) : undefined,
+      completedAt: input.completedAt ? new Date(input.completedAt as string) : undefined,
     });
 
-    const existingAudit = await prisma.audit.findFirst({
-      where: { id: validated.id, tenantId },
-    });
-
+    const existingAudit = await loadAudit(validated.id, tenantId);
     if (!existingAudit) {
-      return { success: false, error: "Revisjon ikke funnet" };
+      return { success: false, error: "Audit not found" };
     }
 
-    const audit = await prisma.audit.update({
-      where: { id: validated.id },
-      data: {
-        ...validated,
-        teamMemberIds:
-          validated.teamMemberIds !== undefined
-            ? JSON.stringify(validated.teamMemberIds)
-            : undefined,
-        updatedAt: new Date(),
-      },
+    const audit = await updateAuditRecord({
+      id: validated.id,
+      tenantId,
+      title: validated.title,
+      auditType: validated.auditType,
+      scope: validated.scope,
+      criteria: validated.criteria,
+      leadAuditorId: validated.leadAuditorId,
+      teamMemberIds: validated.teamMemberIds,
+      scheduledDate: validated.scheduledDate,
+      completedAt: validated.completedAt,
+      area: validated.area,
+      department: validated.department,
+      status: validated.status,
+      summary: validated.summary,
+      conclusion: validated.conclusion,
     });
 
-    await AuditLog.log(
-      tenantId,
-      user.id,
-      "AUDIT_UPDATED",
-      "Audit",
-      audit.id,
-      { title: audit.title }
-    );
+    await AuditLog.log(tenantId, userId, "AUDIT_UPDATED", "Audit", audit.id, {
+      title: audit.title,
+    });
 
     revalidatePath("/dashboard/audits");
     revalidatePath(`/dashboard/audits/${audit.id}`);
     return { success: true, data: audit };
-  } catch (error: any) {
-    console.error("Update audit error:", error);
-    return { success: false, error: error.message || "Kunne ikke oppdatere revisjon" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not update the audit") };
   }
 }
 
-// Slett revisjon
 export async function deleteAudit(auditId: string) {
   try {
-    const { user, tenantId } = await getSessionContext();
-
-    const audit = await prisma.audit.findFirst({
-      where: { id: auditId, tenantId },
-    });
-
+    const { userId, tenantId } = await getRequiredTenantContext();
+    const audit = await loadAudit(auditId, tenantId);
     if (!audit) {
-      return { success: false, error: "Revisjon ikke funnet" };
+      return { success: false, error: "Audit not found" };
     }
 
-    // Slett rapport fra storage hvis den finnes
     if (audit.reportKey) {
-      const storage = await import("@/lib/storage").then((m) => m.getStorage());
+      const storage = await import("@/lib/storage").then((module) => module.getStorage());
       await storage.delete(audit.reportKey);
     }
 
-    await prisma.audit.delete({
-      where: { id: auditId },
-    });
+    await deleteAuditRecord(auditId, tenantId);
 
-    await AuditLog.log(
-      tenantId,
-      user.id,
-      "AUDIT_DELETED",
-      "Audit",
-      auditId,
-      { title: audit.title }
-    );
+    await AuditLog.log(tenantId, userId, "AUDIT_DELETED", "Audit", auditId, {
+      title: audit.title,
+    });
 
     revalidatePath("/dashboard/audits");
     return { success: true };
-  } catch (error: any) {
-    console.error("Delete audit error:", error);
-    return { success: false, error: error.message || "Kunne ikke slette revisjon" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not delete the audit") };
   }
 }
 
-// Få statistikk over revisjoner
 export async function getAuditStats(_tenantId: string) {
   try {
-    const { tenantId } = await getSessionContext();
+    const { tenantId } = await getRequiredTenantContext();
+    const audits = await loadAudits(tenantId);
+    const findings = audits.flatMap((audit) => audit.findings);
 
-    const audits = await prisma.audit.findMany({
-      where: { tenantId },
-      include: { findings: true },
-    });
-
-    const stats = {
-      total: audits.length,
-      planned: audits.filter((a) => a.status === "PLANNED").length,
-      inProgress: audits.filter((a) => a.status === "IN_PROGRESS").length,
-      completed: audits.filter((a) => a.status === "COMPLETED").length,
-      totalFindings: audits.reduce((sum, a) => sum + a.findings.length, 0),
-      majorNCs: audits.reduce(
-        (sum, a) => sum + a.findings.filter((f) => f.findingType === "MAJOR_NC").length,
-        0
-      ),
-      minorNCs: audits.reduce(
-        (sum, a) => sum + a.findings.filter((f) => f.findingType === "MINOR_NC").length,
-        0
-      ),
-      observations: audits.reduce(
-        (sum, a) => sum + a.findings.filter((f) => f.findingType === "OBSERVATION").length,
-        0
-      ),
-      strengths: audits.reduce(
-        (sum, a) => sum + a.findings.filter((f) => f.findingType === "STRENGTH").length,
-        0
-      ),
+    return {
+      success: true,
+      data: {
+        total: audits.length,
+        planned: audits.filter((audit) => audit.status === "PLANNED").length,
+        inProgress: audits.filter((audit) => audit.status === "IN_PROGRESS").length,
+        completed: audits.filter((audit) => audit.status === "COMPLETED").length,
+        totalFindings: findings.length,
+        majorNCs: findings.filter((finding) => finding.findingType === "MAJOR_NC").length,
+        minorNCs: findings.filter((finding) => finding.findingType === "MINOR_NC").length,
+        observations: findings.filter((finding) => finding.findingType === "OBSERVATION").length,
+        strengths: findings.filter((finding) => finding.findingType === "STRENGTH").length,
+      },
     };
-
-    return { success: true, data: stats };
-  } catch (error: any) {
-    console.error("Get audit stats error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente statistikk" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load audit statistics") };
   }
 }
 
-// ============================================================================
-// AUDIT FINDINGS (Revisjonsfunn)
-// ============================================================================
-
-// Opprett nytt funn (ISO 9001: Dokumentere funn)
-export async function createFinding(input: any) {
+export async function createFinding(input: Record<string, unknown>) {
   try {
-    const { user, tenantId } = await getSessionContext();
+    const { userId, tenantId } = await getRequiredTenantContext();
     const validated = createFindingSchema.parse({
       ...input,
-      dueDate: input.dueDate ? new Date(input.dueDate) : undefined,
+      dueDate: input.dueDate ? new Date(input.dueDate as string) : undefined,
     });
 
-    // Sjekk at revisjonen finnes
-    const audit = await prisma.audit.findFirst({
-      where: { id: validated.auditId, tenantId },
-    });
-
+    const audit = await loadAudit(validated.auditId, tenantId);
     if (!audit) {
-      return { success: false, error: "Revisjon ikke funnet" };
+      return { success: false, error: "Audit not found" };
     }
 
-    const finding = await prisma.auditFinding.create({
-      data: {
-        auditId: validated.auditId,
-        findingType: validated.findingType,
-        clause: validated.clause,
-        description: validated.description,
-        evidence: validated.evidence,
-        requirement: validated.requirement,
-        responsibleId: validated.responsibleId,
-        dueDate: validated.dueDate,
-      },
+    const finding = await insertFinding({
+      auditId: validated.auditId,
+      findingType: validated.findingType,
+      clause: validated.clause,
+      description: validated.description,
+      evidence: validated.evidence,
+      requirement: validated.requirement,
+      responsibleId: validated.responsibleId,
+      dueDate: validated.dueDate,
     });
 
-    await AuditLog.log(
-      tenantId,
-      user.id,
-      "AUDIT_FINDING_CREATED",
-      "AuditFinding",
-      finding.id,
-      { auditId: audit.id, findingType: finding.findingType }
-    );
+    await AuditLog.log(tenantId, userId, "AUDIT_FINDING_CREATED", "AuditFinding", finding.id, {
+      auditId: audit.id,
+      findingType: finding.findingType,
+    });
 
     revalidatePath("/dashboard/audits");
     revalidatePath(`/dashboard/audits/${audit.id}`);
     return { success: true, data: finding };
-  } catch (error: any) {
-    console.error("Create finding error:", error);
-    return { success: false, error: error.message || "Kunne ikke opprette funn" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not record the finding") };
   }
 }
 
-// Oppdater funn (ISO 9001: Korrigerende tiltak)
-export async function updateFinding(input: any) {
+export async function updateFinding(input: Record<string, unknown>) {
   try {
-    const { user, tenantId } = await getSessionContext();
+    const { userId, tenantId } = await getRequiredTenantContext();
     const validated = updateFindingSchema.parse({
       ...input,
-      dueDate: input.dueDate ? new Date(input.dueDate) : undefined,
+      dueDate: input.dueDate ? new Date(input.dueDate as string) : undefined,
     });
 
-    const existingFinding = await prisma.auditFinding.findUnique({
-      where: { id: validated.id },
-      include: { audit: true },
-    });
-
-    if (!existingFinding || existingFinding.audit.tenantId !== tenantId) {
-      return { success: false, error: "Funn ikke funnet" };
+    const existing = await loadFindingWithAudit(validated.id);
+    if (!existing || existing.tenantId !== tenantId) {
+      return { success: false, error: "Finding not found" };
     }
 
-    const finding = await prisma.auditFinding.update({
-      where: { id: validated.id },
-      data: {
-        ...validated,
-        updatedAt: new Date(),
-      },
+    const finding = await updateFindingRecord({
+      id: validated.id,
+      findingType: validated.findingType,
+      clause: validated.clause,
+      description: validated.description,
+      evidence: validated.evidence,
+      requirement: validated.requirement,
+      responsibleId: validated.responsibleId,
+      dueDate: validated.dueDate,
+      correctiveAction: validated.correctiveAction,
+      rootCause: validated.rootCause,
+      status: validated.status,
     });
 
-    await AuditLog.log(
-      tenantId,
-      user.id,
-      "AUDIT_FINDING_UPDATED",
-      "AuditFinding",
-      finding.id,
-      { status: finding.status }
-    );
+    await AuditLog.log(tenantId, userId, "AUDIT_FINDING_UPDATED", "AuditFinding", finding.id, {
+      status: finding.status,
+    });
 
     revalidatePath("/dashboard/audits");
-    revalidatePath(`/dashboard/audits/${existingFinding.auditId}`);
+    revalidatePath(`/dashboard/audits/${existing.finding.auditId}`);
     return { success: true, data: finding };
-  } catch (error: any) {
-    console.error("Update finding error:", error);
-    return { success: false, error: error.message || "Kunne ikke oppdatere funn" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not update the finding") };
   }
 }
 
-// Verifiser lukking av funn (ISO 9001: Verifikasjon)
 export async function verifyFinding(findingId: string) {
   try {
-    const { user, tenantId } = await getSessionContext();
-
-    const finding = await prisma.auditFinding.findUnique({
-      where: { id: findingId },
-      include: { audit: true },
-    });
-
-    if (!finding || finding.audit.tenantId !== tenantId) {
-      return { success: false, error: "Funn ikke funnet" };
+    const { userId, tenantId } = await getRequiredTenantContext();
+    const existing = await loadFindingWithAudit(findingId);
+    if (!existing || existing.tenantId !== tenantId) {
+      return { success: false, error: "Finding not found" };
+    }
+    if (existing.finding.status !== "RESOLVED") {
+      return { success: false, error: "The finding must be resolved before it can be verified" };
     }
 
-    if (finding.status !== "RESOLVED") {
-      return {
-        success: false,
-        error: "Funnet må være løst før det kan verifiseres",
-      };
-    }
-
-    const updatedFinding = await prisma.auditFinding.update({
-      where: { id: findingId },
-      data: {
-        status: "VERIFIED",
-        verifiedById: user.id,
-        verifiedAt: new Date(),
-        closedAt: new Date(),
-      },
+    const updatedFinding = await updateFindingRecord({
+      id: findingId,
+      status: "VERIFIED",
+      verifiedById: userId,
+      verifiedAt: new Date(),
+      closedAt: new Date(),
     });
 
-    await AuditLog.log(
-      tenantId,
-      user.id,
-      "AUDIT_FINDING_VERIFIED",
-      "AuditFinding",
-      updatedFinding.id,
-      { verifiedBy: user.id }
-    );
+    await AuditLog.log(tenantId, userId, "AUDIT_FINDING_VERIFIED", "AuditFinding", updatedFinding.id, {
+      verifiedBy: userId,
+    });
 
     revalidatePath("/dashboard/audits");
-    revalidatePath(`/dashboard/audits/${finding.auditId}`);
+    revalidatePath(`/dashboard/audits/${existing.finding.auditId}`);
     return { success: true, data: updatedFinding };
-  } catch (error: any) {
-    console.error("Verify finding error:", error);
-    return { success: false, error: error.message || "Kunne ikke verifisere funn" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not verify the finding") };
   }
 }
 
-// Slett funn
 export async function deleteFinding(findingId: string) {
   try {
-    const { user, tenantId } = await getSessionContext();
-
-    const finding = await prisma.auditFinding.findUnique({
-      where: { id: findingId },
-      include: { audit: true },
-    });
-
-    if (!finding || finding.audit.tenantId !== tenantId) {
-      return { success: false, error: "Funn ikke funnet" };
+    const { userId, tenantId } = await getRequiredTenantContext();
+    const existing = await loadFindingWithAudit(findingId);
+    if (!existing || existing.tenantId !== tenantId) {
+      return { success: false, error: "Finding not found" };
     }
 
-    await prisma.auditFinding.delete({
-      where: { id: findingId },
+    await deleteFindingRecord(findingId);
+
+    await AuditLog.log(tenantId, userId, "AUDIT_FINDING_DELETED", "AuditFinding", findingId, {
+      auditId: existing.finding.auditId,
     });
 
-    await AuditLog.log(
-      tenantId,
-      user.id,
-      "AUDIT_FINDING_DELETED",
-      "AuditFinding",
-      findingId,
-      { auditId: finding.auditId }
-    );
-
     revalidatePath("/dashboard/audits");
-    revalidatePath(`/dashboard/audits/${finding.auditId}`);
+    revalidatePath(`/dashboard/audits/${existing.finding.auditId}`);
     return { success: true };
-  } catch (error: any) {
-    console.error("Delete finding error:", error);
-    return { success: false, error: error.message || "Kunne ikke slette funn" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not delete the finding") };
   }
 }
-

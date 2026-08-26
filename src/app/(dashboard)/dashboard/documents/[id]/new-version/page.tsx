@@ -1,39 +1,27 @@
-import { getCurrentUser } from "@/lib/server-action";
+import { getAuthContext } from "@/lib/server-authorization";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { NewVersionForm } from "@/features/documents/components/new-version-form";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { loadDocumentById } from "@/server/queries/documents.queries";
 
 export default async function NewVersionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const user = await getCurrentUser();
+  const auth = await getAuthContext();
 
-  if (!user) {
+  if (!auth) {
     redirect("/login");
   }
 
-  const userTenant = user.tenants.at(0);
-  if (!userTenant) {
-    return <div>Ingen tilgang til tenant</div>;
+  if (!auth.permissions.canCreateDocuments) {
+    redirect(`/dashboard/documents/${id}`);
   }
 
-  const document = await prisma.document.findUnique({
-    where: { id, tenantId: userTenant.tenantId },
-    include: {
-      versions: {
-        orderBy: { createdAt: "desc" },
-        take: 5,
-      },
-    },
-  });
+  const document = await loadDocumentById({ id, tenantId: auth.tenantId });
 
   if (!document) {
-    return <div>Dokument ikke funnet</div>;
+    return <div>Document not found</div>;
   }
 
   return (
@@ -42,12 +30,12 @@ export default async function NewVersionPage({ params }: { params: Promise<{ id:
         <Button variant="ghost" asChild className="mb-4">
           <Link href="/dashboard/documents">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Tilbake til dokumenter
+            Back to documents
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold">Last opp ny versjon</h1>
+        <h1 className="text-3xl font-bold">Upload new version</h1>
         <p className="text-muted-foreground">
-          {document.title} - Gjeldende versjon: {document.version}
+          {document.title} — current version: {document.version}
         </p>
       </div>
 
@@ -55,4 +43,3 @@ export default async function NewVersionPage({ params }: { params: Promise<{ id:
     </div>
   );
 }
-

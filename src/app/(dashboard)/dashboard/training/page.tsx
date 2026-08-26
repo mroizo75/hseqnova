@@ -1,12 +1,10 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrainingHeaderActions } from "@/features/training/components/training-header-actions";
 import { TrainingList } from "@/features/training/components/training-list";
-import { IsoCompetenceInfo } from "@/features/training/components/iso-competence-info";
 import {
   GraduationCap,
   CheckCircle2,
@@ -17,105 +15,66 @@ import {
 import { PageHelpDialog } from "@/components/dashboard/page-help-dialog";
 import { helpContent } from "@/lib/help-content";
 import { getTranslations } from "next-intl/server";
+import {
+  loadCourseTemplatesForTenant,
+  loadTrainingPeople,
+  loadTrainingsForTenant,
+} from "@/server/queries/training.queries";
 
 export default async function TrainingPage() {
   const t = await getTranslations("dashboardTrainingPage");
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.email) {
+  if (!session?.user?.tenantId) {
     redirect("/login");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: {
-      tenants: {
-        include: {
-          tenant: {
-            select: {
-              industry: true,
-            },
-          },
-        },
-      },
-    },
-  });
+  const tenantId = session.user.tenantId;
 
-  if (!user || user.tenants.length === 0) {
-    return <div>{t("noTenantAccess")}</div>;
-  }
-
-  const selectedMembership = user.tenants.find(
-    (membership) => membership.tenantId === session.user.tenantId,
-  );
-  if (!selectedMembership) {
-    return <div>{t("noTenantAccess")}</div>;
-  }
-
-  const tenantId = selectedMembership.tenantId;
-
-  // Hent opplæring med brukerdata i én query (unngår N+1)
   const [trainingsRaw, tenantUsers, courseTemplates] = await Promise.all([
-    prisma.training.findMany({
-      where: { tenantId },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.user.findMany({
-      where: { tenants: { some: { tenantId } } },
-      select: { id: true, name: true, email: true },
-    }),
-    prisma.courseTemplate.findMany({
-      where: {
-        OR: [
-          { tenantId, isActive: true },
-          { isGlobal: true, isActive: true },
-        ],
-      },
-      orderBy: { title: "asc" },
-    }),
+    loadTrainingsForTenant(tenantId),
+    loadTrainingPeople(tenantId),
+    loadCourseTemplatesForTenant(tenantId, { activeOnly: true }),
   ]);
 
   const userMap = new Map(tenantUsers.map((u) => [u.id, u]));
   const trainingsWithUser = trainingsRaw
-    .map((t) => ({ ...t, user: userMap.get(t.userId) }))
-    .filter((t): t is typeof t & { user: NonNullable<typeof t.user> } => !!t.user);
+    .map((row) => ({ ...row, user: userMap.get(row.userId) }))
+    .filter((row): row is typeof row & { user: NonNullable<typeof row.user> } => !!row.user);
 
   const requiredCourseKeys = courseTemplates
-    .filter((c) => c.isRequired)
-    .map((c) => c.courseKey);
+    .filter((course) => course.isRequired)
+    .map((course) => course.courseKey);
 
-  // Statistikk
   const now = new Date();
-  const completed = trainingsRaw.filter((t) => t.completedAt).length;
+  const completed = trainingsRaw.filter((row) => row.completedAt).length;
 
-  const expiringSoon = trainingsRaw.filter((t) => {
-    if (!t.validUntil) return false;
+  const expiringSoon = trainingsRaw.filter((row) => {
+    if (!row.validUntil) return false;
     const days = Math.ceil(
-      (new Date(t.validUntil).getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+      (new Date(row.validUntil).getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
     );
     return days > 0 && days <= 30;
   }).length;
 
-  const expired = trainingsRaw.filter((t) => {
-    if (!t.validUntil) return false;
-    return new Date(t.validUntil) < now;
+  const expired = trainingsRaw.filter((row) => {
+    if (!row.validUntil) return false;
+    return new Date(row.validUntil) < now;
   }).length;
 
-  // Ansatte med manglende obligatoriske kurs
-  const employeesWithGaps = tenantUsers.filter((u) => {
+  const employeesWithGaps = tenantUsers.filter((user) => {
     const userCourseKeys = new Set(
       trainingsRaw
-        .filter((t) => t.userId === u.id && t.completedAt)
-        .filter((t) => {
-          if (!t.validUntil) return true;
-          return new Date(t.validUntil) >= now;
+        .filter((row) => row.userId === user.id && row.completedAt)
+        .filter((row) => {
+          if (!row.validUntil) return true;
+          return new Date(row.validUntil) >= now;
         })
-        .map((t) => t.courseKey),
+        .map((row) => row.courseKey),
     );
     return requiredCourseKeys.some((key) => !userCourseKeys.has(key));
   }).length;
 
-  // Utløpsvarsler – for alle bedrifter, ikke bare helse
   const expiringTrainings = trainingsWithUser
     .filter((training) => {
       if (!training.validUntil) return false;
@@ -154,7 +113,6 @@ export default async function TrainingPage() {
         />
       </div>
 
-      {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -209,7 +167,6 @@ export default async function TrainingPage() {
         </Card>
       </div>
 
-      {/* Utløpsvarsler – for alle bedrifter */}
       {expiringTrainings.length > 0 && (
         <Card className="border-amber-200 bg-amber-50">
           <CardHeader>
@@ -254,10 +211,6 @@ export default async function TrainingPage() {
         </Card>
       )}
 
-      {/* ISO 9001 – kollapset som standard */}
-      <IsoCompetenceInfo />
-
-      {/* Training List */}
       <Card>
         <CardHeader>
           <CardTitle>{t("list.title")}</CardTitle>
@@ -267,9 +220,11 @@ export default async function TrainingPage() {
         </CardHeader>
         <CardContent>
           <TrainingList
+            tenantId={tenantId}
             trainings={trainingsWithUser}
             tenantUsers={tenantUsers}
             requiredCourseKeys={requiredCourseKeys}
+            courseTemplates={courseTemplates}
           />
         </CardContent>
       </Card>

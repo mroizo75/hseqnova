@@ -15,11 +15,11 @@ export function ActivateTavleAddonButton() {
     try {
       const res = await fetch("/api/hms-tavle/subscription/addon", { method: "POST" });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Feil ved aktivering");
-      toast.success("HMS Tavle add-on aktivert! kr 290/mnd legges til neste faktura.");
+      if (!res.ok) throw new Error(json.error ?? "Could not activate the add-on");
+      toast.success("Digital safety board add-on is on. It will appear on the next invoice.");
       router.refresh();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not activate the add-on");
     } finally {
       setLoading(false);
     }
@@ -27,8 +27,8 @@ export function ActivateTavleAddonButton() {
 
   return (
     <Button onClick={activate} disabled={loading}>
-      <Zap className="h-4 w-4 mr-2" />
-      {loading ? "Aktiverer..." : "Aktiver HMS Tavle (kr 290/mnd)"}
+      <Zap className="mr-2 h-4 w-4" />
+      {loading ? "Activating…" : "Activate add-on"}
     </Button>
   );
 }

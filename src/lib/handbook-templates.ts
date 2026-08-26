@@ -79,7 +79,7 @@ const UNIVERSAL_CONTENT: Record<string, string> = {
 <p>All accidents, near misses and dangerous occurrences are recorded in the digital accident book. RIDDOR reportable events are flagged with the correct deadline (immediate / 10 days / 15 days). Records are kept for at least three years. See the <a href="/dashboard/incidents">accident book</a>.</p>`,
 
   s5: `<h3>Arrangements — safe systems of work</h3>
-<p>Procedures and safe systems of work are maintained as live documents. See <a href="/dashboard/rutiner">procedures</a>.</p>`,
+<p>Procedures and safe systems of work are maintained as live documents. See <a href="/dashboard/documents">documents</a>.</p>`,
 
   s6: `<h3>Arrangements — workplace inspections</h3>
 <p>Workplace inspections and safety tours are planned and recorded in the <a href="/dashboard/inspections">inspections</a> module. Findings become actions.</p>`,
@@ -99,8 +99,8 @@ const UNIVERSAL_CONTENT: Record<string, string> = {
   s11: `<h3>Arrangements — construction (CDM 2015)</h3>
 <p>Where we act as client, principal designer or principal contractor, CDM duty holders, the construction phase plan, F10 and the health and safety file are managed in the construction add-on.</p>`,
 
-  s12: `<h3>Arrangements — annual H&amp;S plan</h3>
-<p>The annual health and safety plan, objectives and management review sit in <a href="/dashboard/annual-hms-plan">the annual plan</a>.</p>`,
+  s12: `<h3>Arrangements — planning, monitoring and review</h3>
+<p>Inspections, fire drills, training and management review show that arrangements are monitored (MHSWR reg.5). See <a href="/dashboard/inspections">inspections</a>.</p>`,
 
   s13: `<h3>Arrangements — occupational health</h3>
 <p>Health surveillance is provided where the risk assessment identifies a need (noise, vibration, COSHH, night work). Records are kept in line with the relevant regulations.</p>`,
@@ -152,11 +152,11 @@ const INDUSTRY_OVERRIDES: Record<string, Record<string, string>> = {
 const MODULE_LINKS: Record<string, string> = {
   s3: "/dashboard/risks",
   s4: "/dashboard/incidents",
-  s5: "/dashboard/rutiner",
+  s5: "/dashboard/documents",
   s6: "/dashboard/inspections",
   s7: "/dashboard/training",
   s8: "/dashboard/fire-drills",
-  s12: "/dashboard/annual-hms-plan",
+  s12: "/dashboard/inspections",
 };
 
 export function buildIndustryTemplate(

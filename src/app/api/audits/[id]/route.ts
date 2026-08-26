@@ -1,133 +1,88 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getRequiredTenantContext } from "@/lib/tenant-context";
-import { prisma } from "@/lib/db";
 import { createErrorResponse, createSuccessResponse, ErrorCodes } from "@/lib/validations/api";
+import {
+  deleteAuditRecord,
+  loadAudit,
+  updateAuditRecord,
+} from "@/server/queries/audits.queries";
 
-/**
- * GET /api/audits/[id]
- */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    let sessionTenantId = "";
-    try {
-      const tenantContext = await getRequiredTenantContext();
-      sessionTenantId = tenantContext.tenantId;
-    } catch {
-      return createErrorResponse(ErrorCodes.FORBIDDEN, "Ingen tenant tilgang", 403);
-    }
+    const { tenantId } = await getRequiredTenantContext();
     const { id } = await params;
-
-    const audit = await prisma.audit.findFirst({
-      where: { id, tenantId: sessionTenantId },
-      include: {
-        findings: {
-          orderBy: { createdAt: "desc" },
-        },
-        measures: true,
-      },
-    });
-
+    const audit = await loadAudit(id, tenantId);
     if (!audit) {
-      return createErrorResponse(ErrorCodes.NOT_FOUND, "Revisjon ikke funnet", 404);
+      return createErrorResponse(ErrorCodes.NOT_FOUND, "Audit not found", 404);
     }
-
     return createSuccessResponse({ audit });
   } catch (error) {
-    console.error("[Audit GET] Error:", error);
-    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, "Kunne ikke hente revisjon", 500);
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return createErrorResponse(ErrorCodes.FORBIDDEN, "No organisation access", 403);
+    }
+    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, "Could not load the audit", 500);
   }
 }
 
-/**
- * PATCH /api/audits/[id]
- */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    let sessionTenantId = "";
-    try {
-      const tenantContext = await getRequiredTenantContext();
-      sessionTenantId = tenantContext.tenantId;
-    } catch {
-      return createErrorResponse(ErrorCodes.FORBIDDEN, "Ingen tenant tilgang", 403);
-    }
+    const { tenantId } = await getRequiredTenantContext();
     const { id } = await params;
     const data = await request.json();
-    const existing = await prisma.audit.findFirst({
-      where: { id, tenantId: sessionTenantId },
-      select: { id: true },
-    });
+    const existing = await loadAudit(id, tenantId);
     if (!existing) {
-      return createErrorResponse(ErrorCodes.NOT_FOUND, "Revisjon ikke funnet", 404);
+      return createErrorResponse(ErrorCodes.NOT_FOUND, "Audit not found", 404);
     }
 
-    const audit = await prisma.audit.update({
-      where: { id: existing.id },
-      data: {
-        ...(data.title && { title: data.title }),
-        ...(data.auditType && { auditType: data.auditType }),
-        ...(data.scope && { scope: data.scope }),
-        ...(data.criteria && { criteria: data.criteria }),
-        ...(data.scheduledDate && { scheduledDate: new Date(data.scheduledDate) }),
-        ...(data.completedAt && { completedAt: new Date(data.completedAt) }),
-        ...(data.area && { area: data.area }),
-        ...(data.department !== undefined && { department: data.department }),
-        ...(data.status && { status: data.status }),
-        ...(data.summary !== undefined && { summary: data.summary }),
-        ...(data.conclusion !== undefined && { conclusion: data.conclusion }),
-        ...(data.teamMemberIds !== undefined && {
-          teamMemberIds: data.teamMemberIds ? JSON.stringify(data.teamMemberIds) : null,
-        }),
-      },
-      include: {
-        findings: true,
-      },
+    const audit = await updateAuditRecord({
+      id: existing.id,
+      tenantId,
+      title: data.title,
+      auditType: data.auditType,
+      scope: data.scope,
+      criteria: data.criteria,
+      scheduledDate: data.scheduledDate ? new Date(data.scheduledDate) : undefined,
+      completedAt: data.completedAt ? new Date(data.completedAt) : undefined,
+      area: data.area,
+      department: data.department,
+      status: data.status,
+      summary: data.summary,
+      conclusion: data.conclusion,
+      teamMemberIds: data.teamMemberIds,
     });
 
-    return createSuccessResponse({ audit }, "Revisjon oppdatert");
+    return createSuccessResponse({ audit }, "Audit updated");
   } catch (error) {
-    console.error("[Audit PATCH] Error:", error);
-    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, "Kunne ikke oppdatere revisjon", 500);
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return createErrorResponse(ErrorCodes.FORBIDDEN, "No organisation access", 403);
+    }
+    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, "Could not update the audit", 500);
   }
 }
 
-/**
- * DELETE /api/audits/[id]
- */
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    let sessionTenantId = "";
-    try {
-      const tenantContext = await getRequiredTenantContext();
-      sessionTenantId = tenantContext.tenantId;
-    } catch {
-      return createErrorResponse(ErrorCodes.FORBIDDEN, "Ingen tenant tilgang", 403);
-    }
+    const { tenantId } = await getRequiredTenantContext();
     const { id } = await params;
-    const existing = await prisma.audit.findFirst({
-      where: { id, tenantId: sessionTenantId },
-      select: { id: true },
-    });
+    const existing = await loadAudit(id, tenantId);
     if (!existing) {
-      return createErrorResponse(ErrorCodes.NOT_FOUND, "Revisjon ikke funnet", 404);
+      return createErrorResponse(ErrorCodes.NOT_FOUND, "Audit not found", 404);
     }
-
-    await prisma.audit.delete({
-      where: { id: existing.id },
-    });
-
-    return createSuccessResponse(undefined, "Revisjon slettet");
+    await deleteAuditRecord(existing.id, tenantId);
+    return createSuccessResponse(undefined, "Audit deleted");
   } catch (error) {
-    console.error("[Audit DELETE] Error:", error);
-    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, "Kunne ikke slette revisjon", 500);
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return createErrorResponse(ErrorCodes.FORBIDDEN, "No organisation access", 403);
+    }
+    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, "Could not delete the audit", 500);
   }
 }
-

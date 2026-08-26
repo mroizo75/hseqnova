@@ -37,6 +37,10 @@
   ],
   "exclude": [
     "node_modules",
-    "scripts"
+    "scripts",
+    "src/features/intelligence",
+    "src/features/hms-ai",
+    "src/lib/annual-hms-plan-report-generator.ts",
+    "src/lib/intelligence-api-auth.ts"
   ]
 }

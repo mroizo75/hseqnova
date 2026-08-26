@@ -1,7 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
-import { prisma } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,44 +11,21 @@ import { normalizePpeFile } from "@/lib/pictograms";
 import { IsocyanateWarning } from "@/components/isocyanate-warning";
 import { ChemicalRiskSuggestions } from "@/components/chemical-risk-suggestions";
 import { ExposureRegisterWarning } from "@/components/exposure-register-warning";
+import { countActiveExposuresForChemical, loadChemicalById } from "@/server/queries/chemicals.queries";
+import { isChemicalReviewOverdue } from "@/features/chemicals/lib/chemical-review";
 
 export default async function ChemicalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.email) {
+  if (!session?.user?.tenantId) {
     redirect("/login");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: {
-      tenants: {
-        include: {
-          tenant: true,
-        },
-      },
-    },
-  });
-
-  if (!user || user.tenants.length === 0) {
-    return <div>Du er ikke tilknyttet en tenant.</div>;
-  }
-
-  const selectedMembership = user.tenants.find(
-    (membership) => membership.tenantId === session.user.tenantId,
-  );
-  if (!selectedMembership) {
-    return <div>Du er ikke tilknyttet en tenant.</div>;
-  }
-
-  const tenantId = selectedMembership.tenantId;
-
+  const tenantId = session.user.tenantId;
   const [chemical, exposureCount] = await Promise.all([
-    prisma.chemical.findUnique({ where: { id, tenantId } }),
-    prisma.exposureRegister.count({
-      where: { tenantId, chemicalId: id, status: { not: "ARCHIVED" } },
-    }),
+    loadChemicalById(id, tenantId),
+    countActiveExposuresForChemical(id, tenantId),
   ]);
 
   if (!chemical) {
@@ -59,26 +35,25 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "ACTIVE":
-        return <Badge className="bg-green-100 text-green-800 border-green-200">I bruk</Badge>;
+        return <Badge className="bg-green-100 text-green-800 border-green-200">In use</Badge>;
       case "PHASED_OUT":
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Utfases</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Being phased out</Badge>;
       case "ARCHIVED":
-        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Arkivert</Badge>;
+        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Archived</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
   };
 
-  const isOverdue = chemical.nextReviewDate && new Date(chemical.nextReviewDate) < new Date();
+  const isOverdue = isChemicalReviewOverdue(chemical.nextReviewDate);
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <Link href="/dashboard/chemicals">
           <Button variant="ghost" size="sm" className="mb-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Tilbake til stoffkartotek
+            Back to COSHH
           </Button>
         </Link>
         <div className="flex items-start justify-between">
@@ -88,29 +63,28 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
               {getStatusBadge(chemical.status)}
             </div>
             {chemical.supplier && (
-              <p className="text-muted-foreground">Leverandør: {chemical.supplier}</p>
+              <p className="text-muted-foreground">Supplier: {chemical.supplier}</p>
             )}
           </div>
           <Link href={`/dashboard/chemicals/${chemical.id}/edit`}>
             <Button variant="outline">
               <Edit className="mr-2 h-4 w-4" />
-              Rediger
+              Edit
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* Varsel om forfalt revisjon */}
       {isOverdue && (
         <Card className="bg-red-50 border-red-200">
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
               <div>
-                <p className="font-medium text-red-900">Revisjon forfalt!</p>
+                <p className="font-medium text-red-900">Review overdue</p>
                 <p className="text-sm text-red-800">
-                  Dette kjemikaliet har forfalt revisjonsdato. Vennligst gjennomgå og oppdater
-                  sikkerhetsdatabladet.
+                  This COSHH assessment is past its review date. Review the assessment and
+                  update the safety data sheet if it is no longer valid.
                 </p>
               </div>
             </div>
@@ -118,11 +92,10 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
         </Card>
       )}
 
-      {/* Varsel om diisocyanater */}
       {chemical.containsIsocyanates && (
         <IsocyanateWarning details={chemical.aiExtractedData ? (() => {
           try {
-            const data = JSON.parse(chemical.aiExtractedData);
+            const data = JSON.parse(chemical.aiExtractedData) as { isocyanateDetails?: string };
             return data.isocyanateDetails;
           } catch {
             return undefined;
@@ -130,7 +103,6 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
         })() : undefined} />
       )}
 
-      {/* Eksponeringsregister-varsel */}
       <ExposureRegisterWarning
         chemicalId={chemical.id}
         chemicalName={chemical.productName}
@@ -139,7 +111,6 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
         existingEntryCount={exposureCount}
       />
 
-      {/* Foreslåtte risikovurderinger */}
       <ChemicalRiskSuggestions
         chemicalId={chemical.id}
         chemicalName={chemical.productName}
@@ -150,30 +121,29 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
       />
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Produktinformasjon */}
         <Card>
           <CardHeader>
-            <CardTitle>Produktinformasjon</CardTitle>
-            <CardDescription>Detaljer om produktet</CardDescription>
+            <CardTitle>Product information</CardTitle>
+            <CardDescription>Product details</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {chemical.casNumber && (
               <div>
-                <p className="text-sm text-muted-foreground">CAS-nummer</p>
+                <p className="text-sm text-muted-foreground">CAS number</p>
                 <p className="font-medium font-mono">{chemical.casNumber}</p>
               </div>
             )}
 
             {chemical.ecNumber && (
               <div>
-                <p className="text-sm text-muted-foreground">EC-nummer (ECHA)</p>
+                <p className="text-sm text-muted-foreground">EC number (ECHA)</p>
                 <p className="font-medium font-mono">{chemical.ecNumber}</p>
               </div>
             )}
 
             {chemical.hazardClass && (
               <div>
-                <p className="text-sm text-muted-foreground">Fareklasse (GHS/CLP)</p>
+                <p className="text-sm text-muted-foreground">Hazard class (GHS/CLP)</p>
                 <p className="font-medium">{chemical.hazardClass}</p>
               </div>
             )}
@@ -182,7 +152,7 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
               <div>
                 <p className="text-sm text-muted-foreground flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
-                  Lagringssted
+                  Storage location
                 </p>
                 <p className="font-medium">{chemical.location}</p>
               </div>
@@ -192,7 +162,7 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
               <div>
                 <p className="text-sm text-muted-foreground flex items-center gap-2">
                   <Package className="h-4 w-4" />
-                  Mengde
+                  Quantity
                 </p>
                 <p className="font-medium">
                   {chemical.quantity} {chemical.unit || ""}
@@ -200,16 +170,15 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
               </div>
             )}
 
-            {/* Klassifiseringsflagg */}
             {(chemical.isCMR || chemical.isSVHC || chemical.reachStatus) && (
               <div className="space-y-1 pt-1">
-                <p className="text-sm text-muted-foreground">Klassifisering</p>
+                <p className="text-sm text-muted-foreground">Classification</p>
                 <div className="flex flex-wrap gap-2">
                   {chemical.isCMR && (
-                    <Badge className="bg-red-100 text-red-800 border-red-200">CMR-stoff</Badge>
+                    <Badge className="bg-red-100 text-red-800 border-red-200">CMR substance</Badge>
                   )}
                   {chemical.isSVHC && (
-                    <Badge className="bg-purple-100 text-purple-800 border-purple-200">SVHC (REACH)</Badge>
+                    <Badge className="bg-purple-100 text-purple-800 border-purple-200">SVHC (UK REACH)</Badge>
                   )}
                   {chemical.reachStatus && (
                     <Badge variant="outline" className="text-xs">{chemical.reachStatus}</Badge>
@@ -220,39 +189,38 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
           </CardContent>
         </Card>
 
-        {/* Faremarkering */}
         <Card>
           <CardHeader>
-            <CardTitle>Faremarkering</CardTitle>
-            <CardDescription>GHS/CLP-klassifisering og setninger</CardDescription>
+            <CardTitle>Hazard labelling</CardTitle>
+            <CardDescription>GHS/CLP classification and statements</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {chemical.hazardStatements && (
               <div>
-                <p className="text-sm text-muted-foreground">H-setninger</p>
+                <p className="text-sm text-muted-foreground">H-statements</p>
                 <p className="font-medium whitespace-pre-wrap text-sm">{chemical.hazardStatements}</p>
               </div>
             )}
 
             {chemical.precautionaryStatements && (
               <div>
-                <p className="text-sm text-muted-foreground">P-setninger</p>
+                <p className="text-sm text-muted-foreground">P-statements</p>
                 <p className="font-medium whitespace-pre-wrap text-sm">{chemical.precautionaryStatements}</p>
               </div>
             )}
 
             {chemical.warningPictograms && (() => {
               try {
-                const pictograms = JSON.parse(chemical.warningPictograms);
+                const pictograms = JSON.parse(chemical.warningPictograms) as string[];
                 return pictograms.length > 0 ? (
                   <div>
-                    <p className="text-sm text-muted-foreground mb-3">Faresymboler</p>
+                    <p className="text-sm text-muted-foreground mb-3">Hazard symbols</p>
                     <div className="flex flex-wrap gap-3">
                       {pictograms.map((file: string, idx: number) => (
                         <div key={idx} className="relative w-20 h-20 border-2 border-orange-200 rounded-lg p-1">
                           <Image
                             src={`/faremerker/${file}`}
-                            alt="Faresymbol"
+                            alt="Hazard pictogram"
                             fill
                             className="object-contain"
                           />
@@ -269,15 +237,14 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
         </Card>
       </div>
 
-      {/* Personlig verneutstyr */}
       {chemical.requiredPPE && (() => {
         try {
-          const ppeList = JSON.parse(chemical.requiredPPE);
+          const ppeList = JSON.parse(chemical.requiredPPE) as string[];
           return ppeList.length > 0 ? (
             <Card>
               <CardHeader>
-                <CardTitle>Påkrevd personlig verneutstyr (PPE)</CardTitle>
-                <CardDescription>ISO 7010 - Verneutstyr som må benyttes</CardDescription>
+                <CardTitle>Required personal protective equipment (PPE)</CardTitle>
+                <CardDescription>ISO 7010 — PPE that must be used</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-3">
@@ -288,7 +255,7 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
                       <div key={idx} className="relative w-16 h-16 border-2 border-blue-200 rounded-lg p-1 bg-blue-50">
                         <Image
                           src={`/ppe/${normalizedFile}`}
-                          alt="PPE-krav"
+                          alt="Required PPE"
                           fill
                           className="object-contain"
                           unoptimized
@@ -305,26 +272,25 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
         }
       })()}
 
-      {/* Sikkerhetsdatablad */}
       <Card>
         <CardHeader>
-          <CardTitle>Sikkerhetsdatablad (SDS)</CardTitle>
-          <CardDescription>Dokumentasjon og revisjoner</CardDescription>
+          <CardTitle>Safety data sheet (SDS)</CardTitle>
+          <CardDescription>Documentation and reviews</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
             {chemical.sdsVersion && (
               <div>
-                <p className="text-sm text-muted-foreground">Versjon</p>
+                <p className="text-sm text-muted-foreground">Version</p>
                 <p className="font-medium">{chemical.sdsVersion}</p>
               </div>
             )}
 
             {chemical.sdsDate && (
               <div>
-                <p className="text-sm text-muted-foreground">Dato</p>
+                <p className="text-sm text-muted-foreground">Date</p>
                 <p className="font-medium">
-                  {new Date(chemical.sdsDate).toLocaleDateString("nb-NO")}
+                  {new Date(chemical.sdsDate).toLocaleDateString("en-GB")}
                 </p>
               </div>
             )}
@@ -333,11 +299,11 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
               <div>
                 <p className="text-sm text-muted-foreground flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  Neste revisjon
+                  Next review
                 </p>
                 <p className={`font-medium ${isOverdue ? "text-red-600" : ""}`}>
-                  {new Date(chemical.nextReviewDate).toLocaleDateString("nb-NO")}
-                  {isOverdue && " (Forfalt!)"}
+                  {new Date(chemical.nextReviewDate).toLocaleDateString("en-GB")}
+                  {isOverdue && " (overdue)"}
                 </p>
               </div>
             )}
@@ -348,7 +314,7 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
               <Link href={`/api/chemicals/${chemical.id}/download-sds`} target="_blank">
                 <Button>
                   <Download className="mr-2 h-4 w-4" />
-                  Last ned sikkerhetsdatablad
+                  Download safety data sheet
                 </Button>
               </Link>
             </div>
@@ -356,7 +322,8 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
             <Card className="bg-amber-50 border-amber-200">
               <CardContent className="pt-4">
                 <p className="text-sm text-amber-800">
-                  ⚠️ Sikkerhetsdatablad mangler - vennligst last opp
+                  Safety data sheet missing — please upload one. COSHH 2002 requires information
+                  and SDS to be available to employees.
                 </p>
               </CardContent>
             </Card>
@@ -367,7 +334,7 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
               <CardContent className="pt-4 flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 <p className="text-sm text-green-800">
-                  Sist verifisert: {new Date(chemical.lastVerifiedAt).toLocaleDateString("nb-NO")}
+                  Last verified: {new Date(chemical.lastVerifiedAt).toLocaleDateString("en-GB")}
                 </p>
               </CardContent>
             </Card>
@@ -375,12 +342,11 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
         </CardContent>
       </Card>
 
-      {/* Tilleggsinfo – Notater */}
       {chemical.notes && (
         <Card>
           <CardHeader>
-            <CardTitle>Tilleggsinfo</CardTitle>
-            <CardDescription>Notater</CardDescription>
+            <CardTitle>Additional information</CardTitle>
+            <CardDescription>Notes</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="whitespace-pre-wrap">{chemical.notes}</p>
@@ -390,4 +356,3 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
     </div>
   );
 }
-

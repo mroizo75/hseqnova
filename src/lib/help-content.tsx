@@ -2,1780 +2,1837 @@ import { HelpContent } from "@/components/dashboard/page-help-dialog";
 
 export const helpContent: Record<string, HelpContent> = {
   documents: {
-    title: "Dokumentstyring",
-    description: "Slik bruker du dokumentmodulen for å bygge ditt kvalitetssikringssystem",
+    title: "Document control",
+    description: "How to use the documents module to build your quality and HSEQ management system",
     sections: [
       {
-        heading: "Hva er dokumentstyring?",
+        heading: "What is document control?",
         emoji: "📚",
         content:
-          "Dokumenter er selve grunnmuren i ditt HMS- og kvalitetssystem. Her lagrer du alle styrende dokumenter som bestemmer hvordan du skal jobbe: policyer, prosedyrer, arbeidsinstrukser, sjekklister og maler. Dette er kvalitetssikringssystemet ditt.",
+          "Documents are the foundation of your health and safety and quality system. Store the controlling documents that set how work is done: policies, procedures, work instructions, checklists and templates. This is your documented management system.",
       },
       {
-        heading: "Hvorfor trenger du dette?",
+        heading: "Why do you need this?",
         emoji: "🎯",
         items: [
           {
-            title: "Konsistent arbeidsmetodikk",
+            title: "Consistent working methods",
             description:
-              "Sikrer at alle i organisasjonen jobber på samme måte og følger samme standarder.",
+              "Ensures everyone in the organisation works in the same way and follows the same standards.",
           },
           {
-            title: "Sporbarhet og revisjon",
+            title: "Traceability and audit",
             description:
-              "Dokumenterer hva som er gjort, når og av hvem. Viktig for internkontroll og eksterne revisjoner.",
+              "Records what was done, when and by whom. Essential for internal control and external audits.",
           },
           {
-            title: "Kompetanseoverføring",
+            title: "Competence transfer",
             description:
-              "Nye medarbeidere kan raskt lære seg riktig fremgangsmåte ved å lese dokumentene.",
+              "New employees can quickly learn the correct method by reading the documents.",
           },
           {
-            title: "ISO-krav oppfylt",
+            title: "ISO requirements met",
             description:
-              "Alle ISO-standarder krever dokumentert styringssystem med kontrollerte prosesser.",
+              "All ISO standards require a documented management system with controlled processes.",
           },
         ],
       },
       {
-        heading: "Hvordan bruke modulen?",
+        heading: "How to use the module",
         emoji: "🔧",
         items: [
           {
-            title: "1. Start med maler",
+            title: "1. Start with templates",
             description:
-              "Bruk ferdiglagde maler for å komme raskt i gang med prosedyrer, instrukser og policyer.",
+              "Use ready-made templates to get started quickly with procedures, instructions and policies.",
           },
           {
-            title: "2. Versjonshåndtering",
+            title: "2. Version control",
             description:
-              "Systemet sporer automatisk alle versjoner. Du kan alltid gå tilbake til tidligere versjoner.",
+              "The system tracks all versions automatically. You can always return to earlier versions.",
           },
           {
-            title: "3. Godkjenningsflyt",
+            title: "3. Approval workflow",
             description:
-              "Send dokumenter til godkjenning før de aktiveres. Dette sikrer kvalitet og etterlevelse.",
+              "Send documents for approval before they go live. This protects quality and compliance.",
           },
           {
-            title: "4. Regelmessig gjennomgang",
+            title: "4. Regular review",
             description:
-              "Sett opp påminnelser for revisjoner. Dokumenter skal gjennomgås minimum årlig.",
+              "Set reminders for reviews. Documents should be reviewed at least annually.",
           },
         ],
       },
     ],
     isoStandards: [
-      "ISO 9001 (Kvalitet): Krav 7.5 - Dokumentert informasjon",
-      "ISO 14001 (Miljø): Krav 7.5 - Dokumenterte miljøprosedyrer",
-      "ISO 45001 (HMS): Krav 7.5 - Dokumenterte HMS-prosedyrer",
-      "ISO 27001 (IT-sikkerhet): Krav 7.5 - ISMS-dokumentasjon",
+      "ISO 9001 (quality): clause 7.5 — documented information",
+      "ISO 14001 (environment): clause 7.5 — documented environmental procedures",
+      "ISO 45001 (OH&S): clause 7.5 — documented OH&S procedures",
+      "ISO 27001 (information security): clause 7.5 — ISMS documentation",
     ],
     tips: [
-      "Start med å lage en dokumenthierarki: Policy → Prosedyre → Instruksjon",
-      "Bruk klart og enkelt språk som alle i organisasjonen forstår",
-      "Koble dokumenter til risikoer, mål og tiltak for helhetlig oversikt",
-      "Sett eier og revisjonsintervall på hvert dokument",
-      "Tren medarbeidere i nye og oppdaterte prosedyrer",
+      "Start with a document hierarchy: policy → procedure → instruction",
+      "Use clear, plain language that everyone in the organisation understands",
+      "Link documents to risks, objectives and actions for a joined-up picture",
+      "Assign an owner and review interval to every document",
+      "Train employees on new and updated procedures",
     ],
   },
 
   legalRegister: {
-    title: "Juridisk register",
-    description: "Oversikt over lover og forskrifter som gjelder for virksomheten din basert på bransje",
+    title: "Legal register",
+    description: "Overview of laws and regulations that apply to your organisation based on industry",
     sections: [
       {
-        heading: "Hva vises her?",
+        heading: "What is shown here?",
         emoji: "📋",
         content:
-          "Listen viser lover og forskrifter som er relevante for din bransje. Lenkene åpner Lovdata.no eller Arbeidstilsynet der du kan lese fullstendig lovtekst.",
+          "The list shows laws and regulations relevant to your industry. Links open legislation.gov.uk or HSE.gov.uk so you can read the full text.",
       },
       {
-        heading: "Viktig om juridisk ansvar",
+        heading: "Important: legal responsibility",
         emoji: "⚠️",
         content:
-          "Dette er en oversikt og veiledning. Systemet utgjør ikke juridisk rådgivning. For spesifikke spørsmål om lover og forskrifter, rådfør deg med jurist eller sjekk Lovdata.no.",
+          "This is an overview and guidance only. The system is not legal advice. For specific questions about law and regulations, consult a solicitor or check legislation.gov.uk and HSE.gov.uk.",
       },
     ],
   },
 
   risks: {
-    title: "Risikostyring",
-    description: "Identifiser, vurder og håndter risikoer i din organisasjon",
+    title: "Risk management",
+    description: "Identify, assess and control risks in your organisation",
     sections: [
       {
-        heading: "Hva er risikostyring?",
+        heading: "What is risk management?",
         emoji: "⚠️",
         content:
-          "Risikostyring handler om å identifisere hva som kan gå galt, vurdere hvor alvorlig det kan være, og sette inn tiltak for å forebygge eller redusere konsekvensene. Dette gjelder alt fra arbeidsulykker til miljøskader og forretningsrisiko.",
+          "Risk management is identifying what can go wrong, judging how serious it could be, and putting actions in place to prevent or reduce the consequences. That covers everything from workplace accidents to environmental harm and business risk. Employers must make suitable and sufficient risk assessments (MHSWR 1999).",
       },
       {
-        heading: "Skal tiltak i en risikovurdering lukkes?",
+        heading: "Should actions from a risk assessment be closed?",
         emoji: "1️⃣",
         content:
-          "Ja. Tiltak som opprettes i en risikovurdering skal følges opp og lukkes når de er gjennomført og verifisert (ISO 45001 kap. 6.1 og 8.1, ISO 9001 kap. 6.1). Kravet er: Identifiser risiko → vurder risiko → planlegg tiltak → gjennomfør tiltak → evaluer effekt. Hvis tiltak ikke lukkes, kan du ikke dokumentere at risikoen er redusert.",
+          "Yes. Actions created from a risk assessment must be followed up and closed when they have been completed and verified (ISO 45001 clauses 6.1 and 8.1, ISO 9001 clause 6.1). The sequence is: identify risk → assess risk → plan actions → carry out actions → evaluate effectiveness. If actions are not closed, you cannot show that the risk has been reduced.",
         items: [
           {
-            title: "Riktig praksis i HMS Nova",
+            title: "Good practice in HSEQ Nova",
             description:
-              "1) Risiko registreres. 2) Tiltak opprettes med ansvarlig og frist. 3) Tiltaket gjennomføres. 4) Risiko revurderes. 5) Tiltaket settes til lukket. 6) Effekt dokumenteres. Tiltaket lukkes – selve risikovurderingen lukkes ikke, den revideres.",
+              "1) The risk is recorded. 2) An action is created with an owner and due date. 3) The action is carried out. 4) The risk is reassessed. 5) The action is marked closed. 6) The effect is recorded. Close the action — do not close the risk assessment itself; it is reviewed and kept live.",
           },
         ],
       },
       {
-        heading: "Hvorfor er det viktig?",
+        heading: "Why does it matter?",
         emoji: "🛡️",
         items: [
           {
-            title: "Forebygge skader og tap",
+            title: "Prevent harm and loss",
             description:
-              "Reduserer sannsynligheten for ulykker, miljøhendelser og økonomisk tap.",
+              "Reduces the likelihood of accidents, environmental incidents and financial loss.",
           },
           {
-            title: "Lovpålagt",
+            title: "Legal duty",
             description:
-              "Arbeidsmiljøloven og HMS-forskriften krever systematisk risikostyring.",
+              "HSWA 1974 s.2 and MHSWR 1999 require employers to assess risks and put in place arrangements to control them. A competent person must assist (MHSWR reg.7).",
           },
           {
-            title: "ISO-krav",
+            title: "ISO requirements",
             description:
-              "Alle relevante ISO-standarder krever strukturert risikohåndtering.",
+              "All relevant ISO standards require structured risk management.",
           },
           {
-            title: "Bedre beslutninger",
+            title: "Better decisions",
             description:
-              "Hjelper ledelsen å ta informerte beslutninger om ressursbruk og prioriteringer.",
+              "Helps management make informed decisions on resources and priorities.",
           },
         ],
       },
       {
-        heading: "Slik jobber du med risikoer",
+        heading: "How to work with risks",
         emoji: "📊",
         items: [
           {
-            title: "1. Identifiser risikoer",
+            title: "1. Identify risks",
             description:
-              "Kartlegg alle potensielle farer: fysiske, kjemiske, ergonomiske, psykososiale, miljø- og forretningsrisikoer.",
+              "Map potential hazards: physical, chemical, ergonomic, psychosocial, environmental and business risks.",
           },
           {
-            title: "2. Vurder sannsynlighet og konsekvens",
+            title: "2. Assess likelihood and consequence",
             description:
-              "Bruk risikomatrise (5×5 eller tilsvarende) for å rangere risikoene.",
+              "Use a risk matrix (5×5 or equivalent) to rank the risks.",
           },
           {
-            title: "3. Bestem tiltak",
+            title: "3. Decide on actions",
             description:
-              "Prioriter høye risikoer. Bruk forebyggende tiltak (eliminere, redusere) før beskyttende (verneutstyr).",
+              "Prioritise high risks. Use the hierarchy of control: eliminate or reduce before relying on PPE.",
           },
           {
-            title: "4. Oppfølging",
+            title: "4. Follow-up",
             description:
-              "Sjekk at tiltakene fungerer og at restrisikoen er akseptabel. Revurder årlig eller ved endringer. Lukk tiltak når de er gjennomført.",
+              "Check that actions work and that residual risk is acceptable. Reassess at least annually or when things change. Close actions when they are complete.",
           },
         ],
       },
       {
-        heading: "Hva skal lukkes – og hva skal ikke?",
+        heading: "What should be closed — and what should not?",
         emoji: "3️⃣",
         items: [
           {
-            title: "Tiltak i risikovurdering",
-            description: "✅ Ja – når gjennomført og kontrollert.",
+            title: "Actions in a risk assessment",
+            description: "✅ Yes — when completed and checked.",
           },
           {
-            title: "Avvik",
-            description: "✅ Ja – etter korrigerende tiltak og verifisering.",
+            title: "Incidents",
+            description: "✅ Yes — after corrective action and verification.",
           },
           {
-            title: "Risikovurdering",
-            description: "❌ Nei – den revideres, ikke lukkes.",
+            title: "Risk assessment",
+            description: "❌ No — it is reviewed, not closed.",
           },
           {
-            title: "Systemdokumenter",
-            description: "❌ Nei – de versjonstyres.",
+            title: "System documents",
+            description: "❌ No — they are version-controlled.",
           },
         ],
       },
     ],
     isoStandards: [
-      "ISO 31000: Risikovurdering – prinsipper og retningslinjer",
-      "ISO 9001 (Kvalitet): Krav 6.1 - Risikobasert tilnærming",
-      "ISO 14001 (Miljø): Krav 6.1.2 - Miljøaspekter og risikovurdering",
-      "ISO 45001 (HMS): Krav 6.1.2 - Fareidentifisering og risikovurdering",
-      "ISO 27001 (IT-sikkerhet): Krav 6.1.2 - Informasjonssikkerhetsrisikovurdering",
+      "ISO 31000: risk management — principles and guidelines",
+      "ISO 9001 (quality): clause 6.1 — risk-based thinking",
+      "ISO 14001 (environment): clause 6.1.2 — environmental aspects and risk",
+      "ISO 45001 (OH&S): clause 6.1.2 — hazard identification and risk assessment",
+      "ISO 27001 (information security): clause 6.1.2 — information security risk assessment",
     ],
     tips: [
-      "Involver de ansatte – de kjenner best til farene i sitt arbeid",
-      "Bruk vernerunder, HMS-møter og inspeksjoner for å identifisere risikoer",
-      "Dokumenter både risikoene og tiltakene grundig",
-      "Lukk tiltak når de er gjennomført – ellers kan du ikke dokumentere redusert risiko",
-      "Revurder risikoen etter tiltak – fyll ut restrisiko (S×K etter tiltak)",
-      "ISO PDCA: Risiko = Plan, Tiltak = Do, Kontroll = Check, Forbedring = Act",
+      "Involve employees — they know the hazards in their work best",
+      "Use workplace inspections, HSEQ meetings and audits to identify risks",
+      "Record both the risks and the actions thoroughly",
+      "Close actions when they are complete — otherwise you cannot show reduced risk",
+      "Reassess after actions — record residual risk (likelihood × consequence after control)",
+      "ISO PDCA: risk = Plan, action = Do, check = Check, improvement = Act",
     ],
   },
 
   inspections: {
-    title: "Inspeksjoner og vernerunder",
-    description: "Gjennomfør systematiske kontroller av arbeidsmiljøet",
+    title: "Workplace inspections",
+    description: "Monitoring records. They stay with the company — they are not sent to the HSE.",
     sections: [
       {
-        heading: "Hva er inspeksjoner?",
-        emoji: "🔍",
+        heading: "What the law actually requires",
         content:
-          "Inspeksjoner er systematiske kontroller for å avdekke risiko, avvik og forbedringsområder. Vernerunder er en form for inspeksjon der verneombud og ledelse går sammen gjennom arbeidsområdene.",
+          "There is no general UK duty to run a Norwegian-style safety round. MHSWR 1999 reg.5 requires arrangements to monitor preventive and protective measures, and to write those arrangements down if you employ five or more people. Safety representatives appointed by a recognised trade union may inspect the workplace every three months, or sooner after a substantial change or a notifiable event (SRSCWR 1977 regs.5 and 6). Construction sites are monitored under CDM 2015.",
       },
       {
-        heading: "Hvorfor gjennomføre inspeksjoner?",
-        emoji: "✅",
+        heading: "What to record",
         items: [
           {
-            title: "Lovpålagt",
+            title: "HSE F2534 — inspection took place",
             description:
-              "Arbeidsmiljøloven § 6-2 krever at arbeidsgiver gjennomfører systematisk kontroll.",
+              "Date, time, area of the workplace, names of safety representatives and of the employer’s representative if they took part. Keep a copy. Give a copy to the employer. The record does not imply that conditions are safe.",
           },
           {
-            title: "Forebygg ulykker",
+            title: "HSE F2533 — unsafe conditions",
             description:
-              "Oppdager farer og svakheter før de fører til skader eller tap.",
+              "Record each unsafe or unhealthy condition or unsatisfactory welfare arrangement, who will act, and by when. The employer should decide the follow-up and explain it.",
           },
           {
-            title: "Dokumentasjon",
+            title: "Not sent to the HSE",
             description:
-              "Beviser at du har internkontroll og oppfyller lovkrav.",
-          },
-          {
-            title: "Kontinuerlig forbedring",
-            description:
-              "Identifiserer forbedringsmuligheter i arbeidsprosesser og utstyr.",
+              "Ordinary inspection records are internal evidence of monitoring. Only RIDDOR events are reported to the HSE. Scaffold, excavation and work-at-height inspections have separate statutory reports that must be retained and shown to an inspector.",
           },
         ],
       },
       {
-        heading: "Hvordan gjennomføre inspeksjoner",
-        emoji: "📝",
+        heading: "How to use this module",
         items: [
           {
-            title: "1. Bruk sjekklister",
+            title: "1. Create the record",
             description:
-              "Lag maler basert på arbeidsområde, utstyr eller prosess. HMS Nova har ferdiglagde maler.",
+              "Date, workplace and who inspected are required. A checklist is optional.",
           },
           {
-            title: "2. Involver de ansatte",
+            title: "2. Involve the right people",
             description:
-              "Ta med verneombud og medarbeidere som kjenner området godt.",
+              "Safety representative inspections need reasonable written notice. The employer may be present.",
           },
           {
-            title: "3. Ta bilder",
+            title: "3. Record findings",
             description:
-              "Dokumenter avvik med foto. Enklere å følge opp og kommunisere.",
+              "Photograph where it helps. Assign an owner and a due date for every finding.",
           },
           {
-            title: "4. Oppfølging",
+            title: "4. Close the loop",
             description:
-              "Registrer avvik og tiltak. Sett ansvarlig og frist. Følg opp til lukket.",
+              "Let the representative inspect again to check the action. Share the outcome with the safety committee where there is one.",
           },
         ],
       },
     ],
     isoStandards: [
-      "ISO 45001 (HMS): Krav 9.1 - Overvåking, måling, analyse og evaluering",
-      "ISO 14001 (Miljø): Krav 9.1 - Miljøovervåking",
-      "ISO 9001 (Kvalitet): Krav 9.1 - Overvåking av kvalitetsprosesser",
+      "ISO 45001 clause 9.1 — monitoring, measurement, analysis and evaluation",
     ],
     tips: [
-      "Gjennomfør inspeksjoner regelmessig (ukentlig, månedlig eller kvartalsvis)",
-      "Variabler frekvens basert på risiko: høyrisiko-områder oftere",
-      "Bruk mobil-funksjonen for å gjennomføre vernerunder ute på området",
-      "Følg opp avvik systematisk – lukk dem når tiltak er gjennomført",
-      "Gjennomgå inspeksjonsresultater i ledermøter og HMS-utvalg",
+      "Frequency follows risk, not a fixed calendar — except the three-month entitlement for union safety representatives",
+      "Link the inspection back to the risk assessment you are checking",
+      "Use the mobile view on site",
+      "Do not treat a completed record as proof that the workplace is safe",
     ],
   },
 
   incidents: {
-    title: "Hendelser og avvik",
-    description: "Registrer og følg opp uønskede hendelser",
+    title: "Accident book",
+    description: "Record injuries, near misses and RIDDOR-reportable events",
     sections: [
       {
-        heading: "Hva er en hendelse?",
+        heading: "What is an incident?",
         emoji: "🚨",
         content:
-          "En hendelse er en uønsket eller uventet hendelse som har, eller kunne ha ført til skade på personer, miljø, materiell eller omdømme. Dette inkluderer ulykker, nestenulykker, miljøhendelser og avvik fra prosedyrer.",
+          "An incident is an unwanted or unexpected event that has caused, or could have caused, harm to people, the environment, property or reputation. This includes accidents, near misses, environmental events and departures from procedures. Keep entries in the accident book (Social Security (Claims and Payments) Regulations 1979; keep for 3 years). Reportable events go to the HSE under RIDDOR 2013.",
       },
       {
-        heading: "Skal avvik lukkes?",
+        heading: "Should incidents be closed?",
         emoji: "2️⃣",
         content:
-          "Ja – avvik skal lukkes. Et avvik skal: 1) Registreres. 2) Vurderes. 3) Årsaksanalyseres (ved behov). 4) Få korrigerende tiltak. 5) Tiltak gjennomføres. 6) Effekt verifiseres. 7) Avviket lukkes. Dette er eksplisitt krav i ISO 9001 kap. 10.2 og ISO 45001 kap. 10.2. Hvis avvik ikke lukkes, vil en revisor stille spørsmålet: Hvordan vet dere at problemet faktisk er løst? Et åpent avvik betyr at systemet ikke fungerer.",
+          "Yes — close the record when the investigation and any actions are complete. HSE HSG245 expects a proportionate investigation, control measures, and follow-up. Accident book entries must be kept for 3 years (SSCPR 1979).",
         items: [
           {
-            title: "For revisjonssterkt system i HMS Nova",
+            title: "Audit-ready practice in HSEQ Nova",
             description:
-              "Status: Åpen → Under utredning → Tiltak iverksatt → Lukket. Sjekk: Årsak vurdert? Tiltak opprettet? Effekt verifisert? Lukk med dato og hvem godkjente. Dette er det Arbeidstilsynet og ISO-revisor ser etter.",
+              "Status: Open → Under investigation → Action taken → Closed. Depth of investigation should match the harm or potential harm (HSG245). Remember RIDDOR timescales: death without delay; specified injury 10 days; over-seven-day injury 15 days.",
           },
         ],
       },
       {
-        heading: "Hvorfor registrere hendelser?",
+        heading: "Why record incidents?",
         emoji: "📋",
         items: [
           {
-            title: "Lovkrav",
+            title: "Legal duty",
             description:
-              "Arbeidsmiljøloven § 5-1 krever at arbeidsgiver undersøker ulykker og nestenulykker.",
+              "HSWA 1974 s.2 requires a safe system of work. Record accidents in the accident book. Report deaths, specified injuries, over-seven-day injuries, occupational diseases and listed dangerous occurrences to the HSE under RIDDOR 2013. Near misses are not RIDDOR but should still be recorded.",
           },
           {
-            title: "Lære av feil",
+            title: "Learn from failure",
             description:
-              "Identifiser grunnårsaker og sett inn tiltak for å unngå gjentakelse.",
+              "Identify root causes and put in actions to prevent recurrence.",
           },
           {
-            title: "Trendanalyse",
+            title: "Trend analysis",
             description:
-              "Se mønstre og prioriter innsats på områder med høy risiko.",
+              "See patterns and focus effort on high-risk areas.",
           },
           {
-            title: "Forbedring",
+            title: "Improvement",
             description:
-              "Hendelsesrapportering er grunnlaget for kontinuerlig forbedring.",
+              "Incident reporting is the basis for continual improvement.",
           },
         ],
       },
       {
-        heading: "Slik håndterer du avvik (ISO 10.2)",
+        heading: "How to handle incidents (HSE HSG245)",
         emoji: "🔧",
         items: [
           {
-            title: "1. Registrer raskt",
+            title: "1. Record promptly",
             description:
-              "Meld hendelsen så snart som mulig. Jo raskere, jo bedre kvalitet på informasjonen.",
+              "Report the event as soon as possible. The sooner you record it, the better the information quality.",
           },
           {
-            title: "2. Undersøk og årsaksanalyser",
+            title: "2. Investigate",
             description:
-              "Gjennomfør granskning for å finne grunnårsaker, ikke bare symptomer. Bruk f.eks. 5 Why eller Fishbone.",
+              "Gather facts, analyse immediate and underlying causes, and identify control measures. Keep it proportionate — a near miss does not need a full 5 Whys unless the potential was serious.",
           },
           {
-            title: "3. Iverksett tiltak",
+            title: "3. Put actions in place",
             description:
-              "Registrer konkrete tiltak med ansvarlig person og frist. Følg opp til alle tiltak er fullført.",
+              "Record concrete actions with an owner and due date. Follow up until all actions are complete.",
           },
           {
-            title: "4. Lukk avviket",
+            title: "4. Close the incident",
             description:
-              "Når tiltak er gjennomført og effekt er verifisert: Lukk avviket. Dokumenter effektivitetsvurdering og hvem som godkjente lukking.",
+              "When actions are complete and effectiveness is verified: close the incident. Record the effectiveness review and who approved closure.",
           },
         ],
       },
       {
-        heading: "Hva skal lukkes – og hva skal ikke?",
+        heading: "What should be closed — and what should not?",
         emoji: "3️⃣",
         items: [
           {
-            title: "Tiltak i risikovurdering",
-            description: "✅ Ja – når gjennomført og kontrollert.",
+            title: "Actions in a risk assessment",
+            description: "✅ Yes — when completed and checked.",
           },
           {
-            title: "Avvik",
-            description: "✅ Ja – etter korrigerende tiltak og verifisering.",
+            title: "Incidents",
+            description: "✅ Yes — after corrective action and verification.",
           },
           {
-            title: "Risikovurdering",
-            description: "❌ Nei – den revideres, ikke lukkes.",
+            title: "Risk assessment",
+            description: "❌ No — it is reviewed, not closed.",
           },
           {
-            title: "Systemdokumenter",
-            description: "❌ Nei – de versjonstyres.",
+            title: "System documents",
+            description: "❌ No — they are version-controlled.",
           },
         ],
       },
     ],
     isoStandards: [
-      "ISO 45001 (HMS): Krav 10.2 - Hendelser, avvik og korrigerende tiltak",
-      "ISO 14001 (Miljø): Krav 10.2 - Miljøhendelser og korrigerende tiltak",
-      "ISO 9001 (Kvalitet): Krav 10.2 - Avvik og korrigerende tiltak",
-      "ISO 27001 (IT-sikkerhet): Krav 16 - Håndtering av informasjonssikkerhetshendelser",
+      "Social Security (Claims and Payments) Regulations 1979 — accident book, keep 3 years",
+      "RIDDOR 2013 — reportable deaths, specified injuries, over-seven-day, disease, listed occurrences",
+      "HSWA 1974 s.2 — safe system of work; MHSWR 1999 — manage risk",
+      "HSE HSG245 — investigating accidents and incidents",
     ],
     tips: [
-      "Skap en kultur hvor det er trygt å melde hendelser",
-      "Fokuser på systemfeil, ikke personlig skyld",
-      "Lukk avvik når tiltak er gjennomført og effekt er verifisert",
-      "Et åpent avvik = systemet fungerer ikke – revisor vil stille spørsmål",
-      "ISO PDCA: Hvis du ikke lukker avvik og tiltak, stopper syklusen.",
+      "Make it easy and safe to report",
+      "Focus on system failings, not personal blame",
+      "Match investigation depth to the harm or potential harm (HSG245)",
+      "Follow up actions until they are done",
+      "Keep accident book entries for 3 years",
     ],
   },
 
   actions: {
-    title: "Tiltak og oppgaver",
-    description: "Håndter korrigerende og forebyggende tiltak",
+    title: "Actions and tasks",
+    description: "Manage corrective and preventive actions",
     sections: [
       {
-        heading: "Hva er tiltak?",
+        heading: "What are actions?",
         emoji: "✅",
         content:
-          "Tiltak er konkrete handlinger for å løse avvik, redusere risikoer eller forbedre prosesser. De kan være korrigerende (rette opp feil) eller forebyggende (hindre at noe skjer).",
+          "Actions are concrete steps to resolve incidents, reduce risks or improve processes. They may be corrective (put right what went wrong) or preventive (stop something happening).",
       },
       {
-        heading: "Skal tiltak lukkes?",
+        heading: "Should actions be closed?",
         emoji: "1️⃣",
         content:
-          "Ja. Tiltak skal lukkes når de er gjennomført og verifisert. ISO 45001 kap. 6.1 og 8.1, ISO 9001 kap. 6.1. Hvis tiltak ikke lukkes, kan du ikke dokumentere at risikoen er redusert eller at avviket er løst. I HMS Nova: marker tiltak som fullført, dokumenter effekt, og lukk – da støtter du PDCA-syklusen (Plan–Do–Check–Act) som ISO bygger på.",
+          "Yes. Actions should be closed when they have been completed and verified. ISO 45001 clauses 6.1 and 8.1, ISO 9001 clause 6.1. If actions are not closed, you cannot show that risk has been reduced or that the incident is resolved. In HSEQ Nova: mark the action complete, record the effect, and close it — that supports the PDCA cycle (Plan–Do–Check–Act) that ISO is built on.",
         items: [
           {
-            title: "Hva skal lukkes – og hva skal ikke?",
+            title: "What should be closed — and what should not?",
             description:
-              "Tiltak: ✅ Ja. Avvik: ✅ Ja. Risikovurdering: ❌ Nei (revideres). Systemdokumenter: ❌ Nei (versjonstyres).",
+              "Actions: ✅ Yes. Incidents: ✅ Yes. Risk assessment: ❌ No (it is reviewed). System documents: ❌ No (version-controlled).",
           },
         ],
       },
       {
-        heading: "Hvorfor systematisere tiltak?",
+        heading: "Why manage actions systematically?",
         emoji: "🎯",
         items: [
           {
-            title: "Sikre gjennomføring",
+            title: "Make sure they get done",
             description:
-              "Med tydelig ansvarlig og frist øker sannsynligheten for at tiltak blir gjennomført.",
+              "A clear owner and due date make it more likely that the action will be completed.",
           },
           {
-            title: "Sporbarhet",
+            title: "Traceability",
             description:
-              "Du kan bevise at tiltak er iverksatt, evaluert og lukket.",
+              "You can show that actions were taken, evaluated and closed.",
           },
           {
-            title: "ISO-krav",
+            title: "ISO requirements",
             description:
-              "Alle ISO-standarder krever systematisk håndtering av korrigerende tiltak.",
+              "All ISO standards require systematic handling of corrective action.",
           },
           {
-            title: "Kontinuerlig forbedring",
+            title: "Continual improvement",
             description:
-              "Strukturert tiltakshåndtering driver organisasjonen fremover.",
+              "Structured action management moves the organisation forward.",
           },
         ],
       },
       {
-        heading: "Slik jobber du med tiltak",
+        heading: "How to work with actions",
         emoji: "📊",
         items: [
           {
-            title: "1. Definer tydelig",
+            title: "1. Define them clearly",
             description:
-              "Beskriv hva som skal gjøres, hvorfor og hvilket resultat du forventer.",
+              "Describe what will be done, why, and what result you expect.",
           },
           {
-            title: "2. Sett ansvarlig og frist",
+            title: "2. Set an owner and due date",
             description:
-              "Én person skal være ansvarlig. Sett realistisk tidsfrist.",
+              "One person should be accountable. Set a realistic deadline.",
           },
           {
-            title: "3. Prioriter",
+            title: "3. Prioritise",
             description:
-              "Merk høyprioriterte tiltak og fokuser på dem først.",
+              "Mark high-priority actions and deal with them first.",
           },
           {
-            title: "4. Lukk når fullført",
+            title: "4. Close when complete",
             description:
-              "Når tiltaket er gjennomført: fungerte det? Er problemet løst? Marker som fullført og dokumenter effekt. Lukk tiltaket.",
+              "When the action is done: did it work? Is the problem resolved? Mark it complete and record the effect. Close the action.",
           },
         ],
       },
     ],
     isoStandards: [
-      "ISO 9001 (Kvalitet): Krav 10.2 - Avvik og korrigerende tiltak",
-      "ISO 14001 (Miljø): Krav 10.2 - Miljøavvik og korrigerende tiltak",
-      "ISO 45001 (HMS): Krav 10.2 - Hendelser og korrigerende tiltak",
-      "ISO 27001 (IT-sikkerhet): Krav A.16.1.6 - Læring av sikkerhetshendelser",
+      "ISO 9001 (quality): clause 10.2 — nonconformity and corrective action",
+      "ISO 14001 (environment): clause 10.2 — environmental nonconformity and corrective action",
+      "ISO 45001 (OH&S): clause 10.2 — incidents and corrective action",
+      "ISO 27001 (information security): clause A.16.1.6 — learning from security incidents",
     ],
     tips: [
-      "Koble tiltak til risikoer, hendelser eller avvik for full sporbarhet",
-      "Bruk SMART-mål: Spesifikk, Målbar, Akseptert, Realistisk, Tidsbestemt",
-      "Sett opp påminnelser slik at ansvarlige ikke glemmer fristen",
-      "Gjennomgå åpne tiltak i ledermøter og HMS-møter",
-      "Lukk tiltak når de er gjennomført og dokumenter resultatet",
+      "Link actions to risks, incidents or accident book entries for full traceability",
+      "Use SMART objectives: Specific, Measurable, Achievable, Realistic, Time-bound",
+      "Set reminders so owners do not miss the due date",
+      "Review open actions in management meetings and HSEQ meetings",
+      "Close actions when they are complete and record the outcome",
     ],
   },
 
   training: {
-    title: "Opplæring",
-    description: "Sikre kompetanse og kvalifikasjoner i organisasjonen",
+    title: "Training",
+    description: "Ensure competence and qualifications across the organisation",
     sections: [
       {
-        heading: "Hva er opplæring?",
+        heading: "What is training?",
         emoji: "🎓",
         content:
-          "Opplæring omfatter all kompetansebygging som sikrer at medarbeidere har nødvendig kunnskap, ferdigheter og holdninger for å utføre arbeidet trygt, effektivt og i samsvar med krav.",
+          "Training covers all competence-building that ensures employees have the knowledge, skills and attitudes to do the work safely, effectively and in line with requirements. Employers must provide information, instruction, training and supervision (HSWA 1974 s.2(2)(c)).",
       },
       {
-        heading: "Hvorfor er opplæring viktig?",
+        heading: "Why is training important?",
         emoji: "📚",
         items: [
           {
-            title: "Lovpålagt",
+            title: "Legal duty",
             description:
-              "Arbeidsmiljøloven § 4-2 krever at arbeidsgiver gir nødvendig opplæring.",
+              "HSWA 1974 s.2(2)(c) requires the employer to provide such information, instruction, training and supervision as is necessary to ensure health and safety at work.",
           },
           {
-            title: "Forebygg ulykker",
+            title: "Prevent accidents",
             description:
-              "Manglende kompetanse er en vanlig årsak til arbeidsulykker.",
+              "Lack of competence is a common cause of workplace accidents.",
           },
           {
-            title: "ISO-krav",
+            title: "ISO requirements",
             description:
-              "ISO 9001, 14001, 45001 og 27001 krever dokumentert kompetanse og opplæring.",
+              "ISO 9001, 14001, 45001 and 27001 require documented competence and training.",
           },
           {
-            title: "Bedre resultater",
+            title: "Better results",
             description:
-              "Kompetente medarbeidere leverer høyere kvalitet og er mer effektive.",
+              "Competent employees deliver higher quality and are more effective.",
           },
         ],
       },
       {
-        heading: "Hvordan bruke opplæringsmodulen",
+        heading: "How to use the training module",
         emoji: "🔧",
         items: [
           {
-            title: "1. Lag opplæringsmatrise",
+            title: "1. Build a training matrix",
             description:
-              "Kartlegg hvilke kurs og kompetanser hver stilling eller person trenger.",
+              "Map which courses and competences each role or person needs.",
           },
           {
-            title: "2. Registrer kurs",
+            title: "2. Record courses",
             description:
-              "Legg inn gjennomførte kurs med dato, varighet og eventuelt sertifikat.",
+              "Enter completed courses with date, duration and any certificate.",
           },
           {
-            title: "3. Sett påminnelser",
+            title: "3. Set reminders",
             description:
-              "Mange kurs har utløpsdato (førstehjelp, varme arbeider, truck). Sett opp automatiske påminnelser.",
+              "Many courses expire (first aid, hot works, forklift). Set automatic reminders.",
           },
           {
-            title: "4. Gjennomgå kompetanse",
+            title: "4. Review competence",
             description:
-              "Se oversikt over hvem som mangler hvilke kurs og planlegg opplæring.",
+              "See who is missing which courses and plan training.",
           },
         ],
       },
     ],
     isoStandards: [
-      "ISO 9001 (Kvalitet): Krav 7.2 - Kompetanse",
-      "ISO 14001 (Miljø): Krav 7.2 - Miljøkompetanse",
-      "ISO 45001 (HMS): Krav 7.2 - HMS-kompetanse",
-      "ISO 27001 (IT-sikkerhet): Krav 7.2 - Sikkerhetskompetanse og bevissthet",
+      "ISO 9001 (quality): clause 7.2 — competence",
+      "ISO 14001 (environment): clause 7.2 — environmental competence",
+      "ISO 45001 (OH&S): clause 7.2 — OH&S competence",
+      "ISO 27001 (information security): clause 7.2 — security competence and awareness",
     ],
     tips: [
-      "Start med å identifisere kritisk kompetanse for sikkerhet og kvalitet",
-      "Bruk både eksterne kurs og intern opplæring (on-the-job)",
-      "Dokumenter all opplæring: hvem, hva, når, varighet",
-      "Evaluer om opplæringen fungerer – test forståelse og se på resultater",
-      "Gjennomfør introduksjonsprogram for nye ansatte",
+      "Start by identifying critical competence for safety and quality",
+      "Use both external courses and internal (on-the-job) training",
+      "Record all training: who, what, when, duration",
+      "Check whether training works — test understanding and look at results",
+      "Run an induction programme for new employees",
     ],
   },
 
   audits: {
-    title: "Revisjoner",
-    description: "Gjennomfør internrevisjoner av styringssystemet",
+    title: "Audits",
+    description: "Carry out internal audits of the management system",
     sections: [
       {
-        heading: "Hva er en revisjon?",
+        heading: "What is an audit?",
         emoji: "🔍",
         content:
-          "En revisjon er en systematisk og uavhengig undersøkelse for å vurdere om aktiviteter, prosesser og resultater er i samsvar med krav og standarder. Internrevisjoner gjennomføres av egen organisasjon.",
+          "An audit is a systematic, independent examination of whether activities, processes and results meet requirements and standards. Internal audits are carried out by the organisation itself.",
       },
       {
-        heading: "Hvorfor gjennomføre revisjoner?",
+        heading: "Why carry out audits?",
         emoji: "✅",
         items: [
           {
-            title: "ISO-krav",
+            title: "ISO requirements",
             description:
-              "Alle ISO-standarder krever årlige internrevisjoner av hele styringssystemet.",
+              "All ISO standards require annual internal audits of the whole management system.",
           },
           {
-            title: "Verifiser etterlevelse",
+            title: "Verify compliance",
             description:
-              "Sikrer at dere faktisk følger egne prosedyrer og oppfyller lovkrav.",
+              "Confirms that you actually follow your own procedures and meet legal duties.",
           },
           {
-            title: "Identifiser forbedringsområder",
+            title: "Identify improvement areas",
             description:
-              "Avdekker svakheter, ineffektivitet og muligheter for forbedring.",
+              "Finds weaknesses, inefficiency and opportunities for improvement.",
           },
           {
-            title: "Forbered eksternrevisjon",
+            title: "Prepare for external audit",
             description:
-              "Internrevisjoner avdekker avvik før sertifiseringsrevisjoner.",
+              "Internal audits find issues before certification audits.",
           },
         ],
       },
       {
-        heading: "Slik gjennomfører du revisjoner",
+        heading: "How to carry out audits",
         emoji: "📋",
         items: [
           {
-            title: "1. Planlegg revisjonen",
+            title: "1. Plan the audit",
             description:
-              "Lag årlig revisjonsplan. Dekk hele styringssystemet over en periode.",
+              "Create an annual audit programme. Cover the whole management system over a period.",
           },
           {
-            title: "2. Forbered revisor",
+            title: "2. Prepare the auditor",
             description:
-              "Gjennomgå relevante dokumenter, tidligere avvik og endringer siden sist.",
+              "Review relevant documents, previous findings and changes since last time.",
           },
           {
-            title: "3. Gjennomfør revisjon",
+            title: "3. Carry out the audit",
             description:
-              "Intervju personell, gjennomgå dokumenter, observer praksis. Dokumenter funn.",
+              "Interview people, review documents, observe practice. Record findings.",
           },
           {
-            title: "4. Rapporter og følg opp",
+            title: "4. Report and follow up",
             description:
-              "Lag revisjonsrapport, registrer avvik og tiltak. Følg opp til lukket.",
+              "Write the audit report, record incidents and actions. Follow through until closed.",
           },
         ],
       },
     ],
     isoStandards: [
-      "ISO 9001 (Kvalitet): Krav 9.2 - Internrevisjon",
-      "ISO 14001 (Miljø): Krav 9.2 - Internrevisjon av miljøstyringssystemet",
-      "ISO 45001 (HMS): Krav 9.2 - Internrevisjon av HMS-systemet",
-      "ISO 27001 (IT-sikkerhet): Krav 9.2 - Internrevisjon av ISMS",
-      "ISO 19011: Retningslinjer for revisjon av styringssystemer",
+      "ISO 9001 (quality): clause 9.2 — internal audit",
+      "ISO 14001 (environment): clause 9.2 — internal audit of the environmental management system",
+      "ISO 45001 (OH&S): clause 9.2 — internal audit of the OH&S system",
+      "ISO 27001 (information security): clause 9.2 — internal audit of the ISMS",
+      "ISO 19011: guidelines for auditing management systems",
     ],
     tips: [
-      "Bruk revisorer som ikke har ansvar for det området som revideres",
-      "Tren dine interne revisorer i revisjonsteknikk",
-      "Fokuser på både etterlevelse og effektivitet av prosesser",
-      "Involver de ansatte – dette er en læringsmulighet, ikke straff",
-      "Gjennomgå revisjonsfunn i ledelsens gjennomgåelse",
+      "Use auditors who are not responsible for the area being audited",
+      "Train your internal auditors in audit technique",
+      "Focus on both compliance and the effectiveness of processes",
+      "Involve employees — this is a learning opportunity, not a punishment",
+      "Review audit findings in the management review",
     ],
   },
 
   goals: {
-    title: "Mål og målstyring",
-    description: "Sett og følg opp organisasjonens HMS-, kvalitets- og miljømål",
+    title: "Objectives and performance",
+    description: "Set and follow up the organisation’s health and safety, quality and environmental objectives",
     sections: [
       {
-        heading: "Hva er mål?",
+        heading: "What are objectives?",
         emoji: "🎯",
         content:
-          "Mål er konkrete, målbare resultater organisasjonen ønsker å oppnå innen HMS, kvalitet, miljø eller forretningsområder. Gode mål gir retning og gjør det mulig å måle fremgang.",
+          "Objectives are concrete, measurable results the organisation wants to achieve in health and safety, quality, environment or the business. Good objectives give direction and make it possible to measure progress.",
       },
       {
-        heading: "Hvorfor sette mål?",
+        heading: "Why set objectives?",
         emoji: "📈",
         items: [
           {
-            title: "ISO-krav",
+            title: "ISO requirements",
             description:
-              "ISO 9001, 14001, 45001 og 27001 krever at organisasjonen setter målbare mål.",
+              "ISO 9001, 14001, 45001 and 27001 require the organisation to set measurable objectives.",
           },
           {
-            title: "Gi retning",
+            title: "Give direction",
             description:
-              "Tydelige mål gir hele organisasjonen felles retning og prioriteringer.",
+              "Clear objectives give the whole organisation a shared direction and priorities.",
           },
           {
-            title: "Måle fremgang",
+            title: "Measure progress",
             description:
-              "Uten mål vet du ikke om du lykkes eller om tiltakene fungerer.",
+              "Without objectives you cannot tell whether you are succeeding or whether actions are working.",
           },
           {
-            title: "Engasjere ansatte",
+            title: "Engage employees",
             description:
-              "Involvering i målsetting øker motivasjon og eierskap.",
+              "Involvement in setting objectives increases motivation and ownership.",
           },
         ],
       },
       {
-        heading: "Slik jobber du med mål",
+        heading: "How to work with objectives",
         emoji: "🔧",
         items: [
           {
-            title: "1. Bruk SMART-kriterier",
+            title: "1. Use SMART criteria",
             description:
-              "Spesifikk, Målbar, Akseptert, Realistisk, Tidsbestemt. Eks: 'Redusere H-verdi til under 3,0 innen 31.12.2026'.",
+              "Specific, Measurable, Achievable, Realistic, Time-bound. Example: ‘Reduce the accident frequency rate to below 3.0 by 31 December 2026’.",
           },
           {
-            title: "2. Koble til risikoer og tiltak",
+            title: "2. Link to risks and actions",
             description:
-              "Mål skal adressere identifiserte risikoer og støttes av konkrete tiltak.",
+              "Objectives should address identified risks and be supported by concrete actions.",
           },
           {
-            title: "3. Følg opp regelmessig",
+            title: "3. Follow up regularly",
             description:
-              "Mål må måles og rapporteres kvartalsvis eller oftere. Juster kursen ved behov.",
+              "Objectives must be measured and reported quarterly or more often. Adjust course if needed.",
           },
           {
-            title: "4. Gjennomgå i ledelsen",
+            title: "4. Review in management",
             description:
-              "Måloppnåelse skal være fast punkt i ledelsens gjennomgåelse.",
+              "Achievement of objectives should be a standing item in the management review.",
           },
         ],
       },
     ],
     isoStandards: [
-      "ISO 9001 (Kvalitet): Krav 6.2 - Kvalitetsmål",
-      "ISO 14001 (Miljø): Krav 6.2 - Miljømål",
-      "ISO 45001 (HMS): Krav 6.2 - HMS-mål",
-      "ISO 27001 (IT-sikkerhet): Krav 6.2 - Informasjonssikkerhetsmål",
+      "ISO 9001 (quality): clause 6.2 — quality objectives",
+      "ISO 14001 (environment): clause 6.2 — environmental objectives",
+      "ISO 45001 (OH&S): clause 6.2 — OH&S objectives",
+      "ISO 27001 (information security): clause 6.2 — information security objectives",
     ],
     tips: [
-      "Sett få, men viktige mål – bedre med 5 gode enn 20 uklare",
-      "Involver både ledelse og ansatte i målsettingsprosessen",
-      "Koble mål til organisasjonens strategi og verdier",
-      "Bruk nøkkeltall (KPI) for å måle fremgang",
-      "Feire når mål nås – dette motiverer videre innsats",
+      "Set few, important objectives — five good ones beat twenty unclear ones",
+      "Involve both management and employees in setting objectives",
+      "Link objectives to the organisation’s strategy and values",
+      "Use key performance indicators (KPIs) to measure progress",
+      "Celebrate when objectives are met — that motivates further effort",
     ],
   },
 
   meetings: {
-    title: "Møter",
-    description: "Dokumenter HMS-møter, verneombudsmøter og ledelsens gjennomgåelse",
+    title: "Meetings",
+    description: "Record HSEQ meetings, safety representative meetings and management review",
     sections: [
       {
-        heading: "Hva er møteoppfølging?",
+        heading: "What is meeting follow-up?",
         emoji: "🗓️",
         content:
-          "Møter er viktige arenaer for dialog om HMS, kvalitet og miljø. Strukturert møteoppfølging sikrer at avgjørelser blir dokumentert og fulgt opp.",
+          "Meetings are important forums for dialogue on health and safety, quality and environment. Structured meeting records ensure that decisions are documented and followed up. Employers must consult employees on health and safety (SRSCWR 1977; HSCER 1996).",
       },
       {
-        heading: "Hvorfor dokumentere møter?",
+        heading: "Why record meetings?",
         emoji: "📝",
         items: [
           {
-            title: "Lovkrav",
+            title: "Legal duty",
             description:
-              "Arbeidsmiljøloven § 7-2 krever skriftlig referat fra AMU-møter og verneombudsmøter.",
+              "Where safety representatives or a safety committee are in place, consultation must be genuine (SRSCWR 1977; Health and Safety (Consultation with Employees) Regulations 1996). Keep minutes so you can show what was agreed.",
           },
           {
-            title: "Beslutningssporbarhet",
+            title: "Decision traceability",
             description:
-              "Dokumenterer hvilke beslutninger som er tatt, av hvem og hvorfor.",
+              "Records which decisions were taken, by whom and why.",
           },
           {
-            title: "Oppfølging",
+            title: "Follow-up",
             description:
-              "Møtereferat sikrer at tiltak og oppgaver følges opp til neste møte.",
+              "Minutes ensure that actions and tasks are followed up before the next meeting.",
           },
           {
-            title: "ISO-krav",
+            title: "ISO requirements",
             description:
-              "Ledelsens gjennomgåelse (management review) skal dokumenteres grundig.",
+              "Management review must be documented thoroughly.",
           },
         ],
       },
       {
-        heading: "Hvordan bruke møtemodulen",
+        heading: "How to use the meetings module",
         emoji: "✅",
         items: [
           {
-            title: "1. Opprett møte",
+            title: "1. Create a meeting",
             description:
-              "Registrer møtetype, deltakere, dato og agenda på forhånd.",
+              "Record meeting type, attendees, date and agenda in advance.",
           },
           {
-            title: "2. Dokumenter underveis",
+            title: "2. Record as you go",
             description:
-              "Skriv inn saker, beslutninger og tiltak direkte i systemet under møtet.",
+              "Enter items, decisions and actions directly in the system during the meeting.",
           },
           {
-            title: "3. Generer referat",
+            title: "3. Generate minutes",
             description:
-              "Systemet lager automatisk strukturert møtereferat som kan deles.",
+              "The system produces structured minutes that can be shared.",
           },
           {
-            title: "4. Følg opp tiltak",
+            title: "4. Follow up actions",
             description:
-              "Tiltak fra møter kobles til tiltaksmodulen og følges opp der.",
+              "Actions from meetings are linked to the actions module and followed up there.",
           },
         ],
       },
     ],
     isoStandards: [
-      "ISO 9001 (Kvalitet): Krav 9.3 - Ledelsens gjennomgåelse",
-      "ISO 14001 (Miljø): Krav 9.3 - Ledelsens gjennomgåelse av miljøsystemet",
-      "ISO 45001 (HMS): Krav 9.3 - Ledelsens gjennomgåelse av HMS-systemet",
-      "ISO 27001 (IT-sikkerhet): Krav 9.3 - Ledelsens gjennomgåelse av ISMS",
+      "ISO 9001 (quality): clause 9.3 — management review",
+      "ISO 14001 (environment): clause 9.3 — management review of the environmental system",
+      "ISO 45001 (OH&S): clause 9.3 — management review of the OH&S system",
+      "ISO 27001 (information security): clause 9.3 — management review of the ISMS",
     ],
     tips: [
-      "Avhold regelmessige HMS-møter (månedlig eller kvartalsvis)",
-      "Ledelsens gjennomgåelse skal holdes minimum årlig",
-      "Involver verneombud i alle HMS-relaterte møter",
-      "Gjennomgå status på mål, risikoer, hendelser og tiltak i hvert møte",
-      "Distribuer referat raskt til alle deltakere",
+      "Hold regular HSEQ meetings (monthly or quarterly)",
+      "Management review should be held at least annually",
+      "Involve the safety representative in all health and safety related meetings",
+      "Review status on objectives, risks, incidents and actions in every meeting",
+      "Issue minutes promptly to all attendees",
     ],
   },
 
   "management-reviews": {
-    title: "Ledelsens gjennomgåelse",
-    description: "Gjennomfør systematisk evaluering av styringssystemet",
+    title: "Management review",
+    description: "Carry out a systematic evaluation of the management system",
     sections: [
       {
-        heading: "Hva er ledelsens gjennomgåelse?",
+        heading: "What is management review?",
         emoji: "👔",
         content:
-          "Ledelsens gjennomgåelse (Management Review) er et formelt møte der toppledelsen gjennomgår styringssystemets ytelse, effektivitet og resultater. Dette er ledelsens viktigste verktøy for å sikre at systemet fungerer og forbedres.",
+          "Management review is a formal meeting in which top management reviews the management system’s performance, effectiveness and results. It is management’s main tool for ensuring the system works and improves.",
       },
       {
-        heading: "Hvorfor er det viktig?",
+        heading: "Why does it matter?",
         emoji: "🎯",
         items: [
           {
-            title: "ISO-krav",
+            title: "ISO requirements",
             description:
-              "Alle ISO-standarder krever at toppledelsen gjennomgår systemet minimum årlig.",
+              "All ISO standards require top management to review the system at least annually.",
           },
           {
-            title: "Lederansvar",
+            title: "Leadership accountability",
             description:
-              "Viser at ledelsen tar ansvar for HMS, kvalitet og miljø.",
+              "Shows that management takes responsibility for health and safety, quality and environment (HSWA 1974 s.2).",
           },
           {
-            title: "Strategisk styringsverktøy",
+            title: "Strategic steering tool",
             description:
-              "Gir ledelsen oversikt og grunnlag for strategiske beslutninger.",
+              "Gives management an overview and a basis for strategic decisions.",
           },
           {
-            title: "Kontinuerlig forbedring",
+            title: "Continual improvement",
             description:
-              "Identifiserer forbedringsområder og setter retning for fremtiden.",
+              "Identifies improvement areas and sets direction for the future.",
           },
         ],
       },
       {
-        heading: "Hva skal gjennomgås?",
+        heading: "What should be reviewed?",
         emoji: "📊",
         items: [
           {
-            title: "1. Input fra forrige gjennomgåelse",
+            title: "1. Input from the previous review",
             description:
-              "Oppfølging av tiltak og beslutninger fra forrige ledelsens gjennomgåelse.",
+              "Follow-up of actions and decisions from the last management review.",
           },
           {
-            title: "2. Måloppnåelse og KPIer",
+            title: "2. Objectives and KPIs",
             description:
-              "Status på HMS-, kvalitets- og miljømål. Nøkkeltall og trender.",
+              "Status of health and safety, quality and environmental objectives. Key figures and trends.",
           },
           {
-            title: "3. Revisjoner og avvik",
+            title: "3. Audits and incidents",
             description:
-              "Resultater fra interne og eksterne revisjoner, samt status på korrigerende tiltak.",
+              "Results from internal and external audits, and status of corrective actions.",
           },
           {
-            title: "4. Endringer og risiko",
+            title: "4. Change and risk",
             description:
-              "Relevante endringer i organisasjon, lover, marked. Oppdatert risikovurdering.",
+              "Relevant changes in the organisation, law and the market. Updated risk assessment.",
           },
           {
-            title: "5. Ressurser og kompetanse",
+            title: "5. Resources and competence",
             description:
-              "Vurdering av om systemet har tilstrekkelige ressurser for å fungere.",
+              "Whether the system has enough resources to function.",
           },
           {
-            title: "6. Muligheter for forbedring",
+            title: "6. Opportunities for improvement",
             description:
-              "Identifisere områder for forbedring og beslutte nye tiltak.",
+              "Identify areas for improvement and decide new actions.",
           },
         ],
       },
     ],
     isoStandards: [
-      "ISO 9001 (Kvalitet): Krav 9.3 - Ledelsens gjennomgåelse",
-      "ISO 14001 (Miljø): Krav 9.3 - Ledelsens gjennomgåelse",
-      "ISO 45001 (HMS): Krav 9.3 - Ledelsens gjennomgåelse",
-      "ISO 27001 (IT-sikkerhet): Krav 9.3 - Ledelsens gjennomgåelse",
+      "ISO 9001 (quality): clause 9.3 — management review",
+      "ISO 14001 (environment): clause 9.3 — management review",
+      "ISO 45001 (OH&S): clause 9.3 — management review",
+      "ISO 27001 (information security): clause 9.3 — management review",
     ],
     tips: [
-      "Gjennomfør minimum én gang i året, gjerne to ganger",
-      "Forbered grundig – systemet kan autofylle mye data",
-      "Involver toppledelsen – dette skal ikke delegeres",
-      "Fokuser på både resultater og systemets egnethet",
-      "Dokumenter beslutninger og tiltak tydelig",
-      "Følg opp tiltak fra møtet systematisk",
+      "Hold at least once a year, preferably twice",
+      "Prepare thoroughly — the system can auto-fill much of the data",
+      "Involve top management — this should not be delegated",
+      "Focus on both results and the suitability of the system",
+      "Record decisions and actions clearly",
+      "Follow up actions from the meeting systematically",
     ],
   },
 
   chemicals: {
-    title: "Kjemikaliestyring",
-    description: "Administrer kjemikalier og sikkerhetsdatablad",
+    title: "COSHH management",
+    description: "Manage hazardous substances and safety data sheets",
     sections: [
       {
-        heading: "Hva er kjemikaliestyring?",
+        heading: "What is COSHH management?",
         emoji: "⚗️",
         content:
-          "Kjemikaliestyring handler om å ha oversikt over alle kjemikalier i virksomheten, vurdere risiko ved bruk, og sikre trygg håndtering gjennom rutiner, verneutstyr og opplæring.",
+          "COSHH management means knowing every hazardous substance in the organisation, assessing the risk of use, and ensuring safe handling through procedures, PPE and training. COSHH 2002 requires suitable and sufficient assessments; health records for certain exposures must be kept for 40 years.",
       },
       {
-        heading: "Hvorfor er det viktig?",
+        heading: "Why does it matter?",
         emoji: "⚠️",
         items: [
           {
-            title: "Lovpålagt",
+            title: "Legal duty",
             description:
-              "Kjemikalieforskriften krever kartlegging, risikovurdering og sikkerhetsdatablad.",
+              "COSHH 2002 requires assessment of hazardous substances, control measures, information and training, and access to safety data sheets.",
           },
           {
-            title: "Helsefarer",
+            title: "Health hazards",
             description:
-              "Mange kjemikalier kan forårsake akutt eller kronisk helseskade.",
+              "Many substances can cause acute or chronic ill health.",
           },
           {
-            title: "Miljøkonsekvenser",
+            title: "Environmental consequences",
             description:
-              "Utslipp av farlige kjemikalier kan skade miljøet betydelig.",
+              "Releases of hazardous substances can cause significant environmental harm.",
           },
           {
-            title: "ISO-krav",
+            title: "ISO requirements",
             description:
-              "ISO 14001 (miljø) og ISO 45001 (HMS) krever styring av farlige stoffer.",
+              "ISO 14001 (environment) and ISO 45001 (OH&S) require control of hazardous substances.",
           },
         ],
       },
       {
-        heading: "Slik bruker du kjemikaliemodulen",
+        heading: "How to use the chemicals module",
         emoji: "📋",
         items: [
           {
-            title: "1. Registrer alle kjemikalier",
+            title: "1. Register all substances",
             description:
-              "Legg inn produktnavn, leverandør og last opp sikkerhetsdatablad (SDS).",
+              "Enter product name, supplier and upload the safety data sheet (SDS).",
           },
           {
-            title: "2. Risikovurder bruken",
+            title: "2. Assess the use",
             description:
-              "Vurder eksponering, faregrad og tiltak. HMS Nova hjelper deg med struktur.",
+              "Assess exposure, hazard and controls. HSEQ Nova gives you the structure for a COSHH assessment.",
           },
           {
-            title: "3. Definer verneutstyr og rutiner",
+            title: "3. Define PPE and procedures",
             description:
-              "Dokumenter hvilke verneutstyr og sikkerhetstiltak som kreves.",
+              "Record which PPE and safety controls are required (PPE is last in the hierarchy of control).",
           },
           {
-            title: "4. Opplær personell",
+            title: "4. Train people",
             description:
-              "Alle som bruker kjemikalier må ha opplæring. Koble til opplæringsmodulen.",
+              "Everyone who uses hazardous substances must be trained. Link to the training module.",
           },
           {
-            title: "5. Hold oppdatert",
+            title: "5. Keep it current",
             description:
-              "Sikkerhetsdatablad skal oppdateres når leverandør sender nye versjoner.",
+              "Update safety data sheets when the supplier issues a new version.",
           },
         ],
       },
     ],
     isoStandards: [
-      "ISO 45001 (HMS): Krav 8.1.3 - Håndtering av farlige stoffer",
-      "ISO 14001 (Miljø): Krav 8.1 - Miljøaspekter knyttet til kjemikalier",
+      "ISO 45001 (OH&S): clause 8.1.3 — management of change / hazardous substances",
+      "ISO 14001 (environment): clause 8.1 — environmental aspects linked to chemicals",
     ],
     tips: [
-      "Lagre sikkerhetsdatablad digitalt og gjør dem tilgjengelige for ansatte",
-      "Merk kjemikalier tydelig med farepiktogrammer",
-      "Erstatt farlige kjemikalier med mindre farlige alternativer når mulig",
-      "Gjennomgå kjemikalieoversikten årlig",
-      "Koble kjemikalier til risikovurderinger og inspeksjoner",
+      "Store safety data sheets digitally and make them available to employees",
+      "Label substances clearly with hazard pictograms",
+      "Substitute hazardous substances with less hazardous alternatives where reasonably practicable",
+      "Review the COSHH register annually",
+      "Link substances to risk assessments and inspections",
     ],
   },
 
   environment: {
-    title: "Miljøstyring",
-    description: "Kartlegg og håndter miljøaspekter og miljøpåvirkning",
+    title: "Environmental management",
+    description: "Identify and manage environmental aspects and impacts",
     sections: [
       {
-        heading: "Hva er miljøstyring?",
+        heading: "What is environmental management?",
         emoji: "🌍",
         content:
-          "Miljøstyring handler om å identifisere og håndtere organisasjonens påvirkning på miljøet. Dette inkluderer energiforbruk, utslipp, avfall, kjemikaliebruk og andre miljøaspekter.",
+          "Environmental management is identifying and controlling the organisation’s impact on the environment. That includes energy use, emissions, waste, chemical use and other environmental aspects.",
       },
       {
-        heading: "Hvorfor jobbe med miljøstyring?",
+        heading: "Why work on environmental management?",
         emoji: "♻️",
         items: [
           {
-            title: "Lovkrav",
+            title: "Legal duty",
             description:
-              "Forurensningsloven og ulike forskrifter stiller krav til miljøhåndtering.",
+              "Environmental Permitting, the Environmental Protection Act 1990 and related regulations set duties on pollution, waste and emissions. Check what applies to your sites.",
           },
           {
             title: "ISO 14001",
             description:
-              "Miljøsertifisering krever systematisk kartlegging og forbedring av miljøprestasjon.",
+              "Environmental certification requires systematic identification and improvement of environmental performance.",
           },
           {
-            title: "Samfunnsansvar",
+            title: "Social responsibility",
             description:
-              "Bidra til bærekraftig utvikling og redusert miljøbelastning.",
+              "Contribute to sustainable development and reduced environmental impact.",
           },
           {
-            title: "Økonomi",
+            title: "Cost",
             description:
-              "Redusert energiforbruk og avfall gir ofte kostnadsbesparelser.",
+              "Lower energy use and less waste often reduce costs.",
           },
         ],
       },
       {
-        heading: "Slik bruker du miljømodulen",
+        heading: "How to use the environment module",
         emoji: "📊",
         items: [
           {
-            title: "1. Identifiser miljøaspekter",
+            title: "1. Identify environmental aspects",
             description:
-              "Kartlegg alle aktiviteter som påvirker miljøet: energi, avfall, utslipp, transport, kjemikalier.",
+              "Map all activities that affect the environment: energy, waste, emissions, transport, chemicals.",
           },
           {
-            title: "2. Vurder betydning",
+            title: "2. Assess significance",
             description:
-              "Prioriter de miljøaspektene som har størst påvirkning eller er regulert av lov.",
+              "Prioritise the aspects with the greatest impact or that are regulated by law.",
           },
           {
-            title: "3. Sett miljømål",
+            title: "3. Set environmental objectives",
             description:
-              "Definer konkrete mål for reduksjon av miljøbelastning, f.eks. 'Redusere energiforbruk med 15% innen 2027'.",
+              "Define concrete objectives to reduce impact, for example ‘Reduce energy use by 15% by 2027’.",
           },
           {
-            title: "4. Overvåk og rapporter",
+            title: "4. Monitor and report",
             description:
-              "Mål forbruk og utslipp regelmessig. Rapporter fremgang mot mål.",
+              "Measure consumption and emissions regularly. Report progress against objectives.",
           },
         ],
       },
     ],
     isoStandards: [
-      "ISO 14001: Miljøstyringssystemer – krav og veiledning",
-      "ISO 14004: Retningslinjer for implementering av miljøstyringssystem",
-      "ISO 50001: Energistyringssystemer (frivillig)",
+      "ISO 14001: environmental management systems — requirements with guidance",
+      "ISO 14004: guidelines for implementing an environmental management system",
+      "ISO 50001: energy management systems (optional)",
     ],
     tips: [
-      "Start med å kartlegge de mest åpenbare miljøaspektene: avfall, energi, transport",
-      "Involver ansatte – de har ofte gode ideer til miljøforbedringer",
-      "Kombiner miljø- og HMS-vurderinger for kjemikalier",
-      "Sett opp målere for å følge forbruk og utslipp over tid",
-      "Gjennomgå miljøaspekter årlig eller ved endringer",
+      "Start by mapping the most obvious environmental aspects: waste, energy, transport",
+      "Involve employees — they often have good ideas for environmental improvements",
+      "Combine environmental and health and safety assessments for chemicals (COSHH)",
+      "Set up meters to track consumption and emissions over time",
+      "Review environmental aspects annually or when things change",
     ],
   },
 
   wellbeing: {
-    title: "Psykososialt arbeidsmiljø",
-    description: "Kartlegg og forbedre det psykososiale arbeidsmiljøet",
+    title: "Psychosocial working environment",
+    description: "Assess and improve the psychosocial working environment",
     sections: [
       {
-        heading: "Hva er psykososialt arbeidsmiljø?",
+        heading: "What is the psychosocial working environment?",
         emoji: "💚",
         content:
-          "Psykososialt arbeidsmiljø omfatter faktorer som arbeidsmengde, kontroll, støtte, rolleavklaring, konflikter og trivsel. Det handler om hvordan organisering og ledelse påvirker ansattes psykiske helse og velvære.",
+          "The psychosocial working environment covers factors such as workload, control, support, role clarity, conflict and wellbeing. It is about how organisation and management affect employees’ mental health and wellbeing. Employers must protect employees from work-related stress so far as is reasonably practicable (HSWA 1974 s.2; MHSWR 1999).",
       },
       {
-        heading: "Hvorfor er det viktig?",
+        heading: "Why does it matter?",
         emoji: "🧠",
         items: [
           {
-            title: "Lovpålagt",
+            title: "Legal duty",
             description:
-              "Arbeidsmiljøloven § 4-3 pålegger arbeidsgiver å forebygge psykiske og fysiske helseskader.",
+              "HSWA 1974 s.2 and MHSWR 1999 require employers to assess and control risks to mental as well as physical health. Follow the HSE Management Standards for work-related stress.",
           },
           {
-            title: "Høyt sykefravær",
+            title: "Sickness absence",
             description:
-              "Psykiske plager er en av de vanligste årsakene til langvarig sykefravær.",
+              "Work-related stress and mental ill health are among the most common causes of long-term absence.",
           },
           {
             title: "ISO 45003",
             description:
-              "Ny standard for psykososial risikohåndtering gir retningslinjer for systematisk arbeid.",
+              "Guidance on managing psychosocial risk in the occupational health and safety management system.",
           },
           {
-            title: "Bedre resultater",
+            title: "Better results",
             description:
-              "Godt psykososialt arbeidsmiljø øker engasjement, produktivitet og trivsel.",
+              "A healthy psychosocial working environment increases engagement, productivity and wellbeing.",
           },
         ],
       },
       {
-        heading: "Slik jobber du med psykososialt arbeidsmiljø",
+        heading: "How to work on the psychosocial working environment",
         emoji: "🔧",
         items: [
           {
-            title: "1. Kartlegg med spørreundersøkelser",
+            title: "1. Survey with questionnaires",
             description:
-              "Gjennomfør strukturerte undersøkelser om arbeidsmengde, kontroll, støtte, mobbing, trakassering.",
+              "Run structured surveys on demands, control, support, bullying and harassment. The HSE Management Standards Indicator Tool is a recognised option.",
           },
           {
-            title: "2. Identifiser risikofaktorer",
+            title: "2. Identify risk factors",
             description:
-              "Analyser svarene og identifiser områder med høy belastning eller risiko.",
+              "Analyse the answers and identify areas of high demand or risk.",
           },
           {
-            title: "3. Involver ansatte i tiltak",
+            title: "3. Involve employees in actions",
             description:
-              "Diskuter resultatene åpent og la ansatte være med på å finne løsninger.",
+              "Discuss results openly and let employees help find solutions (consultation: SRSCWR 1977 / HSCER 1996).",
           },
           {
-            title: "4. Følg opp systematisk",
+            title: "4. Follow up systematically",
             description:
-              "Sett inn tiltak, evaluer effekt og gjenta undersøkelsen jevnlig (årlig eller annethvert år).",
+              "Put actions in place, evaluate effect and repeat the survey regularly (annually or every other year).",
           },
         ],
       },
     ],
     isoStandards: [
-      "ISO 45003: Psykososial risikohåndtering i arbeidsmiljøet",
-      "ISO 45001 (HMS): Omfatter også psykososiale faktorer",
-      "ISO 10002: Håndtering av klager (også fra ansatte)",
+      "ISO 45003: occupational health and safety management — psychological health and safety at work",
+      "ISO 45001 (OH&S): also covers psychosocial factors",
+      "ISO 10002: complaints handling (including from employees)",
     ],
     tips: [
-      "Bruk validerte spørreundersøkelser som QPSNordic eller lignende",
-      "Gjennomfør undersøkelsen anonymt for å få ærlige svar",
-      "Kommuniser resultatene åpent til alle ansatte",
-      "Kombiner kvantitative data (spørreundersøkelser) med kvalitative (samtaler, vernerunder)",
-      "Gjennomfør undersøkelsen årlig for å følge trender",
+      "Use a validated survey such as the HSE Management Standards Indicator Tool",
+      "Run the survey anonymously so people can answer honestly",
+      "Communicate the results openly to all employees",
+      "Combine quantitative data (surveys) with qualitative (conversations, workplace inspections)",
+      "Run the survey annually so you can follow trends",
     ],
   },
 
   bcm: {
-    title: "Beredskap og kontinuitet (BCM)",
-    description: "Sikre virksomhetens evne til å håndtere kriser og fortsette drift",
+    title: "Emergency preparedness and continuity (BCM)",
+    description: "Protect the organisation’s ability to handle crises and keep operating",
     sections: [
       {
-        heading: "Hva er BCM?",
+        heading: "What is BCM?",
         emoji: "🛡️",
         content:
-          "Business Continuity Management (BCM) handler om å sikre at organisasjonen kan fortsette å levere kritiske tjenester selv ved alvorlige hendelser som brann, IT-utfall, pandemi eller andre kriser.",
+          "Business Continuity Management (BCM) is about ensuring the organisation can keep delivering critical services even in serious events such as fire, IT outage, pandemic or other crises. Fire precautions sit under the Regulatory Reform (Fire Safety) Order 2005 (responsible person, fire risk assessment, drills).",
       },
       {
-        heading: "Hvorfor er det viktig?",
+        heading: "Why does it matter?",
         emoji: "🚨",
         items: [
           {
-            title: "Redusere konsekvenser",
+            title: "Reduce consequences",
             description:
-              "Minimerer tap av tid, penger og omdømme ved kriser.",
+              "Minimises loss of time, money and reputation in a crisis.",
           },
           {
-            title: "Økt motstandsdyktighet",
+            title: "Greater resilience",
             description:
-              "Gjør organisasjonen robust og i stand til å håndtere det uventede.",
+              "Makes the organisation robust and able to handle the unexpected.",
           },
           {
             title: "ISO 22301",
             description:
-              "Internasjonal standard for kontinuitetsstyring gir strukturert rammeverk.",
+              "The international standard for business continuity management provides a structured framework.",
           },
           {
-            title: "Kundetillit",
+            title: "Customer confidence",
             description:
-              "Viser at dere tar ansvar og har kontroll.",
+              "Shows that you take responsibility and have control.",
           },
         ],
       },
       {
-        heading: "Hvordan bruke BCM-modulen",
+        heading: "How to use the BCM module",
         emoji: "📋",
         items: [
           {
-            title: "1. Identifiser kritiske prosesser",
+            title: "1. Identify critical processes",
             description:
-              "Hvilke prosesser er avgjørende for å levere tjenester? Hva skjer hvis de stopper?",
+              "Which processes are essential to delivering services? What happens if they stop?",
           },
           {
-            title: "2. Gjennomfør BIA",
+            title: "2. Carry out a BIA",
             description:
-              "Business Impact Analysis: Vurder konsekvenser av driftsavbrudd og definer akseptabel nedetid (RTO).",
+              "Business Impact Analysis: assess the consequences of disruption and define acceptable downtime (RTO).",
           },
           {
-            title: "3. Lag beredskapsplaner",
+            title: "3. Write emergency and continuity plans",
             description:
-              "Dokumenter hvordan dere gjenoppretter drift: backup, alternativt utstyr, kommunikasjon.",
+              "Document how you restore operations: backup, alternative equipment, communications. Include fire drills under the Fire Safety Order 2005.",
           },
           {
-            title: "4. Øv og test",
+            title: "4. Practise and test",
             description:
-              "Gjennomfør regelmessige øvelser for å sikre at planene fungerer.",
+              "Run regular exercises to make sure the plans work.",
           },
         ],
       },
     ],
     isoStandards: [
       "ISO 22301: Business Continuity Management Systems (BCMS)",
-      "ISO 27001 (IT-sikkerhet): Krav A.17 - Informasjonssikkerhet i BCM",
+      "ISO 27001 (information security): clause A.17 — information security in BCM",
     ],
     tips: [
-      "Start med å identifisere 3-5 kritiske prosesser",
-      "Lag kontaktlister for kriseteam og nøkkelpersonell",
-      "Dokumenter backup-løsninger for IT, lokaler og utstyr",
-      "Gjennomfør minst én BCM-øvelse i året",
-      "Oppdater beredskapsplanene ved endringer i organisasjonen",
+      "Start by identifying 3–5 critical processes",
+      "Keep contact lists for the crisis team and key personnel",
+      "Document backup arrangements for IT, premises and equipment",
+      "Run at least one BCM exercise a year",
+      "Update emergency plans when the organisation changes",
     ],
   },
 
   "annual-hms-plan": {
-    title: "Årlig HMS-plan",
-    description: "Steg-for-steg sjekkliste som samler alle lov- og standardkrav – huk av når hvert steg er fullført",
+    title: "Annual H&S plan",
+    description: "A step-by-step checklist that gathers legal and standards duties — tick each step when it is complete",
     sections: [
       {
-        heading: "Hva er årlig HMS-plan?",
+        heading: "What is the annual H&S plan?",
         emoji: "📆",
         content:
-          "Årlig HMS-plan er en sjekkliste med alle viktige HMS-krav for året. Du går steg for steg gjennom listen og huker av når hvert punkt er fullført. Når hele listen er avkrysset, har dere dokumentert at årets krav er oppfylt – uten å måtte sette dere inn i alle lover og standarder selv.",
+          "The annual H&S plan is a checklist of the important health and safety duties for the year. You work through the list and tick each item when it is complete. When the whole list is ticked, you have evidence that this year’s duties are met — without having to interpret every statute and standard yourself.",
       },
       {
-        heading: "Hvilke krav dekker planen?",
+        heading: "Which duties does the plan cover?",
         emoji: "⚖️",
         items: [
           {
-            title: "Norsk lovverk",
+            title: "UK law and HSE guidance",
             description:
-              "Arbeidsmiljøloven, Internkontrollforskriften, Forskrift om organisering, ledelse og medvirkning, Kjemikalieforskriften og Brann-/EL-krav krever systematisk, planlagt HMS-arbeid med dokumentasjon.",
+              "HSWA 1974 (including a written policy where there are five or more employees — statement, organisation and arrangements), MHSWR 1999, RIDDOR 2013, COSHH 2002, CDM 2015 where construction applies, and the Fire Safety Order 2005 require planned, systematic health and safety work with records.",
           },
           {
-            title: "Ledelsens gjennomgåelse",
+            title: "Management review",
             description:
-              "Minst årlig, med dokumentert vurdering av mål, resultater, avvik, risiko, ressurser og forbedringstiltak.",
+              "At least annually, with a documented review of objectives, results, incidents, risk, resources and improvement actions.",
           },
           {
-            title: "Årlig risikovurdering",
+            title: "Annual risk assessment",
             description:
-              "Systematisk gjennomgang av arbeidsmiljørisiko, inkludert fysiske, kjemiske, ergonomiske og psykososiale forhold.",
+              "A systematic review of workplace risk, including physical, chemical, ergonomic and psychosocial factors (MHSWR 1999 — suitable and sufficient).",
           },
           {
-            title: "Kontroll og revisjon",
+            title: "Monitoring and audit",
             description:
-              "Vernerunder, internrevisjoner, oppfølging av funn og tiltak, og jevnlig gjennomgang av dokumenter og stoffkartotek.",
+              "Workplace inspections, internal audits, follow-up of findings and actions, and regular review of documents and the COSHH register.",
           },
         ],
       },
       {
-        heading: "Hvordan bruke sjekklisten?",
+        heading: "How to use the checklist",
         emoji: "🔧",
         items: [
           {
-            title: "1. Gå gjennom stegene i rekkefølge",
+            title: "1. Work through the steps in order",
             description:
-              "Les beskrivelsen og kravet for hvert steg. Fullfør arbeidet (f.eks. gjennomfør ledelsens gjennomgang, oppdater risikovurderingen) i den tilknyttede modulen.",
+              "Read the description and duty for each step. Complete the work (for example run management review, update the risk assessment) in the linked module.",
           },
           {
-            title: "2. Huk av når steget er fullført",
+            title: "2. Tick when the step is complete",
             description:
-              "Kryss av i sjekklisten når dere har gjennomført og dokumentert steget. Dato og bruker lagres automatisk.",
+              "Tick the checklist when you have completed and recorded the step. Date and user are stored automatically.",
           },
           {
-            title: "3. Bruk «Gå til modul»-lenkene",
+            title: "3. Use the ‘Go to module’ links",
             description:
-              "Hvert steg har en lenke til den relevante delen av HMS Nova (dokumenter, vernerunder, revisjoner osv.) slik at du kommer raskt til riktig sted.",
+              "Each step links to the relevant part of HSEQ Nova (documents, workplace inspections, audits, and so on) so you get to the right place quickly.",
           },
           {
-            title: "4. Når alle steg er avkrysset",
+            title: "4. When every step is ticked",
             description:
-              "Da har dere dokumentert at årets HMS-krav er oppfylt. God for både internkontroll og ev. sertifisering.",
+              "You then have evidence that this year’s health and safety duties are met. Useful for internal assurance and for certification.",
           },
         ],
       },
     ],
     isoStandards: [
-      "ISO 45001 (HMS): 6.1, 6.2, 9.1, 9.2, 9.3 og 10.2 – planlagt, systematisk HMS-arbeid gjennom året",
-      "ISO 9001 (Kvalitet): 6.2, 9.1, 9.2 og 9.3 – mål, overvåking, internrevisjon og ledelsens gjennomgåelse",
-      "ISO 14001 (Miljø): 6.1, 6.2, 9.1, 9.2 og 9.3 – miljøaspekter, mål, overvåking og ledelsens gjennomgåelse",
-      "ISO 27001 (Informasjonssikkerhet): 9.1, 9.2 og 9.3 – overvåking, internrevisjon og ledelsens gjennomgåelse",
+      "ISO 45001 (OH&S): 6.1, 6.2, 9.1, 9.2, 9.3 and 10.2 — planned, systematic OH&S work through the year",
+      "ISO 9001 (quality): 6.2, 9.1, 9.2 and 9.3 — objectives, monitoring, internal audit and management review",
+      "ISO 14001 (environment): 6.1, 6.2, 9.1, 9.2 and 9.3 — aspects, objectives, monitoring and management review",
+      "ISO 27001 (information security): 9.1, 9.2 and 9.3 — monitoring, internal audit and management review",
     ],
     tips: [
-      "Bruk årshjulet som fast punkt i ledermøter og HMS-utvalg.",
-      "Sørg for at alle lovpålagte aktiviteter ligger inne med dato og ansvarlig.",
-      "Tilpass frekvensen på aktiviteter etter virksomhetens risiko – høyrisiko oftere.",
-      "Bruk rapportene fra året (hendelser, tiltak, målinger) som input til ledelsens gjennomgåelse.",
-      "Evaluer den årlige planen hver vinter og juster årshjulet for neste år.",
+      "Use the annual cycle as a standing item in management meetings and the safety committee.",
+      "Make sure every legally required activity has a date and an owner.",
+      "Match the frequency of activities to the organisation’s risk — high risk more often.",
+      "Use the year’s reports (incidents, actions, measurements) as input to management review.",
+      "Evaluate the annual plan each winter and adjust the cycle for the next year.",
     ],
   },
 
   whistleblowing: {
-    title: "Varsling",
-    description: "Håndter varslingssaker i henhold til varslerloven",
+    title: "Whistleblowing",
+    description: "Handle whistleblowing cases in line with PIDA 1998",
     sections: [
       {
-        heading: "Hva er varsling?",
+        heading: "What is whistleblowing?",
         emoji: "📢",
         content:
-          "Varsling er når en arbeidstaker melder fra om kritikkverdige forhold i virksomheten, som brudd på lov, etiske regler, fare for liv og helse, eller miljøskade.",
+          "Whistleblowing is when a worker raises a concern about wrongdoing in the organisation, such as a breach of the law, danger to life or health, or environmental harm. Qualifying disclosures are protected under the Public Interest Disclosure Act 1998 (PIDA).",
       },
       {
-        heading: "Hvorfor er det viktig?",
+        heading: "Why does it matter?",
         emoji: "⚖️",
         items: [
           {
-            title: "Lovpålagt",
+            title: "Legal protection",
             description:
-              "Arbeidsmiljøloven § 2A og varslerloven krever varslingssystem og vern mot gjengjeldelse.",
+              "PIDA 1998 protects workers who make a qualifying disclosure in the public interest. Detriment or dismissal for whistleblowing is unlawful. A clear internal channel is good practice.",
           },
           {
-            title: "Avdekke alvorlige forhold",
+            title: "Uncover serious issues",
             description:
-              "Varsling kan avsløre korrupsjon, svindel, HMS-brudd eller diskriminering.",
+              "Whistleblowing can reveal corruption, fraud, health and safety breaches or discrimination.",
           },
           {
-            title: "Beskytte varsleren",
+            title: "Protect the whistleblower",
             description:
-              "Systemet sikrer at varsler kan melde fra trygt uten frykt for represalier.",
+              "The system helps people raise concerns safely without fear of reprisal.",
           },
           {
-            title: "Bygge tillit",
+            title: "Build trust",
             description:
-              "Viser at organisasjonen tar ansvar og vil rette opp feil.",
+              "Shows that the organisation takes responsibility and will put things right.",
           },
         ],
       },
       {
-        heading: "Hvordan håndtere varslingssaker",
+        heading: "How to handle whistleblowing cases",
         emoji: "🔧",
         items: [
           {
-            title: "1. Sikre konfidensialitet",
+            title: "1. Protect confidentiality",
             description:
-              "Varslerens identitet skal beskyttes. Begrens tilgang til saken.",
+              "Protect the whistleblower’s identity. Restrict access to the case.",
           },
           {
-            title: "2. Motta og registrer",
+            title: "2. Receive and record",
             description:
-              "Logg saken trygt. Bekreft mottak til varsler innen rimelig tid.",
+              "Log the case securely. Acknowledge receipt to the whistleblower within a reasonable time.",
           },
           {
-            title: "3. Undersøk grundig",
+            title: "3. Investigate thoroughly",
             description:
-              "Gjennomfør objektiv granskning. Høre alle berørte parter.",
+              "Carry out an objective investigation. Hear all parties affected.",
           },
           {
-            title: "4. Iverksett tiltak",
+            title: "4. Put actions in place",
             description:
-              "Basert på funn: Korrigerende tiltak, disiplinærtiltak, eller avklaring om intet galt skjedde.",
+              "Based on findings: corrective action, disciplinary action, or confirmation that nothing was wrong.",
           },
           {
-            title: "5. Tilbakemelding",
+            title: "5. Feedback",
             description:
-              "Informer varsler om sakens utfall i henhold til lovkrav.",
+              "Tell the whistleblower the outcome of the case, as far as the law allows.",
           },
         ],
       },
     ],
     isoStandards: [
-      "ISO 37002: Ledelsessystemer for varsling (Whistleblowing)",
-      "ISO 37001: Anti-korrupsjonsstyring",
+      "ISO 37002: whistleblowing management systems",
+      "ISO 37001: anti-bribery management systems",
     ],
     tips: [
-      "Lag tydelig varslingsrutine og kommuniser den til alle ansatte",
-      "Tilby både intern kanal og ekstern tredjepart for varsling",
-      "Tren ledere og HR i varslingshåndtering",
-      "Beskytt varsler mot gjengjeldelse – dette er lovpålagt",
-      "Dokumenter hele prosessen grundig",
+      "Write a clear whistleblowing procedure and communicate it to all employees",
+      "Offer both an internal channel and an external third party where appropriate",
+      "Train managers and HR in handling whistleblowing",
+      "Protect whistleblowers from detriment — this is required under PIDA 1998",
+      "Record the whole process thoroughly",
     ],
   },
 
   complaints: {
-    title: "Klagebehandling",
-    description: "Håndter klager fra kunder og interessenter systematisk",
+    title: "Complaints handling",
+    description: "Handle complaints from customers and other interested parties systematically",
     sections: [
       {
-        heading: "Hva er klagebehandling?",
+        heading: "What is complaints handling?",
         emoji: "📞",
         content:
-          "Klagebehandling handler om å motta, dokumentere og følge opp tilbakemeldinger og klager fra kunder, brukere eller andre interessenter på en strukturert og rettferdig måte.",
+          "Complaints handling is receiving, recording and following up feedback and complaints from customers, users or other interested parties in a structured and fair way.",
       },
       {
-        heading: "Hvorfor er det viktig?",
+        heading: "Why does it matter?",
         emoji: "💬",
         items: [
           {
-            title: "Kundetilfredshet",
+            title: "Customer satisfaction",
             description:
-              "God klagehåndtering kan snu en misfornøyd kunde til en lojal ambassadør.",
+              "Good complaints handling can turn an unhappy customer into a loyal advocate.",
           },
           {
             title: "ISO 10002",
             description:
-              "Gir retningslinjer for effektiv og transparent klagebehandling.",
+              "Provides guidelines for effective and transparent complaints handling.",
           },
           {
-            title: "Kontinuerlig forbedring",
+            title: "Continual improvement",
             description:
-              "Klager avslører svakheter i produkter, tjenester eller prosesser.",
+              "Complaints reveal weaknesses in products, services or processes.",
           },
           {
-            title: "Omdømme",
+            title: "Reputation",
             description:
-              "Hvordan dere håndterer klager påvirker omdømmet betydelig.",
+              "How you handle complaints has a significant effect on reputation.",
           },
         ],
       },
       {
-        heading: "Hvordan håndtere klager",
+        heading: "How to handle complaints",
         emoji: "✅",
         items: [
           {
-            title: "1. Gjør det enkelt å klage",
+            title: "1. Make it easy to complain",
             description:
-              "Tydelig informasjon om hvordan kunder kan klage: e-post, telefon, skjema.",
+              "Clear information on how customers can complain: email, telephone, form.",
           },
           {
-            title: "2. Motta og bekreft",
+            title: "2. Receive and acknowledge",
             description:
-              "Bekreft mottak av klagen raskt og informer om videre prosess.",
+              "Acknowledge the complaint promptly and explain the next steps.",
           },
           {
-            title: "3. Undersøk saken",
+            title: "3. Investigate the case",
             description:
-              "Gjennomgå klagen objektivt. Innhent fakta og hør berørte parter.",
+              "Review the complaint objectively. Gather facts and hear the parties affected.",
           },
           {
-            title: "4. Gi svar og løsning",
+            title: "4. Give a response and a solution",
             description:
-              "Tilby en rettferdig løsning. Forklar beslutningen tydelig.",
+              "Offer a fair solution. Explain the decision clearly.",
           },
           {
-            title: "5. Lær og forbedre",
+            title: "5. Learn and improve",
             description:
-              "Analyser klager for å identifisere systemfeil og forbedringsområder.",
+              "Analyse complaints to identify system failings and improvement areas.",
           },
         ],
       },
     ],
     isoStandards: [
-      "ISO 10002: Ledelse av kundetilfredshet – klagebehandling",
-      "ISO 9001 (Kvalitet): Krav 9.1.2 - Kundetilfredshet",
+      "ISO 10002: quality management — customer satisfaction — guidelines for complaints handling",
+      "ISO 9001 (quality): clause 9.1.2 — customer satisfaction",
     ],
     tips: [
-      "Sett mål for svarfrister på klager (f.eks. 24 timer for bekreftelse)",
-      "Tren ansatte i god klagehåndtering og kundeservice",
-      "Analyser klagedata for å se trender og gjentakende problemer",
-      "Bruk klager som input til forbedringsarbeid og produktutvikling",
-      "Følg opp med kunden etter at saken er løst",
+      "Set targets for response times on complaints (for example 24 hours for acknowledgement)",
+      "Train employees in good complaints handling and customer service",
+      "Analyse complaints data to see trends and repeating problems",
+      "Use complaints as input to improvement work and product development",
+      "Follow up with the customer after the case is resolved",
     ],
   },
 
   feedback: {
-    title: "Tilbakemeldinger",
-    description: "Motta og følg opp tilbakemeldinger, forslag og innspill",
+    title: "Feedback",
+    description: "Receive and follow up feedback, suggestions and comments",
     sections: [
       {
-        heading: "Hva er tilbakemeldinger?",
+        heading: "What is feedback?",
         emoji: "💭",
         content:
-          "Tilbakemeldinger omfatter alle typer innspill fra ansatte, kunder eller andre interessenter: forbedringsforslag, ros, observasjoner eller ønsker.",
+          "Feedback covers all types of input from employees, customers or other interested parties: improvement suggestions, praise, observations or requests.",
       },
       {
-        heading: "Hvorfor samle tilbakemeldinger?",
+        heading: "Why collect feedback?",
         emoji: "🎯",
         items: [
           {
-            title: "Engasjere ansatte",
+            title: "Engage employees",
             description:
-              "Gir medarbeidere mulighet til å påvirke og bidra til forbedringer.",
+              "Gives people a way to influence and contribute to improvements.",
           },
           {
-            title: "Identifisere muligheter",
+            title: "Identify opportunities",
             description:
-              "Gode ideer kan komme fra alle nivåer i organisasjonen.",
+              "Good ideas can come from every level of the organisation.",
           },
           {
-            title: "Kontinuerlig forbedring",
+            title: "Continual improvement",
             description:
-              "Strukturert innsamling av tilbakemeldinger driver forbedringsarbeidet.",
+              "Structured collection of feedback drives improvement work.",
           },
           {
-            title: "ISO-ånd",
+            title: "ISO spirit",
             description:
-              "Alle ISO-standarder legger vekt på forbedring basert på data og tilbakemeldinger.",
+              "All ISO standards emphasise improvement based on data and feedback.",
           },
         ],
       },
       {
-        heading: "Hvordan bruke tilbakemeldingsmodulen",
+        heading: "How to use the feedback module",
         emoji: "📝",
         items: [
           {
-            title: "1. Gjør det enkelt å gi tilbakemelding",
+            title: "1. Make it easy to give feedback",
             description:
-              "Tydelig og tilgjengelig skjema. Lave terskler for å sende inn.",
+              "A clear, accessible form. Low barriers to submitting.",
           },
           {
-            title: "2. Motta og vurder",
+            title: "2. Receive and assess",
             description:
-              "Gjennomgå alle tilbakemeldinger. Prioriter de med størst potensial.",
+              "Review all feedback. Prioritise those with the greatest potential.",
           },
           {
-            title: "3. Følg opp",
+            title: "3. Follow up",
             description:
-              "Gi tilbakemelding til innsender om hva som skjer med forslaget.",
+              "Tell the person who submitted it what is happening with the suggestion.",
           },
           {
-            title: "4. Implementer gode ideer",
+            title: "4. Implement good ideas",
             description:
-              "Sett inn tiltak basert på verdifulle forslag og anerkjenn bidragsyterne.",
+              "Put actions in place based on valuable suggestions and recognise contributors.",
           },
         ],
       },
     ],
     isoStandards: [
-      "ISO 9001 (Kvalitet): Krav 10.3 - Kontinuerlig forbedring",
-      "ISO 45001 (HMS): Krav 5.4 - Konsultasjon og deltakelse av arbeidstakere",
+      "ISO 9001 (quality): clause 10.3 — continual improvement",
+      "ISO 45001 (OH&S): clause 5.4 — consultation and participation of workers",
     ],
     tips: [
-      "Anerkjenn og takk for alle tilbakemeldinger",
-      "Del gode eksempler på implementerte forslag",
-      "Gjennomgå tilbakemeldinger i ledermøter",
-      "Feire forbedringer som er basert på ansattes forslag",
-      "Kombiner digitale skjemaer med fysiske forslag-bokser",
+      "Acknowledge and thank people for all feedback",
+      "Share good examples of suggestions that were implemented",
+      "Review feedback in management meetings",
+      "Celebrate improvements based on employees’ suggestions",
+      "Combine digital forms with physical suggestion boxes",
     ],
   },
 
   settings: {
-    title: "Innstillinger",
-    description: "Administrer brukerkontoer, roller, varsler og systeminnstillinger",
+    title: "Settings",
+    description: "Company identity, notifications, Microsoft 365, billing and module access.",
     sections: [
       {
-        heading: "Hva er innstillinger?",
+        heading: "What is this page?",
         emoji: "⚙️",
         content:
-          "Her administrerer du brukere, roller, varsler, integrasjoner og generelle systeminnstillinger. Dette er kontrollpanelet for systemadministratorer.",
+          "Settings is the control panel for this company. People live under Users. Here you set company details, Simple menu, who can see records, notifications, Microsoft sign-in, Stripe billing and benchmarking.",
       },
       {
-        heading: "Viktige funksjoner",
+        heading: "Tabs",
         emoji: "🔧",
         items: [
           {
-            title: "Brukeradministrasjon",
+            title: "Company",
             description:
-              "Legg til nye brukere, definer roller (admin, leder, medarbeider) og administrer tilganger.",
+              "Companies House number, VAT, logo, competent person (MHSWR 1999 reg.7) and dashboard lock.",
           },
           {
-            title: "Roller og tilganger",
+            title: "Notifications",
             description:
-              "Styr hvem som kan se, redigere og godkjenne ulike typer data basert på rolle.",
+              "Email, text and digest for the accident book, inspections, training, actions, COSHH, documents, meetings and audits.",
           },
           {
-            title: "Varslingsoppsett",
+            title: "Microsoft 365",
             description:
-              "Konfigurer e-postvarsler for hendelser, tiltak, frister og godkjenninger.",
+              "Optional work-account sign-in. A global administrator grants consent once.",
           },
           {
-            title: "Organisasjonsdata",
+            title: "Subscription",
             description:
-              "Oppdater virksomhetsinformasjon, logo og kontaktopplysninger.",
+              "HSEQ Nova Core is per company, unlimited users, GBP excluding VAT. Manage payment in Stripe.",
           },
         ],
       },
       {
-        heading: "Import av brukere",
-        emoji: "📥",
+        heading: "Users",
+        emoji: "👥",
         items: [
           {
-            title: "1. Last ned Excel-eksempel",
+            title: "Users is a separate page",
             description:
-              "Klikk «Last ned Excel-eksempel» for å få en ferdig mal med kolonnene email, navn og rolle.",
+              "Invite, import and assign roles under Users in the menu, not here.",
           },
           {
-            title: "2. Fyll ut og importer",
+            title: "Roles",
             description:
-              "Bruk Excel (.xlsx) eller CSV. Gyldige roller: ANSATT, LEDER, HMS, VERNEOMBUD, BHT, REVISOR, ADMIN. Brukere legges til uten invitasjon.",
-          },
-          {
-            title: "3. Aktiver alle",
-            description:
-              "Etter import: Klikk «Aktiver alle» for å sende invitasjon med passord til alle importerte brukere på én gang, eller aktiver en og en under Handlinger.",
+              "Administrator, HSE manager, line manager, safety representative, employee, occupational health, auditor.",
           },
         ],
       },
       {
-        heading: "Best practices",
+        heading: "Good practice",
         emoji: "💡",
         items: [
           {
-            title: "Minste tilgangs-prinsippet",
-            description:
-              "Gi brukere bare de tilgangene de trenger for å utføre sine oppgaver.",
+            title: "Least privilege",
+            description: "Use Access so people only see other people’s records when their role needs it.",
           },
           {
-            title: "Gjennomgå tilganger regelmessig",
-            description:
-              "Fjern tilgang for ansatte som har sluttet eller byttet rolle.",
+            title: "Keep the competent person current",
+            description: "Employees see that name as the HSE contact.",
           },
           {
-            title: "Aktiver varsler",
-            description:
-              "Sørg for at relevante personer får varsler om viktige hendelser.",
-          },
-          {
-            title: "Sikre sterke passord",
-            description:
-              "Krev komplekse passord og vurder multi-faktor autentisering.",
+            title: "Turn on accident-book notifications",
+            description: "RIDDOR clocks start when someone is injured. The right people must be told the same day.",
           },
         ],
       },
     ],
     isoStandards: [
-      "ISO 27001 (IT-sikkerhet): Krav 9.2 - Tilgangskontroll",
-      "ISO 27001: Krav 9.4 - Gjennomgang av brukertilgang",
-      "GDPR: Krav om tilgangsstyring og logging",
+      "UK GDPR / DPA 2018: access control and logging",
+      "ISO 27001: access control and review of user access",
     ],
     tips: [
-      "Bruk «Aktiver alle» etter import for å sende invitasjoner til mange brukere samtidig",
-      "Dokumenter hvem som har hvilke roller og hvorfor",
-      "Logg alle administrative endringer for sporbarhet",
-      "Test varslingsfunksjonen for å sikre at e-poster kommer fram",
-      "Gjennomfør tilgangsgjennomgang minst én gang i året",
-      "Tren nye administratorer i systemets funksjoner",
+      "Keep the competent person name current",
+      "Test a notification after you change channels",
+      "Review Access when someone changes role",
+    ],
+  },
+
+  users: {
+    title: "Users",
+    description: "Invite employees, set roles and line managers for this company",
+    sections: [
+      {
+        heading: "What is user management?",
+        emoji: "👥",
+        content:
+          "This is where you add people to the company, set their role and record who their line manager is. HSWA s.2(3) requires the organisation of health and safety to be clear. Unlimited users per company.",
+      },
+      {
+        heading: "Roles",
+        emoji: "🔧",
+        items: [
+          {
+            title: "Administrator",
+            description:
+              "Full access for this company: users, billing, access matrix and Microsoft 365.",
+          },
+          {
+            title: "HSE manager / competent person",
+            description:
+              "MHSWR 1999 reg.7: the person appointed to assist with health and safety. Maps to the HMS role.",
+          },
+          {
+            title: "Line manager",
+            description:
+              "Day-to-day supervision and accident-book routing. Maps to the LEDER role.",
+          },
+          {
+            title: "Safety representative",
+            description:
+              "SRSCWR 1977 / HSCER 1996. Maps to the VERNEOMBUD role.",
+          },
+          {
+            title: "Employee",
+            description:
+              "Accident book, procedures and training that apply to their work.",
+          },
+          {
+            title: "Occupational health",
+            description:
+              "Read access plus incident and risk reporting. Maps to the BHT role.",
+          },
+          {
+            title: "Auditor",
+            description:
+              "Read-only access for audit and SSIP evidence. Maps to the REVISOR role.",
+          },
+        ],
+      },
+      {
+        heading: "Importing users",
+        emoji: "📥",
+        items: [
+          {
+            title: "1. Download the Excel example",
+            description:
+              "Use the template with columns for email, name, role, job title and line manager.",
+          },
+          {
+            title: "2. Complete and import",
+            description:
+              "Excel (.xlsx) or CSV. Users are added without sending an invitation until you activate them.",
+          },
+          {
+            title: "3. Activate",
+            description:
+              "Activate all, or one by one, to send an invitation with a temporary password.",
+          },
+        ],
+      },
+    ],
+    isoStandards: [
+      "HSWA 1974 s.2(3) — organisation of health and safety",
+      "ISO 27001: access control and review of user access",
+      "UK GDPR / DPA 2018: access control and logging",
+    ],
+    tips: [
+      "Give people only the access they need",
+      "Remove leavers promptly",
+      "Review access at least once a year",
     ],
   },
 
   electrical: {
-    title: "Samsvarserklæringer",
-    description: "Slik samler du samsvarserklæringer fra alle fag på ett sted.",
+    title: "Certificates of conformity",
+    description: "How to keep certificates of conformity from every trade in one place.",
     sections: [
       {
-        heading: "Hva er en samsvarserklæring?",
+        heading: "What is a certificate of conformity?",
         emoji: "📋",
         content:
-          "En samsvarserklæring dokumenterer at fagarbeid er utført i henhold til gjeldende regelverk. Autorisert personell (elektriker, rørlegger, ventilasjonstekniker m.fl.) skal utstede denne etter installasjon, endring eller kontroll.",
+          "A certificate of conformity records that specialist work has been carried out in line with the applicable regulations. Competent persons (electrician, plumber, ventilation engineer and others) issue this after installation, alteration or inspection.",
       },
       {
-        heading: "Kategorier",
+        heading: "Categories",
         emoji: "🏷️",
         items: [
           {
-            title: "Elektro",
+            title: "Electrical",
             description:
-              "Samsvarserklæringer etter NEK 400 / FEL – elektriske installasjoner, kontroller og verifikasjoner.",
+              "Electrical Installation Certificates and reports under BS 7671 (IET Wiring Regulations) and the Electricity at Work Regulations 1989 — installations, inspections and verification.",
           },
           {
-            title: "Rørlegger",
+            title: "Plumbing",
             description:
-              "Erklæringer for sanitær- og VVS-arbeid – rør, avløp, varmeanlegg.",
+              "Certificates for sanitary and mechanical services — pipework, drainage, heating.",
           },
           {
-            title: "Ventilasjon",
+            title: "Ventilation",
             description:
-              "Kontroller og erklæringer for ventilasjonsanlegg og luftkvalitet.",
+              "Inspections and certificates for ventilation plant and indoor air quality.",
           },
           {
-            title: "Brann",
+            title: "Fire",
             description:
-              "Samsvarserklæringer for brannalarmanlegg, slokkeanlegg og brannsikring.",
+              "Certificates for fire alarm systems, extinguishing systems and fire protection (Fire Safety Order 2005).",
           },
           {
-            title: "Annet",
+            title: "Other",
             description:
-              "Andre fagområder som krever dokumentert samsvar.",
+              "Other trades that require documented conformity.",
           },
         ],
       },
       {
-        heading: "Hvordan bruke modulen",
+        heading: "How to use the module",
         emoji: "🔧",
         items: [
           {
-            title: "Last opp erklæring",
+            title: "Upload a certificate",
             description:
-              "Klikk «Legg til», velg kategori, fyll inn tittel, firma, dato og last opp filen.",
+              "Click ‘Add’, choose a category, enter title, company and date, and upload the file.",
           },
           {
-            title: "Filtrer på fag",
+            title: "Filter by trade",
             description:
-              "Bruk kategori-knappene for å filtrere listen etter elektro, rørlegger, ventilasjon osv.",
+              "Use the category buttons to filter the list by electrical, plumbing, ventilation and so on.",
           },
           {
-            title: "Alle ansatte ser dokumentene",
+            title: "All employees can see the documents",
             description:
-              "Erklæringer er synlige for alle med lesetilgang, inkludert ansatte.",
+              "Certificates are visible to everyone with read access, including employees.",
           },
         ],
       },
     ],
     isoStandards: [
-      "FEL (Forskrift om elektriske lavspenningsanlegg) - krav om samsvarserklæring",
-      "NEK 400 - Elektriske lavspenningsinstallasjoner",
-      "Internkontrollforskriften - krav om dokumentasjon av teknisk sikkerhet",
-      "TEK17 - Tekniske krav til byggverk (sanitær, ventilasjon, brann)",
+      "Electricity at Work Regulations 1989 — duty to maintain electrical systems",
+      "BS 7671 — Requirements for Electrical Installations (IET Wiring Regulations)",
+      "Building Regulations — technical requirements for buildings (sanitary, ventilation, fire)",
+      "Regulatory Reform (Fire Safety) Order 2005 — fire safety records",
     ],
     tips: [
-      "Last opp erklæring umiddelbart etter at arbeidet er utført",
-      "Velg riktig kategori slik at erklæringene er enkle å finne igjen",
-      "Inkluder firma og dato for enkel sporing ved tilsyn",
-      "Oppbevar alle erklæringer digitalt – DLE og kommunen kan be om innsyn",
+      "Upload the certificate immediately after the work is done",
+      "Choose the right category so certificates are easy to find again",
+      "Include company and date for simple tracing at inspection",
+      "Keep all certificates digitally — the HSE, building control or the fire authority may ask to see them",
     ],
   },
 
   routines: {
-    title: "Rutiner og prosedyrer",
-    description: "Slik oppretter, vedlikeholder og reviderer du rutiner i HMS-systemet.",
+    title: "Procedures and arrangements",
+    description: "How to create, maintain and review procedures in the HSEQ system.",
     sections: [
       {
-        heading: "Hva er rutiner?",
+        heading: "What are procedures?",
         emoji: "📋",
         content:
-          "Rutiner beskriver hvordan virksomheten skal utføre bestemte oppgaver for å ivareta helse, miljø og sikkerhet. Internkontrollforskriften krever at virksomheten har dokumenterte rutiner som er kjent for alle ansatte.",
+          "Procedures describe how the organisation carries out specific tasks to protect health, safety and the environment. HSWA 1974 s.2 requires employers to have a written health and safety policy (where there are five or more employees) covering the statement of intent, organisation and arrangements. Procedures are those arrangements, and they must be known to the people who use them.",
       },
       {
-        heading: "Hvordan komme i gang",
+        heading: "How to get started",
         emoji: "🚀",
         items: [
           {
-            title: "Opprett fra mal",
+            title: "Create from a template",
             description:
-              "Klikk «Opprett fra mal» for å velge en ferdig rutinemal tilpasset din bransje. Du kan tilpasse innholdet etterpå.",
+              "Click ‘Create from template’ to choose a ready-made procedure template for your industry. You can adapt the content afterwards.",
           },
           {
-            title: "Fyll ut innholdet",
+            title: "Complete the content",
             description:
-              "Hver rutine har faste seksjoner: formål, omfang, ansvar, gjennomføring, dokumentasjon, avvik og oppfølging. Fyll ut det som er relevant.",
+              "Each procedure has fixed sections: purpose, scope, responsibility, method, records, incidents and follow-up. Complete what is relevant.",
           },
           {
-            title: "Sett ansvarlig",
+            title: "Assign an owner",
             description:
-              "Velg hvem i organisasjonen som er ansvarlig for at rutinen følges og holdes oppdatert.",
+              "Choose who in the organisation is responsible for the procedure being followed and kept up to date.",
           },
         ],
       },
       {
-        heading: "Revisjon – hold rutinene oppdatert",
+        heading: "Review — keep procedures current",
         emoji: "🔄",
         items: [
           {
-            title: "Revisjonsintervall",
+            title: "Review interval",
             description:
-              "Angi hvor ofte rutinen skal gjennomgås (f.eks. 12 måneder). Systemet varsler automatisk når fristen nærmer seg.",
+              "Set how often the procedure should be reviewed (for example 12 months). The system notifies you automatically when the date approaches.",
           },
           {
-            title: "Gjennomfør revisjon",
+            title: "Carry out a review",
             description:
-              "Åpne rutinen, klikk «Rediger», huk av «Registrer gjennomført revisjon» og velg dato. Status settes til gjeldende og neste frist beregnes automatisk.",
+              "Open the procedure, click ‘Edit’, tick ‘Record completed review’ and choose the date. Status is set to current and the next due date is calculated automatically.",
           },
           {
-            title: "Statusforklaring",
+            title: "Status explained",
             description:
-              "Aktiv = rutinen er gjeldende. Krever revisjon = fristen er passert og rutinen må gjennomgås. Kladd = ikke publisert ennå. Arkivert = ikke lenger i bruk.",
+              "Active = the procedure is current. Requires review = the due date has passed and the procedure must be reviewed. Draft = not published yet. Archived = no longer in use.",
           },
         ],
       },
       {
-        heading: "Kategori og organisering",
+        heading: "Category and organisation",
         emoji: "🏷️",
         content:
-          "Velg en kategori fra listen (f.eks. HMS-styring, Elektrisk sikkerhet, Bygg og anlegg) slik at rutinene er enkle å finne igjen. Hvis ingen passer, velg «Annet» og skriv din egen.",
+          "Choose a category from the list (for example HSEQ management, electrical safety, construction) so procedures are easy to find. If none fits, choose ‘Other’ and write your own.",
       },
       {
-        heading: "Opplastede rutiner",
+        heading: "Uploaded procedures",
         emoji: "📎",
         content:
-          "Har du rutiner som PDF eller Word-filer? Last dem opp under «Egne rutiner og instrukser» slik at alle med tilgang kan åpne dem direkte fra systemet.",
+          "Do you have procedures as PDF or Word files? Upload them under ‘Own procedures and instructions’ so everyone with access can open them directly from the system.",
       },
     ],
     isoStandards: [
-      "Internkontrollforskriften (IK-HMS) - krav til dokumenterte rutiner",
-      "ISO 45001:2018 - Kap. 8.1: Driftsplanlegging og -styring",
-      "ISO 9001:2015 - Kap. 8.1: Driftsplanlegging og -styring",
-      "Arbeidsmiljoloven - krav til systematisk HMS-arbeid",
+      "HSWA 1974 s.2 — written policy: statement, organisation and arrangements",
+      "ISO 45001:2018 — clause 8.1: operational planning and control",
+      "ISO 9001:2015 — clause 8.1: operational planning and control",
+      "MHSWR 1999 — arrangements for effective planning, organisation, control, monitoring and review",
     ],
     tips: [
-      "Start med de viktigste rutinene for din bransje – malbiblioteket foreslår relevante maler",
-      "Sett revisjonsintervall til 12 måneder som standard – juster ved behov",
-      "Involver verneombud og ansatte når rutiner oppdateres",
-      "Bruk «Registrer gjennomført revisjon» for å dokumentere at rutinen er gjennomgått",
-      "Sørg for at alle ansatte har lest og forstått rutinene som gjelder dem",
+      "Start with the most important procedures for your industry — the template library suggests relevant templates",
+      "Set the review interval to 12 months as standard — adjust if needed",
+      "Involve the safety representative and employees when procedures are updated",
+      "Use ‘Record completed review’ to show that the procedure has been reviewed",
+      "Make sure all employees have read and understood the procedures that apply to them",
     ],
   },
 };

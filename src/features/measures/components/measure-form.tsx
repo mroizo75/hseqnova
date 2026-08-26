@@ -28,18 +28,18 @@ import { Plus } from "lucide-react";
 import type { ControlFrequency, MeasureCategory } from "@prisma/client";
 
 const categoryOptions: Array<{ value: MeasureCategory; label: string }> = [
-  { value: "CORRECTIVE", label: "Korrigerende" },
-  { value: "PREVENTIVE", label: "Forebyggende" },
-  { value: "IMPROVEMENT", label: "Forbedring" },
-  { value: "MITIGATION", label: "Risikoreduserende" },
+  { value: "CORRECTIVE", label: "Corrective" },
+  { value: "PREVENTIVE", label: "Preventive" },
+  { value: "IMPROVEMENT", label: "Improvement" },
+  { value: "MITIGATION", label: "Risk reduction" },
 ];
 
 const frequencyOptions: Array<{ value: ControlFrequency; label: string }> = [
-  { value: "WEEKLY", label: "Ukentlig" },
-  { value: "MONTHLY", label: "Månedlig" },
-  { value: "QUARTERLY", label: "Kvartalsvis" },
-  { value: "ANNUAL", label: "Årlig" },
-  { value: "BIENNIAL", label: "Annet hvert år" },
+  { value: "WEEKLY", label: "Weekly" },
+  { value: "MONTHLY", label: "Monthly" },
+  { value: "QUARTERLY", label: "Quarterly" },
+  { value: "ANNUAL", label: "Annual" },
+  { value: "BIENNIAL", label: "Every two years" },
 ];
 
 interface MeasureFormProps {
@@ -49,6 +49,7 @@ interface MeasureFormProps {
   incidentId?: string;
   auditId?: string;
   goalId?: string;
+  fireDrillId?: string;
   users: Array<{ id: string; name: string | null; email: string }>;
   trigger?: React.ReactNode;
 }
@@ -60,6 +61,7 @@ export function MeasureForm({
   incidentId,
   auditId,
   goalId,
+  fireDrillId,
   users,
   trigger,
 }: MeasureFormProps) {
@@ -80,6 +82,7 @@ export function MeasureForm({
       incidentId,
       auditId,
       goalId,
+      fireDrillId,
       title: formData.get("title") as string,
       description: formData.get("description") as string,
       dueAt: formData.get("dueAt") as string,
@@ -96,8 +99,8 @@ export function MeasureForm({
 
       if (result.success) {
         toast({
-          title: "✅ Tiltak opprettet",
-          description: "Tiltaket er lagt til og ansvarlig person vil bli varslet",
+          title: "Action created",
+          description: "The owner will be notified",
           className: "bg-green-50 border-green-200",
         });
         setOpen(false);
@@ -105,15 +108,15 @@ export function MeasureForm({
       } else {
         toast({
           variant: "destructive",
-          title: "Feil",
-          description: result.error || "Kunne ikke opprette tiltak",
+          title: "Error",
+          description: result.error || "Could not create the action",
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Uventet feil",
-        description: "Noe gikk galt",
+        title: "Unexpected error",
+        description: "Something went wrong",
       });
     } finally {
       setLoading(false);
@@ -126,41 +129,46 @@ export function MeasureForm({
         {trigger || (
           <Button>
             <Plus className="mr-2 h-4 w-4" />
-            Nytt tiltak
+            Add further action
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
         <DialogHeader>
-          <DialogTitle>Nytt tiltak</DialogTitle>
+          <DialogTitle>Add further action</DialogTitle>
           <DialogDescription>
-            ISO 9001: Tiltak må ha ansvarlig person, frist og tydelig beskrivelse
+            Extra control needed to reduce the risk — person responsible and due date (MHSWR 1999).
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {projectId ? (
             <div className="rounded border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">
-              Tiltaket blir koblet til valgt prosjekt.
+              This action will be linked to the selected project.
+            </div>
+          ) : null}
+          {fireDrillId ? (
+            <div className="rounded border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">
+              This action will be linked to the selected fire drill.
             </div>
           ) : null}
           <div className="space-y-2">
-            <Label htmlFor="title">Tittel *</Label>
+            <Label htmlFor="title">Title *</Label>
             <Input
               id="title"
               name="title"
-              placeholder="F.eks. Installere gelender på tak"
+              placeholder="e.g. Fit a guardrail on the roof"
               required
               disabled={loading}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Beskrivelse</Label>
+            <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
               name="description"
-              placeholder="Beskriv hva som skal gjøres, hvordan, og eventuelle ressurser som trengs"
+              placeholder="What will be done, how, and any resources needed"
               disabled={loading}
               rows={3}
             />
@@ -168,10 +176,10 @@ export function MeasureForm({
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="category">Tiltakstype *</Label>
-              <Select name="category" defaultValue="CORRECTIVE" disabled={loading}>
+              <Label htmlFor="category">Action type *</Label>
+              <Select name="category" defaultValue="MITIGATION" disabled={loading}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg type" />
+                  <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
                   {categoryOptions.map((option) => (
@@ -183,10 +191,10 @@ export function MeasureForm({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="followUpFrequency">Oppfølging *</Label>
+              <Label htmlFor="followUpFrequency">Follow-up *</Label>
               <Select name="followUpFrequency" defaultValue="ANNUAL" disabled={loading}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg frekvens" />
+                  <SelectValue placeholder="Select frequency" />
                 </SelectTrigger>
                 <SelectContent>
                   {frequencyOptions.map((option) => (
@@ -201,22 +209,22 @@ export function MeasureForm({
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="costEstimate">Kostnadsestimat (NOK)</Label>
+              <Label htmlFor="costEstimate">Cost estimate (GBP)</Label>
               <Input
                 id="costEstimate"
                 name="costEstimate"
-                placeholder="F.eks. 15000"
+                placeholder="e.g. 1500"
                 type="number"
                 min={0}
                 disabled={loading}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="benefitEstimate">Forventet effekt (poeng)</Label>
+              <Label htmlFor="benefitEstimate">Expected benefit (points)</Label>
               <Input
                 id="benefitEstimate"
                 name="benefitEstimate"
-                placeholder="F.eks. 30"
+                placeholder="e.g. 30"
                 type="number"
                 min={0}
                 disabled={loading}
@@ -226,10 +234,10 @@ export function MeasureForm({
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="responsibleId">Ansvarlig person *</Label>
+              <Label htmlFor="responsibleId">Owner *</Label>
               <Select name="responsibleId" required disabled={loading}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg ansvarlig" />
+                  <SelectValue placeholder="Select owner" />
                 </SelectTrigger>
                 <SelectContent>
                   {users.map((user) => (
@@ -242,7 +250,7 @@ export function MeasureForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="dueAt">Frist *</Label>
+              <Label htmlFor="dueAt">Due date *</Label>
               <Input
                 id="dueAt"
                 name="dueAt"
@@ -254,13 +262,12 @@ export function MeasureForm({
             </div>
           </div>
 
-          <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
-            <p className="text-sm font-medium text-blue-900 mb-2">ℹ️ ISO 9001 Compliance</p>
-            <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-              <li>Alle tiltak må ha en <strong>ansvarlig person</strong></li>
-              <li>Tiltak må ha en realistisk <strong>tidsplan/frist</strong></li>
-              <li>Tiltak må <strong>dokumenteres</strong> og følges opp</li>
-              <li>Tiltak må <strong>evalueres</strong> når de er fullført</li>
+          <div className="rounded-lg bg-muted/40 border p-4">
+            <p className="text-sm font-medium mb-2">Further action</p>
+            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+              <li>Name a <strong>person responsible</strong></li>
+              <li>Set a realistic <strong>due date</strong></li>
+              <li>After it is done, update the <strong>residual risk</strong></li>
             </ul>
           </div>
 
@@ -268,13 +275,14 @@ export function MeasureForm({
             <Button
               type="button"
               variant="outline"
+              className="bg-transparent"
               onClick={() => setOpen(false)}
               disabled={loading}
             >
-              Avbryt
+              Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Oppretter..." : "Opprett tiltak"}
+              {loading ? "Creating..." : "Create action"}
             </Button>
           </div>
         </form>

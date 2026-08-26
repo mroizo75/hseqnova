@@ -64,39 +64,39 @@ interface ConstructionComplianceClientProps {
 
 const changeFieldLabels: Record<string, string> = {
   status: "Status",
-  builderName: "Byggherre",
-  builderRepresentativeName: "Byggherres representant",
-  builderRepresentativeContact: "Kontakt representant",
-  coordinatorPlanningName: "Koordinator prosjektering (KP)",
-  coordinatorExecutionName: "Koordinator utførelse (KU)",
-  organizationChart: "Organisasjonskart / rollefordeling",
-  progressPlan: "Fremdriftsplan",
-  specificMeasures: "Spesifikke SHA-tiltak",
-  changeProcedure: "Rutine for endring",
-  conflictAssessmentDocumented: "Rollekonflikt dokumentert",
-  availableOnSite: "Tilgjengelig på byggeplass",
-  sentAt: "Sendt dato",
-  submissionDate: "Innsendingsdato",
-  projectAddress: "Adresse byggeplass",
-  projectType: "Prosjektets art",
-  builderOrgNumber: "Byggherre org.nr",
-  builderAddress: "Byggherre adresse",
-  builderPhone: "Byggherre telefon",
-  builderRepresentativePhone: "Representant telefon",
-  coordinators: "Koordinatorer",
-  designers: "Prosjekterende virksomheter",
-  contractors: "Utførende virksomheter",
-  expectedStartDate: "Startdato",
-  expectedEndDate: "Sluttdato",
-  maxWorkersSimultaneous: "Maks arbeidstakere samtidig",
-  plannedBusinessesCount: "Planlagt antall virksomheter",
-  visibleAtSite: "Synlig på byggeplass",
+  builderName: "Client",
+  builderRepresentativeName: "Client contact",
+  builderRepresentativeContact: "Client contact details",
+  coordinatorPlanningName: "Principal Designer",
+  coordinatorExecutionName: "Principal Contractor",
+  organizationChart: "Organisation / duty holders",
+  progressPlan: "Programme",
+  specificMeasures: "Site-specific controls (CPP)",
+  changeProcedure: "Arrangements for change",
+  conflictAssessmentDocumented: "Competence / appointment recorded",
+  availableOnSite: "Available on site",
+  sentAt: "Sent date",
+  submissionDate: "Submission date",
+  projectAddress: "Site address",
+  projectType: "Description of the project",
+  builderOrgNumber: "Company number",
+  builderAddress: "Client address",
+  builderPhone: "Client telephone",
+  builderRepresentativePhone: "Contact telephone",
+  coordinators: "Principal Designer / Principal Contractor",
+  designers: "Designers",
+  contractors: "Contractors",
+  expectedStartDate: "Start date",
+  expectedEndDate: "End date",
+  maxWorkersSimultaneous: "Maximum workers on site at any one time",
+  plannedBusinessesCount: "Planned number of contractors",
+  visibleAtSite: "Displayed on site",
 };
 
 function formatChangeValue(value: string | null): string {
   if (!value || value.trim().length === 0) return "—";
-  if (value === "true") return "Ja";
-  if (value === "false") return "Nei";
+  if (value === "true") return "Yes";
+  if (value === "false") return "No";
   return value;
 }
 
@@ -130,7 +130,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
   const [preNotification, setPreNotification] = useState({
     status: "DRAFT",
     projectAddress: "",
-    projectType: "Bygge- og anleggsarbeid",
+    projectType: "Construction work",
     builderName: "",
     builderOrgNumber: "",
     builderAddress: "",
@@ -182,7 +182,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
   const availableEmployees = useMemo(
     () =>
       [...(data.availableEmployees ?? [])].sort((left, right) =>
-        left.name.localeCompare(right.name, "nb-NO", { sensitivity: "base" })
+        left.name.localeCompare(right.name, "en-GB", { sensitivity: "base" })
       ),
     [data.availableEmployees]
   );
@@ -197,12 +197,12 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
   );
 
   const lastCheckLabel = useMemo(() => {
-    if (!data.latestCheckDate) return "Ingen registrert kontroll";
-    return new Date(data.latestCheckDate).toLocaleDateString("nb-NO");
+    if (!data.latestCheckDate) return "No check recorded";
+    return new Date(data.latestCheckDate).toLocaleDateString("en-GB");
   }, [data.latestCheckDate]);
   const submissionDeadlineLabel = useMemo(() => {
     if (!data.preNotificationRequirement?.submissionDeadline) return null;
-    return new Date(data.preNotificationRequirement.submissionDeadline).toLocaleDateString("nb-NO");
+    return new Date(data.preNotificationRequirement.submissionDeadline).toLocaleDateString("en-GB");
   }, [data.preNotificationRequirement?.submissionDeadline]);
 
   const loadData = async () => {
@@ -213,7 +213,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
       });
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result?.message || "Kunne ikke hente compliance-data");
+        throw new Error(result?.message || "Could not load CDM records");
       }
 
       const payload = result.data as ComplianceData;
@@ -240,7 +240,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
         setPreNotification({
           status: payload.preNotification.status ?? "DRAFT",
           projectAddress: payload.preNotification.projectAddress ?? "",
-          projectType: payload.preNotification.projectType ?? "Bygge- og anleggsarbeid",
+          projectType: payload.preNotification.projectType ?? "Construction work",
           builderName: payload.preNotification.builderName ?? "",
           builderOrgNumber: payload.preNotification.builderOrgNumber ?? "",
           builderAddress: payload.preNotification.builderAddress ?? "",
@@ -264,8 +264,8 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Feil",
-        description: "Kunne ikke laste bygg/anlegg-compliance",
+        title: "Error",
+        description: "Could not load CDM 2015 records",
       });
     } finally {
       setLoading(false);
@@ -303,20 +303,20 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
       });
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result?.message || "Kunne ikke lagre compliance-data");
+        throw new Error(result?.message || "Could not save CDM records");
       }
 
       toast({
-        title: "Lagring fullført",
-        description: "SHA-plan og forhåndsmelding er oppdatert.",
+        title: "Saved",
+        description: "Construction Phase Plan and F10 have been updated.",
       });
       await loadData();
       router.refresh();
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Feil ved lagring",
-        description: "Sjekk feltene og prøv igjen.",
+        title: "Could not save",
+        description: "Check the required fields and try again.",
       });
     } finally {
       setSaving(false);
@@ -328,8 +328,8 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
     if (!newEntry.fullName || !newEntry.birthDate || !newEntry.employerName) {
       toast({
         variant: "destructive",
-        title: "Mangler påkrevde felt",
-        description: "Navn, fødselsdato og arbeidsgiver er obligatorisk.",
+        title: "Required fields missing",
+        description: "Name, date of birth and employer are required.",
       });
       return;
     }
@@ -348,7 +348,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
       });
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result?.message || "Kunne ikke legge til person");
+        throw new Error(result?.message || "Could not add the person");
       }
 
       setNewEntry({
@@ -363,15 +363,15 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
         notes: "",
       });
       toast({
-        title: "Person registrert",
-        description: "Elektronisk oversiktsliste er oppdatert.",
+        title: "Person recorded",
+        description: "The site register has been updated.",
       });
       await loadData();
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Feil",
-        description: "Kunne ikke legge til person i oversiktslisten.",
+        title: "Error",
+        description: "Could not add the person to the site register.",
       });
     }
   };
@@ -405,20 +405,20 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
       });
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result?.message || "Kunne ikke registrere kontroll");
+        throw new Error(result?.message || "Could not record the daily check");
       }
 
       toast({
-        title: "Daglig kontroll registrert",
-        description: "Kontrollen av oversiktslisten er lagret.",
+        title: "Daily check recorded",
+        description: "The site register check has been saved.",
       });
       setDailyCheckNotes("");
       await loadData();
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Feil",
-        description: "Kunne ikke registrere daglig kontroll.",
+        title: "Error",
+        description: "Could not record the daily check.",
       });
     }
   };
@@ -466,19 +466,19 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
       });
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result?.message || "Kunne ikke oppdatere mannskapslinje");
+        throw new Error(result?.message || "Could not update the site register entry");
       }
       toast({
-        title: "Mannskapslinje oppdatert",
-        description: "Endringene er lagret.",
+        title: "Site register updated",
+        description: "The changes have been saved.",
       });
       setEditingEntryId(null);
       await loadData();
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Feil",
-        description: "Kunne ikke oppdatere mannskapslinjen.",
+        title: "Error",
+        description: "Could not update the site register entry.",
       });
     }
   };
@@ -497,58 +497,58 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
       });
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result?.message || "Kunne ikke avslutte mannskapslinje");
+        throw new Error(result?.message || "Could not close the site register entry");
       }
       toast({
-        title: "Mannskapslinje avsluttet",
-        description: "Personen er satt som ikke aktiv på byggeplassen.",
+        title: "Entry closed",
+        description: "The person is no longer active on site.",
       });
       await loadData();
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Feil",
-        description: "Kunne ikke avslutte mannskapslinjen.",
+        title: "Error",
+        description: "Could not close the site register entry.",
       });
     }
   };
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Laster bygg/anlegg-compliance ...</p>;
+    return <p className="text-sm text-muted-foreground">Loading CDM 2015 records...</p>;
   }
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Elektronisk oversiktsliste</CardTitle>
+          <CardTitle>Site register</CardTitle>
           <CardDescription>
-            Registrer alle som utfører arbeid på byggeplassen, inkludert HMS-kortnummer.
+            Record everyone working on the site, including CSCS or other competence card numbers.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="rounded border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">
-            Oversiktslisten er underlagt oppbevaringskrav i 6 måneder etter avsluttet arbeid
-            (Byggherreforskriften § 15).
+            Site attendance records are kept for 6 months after work ends
+            (operational retention, not a CDM statutory period).
           </div>
           {!canManage ? (
             <div className="rounded border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">
-              Du har lesetilgang. Kun HMS/Admin/Leder/Verneombud kan redigere bygg/anlegg-compliance.
+              You have read-only access. Only HSE manager, admin, line manager or safety representative roles can edit CDM records.
             </div>
           ) : null}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="text-sm">
-              <span className="font-medium">Aktive på plassen:</span> {activeRosterCount}
+              <span className="font-medium">Active on site:</span> {activeRosterCount}
             </div>
             <div className="flex gap-2">
               <Button variant="outline" asChild>
                 <a href={`/api/projects/${projectId}/construction-compliance?format=csv`}>
-                  Eksporter oversiktsliste (CSV)
+                  Export site register (CSV)
                 </a>
               </Button>
               <Button variant="outline" asChild>
                 <a href={`/api/projects/${projectId}/construction-compliance/report`} target="_blank" rel="noreferrer">
-                  Last ned compliance-PDF
+                  Download CDM PDF
                 </a>
               </Button>
             </div>
@@ -556,49 +556,49 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
 
           {data.isDailyCheckMissing ? (
             <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-              Daglig kontroll mangler for i dag. Siste registrerte kontroll: {lastCheckLabel}.
+              Daily check is missing for today. Last recorded check: {lastCheckLabel}.
             </div>
           ) : (
             <div className="rounded border border-green-300 bg-green-50 p-3 text-sm text-green-900">
-              Daglig kontroll er oppdatert. Siste registrerte kontroll: {lastCheckLabel}.
+              Daily check is up to date. Last recorded check: {lastCheckLabel}.
             </div>
           )}
 
           <div className="grid gap-3 md:grid-cols-3">
             <div>
-              <Label>Legg til fra ansatte</Label>
+              <Label>Add from employees</Label>
               <Select value={selectedEmployeeId} onValueChange={fillFromEmployee}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg ansatt for forhåndsutfylling" />
+                  <SelectValue placeholder="Select an employee to pre-fill" />
                 </SelectTrigger>
                 <SelectContent>
                   {availableEmployees.map((employee) => (
                     <SelectItem key={employee.userId} value={employee.userId}>
                       {employee.name}
                       {employee.employeeNumber ? ` (${employee.employeeNumber})` : ""}
-                      {activeRosterNameSet.has(employee.name.trim().toLowerCase()) ? " · Allerede aktiv" : ""}
+                      {activeRosterNameSet.has(employee.name.trim().toLowerCase()) ? " · Already active" : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <p className="mt-1 text-xs text-muted-foreground">
-                Fyller ut navn, arbeidsgiver, org.nr og startdato automatisk.
+                Fills name, employer, company number and start date automatically.
               </p>
             </div>
             <div>
-              <Label>Navn *</Label>
+              <Label>Name *</Label>
               <Input
                 value={newEntry.fullName}
                 onChange={(e) => setNewEntry((prev) => ({ ...prev, fullName: e.target.value }))}
               />
               {selectedEmployeeId && !newEntry.birthDate ? (
                 <p className="mt-1 text-xs text-amber-700">
-                  Velg fødselsdato manuelt før registrering.
+                  Enter date of birth before recording.
                 </p>
               ) : null}
             </div>
             <div>
-              <Label>Fødselsdato *</Label>
+              <Label>Date of birth *</Label>
               <Input
                 type="date"
                 value={newEntry.birthDate}
@@ -606,14 +606,14 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
               />
             </div>
             <div>
-              <Label>Arbeidsgiver *</Label>
+              <Label>Employer *</Label>
               <Input
                 value={newEntry.employerName}
                 onChange={(e) => setNewEntry((prev) => ({ ...prev, employerName: e.target.value }))}
               />
             </div>
             <div>
-              <Label>Org.nr arbeidsgiver</Label>
+              <Label>Employer company number</Label>
               <Input
                 value={newEntry.employerOrgNumber}
                 onChange={(e) =>
@@ -622,7 +622,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
               />
             </div>
             <div>
-              <Label>Innleievirksomhet</Label>
+              <Label>Labour-hire company</Label>
               <Input
                 value={newEntry.hiringCompanyName}
                 onChange={(e) =>
@@ -631,14 +631,14 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
               />
             </div>
             <div>
-              <Label>HMS-kortnummer</Label>
+              <Label>CSCS / card number</Label>
               <Input
                 value={newEntry.hmsCardNumber}
                 onChange={(e) => setNewEntry((prev) => ({ ...prev, hmsCardNumber: e.target.value }))}
               />
             </div>
             <div>
-              <Label>Startdato på plassen</Label>
+              <Label>Start date on site</Label>
               <Input
                 type="date"
                 value={newEntry.startedAtSiteDate}
@@ -648,7 +648,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
               />
             </div>
             <div>
-              <Label>Sluttdato på plassen</Label>
+              <Label>End date on site</Label>
               <Input
                 type="date"
                 value={newEntry.endedAtSiteDate}
@@ -660,7 +660,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
           </div>
 
           <div>
-            <Label>Notater</Label>
+            <Label>Notes</Label>
             <Textarea
               rows={2}
               value={newEntry.notes}
@@ -668,11 +668,11 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
             />
           </div>
 
-          {canManage ? <Button onClick={addRosterEntry}>Legg til i oversiktsliste</Button> : null}
+          {canManage ? <Button onClick={addRosterEntry}>Add to site register</Button> : null}
 
           <div className="rounded border">
             {data.rosterEntries.length === 0 ? (
-              <p className="p-4 text-sm text-muted-foreground">Ingen personer registrert ennå.</p>
+              <p className="p-4 text-sm text-muted-foreground">No people recorded yet.</p>
             ) : (
               data.rosterEntries.map((entry) => (
                 <div key={entry.id} className="border-b p-3 last:border-b-0">
@@ -699,7 +699,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
                           }
                         />
                         <Input
-                          placeholder="HMS-kortnummer"
+                          placeholder="CSCS / card number"
                           value={entryDraft.hmsCardNumber}
                           onChange={(e) =>
                             setEntryDraft((prev) => ({ ...prev, hmsCardNumber: e.target.value }))
@@ -729,10 +729,10 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
                       />
                       <div className="flex gap-2">
                         <Button size="sm" onClick={saveEditedEntry}>
-                          Lagre
+                          Save
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => setEditingEntryId(null)}>
-                          Avbryt
+                          Cancel
                         </Button>
                       </div>
                     </div>
@@ -741,13 +741,13 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
                       <p className="text-sm font-medium">{entry.fullName}</p>
                       <p className="text-xs text-muted-foreground">
                         {entry.employerName}
-                        {entry.hmsCardNumber ? ` · HMS-kort: ${entry.hmsCardNumber}` : " · HMS-kort mangler"}
-                        {entry.isActive ? " · Aktiv" : " · Avsluttet"}
+                        {entry.hmsCardNumber ? ` · Card: ${entry.hmsCardNumber}` : " · Card missing"}
+                        {entry.isActive ? " · Active" : " · Closed"}
                       </p>
                       {canManage ? (
                         <div className="mt-2 flex gap-2">
                           <Button size="sm" variant="outline" onClick={() => startEditEntry(entry)}>
-                            Rediger
+                            Edit
                           </Button>
                           {entry.isActive ? (
                             <Button
@@ -755,7 +755,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
                               variant="destructive"
                               onClick={() => closeRosterEntry(entry.id)}
                             >
-                              Avslutt linje
+                              Close entry
                             </Button>
                           ) : null}
                         </div>
@@ -771,31 +771,31 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
 
       <Card>
         <CardHeader>
-          <CardTitle>Daglig kontroll av oversiktsliste</CardTitle>
-          <CardDescription>Dokumenter daglig kontroll i henhold til byggherreforskriften.</CardDescription>
+          <CardTitle>Daily site register check</CardTitle>
+          <CardDescription>Record the daily check of who is on site.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label>Kontrolldato</Label>
+              <Label>Check date</Label>
               <Input type="date" value={dailyCheckDate} onChange={(e) => setDailyCheckDate(e.target.value)} />
             </div>
             <div>
-              <Label>Kommentar</Label>
+              <Label>Comment</Label>
               <Input value={dailyCheckNotes} onChange={(e) => setDailyCheckNotes(e.target.value)} />
             </div>
           </div>
           {canManage ? (
             <Button variant="outline" onClick={registerDailyCheck}>
-              Registrer kontroll
+              Record check
             </Button>
           ) : null}
           <div className="space-y-2">
             {data.rosterChecks.map((check) => (
               <div key={check.id} className="rounded border p-2 text-sm">
-                {new Date(check.checkedDate).toLocaleDateString("nb-NO")}
+                {new Date(check.checkedDate).toLocaleDateString("en-GB")}
                 {" · "}
-                {check.checkedBy?.name || check.checkedBy?.email || "Ukjent bruker"}
+                {check.checkedBy?.name || check.checkedBy?.email || "Unknown user"}
               </div>
             ))}
           </div>
@@ -804,22 +804,22 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
 
       <Card>
         <CardHeader>
-          <CardTitle>SHA-plan</CardTitle>
+          <CardTitle>Construction Phase Plan</CardTitle>
           <CardDescription>
-            Prosjektspesifikk SHA-plan med organisering, fremdrift, tiltak og endringsrutine.
+            Site-specific Construction Phase Plan with organisation, programme, controls and change arrangements.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label>Byggherre</Label>
+              <Label>Client</Label>
               <Input
                 value={shaPlan.builderName}
                 onChange={(e) => setShaPlan((prev) => ({ ...prev, builderName: e.target.value }))}
               />
             </div>
             <div>
-              <Label>Byggherres representant</Label>
+              <Label>Client contact</Label>
               <Input
                 value={shaPlan.builderRepresentativeName}
                 onChange={(e) =>
@@ -828,7 +828,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
               />
             </div>
             <div>
-              <Label>Kontakt representant</Label>
+              <Label>Client contact details</Label>
               <Input
                 value={shaPlan.builderRepresentativeContact}
                 onChange={(e) =>
@@ -837,7 +837,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
               />
             </div>
             <div>
-              <Label>Koordinator prosjektering (KP)</Label>
+              <Label>Principal Designer</Label>
               <Input
                 value={shaPlan.coordinatorPlanningName}
                 onChange={(e) =>
@@ -846,7 +846,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
               />
             </div>
             <div>
-              <Label>Koordinator utførelse (KU)</Label>
+              <Label>Principal Contractor</Label>
               <Input
                 value={shaPlan.coordinatorExecutionName}
                 onChange={(e) =>
@@ -857,7 +857,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
           </div>
 
           <div>
-            <Label>Organisasjonskart / rollefordeling</Label>
+            <Label>Organisation / duty holders</Label>
             <Textarea
               rows={4}
               value={shaPlan.organizationChart}
@@ -865,7 +865,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
             />
           </div>
           <div>
-            <Label>Fremdriftsplan (når/hvor arbeidsoperasjoner utføres)</Label>
+            <Label>Programme (when and where work is carried out)</Label>
             <Textarea
               rows={4}
               value={shaPlan.progressPlan}
@@ -873,7 +873,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
             />
           </div>
           <div>
-            <Label>Spesifikke SHA-tiltak (risikoforhold etter § 8)</Label>
+            <Label>Site-specific controls (CDM 2015)</Label>
             <Textarea
               rows={4}
               value={shaPlan.specificMeasures}
@@ -881,7 +881,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
             />
           </div>
           <div>
-            <Label>Rutine for endring og oppdatering av SHA-plan</Label>
+            <Label>Arrangements for changing and updating the Construction Phase Plan</Label>
             <Textarea
               rows={3}
               value={shaPlan.changeProcedure}
@@ -897,7 +897,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
                   setShaPlan((prev) => ({ ...prev, conflictAssessmentDocumented: checked === true }))
                 }
               />
-              <span className="text-sm">Rollekonflikt-vurdering for koordinator er dokumentert</span>
+              <span className="text-sm">Competence and appointment of duty holders is recorded</span>
             </div>
             <div className="flex items-center gap-2">
               <Checkbox
@@ -906,7 +906,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
                   setShaPlan((prev) => ({ ...prev, availableOnSite: checked === true }))
                 }
               />
-              <span className="text-sm">SHA-plan er tilgjengelig på byggeplassen</span>
+              <span className="text-sm">Construction Phase Plan is available on site</span>
             </div>
           </div>
         </CardContent>
@@ -914,10 +914,9 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
 
       <Card>
         <CardHeader>
-          <CardTitle>Forhåndsmelding til Arbeidstilsynet</CardTitle>
+          <CardTitle>F10 notification to HSE</CardTitle>
           <CardDescription>
-            Registrer opplysningene som kreves for forhåndsmelding ved varighet over 15 virkedager
-            eller over 250 dagsverk.
+            Record the particulars needed for F10 if the work lasts more than 30 working days with more than 20 workers, or exceeds 500 person days.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -931,24 +930,24 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
                   : "border-blue-300 bg-blue-50 text-blue-900"
               }`}
             >
-              <p className="font-medium">Forhåndsmelding er meldepliktig (Byggherreforskriften § 10)</p>
-              <p>Årsak: {data.preNotificationRequirement.reasons.join(" / ")}</p>
+              <p className="font-medium">F10 notification is required (CDM 2015 reg. 6)</p>
+              <p>Reason: {data.preNotificationRequirement.reasons.join(" / ")}</p>
               {data.preNotificationRequirement.workDays !== null ? (
-                <p>Estimert varighet: {data.preNotificationRequirement.workDays} virkedager</p>
+                <p>Estimated duration: {data.preNotificationRequirement.workDays} working days</p>
               ) : null}
               {data.preNotificationRequirement.estimatedWorkerDays !== null ? (
-                <p>Estimert arbeidsmengde: {data.preNotificationRequirement.estimatedWorkerDays} dagsverk</p>
+                <p>Estimated workload: {data.preNotificationRequirement.estimatedWorkerDays} person days</p>
               ) : null}
-              {submissionDeadlineLabel ? <p>Innsendingsfrist: {submissionDeadlineLabel}</p> : null}
+              {submissionDeadlineLabel ? <p>Notify HSE before: {submissionDeadlineLabel}</p> : null}
             </div>
           ) : (
             <div className="rounded border border-muted bg-muted/20 p-3 text-sm text-muted-foreground">
-              Ikke meldepliktig ut fra dagens estimat. Oppdater datoer/bemanning ved endringer.
+              Not notifiable on the current estimate. Update dates and headcount if the programme changes.
             </div>
           )}
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <Label>Adresse byggeplass</Label>
+              <Label>Site address</Label>
               <Input
                 value={preNotification.projectAddress}
                 onChange={(e) =>
@@ -957,21 +956,21 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
               />
             </div>
             <div>
-              <Label>Prosjektets art</Label>
+              <Label>Description of the project</Label>
               <Input
                 value={preNotification.projectType}
                 onChange={(e) => setPreNotification((prev) => ({ ...prev, projectType: e.target.value }))}
               />
             </div>
             <div>
-              <Label>Byggherre navn</Label>
+              <Label>Client name</Label>
               <Input
                 value={preNotification.builderName}
                 onChange={(e) => setPreNotification((prev) => ({ ...prev, builderName: e.target.value }))}
               />
             </div>
             <div>
-              <Label>Byggherre org.nr</Label>
+              <Label>Client company number</Label>
               <Input
                 value={preNotification.builderOrgNumber}
                 onChange={(e) =>
@@ -980,7 +979,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
               />
             </div>
             <div>
-              <Label>Byggherre adresse</Label>
+              <Label>Client address</Label>
               <Input
                 value={preNotification.builderAddress}
                 onChange={(e) =>
@@ -989,7 +988,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
               />
             </div>
             <div>
-              <Label>Byggherre telefon</Label>
+              <Label>Client telephone</Label>
               <Input
                 value={preNotification.builderPhone}
                 onChange={(e) =>
@@ -998,7 +997,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
               />
             </div>
             <div>
-              <Label>Startdato</Label>
+              <Label>Start date</Label>
               <Input
                 type="date"
                 value={preNotification.expectedStartDate}
@@ -1008,7 +1007,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
               />
             </div>
             <div>
-              <Label>Sluttdato</Label>
+              <Label>End date</Label>
               <Input
                 type="date"
                 value={preNotification.expectedEndDate}
@@ -1018,7 +1017,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
               />
             </div>
             <div>
-              <Label>Forventet maks antall arbeidstakere samtidig</Label>
+              <Label>Expected maximum workers on site at any one time</Label>
               <Input
                 type="number"
                 min={1}
@@ -1032,7 +1031,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
               />
             </div>
             <div>
-              <Label>Planlagt antall virksomheter</Label>
+              <Label>Planned number of contractors</Label>
               <Input
                 type="number"
                 min={1}
@@ -1048,7 +1047,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
           </div>
 
           <div>
-            <Label>Koordinatorer og kontaktinformasjon</Label>
+            <Label>Principal Designer / Principal Contractor and contacts</Label>
             <Textarea
               rows={3}
               value={preNotification.coordinators}
@@ -1056,7 +1055,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
             />
           </div>
           <div>
-            <Label>Prosjekterende virksomheter</Label>
+            <Label>Designers</Label>
             <Textarea
               rows={3}
               value={preNotification.designers}
@@ -1064,7 +1063,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
             />
           </div>
           <div>
-            <Label>Utførende virksomheter</Label>
+            <Label>Contractors</Label>
             <Textarea
               rows={3}
               value={preNotification.contractors}
@@ -1078,7 +1077,7 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
                 setPreNotification((prev) => ({ ...prev, visibleAtSite: checked === true }))
               }
             />
-            <span className="text-sm">Oppdatert forhåndsmelding er synlig på byggeplassen</span>
+            <span className="text-sm">Updated F10 is displayed on site</span>
           </div>
         </CardContent>
       </Card>
@@ -1086,37 +1085,37 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
       {canManage ? (
         <div className="flex justify-end">
           <Button onClick={saveCompliance} disabled={saving}>
-            {saving ? "Lagrer..." : "Lagre bygg/anlegg-compliance"}
+            {saving ? "Saving..." : "Save CDM 2015 records"}
           </Button>
         </div>
       ) : null}
 
       <Card>
         <CardHeader>
-          <CardTitle>Compliance-status</CardTitle>
+          <CardTitle>Compliance status</CardTitle>
           <CardDescription>
-            Obligatoriske kontroller før SHA-plan settes aktiv og før forhåndsmelding registreres som innsendt.
+            Required checks before the Construction Phase Plan is set active and before F10 is marked as submitted.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <div className="rounded border p-3">
-            <p className="font-medium">SHA-plan klar for aktiv status</p>
+            <p className="font-medium">Construction Phase Plan ready to set active</p>
             <p
               className={
                 data.complianceValidation?.shaReadyForActive ? "text-green-700" : "text-amber-700"
               }
             >
-              {data.complianceValidation?.shaReadyForActive ? "Ja" : "Nei"}
+              {data.complianceValidation?.shaReadyForActive ? "Yes" : "No"}
             </p>
             {!data.complianceValidation?.shaReadyForActive &&
             data.complianceValidation?.shaMissingFieldsForActive?.length ? (
               <p className="mt-1 text-xs text-muted-foreground">
-                Mangler: {data.complianceValidation.shaMissingFieldsForActive.join(", ")}
+                Missing: {data.complianceValidation.shaMissingFieldsForActive.join(", ")}
               </p>
             ) : null}
           </div>
           <div className="rounded border p-3">
-            <p className="font-medium">Forhåndsmelding klar for innsending</p>
+            <p className="font-medium">F10 ready for submission</p>
             <p
               className={
                 data.complianceValidation?.preNotificationReadyForSubmission
@@ -1124,12 +1123,12 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
                   : "text-amber-700"
               }
             >
-              {data.complianceValidation?.preNotificationReadyForSubmission ? "Ja" : "Nei"}
+              {data.complianceValidation?.preNotificationReadyForSubmission ? "Yes" : "No"}
             </p>
             {!data.complianceValidation?.preNotificationReadyForSubmission &&
             data.complianceValidation?.preNotificationMissingFieldsForSubmission?.length ? (
               <p className="mt-1 text-xs text-muted-foreground">
-                Mangler: {data.complianceValidation.preNotificationMissingFieldsForSubmission.join(", ")}
+                Missing: {data.complianceValidation.preNotificationMissingFieldsForSubmission.join(", ")}
               </p>
             ) : null}
           </div>
@@ -1138,20 +1137,20 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
 
       <Card>
         <CardHeader>
-          <CardTitle>Endringshistorikk (SHA og forhåndsmelding)</CardTitle>
-          <CardDescription>Viser hvem som har endret hva og når.</CardDescription>
+          <CardTitle>Change history (CPP and F10)</CardTitle>
+          <CardDescription>Shows who changed what and when.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {(data.changeLogs ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">Ingen endringer logget ennå.</p>
+            <p className="text-sm text-muted-foreground">No changes logged yet.</p>
           ) : (
             (data.changeLogs ?? []).map((entry) => (
               <div key={entry.id} className="rounded border p-3 text-sm">
                 <p className="font-medium">
-                  {entry.action === "CONSTRUCTION_SHA_PLAN_UPDATED" ? "SHA-plan oppdatert" : "Forhåndsmelding oppdatert"}
+                  {entry.action === "CONSTRUCTION_SHA_PLAN_UPDATED" ? "Construction Phase Plan updated" : "F10 updated"}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(entry.createdAt).toLocaleString("nb-NO")} · {entry.changedBy}
+                  {new Date(entry.createdAt).toLocaleString("en-GB")} · {entry.changedBy}
                 </p>
                 {entry.metadata?.changedFields?.length ? (
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-muted-foreground">

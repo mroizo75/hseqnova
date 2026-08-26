@@ -33,11 +33,11 @@ export function ExposureRegisterWarning({
           <div className="flex-1 min-w-0">
             <p className={`font-semibold text-sm ${hasEntries ? "text-amber-900" : "text-red-900"}`}>
               {hasEntries
-                ? `Eksponeringsregister påkrevd – ${existingEntryCount} registrering${existingEntryCount !== 1 ? "er" : ""} funnet`
-                : "Eksponeringsregister er påkrevd for dette stoffet"}
+                ? `Health record required — ${existingEntryCount} ${existingEntryCount === 1 ? "entry" : "entries"} found`
+                : "A health record is required for this substance"}
             </p>
             <p className={`text-sm mt-1 ${hasEntries ? "text-amber-800" : "text-red-800"}`}>
-              Dette kjemikaliet er klassifisert som:
+              {chemicalName} is classified as:
             </p>
             <div className="flex flex-wrap gap-1.5 mt-2">
               {classifications.map((c) => (
@@ -50,17 +50,17 @@ export function ExposureRegisterWarning({
               ))}
             </div>
             <p className={`text-xs mt-2 ${hasEntries ? "text-amber-700" : "text-red-700"}`}>
-              Alle ansatte som er, har vært eller kan bli eksponert for dette stoffet skal registreres
-              i eksponeringsregisteret jf.{" "}
+              COSHH 2002 requires health surveillance records for relevant exposures to be kept
+              for 40 years. Record anyone who is, has been or may be exposed. See{" "}
               <a
-                href="https://www.arbeidstilsynet.no/hms/roller-i-hms-arbeidet/arbeidsgiver/register-over-eksponerte-arbeidstakere/"
+                href="https://www.hse.gov.uk/coshh/basics/surveillance.htm"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline hover:no-underline"
               >
-                Arbeidstilsynets krav
+                HSE guidance on health surveillance
               </a>
-              . Registeret skal oppbevares i minst 40–60 år.
+              .
             </p>
           </div>
           <div className="flex flex-col gap-2 shrink-0">
@@ -70,13 +70,13 @@ export function ExposureRegisterWarning({
                 className={hasEntries ? "bg-amber-600 hover:bg-amber-700" : "bg-red-600 hover:bg-red-700"}
               >
                 <ClipboardList className="mr-2 h-4 w-4" />
-                Registrer eksponering
+                Record exposure
               </Button>
             </Link>
             {hasEntries && (
               <Link href={`/dashboard/exposure-register?chemical=${chemicalId}`}>
                 <Button size="sm" variant="outline" className="w-full border-amber-400 text-amber-800 hover:bg-amber-100">
-                  Se registreringer
+                  View records
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
@@ -88,9 +88,6 @@ export function ExposureRegisterWarning({
   );
 }
 
-/**
- * Kompakt badge for bruk i lister
- */
 export function ExposureRegisterBadge({
   hazardStatements,
   isCMR,
@@ -104,7 +101,7 @@ export function ExposureRegisterBadge({
   return (
     <Badge className="bg-red-100 text-red-800 border-red-300 text-xs gap-1">
       <AlertTriangle className="h-3 w-3" />
-      Eks.reg.
+      Health record
     </Badge>
   );
 }

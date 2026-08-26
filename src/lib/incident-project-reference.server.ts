@@ -1,37 +1,49 @@
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import {
   resolveProjectIdFromReference,
   type ProjectReferenceLookups,
 } from "@/lib/incident-project-reference";
 
 /**
- * Oppslaget er låst til én tenant, slik at en referanse aldri kan treffe et prosjekt
- * i en annen virksomhet (GDPR art. 5 (1) f). Vi slår opp på referansen som skrevet og
- * på formen uten skilletegn, så kun likelydende koder eller ordrenummer kobles.
+ * Lookup is locked to one tenant so a reference cannot hit a project in another
+ * organisation (UK GDPR / DPA 2018). Matches the typed reference and the form
+ * without separators so similar codes or order numbers can still link.
  */
 export function createProjectReferenceLookups(tenantId: string): ProjectReferenceLookups {
   return {
     async findProjectsByReference(reference) {
       const withoutSeparators = reference.replace(/[\s\-_/.]/g, "");
       const values = Array.from(new Set([reference, withoutSeparators]));
+      const db = getAdminDb();
 
-      return prisma.project.findMany({
-        where: {
-          tenantId,
-          OR: [{ code: { in: values } }, { orderNumber: { in: values } }],
-        },
-        select: { id: true, code: true, orderNumber: true },
-        take: 5,
-      });
+      const [{ data: byCode }, { data: byOrder }] = await Promise.all([
+        db
+          .from("Project")
+          .select("id, code, orderNumber")
+          .eq("tenantId", tenantId)
+          .in("code", values)
+          .limit(5),
+        db
+          .from("Project")
+          .select("id, code, orderNumber")
+          .eq("tenantId", tenantId)
+          .in("orderNumber", values)
+          .limit(5),
+      ]);
+
+      const merged = new Map<string, { id: string; code: string | null; orderNumber: string | null }>();
+      for (const row of [...(byCode ?? []), ...(byOrder ?? [])]) {
+        merged.set(row.id as string, {
+          id: row.id as string,
+          code: (row.code as string | null) ?? null,
+          orderNumber: (row.orderNumber as string | null) ?? null,
+        });
+      }
+      return Array.from(merged.values()).slice(0, 5);
     },
   };
 }
 
-/**
- * Kobler et avvik til et registrert prosjekt når melderen har skrevet inn en referanse
- * som samsvarer med prosjektkode eller ordrenummer. Returnerer prosjektet som allerede
- * er valgt hvis melderen valgte fra listen.
- */
 export async function resolveIncidentProjectId(input: {
   tenantId: string;
   projectId: string | null;

@@ -20,12 +20,12 @@ export default async function NewChemicalPage() {
         <Link href="/dashboard/chemicals">
           <Button variant="ghost" size="sm" className="mb-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Tilbake til stoffkartotek
+            Back to COSHH
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold">Registrer nytt kjemikalie</h1>
+        <h1 className="text-3xl font-bold">Register a new chemical</h1>
         <p className="text-muted-foreground">
-          Legg til produkt i stoffkartoteket med sikkerhetsdatablad
+          Add a product to the COSHH register with a safety data sheet
         </p>
       </div>
 

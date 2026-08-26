@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import type { DetectedPattern } from "../types"
 import { PATTERN_RULES } from "./pattern-rules"
+import { countFireDrills, hasCompletedFireDrillSince } from "@/server/queries/fire-drills.queries"
 
 /**
  * Oppdager HMS-mønstre for én bedrift.
@@ -574,18 +575,11 @@ async function detectFireSafetyGap(
   const rule = PATTERN_RULES.find((r) => r.type === "FIRE_SAFETY_GAP")!
   const oneYearAgo = daysAgo(rule.windowDays)
 
-  const recentDrill = await prisma.fireDrill.findFirst({
-    where: {
-      tenantId,
-      status: "COMPLETED",
-      completedAt: { gte: oneYearAgo },
-    },
-    select: { id: true },
-  })
+  const recentDrill = await hasCompletedFireDrillSince(tenantId, oneYearAgo.toISOString())
 
   if (recentDrill) return []
 
-  const anyDrillExists = await prisma.fireDrill.count({ where: { tenantId } })
+  const anyDrillExists = await countFireDrills(tenantId)
 
   return [
     {

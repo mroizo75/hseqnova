@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "HMS Nova - HMS Nova bygger trygghet";
+export const alt = "HSEQ Nova — health and safety software for UK employers";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -10,82 +10,31 @@ export default async function Image() {
     (
       <div
         style={{
-          background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0ea5e9 100%)",
+          background: "#0d1f18",
           width: "100%",
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "60px",
+          justifyContent: "space-between",
+          padding: "64px 72px",
+          color: "#f6f1e8",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "16px",
-            marginBottom: "32px",
-          }}
-        >
-          <div
-            style={{
-              width: "64px",
-              height: "64px",
-              borderRadius: "16px",
-              background: "#0ea5e9",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "32px",
-              fontWeight: 700,
-              color: "white",
-            }}
-          >
-            HN
+        <div style={{ display: "flex", fontSize: "22px", letterSpacing: "0.18em", color: "#86efac" }}>
+          HSEQ SOFTWARE FOR UK EMPLOYERS
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          <div style={{ fontSize: "64px", fontWeight: 600, lineHeight: 1.1, maxWidth: "920px" }}>
+            Run health and safety as the work happens
           </div>
-          <span style={{ fontSize: "48px", fontWeight: 700, color: "white" }}>
-            HMS Nova
-          </span>
+          <div style={{ fontSize: "28px", color: "#d4cbb8", maxWidth: "820px", lineHeight: 1.35 }}>
+            Digital accident book, RIDDOR, living policy and inspections. £29/month per company,
+            unlimited users.
+          </div>
         </div>
-        <div
-          style={{
-            fontSize: "32px",
-            color: "#94a3b8",
-            textAlign: "center",
-            maxWidth: "800px",
-            lineHeight: 1.4,
-          }}
-        >
-          Norges mest moderne HMS-system. Bygger trygghet gjennom digitalisering,
-          automatisering og ISO 9001 compliance.
-        </div>
-        <div
-          style={{
-            display: "flex",
-            gap: "24px",
-            marginTop: "40px",
-            fontSize: "20px",
-            color: "#38bdf8",
-          }}
-        >
-          <span>300 kr/mnd + mva</span>
-          <span>·</span>
-          <span>Ubegrenset brukere</span>
-          <span>·</span>
-          <span>Digital signatur</span>
-          <span>·</span>
-          <span>ISO 9001</span>
-        </div>
-        <div
-          style={{
-            position: "absolute",
-            bottom: "30px",
-            fontSize: "18px",
-            color: "#64748b",
-          }}
-        >
-          hmsnova.no
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+          <div style={{ display: "flex", fontSize: "36px", fontWeight: 700 }}>HSEQ Nova</div>
+          <div style={{ display: "flex", fontSize: "22px", color: "#86efac" }}>hseqnova.co.uk</div>
         </div>
       </div>
     ),

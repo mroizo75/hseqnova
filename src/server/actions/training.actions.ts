@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/db";
 import { getRequiredTenantContext } from "@/lib/tenant-context";
+import { getAuthMembership } from "@/lib/auth-db";
 import {
   createTrainingSchema,
   updateTrainingSchema,
@@ -10,282 +10,235 @@ import {
 } from "@/features/training/schemas/training.schema";
 import { hasTenantFeature } from "@/lib/tenant-features";
 import { runHealthcareTrainingExpiryAlerts } from "@/lib/healthcare-training-alerts";
+import {
+  deleteTrainingRecord,
+  findDuplicateTraining,
+  insertTraining,
+  insertTrainings,
+  loadTenantIndustry,
+  loadTrainingById,
+  loadTrainingPeople,
+  loadTrainingsForTenant,
+  logTrainingAction,
+  updateTrainingRecord,
+} from "@/server/queries/training.queries";
 
-async function getSessionContext() {
-  const tenantContext = await getRequiredTenantContext();
+const REVALIDATE_PATH = "/dashboard/training";
 
-  const user = await prisma.user.findUnique({
-    where: { id: tenantContext.userId },
-    include: { tenants: true },
-  });
-  
-  if (!user || user.tenants.length === 0) {
-    throw new Error("User not associated with a tenant");
+function errorMessage(error: unknown, fallback: string): string {
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
+    return error.message;
   }
-  
-  return { user, tenantId: tenantContext.tenantId };
+  if (error instanceof Error) return error.message;
+  return fallback;
 }
 
-// Hent all opplæring for en tenant
 export async function getTrainings(_tenantId: string) {
   try {
-    const { tenantId } = await getSessionContext();
-    
-    const trainings = await prisma.training.findMany({
-      where: { tenantId },
-      orderBy: [
-        { completedAt: "desc" },
-        { createdAt: "desc" },
-      ],
-    });
-    
+    const { tenantId } = await getRequiredTenantContext();
+    const trainings = await loadTrainingsForTenant(tenantId, { orderBy: "completedAt" });
     return { success: true, data: trainings };
-  } catch (error: any) {
-    console.error("Get trainings error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente opplæring" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load training") };
   }
 }
 
-// Hent opplæring for en spesifikk bruker
 export async function getUserTrainings(userId: string) {
   try {
-    const { user, tenantId } = await getSessionContext();
-    
-    const trainings = await prisma.training.findMany({
-      where: { userId, tenantId },
-      orderBy: { completedAt: "desc" },
-    });
-    
+    const { tenantId } = await getRequiredTenantContext();
+    const trainings = await loadTrainingsForTenant(tenantId, { userId, orderBy: "completedAt" });
     return { success: true, data: trainings };
-  } catch (error: any) {
-    console.error("Get user trainings error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente opplæring" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load training") };
   }
 }
 
-// Opprett ny opplæring (ISO 9001: Dokumentere kompetanse)
-export async function createTraining(input: any) {
+export async function createTraining(input: Record<string, unknown>) {
   try {
-    const { user, tenantId } = await getSessionContext();
+    const { userId: actorId, tenantId } = await getRequiredTenantContext();
     const validated = createTrainingSchema.parse({
       ...input,
       tenantId,
-      completedAt: input.completedAt ? new Date(input.completedAt) : undefined,
-      validUntil: input.validUntil ? new Date(input.validUntil) : undefined,
+      completedAt: input.completedAt ? new Date(String(input.completedAt)) : undefined,
+      validUntil: input.validUntil ? new Date(String(input.validUntil)) : undefined,
     });
 
-    const duplicate = await prisma.training.findFirst({
-      where: {
-        tenantId,
-        userId: validated.userId,
-        courseKey: validated.courseKey,
-        completedAt: validated.completedAt ?? undefined,
-      },
+    const duplicate = await findDuplicateTraining({
+      tenantId,
+      userId: validated.userId,
+      courseKey: validated.courseKey,
+      completedAt: validated.completedAt ?? null,
     });
     if (duplicate) {
       return {
         success: false,
-        error: `Denne ansatte har allerede kurset "${validated.title}" registrert med samme gjennomføringsdato.`,
+        error: `This employee already has “${validated.title}” recorded on the same completion date.`,
       };
     }
-    
-    const training = await prisma.training.create({
-      data: {
-        tenantId: validated.tenantId,
-        userId: validated.userId,
-        courseKey: validated.courseKey,
-        title: validated.title,
-        provider: validated.provider,
-        completedAt: validated.completedAt,
-        validUntil: validated.validUntil,
-        proofDocKey: validated.proofDocKey,
-        isRequired: validated.isRequired,
+
+    const training = await insertTraining({
+      tenantId,
+      userId: validated.userId,
+      courseKey: validated.courseKey,
+      title: validated.title,
+      provider: validated.provider,
+      completedAt: validated.completedAt,
+      validUntil: validated.validUntil,
+      proofDocKey: validated.proofDocKey,
+      isRequired: validated.isRequired,
+    });
+
+    await logTrainingAction({
+      tenantId,
+      userId: actorId,
+      action: "TRAINING_CREATED",
+      resource: `Training:${training.id}`,
+      metadata: {
+        title: training.title,
+        userId: training.userId,
+        courseKey: training.courseKey,
       },
     });
-    
-    // Audit log
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "TRAINING_CREATED",
-        resource: `Training:${training.id}`,
-        metadata: JSON.stringify({
-          title: training.title,
-          userId: training.userId,
-          courseKey: training.courseKey,
-        }),
-      },
-    });
-    
-    revalidatePath("/dashboard/training");
+
+    revalidatePath(REVALIDATE_PATH);
     return { success: true, data: training };
-  } catch (error: any) {
-    console.error("Create training error:", error);
-    return { success: false, error: error.message || "Kunne ikke registrere opplæring" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not record training") };
   }
 }
 
-// Oppdater opplæring
-export async function updateTraining(input: any) {
+export async function updateTraining(input: Record<string, unknown>) {
   try {
-    const { user, tenantId } = await getSessionContext();
+    const { userId: actorId, tenantId } = await getRequiredTenantContext();
     const validated = updateTrainingSchema.parse({
       ...input,
-      completedAt: input.completedAt ? new Date(input.completedAt) : undefined,
-      validUntil: input.validUntil ? new Date(input.validUntil) : undefined,
+      completedAt: input.completedAt ? new Date(String(input.completedAt)) : undefined,
+      validUntil: input.validUntil ? new Date(String(input.validUntil)) : undefined,
     });
-    
-    const existingTraining = await prisma.training.findFirst({
-      where: { id: validated.id, tenantId },
-    });
-    
-    if (!existingTraining) {
-      return { success: false, error: "Opplæring ikke funnet" };
+
+    const existing = await loadTrainingById({ id: validated.id, tenantId });
+    if (!existing) {
+      return { success: false, error: "Training not found" };
     }
-    
-    const training = await prisma.training.update({
-      where: { id: validated.id },
-      data: {
-        ...validated,
-        updatedAt: new Date(),
-      },
+
+    const training = await updateTrainingRecord(validated.id, tenantId, {
+      ...(validated.title !== undefined && { title: validated.title }),
+      ...(validated.provider !== undefined && { provider: validated.provider }),
+      ...(validated.completedAt !== undefined && { completedAt: validated.completedAt }),
+      ...(validated.validUntil !== undefined && { validUntil: validated.validUntil }),
+      ...(validated.proofDocKey !== undefined && { proofDocKey: validated.proofDocKey }),
+      ...(validated.effectiveness !== undefined && { effectiveness: validated.effectiveness }),
     });
-    
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "TRAINING_UPDATED",
-        resource: `Training:${training.id}`,
-        metadata: JSON.stringify({ title: training.title }),
-      },
+
+    await logTrainingAction({
+      tenantId,
+      userId: actorId,
+      action: "TRAINING_UPDATED",
+      resource: `Training:${training.id}`,
+      metadata: { title: training.title },
     });
-    
-    revalidatePath("/dashboard/training");
+
+    revalidatePath(REVALIDATE_PATH);
     return { success: true, data: training };
-  } catch (error: any) {
-    console.error("Update training error:", error);
-    return { success: false, error: error.message || "Kunne ikke oppdatere opplæring" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not update training") };
   }
 }
 
-// Evaluer effektivitet av opplæring (ISO 9001: c)
-export async function evaluateTraining(input: any) {
+export async function evaluateTraining(input: Record<string, unknown>) {
   try {
-    const { user, tenantId } = await getSessionContext();
+    const { userId: actorId, tenantId } = await getRequiredTenantContext();
     const validated = evaluateTrainingSchema.parse(input);
-    
-    const training = await prisma.training.update({
-      where: { id: validated.id },
-      data: {
-        effectiveness: validated.effectiveness,
-        evaluatedBy: validated.evaluatedBy,
-        evaluatedAt: new Date(),
-        updatedAt: new Date(),
-      },
+
+    const existing = await loadTrainingById({ id: validated.id, tenantId });
+    if (!existing) {
+      return { success: false, error: "Training not found" };
+    }
+
+    const training = await updateTrainingRecord(validated.id, tenantId, {
+      effectiveness: validated.effectiveness,
+      evaluatedBy: validated.evaluatedBy,
+      evaluatedAt: new Date(),
     });
-    
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "TRAINING_EVALUATED",
-        resource: `Training:${training.id}`,
-        metadata: JSON.stringify({
-          title: training.title,
-          effectiveness: validated.effectiveness,
-        }),
-      },
+
+    await logTrainingAction({
+      tenantId,
+      userId: actorId,
+      action: "TRAINING_EVALUATED",
+      resource: `Training:${training.id}`,
+      metadata: { title: training.title, effectiveness: validated.effectiveness },
     });
-    
-    revalidatePath("/dashboard/training");
+
+    revalidatePath(REVALIDATE_PATH);
     return { success: true, data: training };
-  } catch (error: any) {
-    console.error("Evaluate training error:", error);
-    return { success: false, error: error.message || "Kunne ikke evaluere opplæring" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not evaluate training") };
   }
 }
 
-// Slett opplæring
+
 export async function deleteTraining(id: string) {
   try {
-    const { user, tenantId } = await getSessionContext();
-    
-    const training = await prisma.training.findFirst({
-      where: { id, tenantId },
-    });
-    
+    const { userId: actorId, tenantId } = await getRequiredTenantContext();
+    const training = await loadTrainingById({ id, tenantId });
     if (!training) {
-      return { success: false, error: "Opplæring ikke funnet" };
+      return { success: false, error: "Training not found" };
     }
-    
-    // Slett dokumentert bevis fra storage hvis det finnes
+
     if (training.proofDocKey) {
-      const storage = await import("@/lib/storage").then(m => m.getStorage());
+      const storage = await import("@/lib/storage").then((mod) => mod.getStorage());
       await storage.delete(training.proofDocKey);
     }
-    
-    await prisma.training.delete({
-      where: { id },
+
+    await deleteTrainingRecord(id, tenantId);
+    await logTrainingAction({
+      tenantId,
+      userId: actorId,
+      action: "TRAINING_DELETED",
+      resource: `Training:${id}`,
+      metadata: { title: training.title },
     });
-    
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "TRAINING_DELETED",
-        resource: `Training:${id}`,
-        metadata: JSON.stringify({ title: training.title }),
-      },
-    });
-    
-    revalidatePath("/dashboard/training");
+
+    revalidatePath(REVALIDATE_PATH);
     return { success: true };
-  } catch (error: any) {
-    console.error("Delete training error:", error);
-    return { success: false, error: error.message || "Kunne ikke slette opplæring" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not delete training") };
   }
 }
 
-// Få statistikk over opplæring
 export async function getTrainingStats(_tenantId: string) {
   try {
-    const { tenantId } = await getSessionContext();
-    
-    const trainings = await prisma.training.findMany({
-      where: { tenantId },
-    });
-    
+    const { tenantId } = await getRequiredTenantContext();
+    const trainings = await loadTrainingsForTenant(tenantId);
     const now = new Date();
-    const expiringSoon = trainings.filter(t => {
-      if (!t.validUntil) return false;
-      const daysUntilExpiry = Math.ceil((new Date(t.validUntil).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      return daysUntilExpiry > 0 && daysUntilExpiry <= 30;
+    const expiringSoon = trainings.filter((row) => {
+      if (!row.validUntil) return false;
+      const days = Math.ceil(
+        (new Date(row.validUntil).getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+      );
+      return days > 0 && days <= 30;
     }).length;
-    
-    const expired = trainings.filter(t => {
-      if (!t.validUntil) return false;
-      return new Date(t.validUntil) < now;
+    const expired = trainings.filter((row) => {
+      if (!row.validUntil) return false;
+      return new Date(row.validUntil) < now;
     }).length;
-    
-    const stats = {
-      total: trainings.length,
-      completed: trainings.filter(t => t.completedAt).length,
-      notStarted: trainings.filter(t => !t.completedAt).length,
-      expiringSoon,
-      expired,
-      evaluated: trainings.filter(t => t.effectiveness).length,
+
+    return {
+      success: true,
+      data: {
+        total: trainings.length,
+        completed: trainings.filter((row) => row.completedAt).length,
+        notStarted: trainings.filter((row) => !row.completedAt).length,
+        expiringSoon,
+        expired,
+        evaluated: trainings.filter((row) => row.effectiveness).length,
+      },
     };
-    
-    return { success: true, data: stats };
-  } catch (error: any) {
-    console.error("Get training stats error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente statistikk" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load statistics") };
   }
 }
 
-// Registrer flere kurs for én ansatt i én operasjon
 export async function createEmployeeTrainings(input: {
   tenantId: string;
   userId: string;
@@ -300,53 +253,44 @@ export async function createEmployeeTrainings(input: {
   }>;
 }) {
   try {
-    const { user, tenantId } = await getSessionContext();
-
+    const { userId: actorId, tenantId } = await getRequiredTenantContext();
     if (!input.courses || input.courses.length === 0) {
-      return { success: false, error: "Ingen kurs lagt til" };
+      return { success: false, error: "No courses added" };
     }
 
-    const created = await prisma.$transaction(
-      input.courses.map((c) =>
-        prisma.training.create({
-          data: {
-            tenantId,
-            userId: input.userId,
-            courseKey: c.courseKey,
-            title: c.title,
-            provider: c.provider,
-            completedAt: c.completedAt ? new Date(c.completedAt) : undefined,
-            validUntil: c.validUntil ? new Date(c.validUntil) : undefined,
-            proofDocKey: c.proofDocKey ?? null,
-            isRequired: c.isRequired ?? false,
-          },
-        })
-      )
+    const created = await insertTrainings(
+      input.courses.map((course) => ({
+        tenantId,
+        userId: input.userId,
+        courseKey: course.courseKey,
+        title: course.title,
+        provider: course.provider,
+        completedAt: course.completedAt,
+        validUntil: course.validUntil,
+        proofDocKey: course.proofDocKey,
+        isRequired: course.isRequired,
+      })),
     );
 
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "TRAINING_EMPLOYEE_BULK_CREATED",
-        resource: `Training:employee:${input.userId}`,
-        metadata: JSON.stringify({
-          userId: input.userId,
-          count: created.length,
-          courses: input.courses.map((c) => c.title),
-        }),
+    await logTrainingAction({
+      tenantId,
+      userId: actorId,
+      action: "TRAINING_EMPLOYEE_BULK_CREATED",
+      resource: `Training:employee:${input.userId}`,
+      metadata: {
+        userId: input.userId,
+        count: created.length,
+        courses: input.courses.map((course) => course.title),
       },
     });
 
-    revalidatePath("/dashboard/training");
+    revalidatePath(REVALIDATE_PATH);
     return { success: true, data: created };
-  } catch (error: any) {
-    console.error("Create employee trainings error:", error);
-    return { success: false, error: error.message || "Kunne ikke registrere kursene" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not record the courses") };
   }
 }
 
-// Masseregistrer opplæring for flere ansatte i én operasjon
 export async function createBulkTrainings(input: {
   tenantId: string;
   courseKey: string;
@@ -358,119 +302,82 @@ export async function createBulkTrainings(input: {
   participants: Array<{ userId: string; proofDocKey?: string }>;
 }) {
   try {
-    const { user, tenantId } = await getSessionContext();
-
+    const { userId: actorId, tenantId } = await getRequiredTenantContext();
     if (!input.participants || input.participants.length === 0) {
-      return { success: false, error: "Ingen deltakere valgt" };
+      return { success: false, error: "No participants selected" };
     }
 
-    const completedAt = input.completedAt ? new Date(input.completedAt) : undefined;
-    const validUntil = input.validUntil ? new Date(input.validUntil) : undefined;
-
-    const created = await prisma.$transaction(
-      input.participants.map((p) =>
-        prisma.training.create({
-          data: {
-            tenantId,
-            userId: p.userId,
-            courseKey: input.courseKey,
-            title: input.title,
-            provider: input.provider,
-            completedAt,
-            validUntil,
-            proofDocKey: p.proofDocKey ?? null,
-            isRequired: input.isRequired,
-          },
-        })
-      )
+    const created = await insertTrainings(
+      input.participants.map((participant) => ({
+        tenantId,
+        userId: participant.userId,
+        courseKey: input.courseKey,
+        title: input.title,
+        provider: input.provider,
+        completedAt: input.completedAt,
+        validUntil: input.validUntil,
+        proofDocKey: participant.proofDocKey,
+        isRequired: input.isRequired,
+      })),
     );
 
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "TRAINING_BULK_CREATED",
-        resource: `Training:bulk`,
-        metadata: JSON.stringify({
-          title: input.title,
-          courseKey: input.courseKey,
-          count: created.length,
-          userIds: input.participants.map((p) => p.userId),
-        }),
+    await logTrainingAction({
+      tenantId,
+      userId: actorId,
+      action: "TRAINING_BULK_CREATED",
+      resource: "Training:bulk",
+      metadata: {
+        title: input.title,
+        courseKey: input.courseKey,
+        count: created.length,
+        userIds: input.participants.map((participant) => participant.userId),
       },
     });
 
-    revalidatePath("/dashboard/training");
+    revalidatePath(REVALIDATE_PATH);
     return { success: true, data: created };
-  } catch (error: any) {
-    console.error("Create bulk trainings error:", error);
-    return { success: false, error: error.message || "Kunne ikke registrere opplæringene" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not record the training records") };
   }
 }
 
-// Få kompetansematrise (hvem har hvilken kompetanse)
 export async function getCompetenceMatrix(_tenantId: string) {
   try {
-    const { tenantId } = await getSessionContext();
-    
-    const users = await prisma.user.findMany({
-      where: {
-        tenants: {
-          some: { tenantId },
-        },
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-      },
-    });
-    
-    const trainings = await prisma.training.findMany({
-      where: { tenantId },
-      orderBy: { courseKey: "asc" },
-    });
-    
-    // Grupper opplæring per bruker
-    const matrix = users.map(u => ({
-      user: u,
-      trainings: trainings.filter(t => t.userId === u.id),
-    }));
-    
-    return { success: true, data: matrix };
-  } catch (error: any) {
-    console.error("Get competence matrix error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente kompetansematrise" };
+    const { tenantId } = await getRequiredTenantContext();
+    const [users, trainings] = await Promise.all([
+      loadTrainingPeople(tenantId),
+      loadTrainingsForTenant(tenantId, { orderBy: "courseKey" }),
+    ]);
+    return {
+      success: true,
+      data: users.map((user) => ({
+        user,
+        trainings: trainings.filter((row) => row.userId === user.id),
+      })),
+    };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not load competence matrix") };
   }
 }
 
 export async function sendHealthcareTrainingExpiryAlerts() {
   try {
-    const { user, tenantId } = await getSessionContext();
-    const userTenant = user.tenants.find((ut) => ut.tenantId === tenantId);
+    const { userId, tenantId } = await getRequiredTenantContext();
+    const membership = await getAuthMembership(userId, tenantId);
     const isAllowedRole =
-      userTenant?.role === "ADMIN" ||
-      userTenant?.role === "HMS" ||
-      userTenant?.role === "LEDER";
-
+      membership?.role === "ADMIN" || membership?.role === "HMS" || membership?.role === "LEDER";
     if (!isAllowedRole) {
-      return { success: false, error: "Ingen tilgang til å sende varsler" };
+      return { success: false, error: "You do not have permission to send alerts" };
     }
 
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { industry: true },
-    });
-
-    if (!hasTenantFeature(tenant?.industry, "helseforetak")) {
-      return { success: false, error: "Varslingsflyten er kun tilgjengelig for helsebransje" };
+    const industry = await loadTenantIndustry(tenantId);
+    if (!hasTenantFeature(industry, "helseforetak")) {
+      return { success: false, error: "This alert flow is only available for healthcare" };
     }
 
     const result = await runHealthcareTrainingExpiryAlerts({ tenantId });
     return { success: true, data: { sent: result.totalSent } };
-  } catch (error: any) {
-    console.error("Send healthcare training expiry alerts error:", error);
-    return { success: false, error: error.message || "Kunne ikke sende kompetansevarsler" };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not send competence alerts") };
   }
 }
-

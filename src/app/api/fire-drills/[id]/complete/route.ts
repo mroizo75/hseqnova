@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { completeFireDrillSchema } from "@/features/fire-drills/schemas/fire-drill.schema";
+import { assertFireDrillOwnership, updateFireDrillRecord } from "@/server/queries/fire-drills.queries";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-// § 13: Registrer gjennomføring med lovpålagte felt (antall deltakere, observasjoner)
 export async function POST(request: NextRequest, { params }: RouteContext) {
   try {
     const session = await getServerSession(authOptions);
@@ -16,13 +15,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
     const { id } = await params;
 
-    const existing = await prisma.fireDrill.findFirst({
-      where: { id, tenantId: session.user.tenantId },
-      select: { id: true, status: true },
-    });
-    if (!existing) {
-      return NextResponse.json({ error: "Ikke funnet" }, { status: 404 });
+    let existing;
+    try {
+      existing = await assertFireDrillOwnership(id, session.user.tenantId);
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "FIRE_DRILL_NOT_FOUND") {
+        return NextResponse.json({ error: "Ikke funnet" }, { status: 404 });
+      }
+      throw error;
     }
+
     if (existing.status === "EVALUATED" || existing.status === "CANCELLED") {
       return NextResponse.json(
         { error: "Kan ikke registrere gjennomføring på en evaluert eller avlyst øvelse" },
@@ -36,15 +38,12 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       completedAt: body.completedAt ? new Date(body.completedAt) : undefined,
     });
 
-    const drill = await prisma.fireDrill.update({
-      where: { id },
-      data: {
-        status: "COMPLETED",
-        completedAt: validated.completedAt,
-        actualParticipantCount: validated.actualParticipantCount,
-        evacuationTimeSeconds: validated.evacuationTimeSeconds ?? null,
-        observations: validated.observations,
-      },
+    const drill = await updateFireDrillRecord(id, session.user.tenantId, {
+      status: "COMPLETED",
+      completedAt: validated.completedAt,
+      actualParticipantCount: validated.actualParticipantCount,
+      evacuationTimeSeconds: validated.evacuationTimeSeconds ?? null,
+      observations: validated.observations,
     });
 
     return NextResponse.json(drill);

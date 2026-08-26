@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getPermissions } from "@/lib/permissions";
 import type { Role } from "@prisma/client";
@@ -73,10 +73,13 @@ export async function POST(request: NextRequest) {
   // Bruk intern proxy-URL (samme mønster som HMS Tavle-bilder)
   const logoUrl = `${APP_URL}/api/files/${key}`;
 
-  await prisma.tenant.update({
-    where: { id: tenantId },
-    data: { logoUrl },
-  });
+  const { error } = await getAdminDb()
+    .from("Tenant")
+    .update({ logoUrl, updatedAt: new Date().toISOString() })
+    .eq("id", tenantId);
+  if (error) {
+    return NextResponse.json({ error: "Could not save logo" }, { status: 500 });
+  }
 
   return NextResponse.json({ success: true, logoUrl });
 }
@@ -92,10 +95,13 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Kun admin kan endre logo" }, { status: 403 });
   }
 
-  await prisma.tenant.update({
-    where: { id: session.user.tenantId },
-    data: { logoUrl: null },
-  });
+  const { error } = await getAdminDb()
+    .from("Tenant")
+    .update({ logoUrl: null, updatedAt: new Date().toISOString() })
+    .eq("id", session.user.tenantId);
+  if (error) {
+    return NextResponse.json({ error: "Could not remove logo" }, { status: 500 });
+  }
 
   return NextResponse.json({ success: true });
 }

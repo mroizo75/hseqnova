@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale";
 import { ArrowLeft, Edit, FileText, Calendar, Users, CheckCircle2, AlertCircle, Check } from "lucide-react";
 import { ApproveManagementReviewButton } from "@/components/management-review/approve-button";
 
@@ -63,13 +63,13 @@ async function getManagementReview(id: string, tenantId: string) {
 function getStatusBadge(status: string) {
   switch (status) {
     case "PLANNED":
-      return <Badge variant="secondary">Planlagt</Badge>;
+      return <Badge variant="secondary">Planned</Badge>;
     case "IN_PROGRESS":
-      return <Badge className="bg-blue-500 hover:bg-blue-500">Pågår</Badge>;
+      return <Badge className="bg-blue-500 hover:bg-blue-500">In progress</Badge>;
     case "COMPLETED":
-      return <Badge className="bg-yellow-500 hover:bg-yellow-500">Fullført</Badge>;
+      return <Badge className="bg-yellow-500 hover:bg-yellow-500">Completed</Badge>;
     case "APPROVED":
-      return <Badge className="bg-green-600 hover:bg-green-600">Godkjent</Badge>;
+      return <Badge className="bg-green-600 hover:bg-green-600">Approved</Badge>;
     default:
       return <Badge variant="secondary">{status}</Badge>;
   }
@@ -112,7 +112,7 @@ export default async function ManagementReviewDetailPage({
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{review.title}</h1>
             <p className="text-muted-foreground">
-              {format(new Date(review.reviewDate), "dd. MMMM yyyy", { locale: nb })}
+              {format(new Date(review.reviewDate), "dd. MMMM yyyy", { locale: enGB })}
             </p>
           </div>
         </div>
@@ -156,19 +156,19 @@ export default async function ManagementReviewDetailPage({
               <p className="text-lg font-semibold">{review.period}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Gjennomført av</p>
+              <p className="text-sm font-medium text-muted-foreground">Conducted by</p>
               <p className="text-lg">{review.conductedByName}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Opprettet</p>
+              <p className="text-sm font-medium text-muted-foreground">Created</p>
               <p className="text-lg">
-                {format(new Date(review.createdAt), "dd. MMM yyyy HH:mm", { locale: nb })}
+                {format(new Date(review.createdAt), "dd. MMM yyyy HH:mm", { locale: enGB })}
               </p>
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Sist oppdatert</p>
               <p className="text-lg">
-                {format(new Date(review.updatedAt), "dd. MMM yyyy HH:mm", { locale: nb })}
+                {format(new Date(review.updatedAt), "dd. MMM yyyy HH:mm", { locale: enGB })}
               </p>
             </div>
           </div>
@@ -180,10 +180,10 @@ export default async function ManagementReviewDetailPage({
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
                 <div>
                   <p className="font-medium text-green-900 dark:text-green-100">
-                    Godkjent av {review.approvedByName}
+                    Approved by {review.approvedByName}
                   </p>
                   <p className="text-sm text-green-700 dark:text-green-300">
-                    {format(new Date(review.approvedAt), "dd. MMMM yyyy 'kl.' HH:mm", { locale: nb })}
+                    {format(new Date(review.approvedAt), "dd MMMM yyyy HH:mm", { locale: enGB })}
                   </p>
                 </div>
               </div>
@@ -197,10 +197,10 @@ export default async function ManagementReviewDetailPage({
                 <Calendar className="h-5 w-5 text-blue-600" />
                 <div>
                   <p className="font-medium text-blue-900 dark:text-blue-100">
-                    Neste gjennomgang planlagt
+                    Next review planned
                   </p>
                   <p className="text-sm text-blue-700 dark:text-blue-300">
-                    {format(new Date(review.nextReviewDate), "dd. MMMM yyyy", { locale: nb })}
+                    {format(new Date(review.nextReviewDate), "dd. MMMM yyyy", { locale: enGB })}
                   </p>
                 </div>
               </div>
@@ -218,7 +218,7 @@ export default async function ManagementReviewDetailPage({
               Dokumenter til gjennomgang
             </CardTitle>
             <CardDescription>
-              {review.documentsToReview.length} dokument(er) som skulle vært gjennomgått innen denne datoen
+              {review.documentsToReview.length} document(s) that should have been reviewed by this date
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -232,18 +232,18 @@ export default async function ManagementReviewDetailPage({
                     <div className="flex items-center gap-2">
                       <p className="font-medium">{doc.title}</p>
                       <Badge variant={doc.status === "APPROVED" ? "default" : "secondary"}>
-                        {doc.status === "APPROVED" ? "Godkjent" : doc.status === "DRAFT" ? "Utkast" : "Arkivert"}
+                        {doc.status === "APPROVED" ? "Approved" : doc.status === "DRAFT" ? "Draft" : "Archived"}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                      <span>Versjon: {doc.version}</span>
+                      <span>Version: {doc.version}</span>
                       <span>
-                        Skulle vært gjennomgått: {format(new Date(doc.nextReviewDate!), "dd. MMM yyyy", { locale: nb })}
+                        Should have been reviewed: {format(new Date(doc.nextReviewDate!), "dd. MMM yyyy", { locale: enGB })}
                       </span>
                       {doc.status === "APPROVED" && doc.approvedAt && (
                         <span className="text-green-600 flex items-center gap-1">
                           <Check className="h-3 w-3" />
-                          Godkjent {format(new Date(doc.approvedAt), "dd. MMM yyyy", { locale: nb })}
+                          Approved {format(new Date(doc.approvedAt), "dd. MMM yyyy", { locale: enGB })}
                         </span>
                       )}
                     </div>
@@ -264,12 +264,12 @@ export default async function ManagementReviewDetailPage({
       <Card>
         <CardHeader>
           <CardTitle>HMS-gjennomgang</CardTitle>
-          <CardDescription>Status og resultater fra ulike HMS-områder</CardDescription>
+          <CardDescription>Status and results from different HSEQ areas</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {review.hmsGoalsReview && (
             <div>
-              <h3 className="mb-2 font-semibold">HMS-mål og resultater</h3>
+              <h3 className="mb-2 font-semibold">HSEQ goals and results</h3>
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                 {review.hmsGoalsReview}
               </p>
@@ -278,7 +278,7 @@ export default async function ManagementReviewDetailPage({
 
           {review.incidentStatistics && (
             <div>
-              <h3 className="mb-2 font-semibold">Avvik og hendelser</h3>
+              <h3 className="mb-2 font-semibold">Incidents and events</h3>
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                 {review.incidentStatistics}
               </p>
@@ -287,7 +287,7 @@ export default async function ManagementReviewDetailPage({
 
           {review.riskReview && (
             <div>
-              <h3 className="mb-2 font-semibold">Risikovurderinger</h3>
+              <h3 className="mb-2 font-semibold">Risk assessments</h3>
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                 {review.riskReview}
               </p>
@@ -296,7 +296,7 @@ export default async function ManagementReviewDetailPage({
 
           {review.auditResults && (
             <div>
-              <h3 className="mb-2 font-semibold">Revisjoner og inspeksjoner</h3>
+              <h3 className="mb-2 font-semibold">Audits and inspections</h3>
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                 {review.auditResults}
               </p>
@@ -305,7 +305,7 @@ export default async function ManagementReviewDetailPage({
 
           {review.trainingStatus && (
             <div>
-              <h3 className="mb-2 font-semibold">Opplæring og kompetanse</h3>
+              <h3 className="mb-2 font-semibold">Training and competence</h3>
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                 {review.trainingStatus}
               </p>
@@ -314,7 +314,7 @@ export default async function ManagementReviewDetailPage({
 
           {review.resourcesReview && (
             <div>
-              <h3 className="mb-2 font-semibold">Ressurser og budsjett</h3>
+              <h3 className="mb-2 font-semibold">Resources and budget</h3>
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                 {review.resourcesReview}
               </p>
@@ -323,7 +323,7 @@ export default async function ManagementReviewDetailPage({
 
           {review.externalChanges && (
             <div>
-              <h3 className="mb-2 font-semibold">Eksterne endringer</h3>
+              <h3 className="mb-2 font-semibold">External changes</h3>
               <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                 {review.externalChanges}
               </p>
@@ -332,7 +332,7 @@ export default async function ManagementReviewDetailPage({
 
           {review.wellbeingSummary && (
             <div>
-              <h3 className="mb-2 font-semibold">Psykososialt arbeidsmiljø</h3>
+              <h3 className="mb-2 font-semibold">Psychosocial working environment</h3>
               <div className="whitespace-pre-wrap text-sm text-muted-foreground bg-blue-50 p-4 rounded-lg border border-blue-200">
                 {review.wellbeingSummary}
               </div>
@@ -341,16 +341,16 @@ export default async function ManagementReviewDetailPage({
         </CardContent>
       </Card>
 
-      {/* Konklusjoner og oppfølging */}
+      {/* Conclusions and follow-up */}
       {(review.conclusions || review.notes) && (
         <Card>
           <CardHeader>
-            <CardTitle>Konklusjoner og oppfølging</CardTitle>
+            <CardTitle>Conclusions and follow-up</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {review.conclusions && (
               <div>
-                <h3 className="mb-2 font-semibold">Konklusjoner</h3>
+                <h3 className="mb-2 font-semibold">Conclusions</h3>
                 <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                   {review.conclusions}
                 </p>
@@ -359,7 +359,7 @@ export default async function ManagementReviewDetailPage({
 
             {review.notes && (
               <div>
-                <h3 className="mb-2 font-semibold">Notater</h3>
+                <h3 className="mb-2 font-semibold">Notes</h3>
                 <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                   {review.notes}
                 </p>

@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -28,7 +27,6 @@ import {
   Camera,
   X,
   AlertTriangle,
-  Users,
   WifiOff,
   CloudUpload,
 } from "lucide-react";
@@ -39,6 +37,7 @@ import {
   getIncidentTypeGroup,
   getIncidentTypeGroups,
   getIncidentTypesForGroup,
+  getIncidentTypeLabel,
   getSingleTypeForGroup,
   type IncidentTypeGroup,
 } from "@/features/incidents/schemas/incident.schema";
@@ -53,17 +52,11 @@ function toLocalISOString(date: Date): string {
   return `${y}-${m}-${d}T${h}:${min}`;
 }
 
-interface SubcategoryOption {
-  id: string;
-  key: string;
-  label: string;
-  industry: string;
-}
-
 interface IncidentFormProps {
   tenantId: string;
   userId: string;
-  risks: Array<{ id: string; title: string; category: string; score: number }>;
+  /** Kept for callers; risk linking is done when the record is handled (HSG245). */
+  risks?: Array<{ id: string; title: string; category: string; score: number }>;
   users: Array<{ id: string; name: string | null; email: string }>;
   projects: Array<{ id: string; name: string; code: string | null; status: string }>;
   defaultType?: IncidentType;
@@ -71,6 +64,7 @@ interface IncidentFormProps {
   isTabletMode?: boolean;
   templatePreset?: "homeVisitRisk" | "violenceThreat" | "infectionExposure";
   ruhModuleEnabled?: boolean;
+  showProjectFields?: boolean;
 }
 
 interface OfflineIncidentQueueItem {
@@ -90,42 +84,21 @@ interface TemplatePresetDefaults {
 const OFFLINE_INCIDENT_QUEUE_KEY = "hmsnova.offline.incidentQueue.v1";
 
 const HMS_TYPES: IncidentType[] = ["ULYKKE", "NESTEN", "FARLIG_SITUASJON", "YRKESSYKDOM"];
-
-// Typene som heter "... / RUH" i standardoppsettet. Uten RUH-modulen brukes ren etikett.
-const RUH_LABELLED_TYPES: ReadonlySet<IncidentType> = new Set<IncidentType>(["ULYKKE", "NESTEN"]);
-
-function getTypeLabelKey(type: IncidentType, ruhModuleEnabled: boolean): string {
-  return !ruhModuleEnabled && RUH_LABELLED_TYPES.has(type)
-    ? `types.${type}.labelWithoutRuh`
-    : `types.${type}.label`;
-}
-
-const severityLevels = [
-  { value: 1, labelKey: "severity.1.label", descKey: "severity.1.desc" },
-  { value: 2, labelKey: "severity.2.label", descKey: "severity.2.desc" },
-  { value: 3, labelKey: "severity.3.label", descKey: "severity.3.desc" },
-  { value: 4, labelKey: "severity.4.label", descKey: "severity.4.desc" },
-  { value: 5, labelKey: "severity.5.label", descKey: "severity.5.desc" },
-];
-
-const NO_RISK_REFERENCE_VALUE = "__none_risk_reference__";
+const INJURY_TYPES: IncidentType[] = ["ULYKKE", "YRKESSYKDOM", "SKADE"];
 
 const NO_PROJECT_VALUE = "__none_project__";
-
-// Alvorlighetsgrad er valgfri ved registrering – leder setter grad ved behandling
-const NOT_ASSESSED_SEVERITY_VALUE = "__not_assessed__";
 
 export function IncidentForm({
   tenantId,
   userId,
-  risks = [],
   users = [],
   projects = [],
   defaultType,
   defaultProjectId,
   isTabletMode = false,
   templatePreset,
-  ruhModuleEnabled = true,
+  ruhModuleEnabled = false,
+  showProjectFields = false,
 }: IncidentFormProps) {
   const t = useTranslations("incidentForm");
   const router = useRouter();
@@ -148,8 +121,6 @@ export function IncidentForm({
     setTypeGroup(group);
     // Grupper med bare én type velger typen direkte, slik at steg 2 kan hoppes over
     setSelectedType(getSingleTypeForGroup(group, ruhModuleEnabled) ?? "");
-    setSubcategoryOptions([]);
-    setSelectedSubcategories([]);
   }
   const NO_REPORTED_FOR_VALUE = "__none__";
   const [reportedForUserId, setReportedForUserId] = useState<string>(
@@ -157,11 +128,6 @@ export function IncidentForm({
   );
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-
-  // Underkategorier
-  const [subcategoryOptions, setSubcategoryOptions] = useState<SubcategoryOption[]>([]);
-  const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]);
-  const [loadingSubcategories, setLoadingSubcategories] = useState(false);
 
   // Prosjektvelger
   const [selectedProjectId, setSelectedProjectId] = useState<string>(
@@ -200,9 +166,7 @@ export function IncidentForm({
   const activeTemplate = templatePreset ? templateDefaults[templatePreset] : null;
 
   const isHmsType = selectedType ? HMS_TYPES.includes(selectedType as IncidentType) : false;
-  // Personinvolvering og skadeomfang er ukjent når avviket meldes. Uten RUH-modulen
-  // fylles disse ut av leder under behandlingen i stedet (AML § 5-1 registreringsplikt).
-  const showHmsSpecificFields = ruhModuleEnabled && isHmsType;
+  const isInjuryEvent = selectedType ? INJURY_TYPES.includes(selectedType as IncidentType) : false;
   const isCustomerType = selectedType === "CUSTOMER";
 
   useEffect(() => {
@@ -230,37 +194,6 @@ export function IncidentForm({
       setImmediateActionValue(t(activeTemplate.immediateActionKey));
     }
   }, [activeTemplate, immediateActionValue.length, t]);
-
-  const fetchSubcategories = useCallback(async (type: IncidentType) => {
-    setLoadingSubcategories(true);
-    setSelectedSubcategories([]);
-    try {
-      const res = await fetch(`/api/incidents/subcategories?type=${type}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSubcategoryOptions(data.options ?? []);
-      }
-    } catch {
-      setSubcategoryOptions([]);
-    } finally {
-      setLoadingSubcategories(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (selectedType) {
-      fetchSubcategories(selectedType as IncidentType);
-    } else {
-      setSubcategoryOptions([]);
-      setSelectedSubcategories([]);
-    }
-  }, [selectedType, fetchSubcategories]);
-
-  function toggleSubcategory(key: string) {
-    setSelectedSubcategories((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-    );
-  }
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (!e.target.files) return;
@@ -368,50 +301,30 @@ export function IncidentForm({
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const rawRiskReferenceId = formData.get("riskReferenceId") as string | null;
-    const rawSeverity = formData.get("severity") as string | null;
 
     const data = {
       tenantId,
       type: selectedType as IncidentType,
       title: formData.get("title") as string,
       description: formData.get("description") as string,
-      severity:
-        rawSeverity && rawSeverity !== NOT_ASSESSED_SEVERITY_VALUE
-          ? parseInt(rawSeverity, 10)
-          : null,
+      severity: null,
       occurredAt: formData.get("occurredAt") as string,
       reportedBy: userId,
       location: (formData.get("location") as string) || undefined,
       witnessName: (formData.get("witnessName") as string) || undefined,
       immediateAction: (formData.get("immediateAction") as string) || undefined,
-      injuryType: (formData.get("injuryType") as string) || undefined,
       reportedForUserId:
         reportedForUserId && reportedForUserId !== NO_REPORTED_FOR_VALUE
           ? reportedForUserId
           : undefined,
-      riskReferenceId:
-        rawRiskReferenceId && rawRiskReferenceId !== NO_RISK_REFERENCE_VALUE
-          ? rawRiskReferenceId
-          : undefined,
       customerName: (formData.get("customerName") as string) || undefined,
       customerEmail: (formData.get("customerEmail") as string) || undefined,
       customerPhone: (formData.get("customerPhone") as string) || undefined,
-      customerTicketId: (formData.get("customerTicketId") as string) || undefined,
-      responseDeadline: (formData.get("responseDeadline") as string) || undefined,
-      customerSatisfaction: formData.get("customerSatisfaction")
-        ? parseInt(formData.get("customerSatisfaction") as string, 10)
-        : undefined,
-      // Prosjektkobling
       projectId:
         selectedProjectId !== NO_PROJECT_VALUE ? selectedProjectId : undefined,
       projectReference: (formData.get("projectReference") as string) || undefined,
-      // Underkategorier
-      subcategoryKeys: selectedSubcategories,
-      // RUH-felt
       involvedPersons: (formData.get("involvedPersons") as string) || undefined,
       injuryDescription: (formData.get("injuryDescription") as string) || undefined,
-      suggestedActions: (formData.get("suggestedActions") as string) || undefined,
     };
 
     if (isTabletMode && !navigator.onLine) {
@@ -431,7 +344,6 @@ export function IncidentForm({
       });
       setLoading(false);
       e.currentTarget.reset();
-      setSelectedSubcategories([]);
       return;
     }
 
@@ -550,65 +462,35 @@ export function IncidentForm({
             </div>
           </div>
 
-          {/* Steg 2: Type + alvorlighet. Grupper med bare én type hopper over typevalget */}
-          {typeGroup && (
-            <div className="grid gap-4 md:grid-cols-2">
-              {needsTypeChoice && (
-                <div className="space-y-2">
-                  <Label htmlFor="type">{t("fields.type.label")}</Label>
-                  <Select
-                    disabled={loading}
-                    value={selectedType || undefined}
-                    onValueChange={(value) => setSelectedType(value as IncidentType)}
-                  >
-                    <SelectTrigger id="type">
-                      <SelectValue placeholder={t("fields.type.placeholder")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {typesInGroup.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {t(getTypeLabelKey(type, ruhModuleEnabled))}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {selectedTypeDescriptionKey && (
-                    <p className="text-xs text-muted-foreground">
-                      {t(selectedTypeDescriptionKey)}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="severity">{t("fields.severity.label")}</Label>
-                <Select name="severity" disabled={loading} defaultValue={NOT_ASSESSED_SEVERITY_VALUE}>
-                  <SelectTrigger id="severity">
-                    <SelectValue placeholder={t("fields.severity.placeholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NOT_ASSESSED_SEVERITY_VALUE}>
-                      {t("fields.severity.notAssessedOption")}
+          {typeGroup && needsTypeChoice && (
+            <div className="space-y-2">
+              <Label htmlFor="type">{t("fields.type.label")}</Label>
+              <Select
+                disabled={loading}
+                value={selectedType || undefined}
+                onValueChange={(value) => setSelectedType(value as IncidentType)}
+              >
+                <SelectTrigger id="type">
+                  <SelectValue placeholder={t("fields.type.placeholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {typesInGroup.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {getIncidentTypeLabel(type)}
                     </SelectItem>
-                    {severityLevels.map((level) => (
-                      <SelectItem
-                        key={level.value}
-                        value={level.value.toString()}
-                      >
-                        {t(level.labelKey)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedTypeDescriptionKey && (
                 <p className="text-xs text-muted-foreground">
-                  {t("fields.severity.help")}
+                  {t(selectedTypeDescriptionKey)}
                 </p>
-              </div>
+              )}
             </div>
           )}
 
-          {/* ── Prosjektvelger ── */}
-          {projects.length > 0 && (
+          {/* CDM add-on only — projects are not core HSEQ */}
+          {showProjectFields && projects.length > 0 && (
             <div className="space-y-2">
               <Label>{t("fields.project.label")}</Label>
               <Select
@@ -638,6 +520,7 @@ export function IncidentForm({
           )}
 
           {/* ── Prosjektnummer som fritekst for uregistrerte oppdrag ── */}
+          {showProjectFields && (
           <div className="space-y-2">
             <Label htmlFor="projectReference">{t("fields.projectReference.label")}</Label>
             <Input
@@ -651,36 +534,6 @@ export function IncidentForm({
               {t("fields.projectReference.help")}
             </p>
           </div>
-
-          {/* ── Underkategorier (sjekkbokser) ── */}
-          {selectedType && subcategoryOptions.length > 0 && (
-            <div className="space-y-3">
-              <Label>
-                {t("fields.subcategories.label")}
-                <span className="ml-1 text-xs font-normal text-muted-foreground">
-                  {t("fields.subcategories.hint")}
-                </span>
-              </Label>
-              {loadingSubcategories ? (
-                <p className="text-xs text-muted-foreground">{t("fields.subcategories.loading")}</p>
-              ) : (
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 rounded-lg border bg-muted/30 p-4">
-                  {subcategoryOptions.map((opt) => (
-                    <label
-                      key={opt.key}
-                      className="flex items-center gap-2 cursor-pointer select-none"
-                    >
-                      <Checkbox
-                        checked={selectedSubcategories.includes(opt.key)}
-                        onCheckedChange={() => toggleSubcategory(opt.key)}
-                        disabled={loading}
-                      />
-                      <span className="text-sm">{opt.label}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
           )}
 
           <div className="space-y-2">
@@ -704,7 +557,7 @@ export function IncidentForm({
               defaultValue={activeTemplate ? t(activeTemplate.descriptionKey) : undefined}
               required
               disabled={loading}
-              rows={5}
+              rows={3}
             />
           </div>
 
@@ -722,16 +575,47 @@ export function IncidentForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="location">{t("fields.location.label")}</Label>
+              <Label htmlFor="location">{t("fields.location.label")}{isHmsType ? " *" : ""}</Label>
               <Input
                 id="location"
                 name="location"
                 placeholder={t("fields.location.placeholder")}
                 defaultValue={activeTemplate ? t(activeTemplate.locationKey) : undefined}
+                required={isHmsType}
                 disabled={loading}
               />
             </div>
           </div>
+
+          {isInjuryEvent && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="involvedPersons">
+                  {t("fields.involvedPersons.label")} *
+                </Label>
+                <Textarea
+                  id="involvedPersons"
+                  name="involvedPersons"
+                  placeholder={t("fields.involvedPersons.placeholder")}
+                  disabled={loading}
+                  required
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="injuryDescription">
+                  {t("fields.injuryDescription.createLabel")}
+                </Label>
+                <Textarea
+                  id="injuryDescription"
+                  name="injuryDescription"
+                  placeholder={t("fields.injuryDescription.createPlaceholder")}
+                  disabled={loading}
+                  rows={2}
+                />
+              </div>
+            </>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="witnessName">{t("fields.witnessName.label")}</Label>
@@ -740,6 +624,19 @@ export function IncidentForm({
               name="witnessName"
               placeholder={t("fields.witnessName.placeholder")}
               disabled={loading}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="immediateAction">{t("fields.immediateAction.label")}</Label>
+            <Textarea
+              id="immediateAction"
+              name="immediateAction"
+              placeholder={t("fields.immediateAction.placeholder")}
+              value={immediateActionValue}
+              onChange={(event) => setImmediateActionValue(event.target.value)}
+              disabled={loading}
+              rows={2}
             />
           </div>
 
@@ -775,128 +672,6 @@ export function IncidentForm({
         </CardContent>
       </Card>
 
-      {/* Risikokoblingen beholdes selv om resten av RUH-feltene er skjult */}
-      {isHmsType && !showHmsSpecificFields && (
-        <Card>
-          <CardContent className="space-y-2 pt-6">
-            <Label htmlFor="riskReferenceId">{t("fields.riskReference.label")}</Label>
-            <Select name="riskReferenceId" disabled={loading || risks.length === 0}>
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={
-                    risks.length
-                      ? t("fields.riskReference.placeholder")
-                      : t("fields.riskReference.noneAvailable")
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NO_RISK_REFERENCE_VALUE}>
-                  {t("fields.riskReference.noneOption")}
-                </SelectItem>
-                {risks.map((risk) => (
-                  <SelectItem key={risk.id} value={risk.id}>
-                    {t("fields.riskReference.optionWithScore", {
-                      title: risk.title,
-                      score: risk.score,
-                    })}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── RUH / HMS-spesifikke felt ── */}
-      {showHmsSpecificFields && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-amber-600" />
-              {t("sections.hmsSpecific.title")}
-            </CardTitle>
-            <CardDescription>
-              {t("sections.hmsSpecific.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="involvedPersons">{t("fields.involvedPersons.label")}</Label>
-              <Textarea
-                id="involvedPersons"
-                name="involvedPersons"
-                placeholder={t("fields.involvedPersons.placeholder")}
-                disabled={loading}
-                rows={2}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="injuryDescription">{t("fields.injuryDescription.label")}</Label>
-              <Textarea
-                id="injuryDescription"
-                name="injuryDescription"
-                placeholder={t("fields.injuryDescription.placeholder")}
-                disabled={loading}
-                rows={3}
-              />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="injuryType">{t("fields.injuryTypeDetailed.label")}</Label>
-                <Input
-                  id="injuryType"
-                  name="injuryType"
-                  placeholder={t("fields.injuryType.placeholder")}
-                  disabled={loading}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="riskReferenceId">{t("fields.riskReference.label")}</Label>
-                <Select
-                  name="riskReferenceId"
-                  disabled={loading || risks.length === 0}
-                >
-                  <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        risks.length
-                          ? t("fields.riskReference.placeholder")
-                          : t("fields.riskReference.noneAvailable")
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NO_RISK_REFERENCE_VALUE}>
-                      {t("fields.riskReference.noneOption")}
-                    </SelectItem>
-                    {risks.map((risk) => (
-                      <SelectItem key={risk.id} value={risk.id}>
-                        {t("fields.riskReference.optionWithScore", { title: risk.title, score: risk.score })}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="suggestedActions">{t("fields.suggestedActions.label")}</Label>
-              <Textarea
-                id="suggestedActions"
-                name="suggestedActions"
-                placeholder={t("fields.suggestedActions.placeholder")}
-                disabled={loading}
-                rows={3}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-
       {/* ── Kundeklage ── */}
       {isCustomerType && (
         <Card>
@@ -929,79 +704,18 @@ export function IncidentForm({
                 />
               </div>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="customerPhone">{t("fields.customerPhone.label")}</Label>
-                <Input
-                  id="customerPhone"
-                  name="customerPhone"
-                  placeholder={t("fields.customerPhone.placeholder")}
-                  disabled={loading}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="customerTicketId">{t("fields.customerTicketId.label")}</Label>
-                <Input
-                  id="customerTicketId"
-                  name="customerTicketId"
-                  placeholder={t("fields.customerTicketId.placeholder")}
-                  disabled={loading}
-                />
-              </div>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="responseDeadline">{t("fields.responseDeadline.label")}</Label>
-                <Input
-                  id="responseDeadline"
-                  name="responseDeadline"
-                  type="date"
-                  disabled={loading}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="customerSatisfaction">{t("fields.customerSatisfaction.label")}</Label>
-                <Select name="customerSatisfaction" disabled={loading}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("fields.customerSatisfaction.placeholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1, 2, 3, 4, 5].map((v) => (
-                      <SelectItem key={v} value={v.toString()}>
-                        {v}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="customerPhone">{t("fields.customerPhone.label")}</Label>
+              <Input
+                id="customerPhone"
+                name="customerPhone"
+                placeholder={t("fields.customerPhone.placeholder")}
+                disabled={loading}
+              />
             </div>
           </CardContent>
         </Card>
       )}
-
-      {/* ── Umiddelbare tiltak ── */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("sections.immediateActions.title")}</CardTitle>
-          <CardDescription>
-            {t("sections.immediateActions.description")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="immediateAction">{t("fields.immediateAction.label")}</Label>
-            <Textarea
-              id="immediateAction"
-              name="immediateAction"
-              placeholder={t("fields.immediateAction.placeholder")}
-              value={immediateActionValue}
-              onChange={(event) => setImmediateActionValue(event.target.value)}
-              disabled={loading}
-              rows={3}
-            />
-          </div>
-        </CardContent>
-      </Card>
 
       {/* ── Bilder ── */}
       <Card>

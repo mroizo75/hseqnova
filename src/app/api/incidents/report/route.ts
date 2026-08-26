@@ -1,18 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { generateSequenceNumber } from "@/lib/sequence";
-import { AuditLog } from "@/lib/audit-log";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { createIncident } from "@/server/actions/incident.actions";
 import { getStorage, generateFileKey } from "@/lib/storage";
 import { createNotification } from "@/server/actions/notification.actions";
-import { dispatchNewIncidentNotifications } from "@/lib/incident-notification-routing.server";
-import { normalizeProjectReference } from "@/lib/incident-project-reference";
-import { resolveIncidentProjectId } from "@/lib/incident-project-reference.server";
-import {
-  parseModuleVisibilityConfig,
-  getNotifyRolesForModule,
-} from "@/lib/module-visibility";
+import { createId } from "@/lib/ids";
 import { IncidentType } from "@prisma/client";
 
 const allowedEmployeeIncidentTypes: IncidentType[] = [
@@ -36,213 +29,122 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData();
-
-    // Hent data fra FormData
-    const tenantId = session.user.tenantId ?? (
-      await prisma.userTenant.findFirst({
-        where: { userId: session.user.id },
-        select: { tenantId: true },
-      })
-    )?.tenantId;
+    const db = getAdminDb();
+    let tenantId = session.user.tenantId ?? null;
     if (!tenantId) {
-      return NextResponse.json({ error: "Ingen tenant tilgang" }, { status: 403 });
+      const { data: membership } = await db
+        .from("UserTenant")
+        .select("tenantId")
+        .eq("userId", session.user.id)
+        .maybeSingle();
+      tenantId = membership?.tenantId ?? null;
     }
+    if (!tenantId) {
+      return NextResponse.json({ error: "No organisation access" }, { status: 403 });
+    }
+
     const title = (formData.get("title") as string | null)?.trim() ?? "";
     const description = (formData.get("description") as string | null)?.trim() ?? "";
     const type = (formData.get("type") as string | null)?.trim() ?? "";
-    // Alvorlighetsgrad er valgfri: null betyr at leder vurderer den ved behandling
     const severityStr = (formData.get("severity") as string | null)?.trim() || null;
     const severity = severityStr ? parseInt(severityStr, 10) : null;
     const location = (formData.get("location") as string | null)?.trim() ?? "";
-    const reportedBy = session.user.id;
     const occurredAtRaw = (formData.get("occurredAt") as string | null)?.trim() ?? "";
     const date = formData.get("date") as string;
-    const injuryType = formData.get("injuryType") as string | null;
-    const medicalAttention = formData.get("medicalAttentionRequired") as string | null;
-    const lostTime = formData.get("lostTimeMinutes") as string | null;
-    const involvedPersons = formData.get("involvedPersons") as string | null;
-    const witnessName = formData.get("witnessName") as string | null;
-    const customerName = formData.get("customerName") as string | null;
-    const customerEmail = formData.get("customerEmail") as string | null;
-    const customerPhone = formData.get("customerPhone") as string | null;
-    const customerTicketId = formData.get("customerTicketId") as string | null;
-    const responseDeadlineRaw = (formData.get("responseDeadline") as string | null)?.trim() || null;
-    const customerSatisfactionRaw =
-      (formData.get("customerSatisfaction") as string | null)?.trim() || null;
-    const incidentContext = formData.get("incidentContext") as string | null;
     const contextDetails = (formData.get("contextDetails") as string | null)?.trim() || null;
-    const rawSubcategoryKeys = formData.get("subcategoryKeys") as string | null;
-    const projectId = (formData.get("projectId") as string | null) || null;
-    const projectReference = normalizeProjectReference(formData.get("projectReference"));
-    const subcategoryKeys =
-      rawSubcategoryKeys && rawSubcategoryKeys.trim().startsWith("[")
-        ? rawSubcategoryKeys
-        : null;
     const enrichedDescription = contextDetails
-      ? `${description}\n\nKontekstnotat: ${contextDetails}`
+      ? `${description}\n\nContext note: ${contextDetails}`
       : description;
     const occurredAt = occurredAtRaw ? new Date(occurredAtRaw) : new Date(date);
-    const responseDeadline = responseDeadlineRaw ? new Date(responseDeadlineRaw) : null;
-    const customerSatisfaction = customerSatisfactionRaw
-      ? parseInt(customerSatisfactionRaw, 10)
-      : null;
 
     if (!title || !description || !location || !type) {
-      return NextResponse.json({ error: "Mangler påkrevde felt." }, { status: 400 });
+      return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
     }
-    if (severity !== null && (!Number.isFinite(severity) || severity < 1 || severity > 5)) {
-      return NextResponse.json({ error: "Ugyldig alvorlighetsgrad." }, { status: 400 });
+    if (!allowedEmployeeIncidentTypes.includes(type as IncidentType)) {
+      return NextResponse.json({ error: "Invalid incident type." }, { status: 400 });
     }
     if (Number.isNaN(occurredAt.getTime())) {
-      return NextResponse.json({ error: "Ugyldig tidspunkt for hendelsen." }, { status: 400 });
-    }
-    if (responseDeadline && Number.isNaN(responseDeadline.getTime())) {
-      return NextResponse.json({ error: "Ugyldig svarfrist." }, { status: 400 });
-    }
-    if (
-      customerSatisfaction !== null &&
-      (!Number.isFinite(customerSatisfaction) || customerSatisfaction < 1 || customerSatisfaction > 5)
-    ) {
-      return NextResponse.json({ error: "Ugyldig kundetilfredshet." }, { status: 400 });
+      return NextResponse.json({ error: "Invalid date and time." }, { status: 400 });
     }
 
-    if (!allowedEmployeeIncidentTypes.includes(type as IncidentType)) {
-      return NextResponse.json(
-        { error: "Ugyldig hendelsestype for ansatt-rapportering." },
-        { status: 400 }
-      );
-    }
-
-    const avviksnummer = await generateSequenceNumber(
-      tenantId,
-      "AVVIK",
-      occurredAt.getFullYear()
-    );
-    let validatedProjectId: string | null = null;
-    if (projectId) {
-      const project = await prisma.project.findFirst({
-        where: { id: projectId, tenantId },
-        select: { id: true },
-      });
-      if (!project) {
-        return NextResponse.json({ error: "Prosjekt ikke funnet" }, { status: 400 });
+    const rawSubcategoryKeys = formData.get("subcategoryKeys") as string | null;
+    let subcategoryKeys: string[] = [];
+    if (rawSubcategoryKeys && rawSubcategoryKeys.trim().startsWith("[")) {
+      try {
+        const parsed = JSON.parse(rawSubcategoryKeys) as unknown;
+        if (Array.isArray(parsed)) {
+          subcategoryKeys = parsed.filter((value): value is string => typeof value === "string");
+        }
+      } catch {
+        subcategoryKeys = [];
       }
-      validatedProjectId = project.id;
-    } else if (projectReference) {
-      // Skrev melderen inn et nummer som finnes som prosjektkode eller ordrenummer,
-      // kobles avviket slik at prosjektleder blir varslet
-      validatedProjectId = await resolveIncidentProjectId({
-        tenantId,
-        projectId: null,
-        projectReference,
-      });
     }
 
-    // Opprett avvik
-    const incident = await prisma.incident.create({
-      data: {
-        tenantId,
-        avviksnummer,
-        title,
-        description: enrichedDescription,
-        type: type as any, // Prisma vil validere enum
-        severity,
-        location,
-        occurredAt,
-        reportedBy,
-        status: "OPEN",
-        stage: "REPORTED",
-        witnessName,
-        injuryType,
-        medicalAttentionRequired: medicalAttention === "yes",
-        lostTimeMinutes: lostTime ? parseInt(lostTime, 10) : undefined,
-        immediateAction: null,
-        suggestedActions: null,
-        involvedPersons,
-        contributingFactors: incidentContext || undefined,
-        subcategoryKeys,
-        projectId: validatedProjectId,
-        projectReference,
-        customerName,
-        customerEmail,
-        customerPhone,
-        customerTicketId,
-        responseDeadline,
-        customerSatisfaction,
-      },
+    const result = await createIncident({
+      tenantId,
+      type,
+      title,
+      description: enrichedDescription,
+      severity,
+      occurredAt: occurredAt.toISOString(),
+      reportedBy: session.user.id,
+      location,
+      witnessName: formData.get("witnessName") as string | null,
+      injuryType: formData.get("injuryType") as string | null,
+      medicalAttentionRequired: formData.get("medicalAttentionRequired") === "yes",
+      lostTimeMinutes: formData.get("lostTimeMinutes")
+        ? Number(formData.get("lostTimeMinutes"))
+        : undefined,
+      involvedPersons: formData.get("involvedPersons") as string | null,
+      customerName: formData.get("customerName") as string | null,
+      customerEmail: formData.get("customerEmail") as string | null,
+      customerPhone: formData.get("customerPhone") as string | null,
+      customerTicketId: formData.get("customerTicketId") as string | null,
+      responseDeadline: formData.get("responseDeadline") as string | null,
+      customerSatisfaction: formData.get("customerSatisfaction")
+        ? Number(formData.get("customerSatisfaction"))
+        : undefined,
+      projectId: (formData.get("projectId") as string | null) || undefined,
+      projectReference: formData.get("projectReference") as string | null,
+      subcategoryKeys,
     });
 
-    // Håndter bildeopplasting
+    if (!result.success || !result.data) {
+      return NextResponse.json({ error: result.error || "Could not record incident" }, { status: 400 });
+    }
+
+    const incident = result.data;
     const images = formData.getAll("images") as File[];
     const storage = getStorage();
 
     for (const image of images) {
       if (image && image.size > 0) {
-        // Last opp bilde til storage
         const fileKey = generateFileKey(tenantId, "incidents", image.name);
         await storage.upload(fileKey, image);
-
-        // Opprett Attachment-record
-        await prisma.attachment.create({
-          data: {
-            tenantId,
-            incidentId: incident.id,
-            fileKey,
-            name: image.name,
-            mime: image.type,
-            size: image.size,
-          },
+        await db.from("Attachment").insert({
+          id: createId(),
+          tenantId,
+          incidentId: incident.id,
+          fileKey,
+          name: image.name,
+          mime: image.type,
+          size: image.size,
         });
       }
     }
 
-    // Fire-and-forget: audit + notifikasjoner skal ikke blokkere brukeren
-    const userId = session.user.id;
-    void (async () => {
-      try {
-        await AuditLog.log(tenantId, userId, "INCIDENT_REPORTED", "Incident", incident.id, {
-          title,
-          type,
-          severity,
-          imageCount: images.filter((img) => img && img.size > 0).length,
-        });
-        await createNotification({
-          tenantId,
-          userId,
-          type: "NEW_INCIDENT",
-          title: "Avvik mottatt",
-          message: `Takk for rapporten! Ditt avvik "${title}" er registrert og vil bli behandlet av HMS-ansvarlig.`,
-          link: `/ansatt/avvik`,
-        });
-        const visConfig = parseModuleVisibilityConfig(
-          (
-            await prisma.tenant.findUnique({
-              where: { id: tenantId },
-              select: { moduleVisibilityConfig: true },
-            })
-          )?.moduleVisibilityConfig
-        );
-        await dispatchNewIncidentNotifications({
-          tenantId,
-          reporterId: userId,
-          projectId: validatedProjectId,
-          fallbackRoles: getNotifyRolesForModule(visConfig, "incidents", ["HMS"]),
-          incidentId: incident.id,
-          title,
-          typeLabel: type,
-        });
-      } catch (bgError) {
-        console.error("Background notification error:", bgError);
-      }
-    })();
+    void createNotification({
+      tenantId,
+      userId: session.user.id,
+      type: "NEW_INCIDENT",
+      title: "Incident received",
+      message: `Thank you. Your accident book entry "${title}" has been recorded and will be handled by the competent person.`,
+      link: `/ansatt/avvik`,
+    }).catch(() => {});
 
     return NextResponse.json({ success: true, incident }, { status: 201 });
-  } catch (error: any) {
-    console.error("Report incident error:", error);
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

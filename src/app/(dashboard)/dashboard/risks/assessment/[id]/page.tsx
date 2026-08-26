@@ -1,7 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
@@ -12,85 +11,48 @@ import { RiskAssessmentComplianceCard } from "@/features/risks/components/risk-a
 import { getPermissions } from "@/lib/permissions";
 import { RiskAssessmentDeleteButton } from "@/features/risks/components/risk-assessment-delete-button";
 import { RiskAssessmentTitleEditor } from "@/features/risks/components/risk-assessment-title-editor";
+import {
+  loadRiskAssessmentDetail,
+  loadRiskSession,
+  loadTenantPeople,
+} from "@/server/queries/risks.queries";
 
 export default async function RiskAssessmentPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
-  const resolvedSearchParams = searchParams ? await searchParams : {};
-  const openAiParam = resolvedSearchParams.openAi;
-  const aiRiskTypeParam = resolvedSearchParams.aiRiskType;
-  const industryContextParam = resolvedSearchParams.industryContext;
-  const openAi = Array.isArray(openAiParam) ? openAiParam[0] === "1" : openAiParam === "1";
-  const initialAiRiskType = Array.isArray(aiRiskTypeParam) ? aiRiskTypeParam[0] : aiRiskTypeParam;
-  const initialIndustryContext = Array.isArray(industryContextParam)
-    ? industryContextParam[0]
-    : industryContextParam;
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.email) {
     redirect("/login");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { tenants: true },
-  });
-
-  if (!user || user.tenants.length === 0) {
-    return <div>Ingen tilgang til tenant</div>;
+  const context = await loadRiskSession(session.user.email, session.user.tenantId);
+  if (!context) {
+    return <div>No access to organisation</div>;
   }
 
-  const selectedMembership = user.tenants.find(
-    (membership) => membership.tenantId === session.user.tenantId,
-  );
-  if (!selectedMembership) {
-    return <div>Ingen tilgang til tenant</div>;
-  }
-
-  const tenantId = selectedMembership.tenantId;
-  const permissions = getPermissions(selectedMembership.role);
+  const permissions = getPermissions(context.role);
   const canDeleteRiskAssessments = permissions.canDeleteRisks;
   const canEditAssessmentTitle = permissions.canCreateRisks;
 
-  const [assessment, userTenants] = await Promise.all([
-    prisma.riskAssessment.findFirst({
-      where: { id, tenantId },
-      include: {
-        project: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        risks: {
-          orderBy: [{ score: "desc" }, { assessmentDate: "desc" }, { createdAt: "asc" }],
-          include: {
-            owner: { select: { id: true, name: true, email: true } },
-          },
-        },
-      },
-    }),
-    prisma.userTenant.findMany({
-      where: { tenantId },
-      include: { user: { select: { id: true, name: true, email: true } } },
-    }),
+  const [assessment, people] = await Promise.all([
+    loadRiskAssessmentDetail(context.tenantId, id),
+    loadTenantPeople(context.tenantId),
   ]);
 
   if (!assessment) {
     notFound();
   }
 
-  const userList = userTenants
-    .filter((ut) => ut.user.email)
-    .map((ut) => ({
-      id: ut.user.id,
-      name: ut.user.name,
-      email: ut.user.email ?? "",
+  const userList = people
+    .filter((person) => person.email)
+    .map((person) => ({
+      id: person.id,
+      name: person.name,
+      email: person.email ?? "",
     }));
 
   return (
@@ -99,7 +61,7 @@ export default async function RiskAssessmentPage({
         <Button variant="ghost" asChild className="mb-4">
           <Link href="/dashboard/risks">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Tilbake til risikovurdering
+            Back to risk assessments
           </Link>
         </Button>
         <div className="flex items-start justify-between gap-3">
@@ -118,11 +80,11 @@ export default async function RiskAssessmentPage({
           )}
         </div>
         <p className="text-muted-foreground">
-          Systematisk risikovurdering i henhold til IK-HMS § 5 og AML § 3-1.
+          Systematic risk assessment under MHSWR 1999 and HSWA 1974.
         </p>
         {assessment.project ? (
           <p className="text-sm text-blue-700 mt-2">
-            Knyttet til prosjekt: <strong>{assessment.project.name}</strong>
+            Linked to project: <strong>{assessment.project.name}</strong>
           </p>
         ) : null}
       </div>
@@ -141,16 +103,13 @@ export default async function RiskAssessmentPage({
 
       <RiskAssessmentItemForm
         riskAssessmentId={assessment.id}
-        tenantId={tenantId}
-        ownerId={user.id}
-        autoGenerateAi={openAi}
-        initialAiRiskType={initialAiRiskType}
-        initialIndustryContext={initialIndustryContext}
+        tenantId={context.tenantId}
+        ownerId={context.user.id}
       />
 
       <Card>
         <CardHeader>
-          <CardTitle>Risikopunkter i denne vurderingen</CardTitle>
+          <CardTitle>Risk items in this assessment</CardTitle>
         </CardHeader>
         <CardContent>
           <RiskAssessmentItemList risks={assessment.risks} />

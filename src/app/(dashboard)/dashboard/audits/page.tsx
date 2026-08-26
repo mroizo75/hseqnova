@@ -1,8 +1,7 @@
 import { Suspense } from "react";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { getAuthContext } from "@/lib/server-authorization";
+import { loadAudits } from "@/server/queries/audits.queries";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,14 +30,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 export const dynamic = "force-dynamic";
 
 async function getAudits(tenantId: string) {
-  return await prisma.audit.findMany({
-    where: { tenantId },
-    include: {
-      findings: true,
-    },
-    orderBy: { scheduledDate: "desc" },
-    take: 50,
-  });
+  return loadAudits(tenantId);
 }
 
 function getStatusBadge(status: string, t: Awaited<ReturnType<typeof getTranslations>>) {
@@ -67,28 +59,12 @@ async function AuditsList() {
   const t = await getTranslations("dashboardAuditsPage");
   const locale = await getLocale();
   const dateLocale = locale === "en" ? enUS : nb;
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
+  const auth = await getAuthContext();
+  if (!auth) {
     redirect("/login");
   }
 
-  if (!session.user.tenantId) {
-    return <div>{t("noTenantAccess")}</div>;
-  }
-  const membership = await prisma.userTenant.findUnique({
-    where: {
-      userId_tenantId: {
-        userId: session.user.id,
-        tenantId: session.user.tenantId,
-      },
-    },
-    select: { tenantId: true },
-  });
-  if (!membership) {
-    return <div>{t("noTenantAccess")}</div>;
-  }
-
-  const audits = await getAudits(membership.tenantId);
+  const audits = await getAudits(auth.tenantId);
 
   if (audits.length === 0) {
     return (
@@ -217,7 +193,7 @@ async function AuditsList() {
 
 export default function AuditsPage() {
   return (
-    <Suspense fallback={<div>Laster...</div>}>
+    <Suspense fallback={<div>Loading...</div>}>
       <AuditsPageContent />
     </Suspense>
   );

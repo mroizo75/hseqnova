@@ -8,7 +8,7 @@ import {
 
 export const createEnvironmentalAspectSchema = z.object({
   tenantId: z.string().cuid(),
-  title: z.string().min(3, "Tittel må være minst 3 tegn"),
+  title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().optional().or(z.literal("")).nullable(),
   process: z.string().optional().or(z.literal("")).nullable(),
   location: z.string().optional().or(z.literal("")).nullable(),
@@ -49,7 +49,7 @@ export const updateEnvironmentalAspectSchema = z.object({
 export const createEnvironmentalMeasurementSchema = z.object({
   tenantId: z.string().cuid(),
   aspectId: z.string().cuid(),
-  parameter: z.string().min(2, "Parameter må være minst 2 tegn"),
+  parameter: z.string().min(2, "Parameter must be at least 2 characters"),
   unit: z.string().optional().or(z.literal("")).nullable(),
   method: z.string().optional().or(z.literal("")).nullable(),
   limitValue: z.number().optional().nullable(),

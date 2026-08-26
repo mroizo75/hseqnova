@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { IncidentStage, IncidentStatus, IncidentType } from "@prisma/client";
 import { createNotification, notifyUsersByRoles } from "@/server/actions/notification.actions";
 import { normalizeProjectReference } from "@/lib/incident-project-reference";
+import { assessRiddor } from "@/lib/riddor";
 
 function parseBoolean(value: unknown): boolean | undefined {
   if (typeof value === "boolean") {
@@ -93,19 +94,19 @@ export async function PUT(
 
     const tenantId = session.user.tenantId;
     if (!tenantId) {
-      return NextResponse.json({ error: "Ingen virksomhetstilgang." }, { status: 403 });
+      return NextResponse.json({ error: "No organisation access." }, { status: 403 });
     }
 
+    const db = getAdminDb();
     const body = await request.json();
     const { status } = body;
     const responsibleId =
       typeof body.responsibleId === "string" && body.responsibleId.trim().length > 0
         ? body.responsibleId.trim()
         : null;
-    // Alvorlighetsgrad kan settes tilbake til «ikke vurdert» ved å sende null
     const severity = parseNullableNumber(body.severity);
     if (severity !== null && severity !== undefined && (severity < 1 || severity > 5)) {
-      return NextResponse.json({ error: "Ugyldig alvorlighetsgrad." }, { status: 400 });
+      return NextResponse.json({ error: "Invalid severity." }, { status: 400 });
     }
     const type = parseIncidentType(body.type);
     const projectId = parseProjectId(body.projectId);
@@ -117,28 +118,32 @@ export async function PUT(
       ? body.subcategoryKeys.filter((value: unknown): value is string => typeof value === "string")
       : undefined;
     if (body.type !== undefined && type === undefined) {
-      return NextResponse.json({ error: "Ugyldig hendelsestype." }, { status: 400 });
+      return NextResponse.json({ error: "Invalid incident type." }, { status: 400 });
     }
     if (body.projectId !== undefined && projectId === undefined) {
-      return NextResponse.json({ error: "Ugyldig prosjekt." }, { status: 400 });
+      return NextResponse.json({ error: "Invalid project." }, { status: 400 });
     }
     if (projectId) {
-      const project = await prisma.project.findUnique({
-        where: { id: projectId, tenantId: session.user.tenantId! },
-        select: { id: true },
-      });
+      const { data: project } = await db
+        .from("Project")
+        .select("id")
+        .eq("id", projectId)
+        .eq("tenantId", tenantId)
+        .maybeSingle();
       if (!project) {
-        return NextResponse.json({ error: "Prosjektet finnes ikke i denne virksomheten." }, { status: 400 });
+        return NextResponse.json({ error: "Project does not exist in this organisation." }, { status: 400 });
       }
     }
     if (responsibleId) {
-      const membership = await prisma.userTenant.findUnique({
-        where: { userId_tenantId: { userId: responsibleId, tenantId } },
-        select: { id: true },
-      });
+      const { data: membership } = await db
+        .from("UserTenant")
+        .select("id")
+        .eq("userId", responsibleId)
+        .eq("tenantId", tenantId)
+        .maybeSingle();
       if (!membership) {
         return NextResponse.json(
-          { error: "Ansvarlig finnes ikke i denne virksomheten." },
+          { error: "The assigned person is not in this organisation." },
           { status: 400 }
         );
       }
@@ -157,36 +162,33 @@ export async function PUT(
     const isPropertyDamage = parseBoolean(body.isPropertyDamage);
     const estimatedDamageCost = parseNullableNumber(body.estimatedDamageCost);
     const isEnvironmentalRelease = parseBoolean(body.isEnvironmentalRelease);
+    const overSevenDayInjury = parseBoolean(body.overSevenDayInjury);
     const environmentalDescription =
       typeof body.environmentalDescription === "string"
         ? body.environmentalDescription.trim() || null
         : undefined;
-    // Personinvolvering og skadeomfang er som regel ukjent ved melding og
-    // registreres under behandlingen (AML § 5-1)
     const involvedPersons = parseNullableText(body.involvedPersons);
     const injuryType = parseNullableText(body.injuryType);
     const injuryDescription = parseNullableText(body.injuryDescription);
     const suggestedActions = parseNullableText(body.suggestedActions);
+    const location = parseNullableText(body.location);
+    const riddorReference = parseNullableText(body.riddorReference);
+    const riddorReportedAt =
+      body.riddorReportedAt === undefined
+        ? undefined
+        : body.riddorReportedAt === null || body.riddorReportedAt === ""
+          ? null
+          : new Date(body.riddorReportedAt as string);
+    if (riddorReportedAt instanceof Date && Number.isNaN(riddorReportedAt.getTime())) {
+      return NextResponse.json({ error: "Invalid RIDDOR report date." }, { status: 400 });
+    }
 
     const requiresHseCompletion = status && status !== "OPEN";
-    if (requiresHseCompletion) {
-      if (
-        medicalAttentionRequired === undefined ||
-        isFatal === undefined ||
-        isLostTimeIncident === undefined ||
-        isRestrictedWork === undefined
-      ) {
-        return NextResponse.json(
-          { error: "Alle HSE-felter ma fylles ut ved behandling av avvik." },
-          { status: 400 }
-        );
-      }
-      if (isLostTimeIncident && (lostWorkdays === null || lostWorkdays === undefined)) {
-        return NextResponse.json(
-          { error: "Fravaersdager ma fylles ut naar fravaersskade er valgt." },
-          { status: 400 }
-        );
-      }
+    if (requiresHseCompletion && isLostTimeIncident && (lostWorkdays === null || lostWorkdays === undefined)) {
+      return NextResponse.json(
+        { error: "Lost workdays must be entered when a lost-time injury is selected." },
+        { status: 400 }
+      );
     }
 
     const stageMap: Record<IncidentStatus, IncidentStage> = {
@@ -196,26 +198,38 @@ export async function PUT(
       CLOSED: "VERIFIED",
     };
 
-    const existingIncident = await prisma.incident.findUnique({
-      where: { id, tenantId },
-      select: {
-        id: true,
-        title: true,
-        type: true,
-        severity: true,
-        isRestrictedWork: true,
-        responsibleId: true,
-        avviksnummer: true,
-      },
-    });
+    const { data: existingIncident } = await db
+      .from("Incident")
+      .select("id, title, type, severity, isRestrictedWork, responsibleId, avviksnummer, occurredAt, injuryType, medicalAttentionRequired, isFatal, isLostTimeIncident, lostWorkdays, overSevenDayInjury")
+      .eq("id", id)
+      .eq("tenantId", tenantId)
+      .maybeSingle();
 
     if (!existingIncident) {
-      return NextResponse.json({ error: "Avviket ble ikke funnet." }, { status: 404 });
+      return NextResponse.json({ error: "Incident not found." }, { status: 404 });
     }
 
-    const incident = await prisma.incident.update({
-      where: { id, tenantId },
-      data: {
+    const mergedType = type ?? existingIncident.type;
+    const mergedFatal = isFatal ?? existingIncident.isFatal;
+    const mergedLti = isLostTimeIncident ?? existingIncident.isLostTimeIncident;
+    const mergedLostDays = lostWorkdays === undefined ? existingIncident.lostWorkdays : lostWorkdays;
+    const mergedOverSeven = overSevenDayInjury ?? existingIncident.overSevenDayInjury;
+    const mergedInjuryType = injuryType === undefined ? existingIncident.injuryType : injuryType;
+    const mergedMedical = medicalAttentionRequired ?? existingIncident.medicalAttentionRequired;
+    const riddor = assessRiddor({
+      type: mergedType,
+      isFatal: mergedFatal ?? false,
+      isLostTimeIncident: mergedLti ?? false,
+      lostWorkdays: mergedLostDays,
+      overSevenDayInjury: mergedOverSeven ?? false,
+      injuryType: mergedInjuryType,
+      medicalAttentionRequired: mergedMedical ?? false,
+      occurredAt: new Date(existingIncident.occurredAt),
+    });
+
+    const { data: incident, error } = await db
+      .from("Incident")
+      .update({
         type: type ?? undefined,
         subcategoryKeys:
           subcategoryKeys === undefined
@@ -266,21 +280,41 @@ export async function PUT(
         injuryType,
         injuryDescription,
         suggestedActions,
+        location,
         source: source ?? undefined,
-      },
-    });
+        overSevenDayInjury: overSevenDayInjury === undefined ? undefined : overSevenDayInjury,
+        riddorReportable: riddor.reportable,
+        riddorCategory: riddor.category,
+        riddorDueAt: riddor.dueAt?.toISOString() ?? null,
+        riddorReportedAt:
+          riddorReportedAt === undefined
+            ? undefined
+            : riddorReportedAt
+              ? riddorReportedAt.toISOString()
+              : null,
+        riddorReference: riddorReference === undefined ? undefined : riddorReference,
+        accidentBookEntry: riddor.accidentBookEntry,
+        updatedAt: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .eq("tenantId", tenantId)
+      .select("*")
+      .maybeSingle();
+
+    if (error || !incident) {
+      return NextResponse.json({ error: error?.message || "Could not update incident." }, { status: 500 });
+    }
 
     revalidatePath(`/dashboard/incidents/${id}`);
     revalidatePath("/dashboard/incidents");
 
-    // IK-HMS § 5 nr. 7: den som får avviket til behandling må få beskjed om det
     if (incident.responsibleId && incident.responsibleId !== existingIncident.responsibleId) {
       await createNotification({
         tenantId,
         userId: incident.responsibleId,
         type: "NEW_INCIDENT",
-        title: "Avvik tildelt deg",
-        message: `${incident.avviksnummer ?? incident.type}: ${incident.title} er sendt til deg for behandling.`,
+        title: "Incident assigned to you",
+        message: `${incident.avviksnummer ?? incident.type}: ${incident.title} has been sent to you for handling.`,
         link: `/dashboard/incidents/${incident.id}`,
       });
     }
@@ -290,19 +324,15 @@ export async function PUT(
     if (becameStopWork || (incident.severity ?? 0) >= 5) {
       await notifyUsersByRoles(tenantId, ["ADMIN", "HMS"], {
         type: "NEW_INCIDENT",
-        title: "KRITISK: Stoppet arbeid",
-        message: `${incident.type}: ${incident.title} - stoppet arbeid krever umiddelbar oppfolging.`,
+        title: "CRITICAL: Stopped work",
+        message: `${incident.type}: ${incident.title} — stopped work needs immediate follow-up.`,
         link: `/dashboard/incidents/${incident.id}`,
       });
     }
 
     return NextResponse.json({ success: true, incident });
-  } catch (error: any) {
-    console.error("Update incident error:", error);
-    const message =
-      error?.code === "P2025"
-        ? "Avviket ble ikke funnet. Sjekk at du har tilgang."
-        : error.message || "Intern feil ved oppdatering av avvik.";
-    return NextResponse.json({ error: message }, { status: error?.code === "P2025" ? 404 : 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Internal error while updating the incident.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -36,6 +36,7 @@ import {
   WIDGET_REGISTRY,
   type WidgetDefinition,
 } from "../lib/widget-registry";
+import { UK_EXCLUDED_NAV_HREFS } from "@/lib/dashboard-nav-config";
 import {
   getDashboardConfig,
   saveDashboardConfig,
@@ -45,7 +46,6 @@ import {
 import Link from "next/link";
 import { SetupGuide } from "@/features/onboarding/components/setup-guide";
 import type { SetupGuideProgress } from "@/server/actions/onboarding.actions";
-import { TavlePromoBanner } from "@/features/hms-tavle/components/tavle-promo-banner";
 
 type WidgetConfig = DashboardWidgetConfig;
 
@@ -74,10 +74,9 @@ interface CustomizableDashboardProps {
   dashboardLocked?: boolean;
   setupGuideProgress?: SetupGuideProgress | null;
   tenantId?: string;
-  showTavleBanner?: boolean;
 }
 
-export function CustomizableDashboard({ data, dashboardLocked = false, setupGuideProgress, tenantId, showTavleBanner }: CustomizableDashboardProps) {
+export function CustomizableDashboard({ data, dashboardLocked = false, setupGuideProgress, tenantId }: CustomizableDashboardProps) {
   const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
@@ -250,14 +249,15 @@ export function CustomizableDashboard({ data, dashboardLocked = false, setupGuid
         };
       }
       const def = getWidgetById(config.id);
-      return def ? { config, def } : null;
+      if (!def || UK_EXCLUDED_NAV_HREFS.has(def.href)) return null;
+      return { config, def };
     })
     .filter(Boolean) as Array<{ config: WidgetConfig; def: WidgetDefinition }>;
 
   const actionableStatusItems = data.statusItems.filter((item) => item.count > 0);
-  const functionLinkOptions = WIDGET_REGISTRY.filter((widget) => widget.href.trim().length > 0).map(
-    (widget) => ({ label: widget.label, href: widget.href })
-  );
+  const functionLinkOptions = WIDGET_REGISTRY.filter(
+    (widget) => widget.href.trim().length > 0 && !UK_EXCLUDED_NAV_HREFS.has(widget.href)
+  ).map((widget) => ({ label: widget.label, href: widget.href }));
   const safeFunctionLinkOptions =
     functionLinkOptions.length > 0
       ? functionLinkOptions
@@ -265,7 +265,7 @@ export function CustomizableDashboard({ data, dashboardLocked = false, setupGuid
   const safeFormLinkOptions =
     data.formLinkOptions.length > 0
       ? data.formLinkOptions
-      : [{ label: "Vernerunder", href: "/dashboard/inspections" }];
+      : [{ label: "Inspections", href: "/dashboard/inspections" }];
 
   if (!loaded) {
     return (
@@ -289,11 +289,9 @@ export function CustomizableDashboard({ data, dashboardLocked = false, setupGuid
         <SetupGuide tenantId={tenantId} progress={setupGuideProgress} />
       )}
 
-      {showTavleBanner && <TavlePromoBanner />}
-
       {/* Verktøylinje */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-muted-foreground">Mitt dashboard</h2>
+        <h2 className="text-lg font-semibold text-muted-foreground">My dashboard</h2>
         <div className="flex items-center gap-2">
           {isEditing ? (
             <>
@@ -304,7 +302,7 @@ export function CustomizableDashboard({ data, dashboardLocked = false, setupGuid
                 className="gap-1.5"
               >
                 <Plus className="h-4 w-4" />
-                Legg til
+                Add
               </Button>
               <Button
                 variant="outline"
@@ -313,7 +311,7 @@ export function CustomizableDashboard({ data, dashboardLocked = false, setupGuid
                 className="gap-1.5"
               >
                 <RotateCcw className="h-4 w-4" />
-                Tilbakestill
+                Reset
               </Button>
               <Button
                 variant="ghost"
@@ -322,7 +320,7 @@ export function CustomizableDashboard({ data, dashboardLocked = false, setupGuid
                 className="gap-1.5"
               >
                 <X className="h-4 w-4" />
-                Avbryt
+                Cancel
               </Button>
               <Button
                 size="sm"
@@ -331,7 +329,7 @@ export function CustomizableDashboard({ data, dashboardLocked = false, setupGuid
                 className="gap-1.5"
               >
                 <Save className="h-4 w-4" />
-                {saving ? "Lagrer..." : "Lagre"}
+                {saving ? "Saving..." : "Save"}
               </Button>
             </>
           ) : !dashboardLocked ? (
@@ -342,12 +340,12 @@ export function CustomizableDashboard({ data, dashboardLocked = false, setupGuid
               className="gap-1.5"
             >
               <Pencil className="h-4 w-4" />
-              Tilpass dashboard
+              Customise dashboard
             </Button>
           ) : (
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <Lock className="h-4 w-4" />
-              Dashboard er låst av administrator
+              Dashboard is locked by an administrator
             </div>
           )}
         </div>
@@ -355,12 +353,12 @@ export function CustomizableDashboard({ data, dashboardLocked = false, setupGuid
 
       {isEditing && (
         <p className="text-sm text-muted-foreground bg-muted/50 rounded-lg px-4 py-2">
-          Dra boksene for å endre rekkefølge. Klikk{" "}
-          <span className="font-medium">Legg til</span> for å legge til nye moduler, eller trykk{" "}
+          Drag the tiles to change the order. Click{" "}
+          <span className="font-medium">Add</span> to add modules, or press{" "}
           <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-red-500 text-white text-[10px]">
             ✕
           </span>{" "}
-          for å fjerne.
+          to remove.
         </p>
       )}
 
@@ -391,7 +389,7 @@ export function CustomizableDashboard({ data, dashboardLocked = false, setupGuid
                 className="flex flex-col items-center justify-center min-h-[140px] rounded-xl border-2 border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
               >
                 <Plus className="h-8 w-8 mb-2" />
-                <span className="text-sm font-medium">Legg til</span>
+                <span className="text-sm font-medium">Add</span>
               </button>
             )}
           </div>
@@ -402,14 +400,14 @@ export function CustomizableDashboard({ data, dashboardLocked = false, setupGuid
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Bell className="h-4 w-4" />
-            Oppfølging nå
+            Follow up now
           </CardTitle>
         </CardHeader>
         <CardContent>
           {actionableStatusItems.length === 0 ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <PlusCircle className="h-4 w-4 text-green-600" />
-              Ingen åpne oppfølgingspunkter akkurat nå.
+              No open follow-up items right now.
             </div>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -459,7 +457,7 @@ export function CustomizableDashboard({ data, dashboardLocked = false, setupGuid
         activeWidgetIds={widgets.map((w) => w.id)}
         onAddWidget={handleAddWidget}
         onAddCustomWidget={handleAddCustomWidget}
-        availableWidgets={WIDGET_REGISTRY}
+        availableWidgets={WIDGET_REGISTRY.filter((w) => !UK_EXCLUDED_NAV_HREFS.has(w.href))}
         functionLinkOptions={safeFunctionLinkOptions}
         formLinkOptions={safeFormLinkOptions}
       />

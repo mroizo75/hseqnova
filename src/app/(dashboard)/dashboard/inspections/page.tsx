@@ -2,14 +2,17 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
 import { getPermissions } from "@/lib/permissions";
-import { db } from "@/lib/db";
+import {
+  loadInspectionsForList,
+  loadTenantIndustry,
+} from "@/server/queries/inspections.queries";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { enUS, nb } from "date-fns/locale";
-import { Plus, Calendar, MapPin, User, Smartphone, BarChart3 } from "lucide-react";
+import { enGB } from "date-fns/locale";
+import { Plus, Calendar, MapPin, Smartphone, BarChart3 } from "lucide-react";
 import { PageHelpDialog } from "@/components/dashboard/page-help-dialog";
 import { helpContent } from "@/lib/help-content";
 import { matchesIndustryScope } from "@/lib/industry-scope";
@@ -21,27 +24,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getLocale, getTranslations } from "next-intl/server";
-
-async function getInspections(tenantId: string) {
-  return await db.inspection.findMany({
-    where: { tenantId },
-    include: {
-      findings: {
-        where: {
-          status: { in: ["OPEN", "IN_PROGRESS"] },
-        },
-      },
-      template: {
-        select: {
-          id: true,
-          industryScope: true,
-        },
-      },
-    },
-    orderBy: { scheduledDate: "desc" },
-  });
-}
+import { getTranslations } from "next-intl/server";
+import { InspectionLegalNote } from "@/features/inspections/components/inspection-legal-note";
 
 export default async function InspectionsPage({
   searchParams,
@@ -49,8 +33,7 @@ export default async function InspectionsPage({
   searchParams: Promise<{ view?: string }>;
 }) {
   const t = await getTranslations("dashboardInspectionsPage");
-  const locale = await getLocale();
-  const dateLocale = locale === "en" ? enUS : nb;
+  const dateLocale = enGB;
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.role || !session.user.tenantId) {
@@ -65,19 +48,16 @@ export default async function InspectionsPage({
 
   const params = await searchParams;
   const showAll = params.view === "all";
-  const [inspectionsRaw, tenant] = await Promise.all([
-    getInspections(session.user.tenantId),
-    db.tenant.findUnique({
-      where: { id: session.user.tenantId },
-      select: { industry: true },
-    }),
+  const [inspectionsRaw, tenantIndustry] = await Promise.all([
+    loadInspectionsForList(session.user.tenantId),
+    loadTenantIndustry(session.user.tenantId),
   ]);
   const inspections = inspectionsRaw.filter((inspection) => {
     if (showAll || !inspection.templateId) {
       return true;
     }
 
-    return matchesIndustryScope(inspection.template?.industryScope, tenant?.industry ?? null);
+    return matchesIndustryScope(inspection.template?.industryScope, tenantIndustry);
   });
 
   const getStatusBadge = (status: string) => {
@@ -133,6 +113,7 @@ export default async function InspectionsPage({
           )}
         </div>
       </div>
+      <InspectionLegalNote />
 
       {/* Mobile Quick Access */}
       <div className="lg:hidden grid grid-cols-1 gap-3">

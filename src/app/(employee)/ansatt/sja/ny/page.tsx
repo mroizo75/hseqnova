@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { prisma } from "@/lib/db";
+import { loadActiveProjects, loadSjaProject, loadSjaTemplateById } from "@/server/queries/sja.queries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HardHat, BookTemplate } from "lucide-react";
 import { SjaForm } from "@/components/sja/sja-form";
@@ -22,30 +22,8 @@ export default async function NySja({ searchParams }: PageProps) {
   const { mal: templateId, projectId } = await searchParams;
 
   const [projects, selectedProject] = await Promise.all([
-    prisma.project.findMany({
-      where: {
-        tenantId: session.user.tenantId,
-        status: { in: ["PLANNING", "ACTIVE"] },
-      },
-      select: {
-        id: true,
-        name: true,
-        location: true,
-      },
-      orderBy: { name: "asc" },
-    }),
-    projectId
-      ? prisma.project.findFirst({
-          where: {
-            id: projectId,
-            tenantId: session.user.tenantId,
-          },
-          select: {
-            id: true,
-            name: true,
-          },
-        })
-      : Promise.resolve(null),
+    loadActiveProjects(session.user.tenantId),
+    projectId ? loadSjaProject(projectId, session.user.tenantId) : Promise.resolve(null),
   ]);
 
   let templateData: {
@@ -67,10 +45,7 @@ export default async function NySja({ searchParams }: PageProps) {
   } | undefined;
 
   if (templateId) {
-    const template = await prisma.sjaTemplate.findUnique({
-      where: { id: templateId, tenantId: session.user.tenantId, isActive: true },
-      include: { hazards: { orderBy: { sortOrder: "asc" } } },
-    });
+    const template = await loadSjaTemplateById(templateId, session.user.tenantId);
 
     if (template) {
       templateData = {

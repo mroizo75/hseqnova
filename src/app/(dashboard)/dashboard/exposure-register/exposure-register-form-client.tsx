@@ -6,7 +6,7 @@ import type { ExposureRegisterForm } from "./exposure-register-form";
 
 const ExposureRegisterFormDynamic = dynamic(
   () => import("./exposure-register-form").then((m) => m.ExposureRegisterForm),
-  { ssr: false, loading: () => <div className="py-12 text-center text-sm text-muted-foreground">Laster skjema...</div> }
+  { ssr: false, loading: () => <div className="py-12 text-center text-sm text-muted-foreground">Loading form...</div> }
 );
 
 export function ExposureRegisterFormClient(props: ComponentProps<typeof ExposureRegisterForm>) {

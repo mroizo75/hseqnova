@@ -3,7 +3,7 @@ import { NotificationsPageContent } from "@/components/notifications/notificatio
 export default function DashboardNotificationsPage() {
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Alle varslinger</h1>
+      <h1 className="text-2xl font-semibold">All notifications</h1>
       <NotificationsPageContent />
     </div>
   );

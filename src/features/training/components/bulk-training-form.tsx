@@ -56,10 +56,10 @@ interface ParticipantRow {
 type Step = 1 | 2 | 3 | 4;
 
 const STEPS = [
-  { id: 1, label: "Kurs" },
-  { id: 2, label: "Deltakere" },
-  { id: 3, label: "Diplomer" },
-  { id: 4, label: "Bekreft" },
+  { id: 1, label: "Course" },
+  { id: 2, label: "People" },
+  { id: 3, label: "Certificates" },
+  { id: 4, label: "Confirm" },
 ];
 
 export function BulkTrainingForm({
@@ -226,8 +226,8 @@ export function BulkTrainingForm({
 
       if (result.success) {
         toast({
-          title: "Opplæring registrert",
-          description: `${selectedUserIds.size} ansatte ble registrert på ${title}`,
+          title: "Training recorded",
+          description: `${selectedUserIds.size} employees were recorded for ${title}`,
           className: "bg-green-50 border-green-200",
         });
         handleClose(false);
@@ -236,7 +236,7 @@ export function BulkTrainingForm({
         toast({
           variant: "destructive",
           title: "Feil",
-          description: result.error || "Kunne ikke registrere opplæring",
+          description: result.error || "Could not record the training",
         });
       }
     } catch {
@@ -260,7 +260,7 @@ export function BulkTrainingForm({
         <DialogTrigger asChild>
           <Button variant="default">
             <Zap className="mr-2 h-4 w-4" />
-            Massregistrering
+            Add for a group
           </Button>
         </DialogTrigger>
       )}
@@ -269,10 +269,10 @@ export function BulkTrainingForm({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Massregistrer opplæring
+            Record one course for several employees
           </DialogTitle>
           <DialogDescription>
-            Registrer ett kurs for flere ansatte på én gang
+            Use this when a group completed the same course on the same day.
           </DialogDescription>
         </DialogHeader>
 
@@ -309,10 +309,10 @@ export function BulkTrainingForm({
         {step === 1 && (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Kurs *</Label>
+              <Label>Course *</Label>
               <Select value={courseKey} onValueChange={handleCourseChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg kurs fra mal..." />
+                  <SelectValue placeholder="Choose a course template..." />
                 </SelectTrigger>
                 <SelectContent>
                   {courseTemplates.map((c) => (
@@ -325,7 +325,7 @@ export function BulkTrainingForm({
                       )}
                     </SelectItem>
                   ))}
-                  <SelectItem value="custom">Egendefinert kurs</SelectItem>
+                  <SelectItem value="custom">Custom course</SelectItem>
                 </SelectContent>
               </Select>
               {selectedCourse?.description && (
@@ -336,26 +336,26 @@ export function BulkTrainingForm({
             </div>
 
             <div className="space-y-2">
-              <Label>Kurstittel *</Label>
+              <Label>Title *</Label>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="F.eks. Førstehjelp grunnkurs"
+                placeholder="e.g. First aid"
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Kursleverandør *</Label>
+              <Label>Provider *</Label>
               <Input
                 value={provider}
                 onChange={(e) => setProvider(e.target.value)}
-                placeholder="F.eks. Røde Kors, BHT, Internt"
+                placeholder="e.g. St John Ambulance"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Gjennomført dato</Label>
+                <Label>Completed date</Label>
                 <Input
                   type="date"
                   value={completedAt}
@@ -364,7 +364,7 @@ export function BulkTrainingForm({
                 />
               </div>
               <div className="space-y-2">
-                <Label>Gyldig til</Label>
+                <Label>Valid until</Label>
                 <Input
                   type="date"
                   value={validUntil}
@@ -372,7 +372,7 @@ export function BulkTrainingForm({
                   onChange={(e) => setValidUntil(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  La stå tom hvis kurset ikke utløper
+                  Leave blank if the course does not expire
                 </p>
               </div>
             </div>
@@ -384,7 +384,7 @@ export function BulkTrainingForm({
                 onCheckedChange={(v) => setIsRequired(!!v)}
               />
               <Label htmlFor="isRequired" className="font-normal cursor-pointer">
-                Obligatorisk kurs for alle ansatte
+                Required course for all selected employees
               </Label>
             </div>
           </div>
@@ -396,7 +396,7 @@ export function BulkTrainingForm({
             <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
               <Search className="h-4 w-4 text-muted-foreground shrink-0" />
               <Input
-                placeholder="Søk etter ansatt..."
+                placeholder="Search employees..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="border-0 bg-transparent p-0 focus-visible:ring-0 h-auto"
@@ -410,18 +410,18 @@ export function BulkTrainingForm({
                 className="text-xs text-primary underline underline-offset-2"
               >
                 {selectedUserIds.size === filteredUsers.length
-                  ? "Fjern alle"
-                  : "Velg alle"}
+                  ? "Clear all"
+                  : "Select all"}
               </button>
               <span className="text-xs text-muted-foreground">
-                {selectedUserIds.size} av {users.length} valgt
+                {selectedUserIds.size} of {users.length} selected
               </span>
             </div>
 
             <div className="border rounded-lg divide-y max-h-64 overflow-y-auto">
               {filteredUsers.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-6">
-                  Ingen ansatte funnet
+                  No employees found
                 </p>
               )}
               {filteredUsers.map((u) => (
@@ -484,8 +484,7 @@ export function BulkTrainingForm({
         {step === 3 && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Last opp diplom for hver deltaker. Du kan hoppe over de som ikke
-              har diplom ennå.
+              Upload a certificate for each person if you have it. You can skip anyone who does not have a file yet.
             </p>
 
             <div className="border rounded-lg divide-y max-h-[420px] overflow-y-auto">
@@ -527,7 +526,7 @@ export function BulkTrainingForm({
                     <label className="flex items-center gap-2 cursor-pointer">
                       <div className="flex items-center gap-2 text-xs text-primary border border-dashed border-primary/40 rounded px-3 py-1.5 hover:bg-primary/5 transition-colors w-full justify-center">
                         <Upload className="h-3 w-3" />
-                        {file ? "Bytt fil" : "Last opp diplom (PDF/bilde)"}
+                        {file ? "Change file" : "Upload certificate (PDF or image)"}
                       </div>
                       <input
                         type="file"
@@ -553,36 +552,36 @@ export function BulkTrainingForm({
         {step === 4 && (
           <div className="space-y-4">
             <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-              <h3 className="font-semibold text-sm">Oppsummering</h3>
+              <h3 className="font-semibold text-sm">Summary</h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <span className="text-muted-foreground">Kurs</span>
+                <span className="text-muted-foreground">Course</span>
                 <span className="font-medium">{title}</span>
 
-                <span className="text-muted-foreground">Leverandør</span>
+                <span className="text-muted-foreground">Provider</span>
                 <span className="font-medium">{provider}</span>
 
-                <span className="text-muted-foreground">Gjennomført</span>
+                <span className="text-muted-foreground">Completed</span>
                 <span className="font-medium">
                   {completedAt
-                    ? new Date(completedAt).toLocaleDateString("nb-NO")
-                    : "Ikke satt"}
+                    ? new Date(completedAt).toLocaleDateString("en-GB")
+                    : "Not set"}
                 </span>
 
                 {validUntil && (
                   <>
-                    <span className="text-muted-foreground">Gyldig til</span>
+                    <span className="text-muted-foreground">Valid until</span>
                     <span className="font-medium">
-                      {new Date(validUntil).toLocaleDateString("nb-NO")}
+                      {new Date(validUntil).toLocaleDateString("en-GB")}
                     </span>
                   </>
                 )}
 
-                <span className="text-muted-foreground">Antall deltakere</span>
+                <span className="text-muted-foreground">People</span>
                 <span className="font-semibold text-primary">
-                  {selectedUserIds.size} ansatte
+                  {selectedUserIds.size} employees
                 </span>
 
-                <span className="text-muted-foreground">Diplomer lastet opp</span>
+                <span className="text-muted-foreground">Certificates uploaded</span>
                 <span className="font-medium">
                   {diplomaFiles.size} av {selectedUserIds.size}
                 </span>
@@ -599,7 +598,7 @@ export function BulkTrainingForm({
                   {diplomaFiles.has(u.id) ? (
                     <div className="flex items-center gap-1 text-green-600">
                       <FileText className="h-3 w-3" />
-                      <span className="text-xs">Diplom klar</span>
+                      <span className="text-xs">File ready</span>
                     </div>
                   ) : (
                     <span className="text-xs text-muted-foreground">
@@ -611,9 +610,9 @@ export function BulkTrainingForm({
             </div>
 
             <p className="text-xs text-muted-foreground bg-blue-50 border border-blue-200 rounded p-2">
-              Dette vil opprette{" "}
-              <strong>{selectedUserIds.size} opplæringsregistreringer</strong>.
-              Diplomer lastes opp og knyttes automatisk til riktig ansatt.
+              This will create{" "}
+              <strong>{selectedUserIds.size} training records</strong>.
+              Certificates are uploaded and attached to the right employee.
             </p>
           </div>
         )}
@@ -627,7 +626,7 @@ export function BulkTrainingForm({
             disabled={loading}
           >
             <ChevronLeft className="mr-1 h-4 w-4" />
-            {step === 1 ? "Avbryt" : "Tilbake"}
+            {step === 1 ? "Cancel" : "Back"}
           </Button>
 
           {step < 4 ? (
@@ -639,7 +638,7 @@ export function BulkTrainingForm({
                 (step === 2 && !canProceedStep2)
               }
             >
-              Neste
+              Next
               <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           ) : (
@@ -652,12 +651,12 @@ export function BulkTrainingForm({
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Registrerer...
+                  Saving...
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Registrer {selectedUserIds.size} opplæringer
+                  Save {selectedUserIds.size} records
                 </>
               )}
             </Button>

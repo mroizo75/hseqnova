@@ -71,20 +71,20 @@ export const updateRiskSchema = z.object({
   assessmentDate: z.date().optional().nullable(),
 });
 
-/** Schema for å opprette en risikovurdering (f.eks. for et år) */
+/** Create a documented risk assessment (MHSWR 1999). */
 export const createRiskAssessmentSchema = z.object({
   tenantId: z.string().cuid(),
   projectId: z.string().cuid().optional().nullable(),
-  title: z.string().min(3, "Tittel må være minst 3 tegn"),
+  title: z.string().min(3, "Title must be at least 3 characters"),
   assessmentYear: z.number().int().min(2000).max(2100),
-  // IK-HMS § 5 nr. 3 + AML § 3-1 (1): Hvem deltok (arbeidstakere, verneombud)
+  // SRSCWR 1977 / HSCER 1996: consult employees and safety representatives
   participants: z.string().optional(),
 });
 
-// IK-HMS § 5 nr. 6 (godkjenning) + IK-HMS § 5 nr. 8 (periodisk gjennomgang)
+// MHSWR 1999 review; ISO 45001 6.1 / 9.3 management review of the assessment
 export const updateRiskAssessmentSchema = z.object({
   id: z.string().cuid(),
-  title: z.string().trim().min(3, "Tittel må være minst 3 tegn").max(200).optional(),
+  title: z.string().trim().min(3, "Title must be at least 3 characters").max(200).optional(),
   participants: z.string().optional(),
   approvedById: z.string().cuid().optional().nullable(),
   approvedAt: z.coerce.date().optional().nullable(),

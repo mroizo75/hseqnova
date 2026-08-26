@@ -1960,8 +1960,9 @@ model SjaAnalysis {
 
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   hazards     SjaHazard[]
-  attachments Attachment[] @relation("SjaAttachments")
-  project     Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  attachments   Attachment[]    @relation("SjaAttachments")
+  project       Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  ramsBriefings RamsBriefing[]
 
   @@index([tenantId])
   @@index([sjaNummer])
@@ -1987,6 +1988,26 @@ model SjaHazard {
 
   sjaAnalysis SjaAnalysis @relation(fields: [sjaAnalysisId], references: [id], onDelete: Cascade)
 
+  @@index([sjaAnalysisId])
+}
+
+/// Pre-start briefing from an approved RAMS (MHSWR 1999 reg.13; CDM 2015 reg.15)
+model RamsBriefing {
+  id              String   @id @default(cuid())
+  tenantId        String
+  sjaAnalysisId   String
+  briefedAt       DateTime @default(now())
+  briefedByName   String
+  workLocation    String
+  methodSummary   String?  @db.Text
+  hazardsSnapshot Json
+  notes           String?  @db.Text
+  attendees       Json
+  createdAt       DateTime @default(now())
+
+  sjaAnalysis SjaAnalysis @relation(fields: [sjaAnalysisId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
   @@index([sjaAnalysisId])
 }
 
@@ -4144,6 +4165,7 @@ model DashboardConfig {
   tenantId      String
   widgets       Json // Array av { id: string, order: number }
   hmsPulseItems Json? // Array av HmsPulseItem for tilsynsvisning
+  simpleMenuItems Json? // User simple-mode nav hrefs; ignored when Tenant.dashboardLocked
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

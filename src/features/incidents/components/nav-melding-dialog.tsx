@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * NAV Yrkesskademelding – forhåndsutfylt skjema fra Incident
+ * RIDDOR / HSE report pack – summary PDF from an incident record.
  *
- * Hjemmel: Ftrl. § 13-14, AML § 5-2
- * Arbeidsgiver plikter å melde arbeidsulykker og yrkessykdom til NAV.
- * Fristen er straks ved alvorlig ulykke, ellers snarest.
+ * Legal basis: RIDDOR 2013; HSWA 1974 s.2.
+ * Official reporting is via HSE (not an in-app HSE API):
+ * https://www.hse.gov.uk/riddor/
  *
- * Fase 1: Generer utfylt PDF basert på Incident-data (skjema 13-07 / tilsvarende)
- * Fase 2: Direkte API-innsending via NAV Arbeidsgiverportal (Altinn API)
+ * Death: report without delay. Specified injury: 10 days.
+ * Over-seven-day injury: 15 days. Occupational disease / listed dangerous occurrence: as RIDDOR.
  */
 
 import { useState } from "react";
@@ -31,7 +31,9 @@ import { Separator } from "@/components/ui/separator";
 import { Send, FileText, Loader2, ExternalLink, AlertTriangle, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale";
+import { getIncidentTypeLabel } from "@/features/incidents/schemas/incident.schema";
+import type { IncidentType } from "@prisma/client";
 
 interface IncidentForNav {
   id: string;
@@ -64,11 +66,7 @@ interface NavMeldingDialogProps {
   tenant: TenantInfo;
 }
 
-const INCIDENT_TYPE_LABELS: Record<string, string> = {
-  ULYKKE: "Arbeidsulykke",
-  YRKESSYKDOM: "Yrkessykdom",
-  NESTEN: "Nestenulykke",
-};
+const HSE_RIDDOR_URL = "https://www.hse.gov.uk/riddor/";
 
 export function NavMeldingDialog({ incident, tenant }: NavMeldingDialogProps) {
   const [open, setOpen] = useState(false);
@@ -78,7 +76,11 @@ export function NavMeldingDialog({ incident, tenant }: NavMeldingDialogProps) {
   const [tilleggsInfo, setTilleggsInfo] = useState("");
   const { toast } = useToast();
 
-  const isReportable = incident.type === "ULYKKE" || incident.type === "YRKESSYKDOM";
+  const isReportable =
+    incident.isFatal ||
+    incident.type === "ULYKKE" ||
+    incident.type === "YRKESSYKDOM" ||
+    incident.type === "FARLIG_SITUASJON";
 
   async function handleDownloadPdf() {
     setLoading(true);
@@ -90,18 +92,25 @@ export function NavMeldingDialog({ incident, tenant }: NavMeldingDialogProps) {
         tilleggsInfo,
       });
       const res = await fetch(`/api/nav-melding?${params.toString()}`);
-      if (!res.ok) throw new Error("Feil ved generering");
+      if (!res.ok) throw new Error("Failed to generate");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `NAV-yrkesskademelding-${incident.avviksnummer ?? incident.id}.pdf`;
+      a.download = `RIDDOR-HSE-report-pack-${incident.avviksnummer ?? incident.id}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-      toast({ title: "PDF generert", description: "NAV-meldingen er klar for sending." });
+      toast({
+        title: "PDF generated",
+        description: "The RIDDOR / HSE report pack is ready. Submit the official report on the HSE website.",
+      });
       setOpen(false);
     } catch {
-      toast({ title: "Feil", description: "Kunne ikke generere PDF. Prøv igjen.", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Could not generate the PDF. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -109,24 +118,25 @@ export function NavMeldingDialog({ incident, tenant }: NavMeldingDialogProps) {
 
   if (!isReportable) return null;
 
-  const occurredDate = format(new Date(incident.occurredAt), "d. MMMM yyyy", { locale: nb });
+  const occurredDate = format(new Date(incident.occurredAt), "d MMMM yyyy", { locale: enGB });
+  const typeLabel = getIncidentTypeLabel(incident.type as IncidentType);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2 border-orange-200 text-orange-700 hover:bg-orange-50 hover:text-orange-800">
           <Send className="h-4 w-4" />
-          Meld til NAV
+          RIDDOR / HSE report pack
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-orange-600" />
-            Yrkesskademelding til NAV
+            RIDDOR / HSE report pack
           </DialogTitle>
           <DialogDescription>
-            Ftrl. § 13-14: Arbeidsgiver plikter å melde arbeidsulykker og yrkessykdom til NAV.
+            RIDDOR 2013: reportable deaths, specified injuries, over-seven-day injuries, occupational disease and listed dangerous occurrences.
           </DialogDescription>
         </DialogHeader>
 
@@ -134,11 +144,10 @@ export function NavMeldingDialog({ incident, tenant }: NavMeldingDialogProps) {
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription className="text-sm">
-              Generer en utfylt PDF basert på avviksdataene. Last ned og send til NAV via{" "}
-              <a href="https://www.nav.no/arbeidsgiver/skademelding" target="_blank" rel="noreferrer" className="underline font-medium">
-                nav.no/arbeidsgiver/skademelding
-              </a>{" "}
-              eller Altinn skjema 13-07.
+              Generate a summary PDF from this accident book entry. Official reporting is made on the HSE website — this product does not submit to HSE.{" "}
+              <a href={HSE_RIDDOR_URL} target="_blank" rel="noreferrer" className="underline font-medium">
+                hse.gov.uk/riddor
+              </a>
             </AlertDescription>
           </Alert>
 
@@ -146,54 +155,53 @@ export function NavMeldingDialog({ incident, tenant }: NavMeldingDialogProps) {
             <Alert className="border-red-300 bg-red-50">
               <AlertTriangle className="h-4 w-4 text-red-600" />
               <AlertDescription className="text-sm text-red-800 font-medium">
-                Dødelig ulykke – meld straks til Arbeidstilsynet (815 48 222) og politiet (AML § 5-2).
+                Death — report to HSE without delay (RIDDOR 2013). Also notify the police where required.
               </AlertDescription>
             </Alert>
           )}
 
           <Separator />
 
-          {/* Forhåndsutfylt informasjon */}
           <div>
             <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-              Forhåndsutfylt fra avviksregistrering
+              Prefill from incident record
             </p>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="space-y-1">
-                <p className="text-muted-foreground">Hendelsestype</p>
+                <p className="text-muted-foreground">Incident type</p>
                 <Badge variant="outline" className="border-orange-200 text-orange-700">
-                  {INCIDENT_TYPE_LABELS[incident.type] ?? incident.type}
+                  {typeLabel}
                 </Badge>
               </div>
               <div className="space-y-1">
-                <p className="text-muted-foreground">Avviksnummer</p>
+                <p className="text-muted-foreground">Record number</p>
                 <p className="font-medium">{incident.avviksnummer ?? "–"}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-muted-foreground">Dato</p>
+                <p className="text-muted-foreground">Date</p>
                 <p className="font-medium">{occurredDate}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-muted-foreground">Sted</p>
+                <p className="text-muted-foreground">Location</p>
                 <p className="font-medium">{incident.location ?? "–"}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-muted-foreground">Bedrift</p>
+                <p className="text-muted-foreground">Organisation</p>
                 <p className="font-medium">{tenant.name}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-muted-foreground">Org.nr.</p>
+                <p className="text-muted-foreground">Company number</p>
                 <p className="font-medium">{tenant.orgNumber ?? "–"}</p>
               </div>
               {incident.reportedForUserName && (
                 <div className="col-span-2 space-y-1">
-                  <p className="text-muted-foreground">Skadelidte</p>
+                  <p className="text-muted-foreground">Injured person</p>
                   <p className="font-medium">{incident.reportedForUserName}</p>
                 </div>
               )}
               {incident.injuryType && (
                 <div className="col-span-2 space-y-1">
-                  <p className="text-muted-foreground">Skadetype</p>
+                  <p className="text-muted-foreground">Injury type</p>
                   <p className="font-medium">{incident.injuryType}</p>
                 </div>
               )}
@@ -202,38 +210,37 @@ export function NavMeldingDialog({ incident, tenant }: NavMeldingDialogProps) {
 
           <Separator />
 
-          {/* Tilleggsinformasjon for PDF */}
           <div className="space-y-3">
             <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-              Utfyll for PDF
+              Complete for PDF
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="exporterNavn">Innmelder – navn</Label>
+                <Label htmlFor="exporterNavn">Reporter — name</Label>
                 <Input
                   id="exporterNavn"
                   value={exporterNavn}
                   onChange={(e) => setEksporterNavn(e.target.value)}
-                  placeholder="F.eks. Ola Nordmann"
+                  placeholder="e.g. Jane Smith"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="eksporterTittel">Innmelder – tittel/stilling</Label>
+                <Label htmlFor="eksporterTittel">Reporter — job title</Label>
                 <Input
                   id="eksporterTittel"
                   value={eksporterTittel}
                   onChange={(e) => setEksporterTittel(e.target.value)}
-                  placeholder="F.eks. Daglig leder"
+                  placeholder="e.g. Competent person"
                 />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="tilleggsInfo">Tilleggsinformasjon til NAV (valgfritt)</Label>
+              <Label htmlFor="tilleggsInfo">Additional information for HSE (optional)</Label>
               <Textarea
                 id="tilleggsInfo"
                 value={tilleggsInfo}
                 onChange={(e) => setTilleggsInfo(e.target.value)}
-                placeholder="Eventuell tilleggsinformasjon som ikke fremgår av avviksregistreringen..."
+                placeholder="Any extra information that is not already in the incident record..."
                 rows={3}
                 maxLength={1000}
               />
@@ -243,17 +250,17 @@ export function NavMeldingDialog({ incident, tenant }: NavMeldingDialogProps) {
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => setOpen(false)}>
-            Avbryt
+            Cancel
           </Button>
           <Button asChild variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
-            <a href="https://www.altinn.no/skjemaoversikt/arbeids--og-velferdsetaten/skademelding-ved-arbeidsulykke/" target="_blank" rel="noreferrer">
-              Åpne Altinn direkte
+            <a href={HSE_RIDDOR_URL} target="_blank" rel="noreferrer">
+              Open HSE RIDDOR
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
           </Button>
           <Button onClick={handleDownloadPdf} disabled={loading} className="gap-2">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-            Last ned PDF
+            Download PDF
           </Button>
         </DialogFooter>
       </DialogContent>

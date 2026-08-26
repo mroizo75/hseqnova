@@ -1,45 +1,29 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { loadCourseTemplatesForTenant } from "@/server/queries/training.queries";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const tenantId = session.user.tenantId ?? (
-      await prisma.userTenant.findFirst({
-        where: { userId: session.user.id },
-        select: { tenantId: true },
-      })
-    )?.tenantId;
+    const tenantId = session.user.tenantId;
     if (!tenantId) {
-      return NextResponse.json({ error: "User not associated with tenant" }, { status: 403 });
+      return NextResponse.json({ error: "User not associated with organisation" }, { status: 403 });
     }
 
-    // Hent både globale og tenant-spesifikke kursmaler
-    const courses = await prisma.courseTemplate.findMany({
-      where: {
-        OR: [
-          { tenantId },
-          { isGlobal: true },
-        ],
-      },
-      orderBy: [
-        { isGlobal: "desc" }, // Globale først
-        { title: "asc" },
-      ],
+    const courses = await loadCourseTemplatesForTenant(tenantId, { activeOnly: false });
+    courses.sort((a, b) => {
+      if (a.isGlobal !== b.isGlobal) return a.isGlobal ? -1 : 1;
+      return a.title.localeCompare(b.title, "en");
     });
 
     return NextResponse.json({ courses });
-  } catch (error: any) {
-    console.error("Get courses error:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to fetch courses" },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch courses";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

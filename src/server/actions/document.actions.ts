@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { createId } from "@/lib/ids";
+import { AuditLog } from "@/lib/audit-log";
 import {
   createDocumentSchema,
   updateDocumentSchema,
@@ -13,23 +15,17 @@ import { requirePermission, requireResourceAccess } from "@/lib/server-authoriza
 import { calculateNextReviewDate, parseDateInput } from "@/lib/document-utils";
 import { convertDocumentToPDF } from "@/lib/adobe-pdf";
 
-// Helper: Logg til audit log
-async function logAudit(
-  tenantId: string,
-  userId: string,
-  action: string,
-  resource: string,
-  metadata?: any
-) {
-  await prisma.auditLog.create({
-    data: {
-      tenantId,
-      userId,
-      action,
-      resource,
-      metadata: metadata ? JSON.stringify(metadata) : null,
-    },
-  });
+type ActionError = { code: string; message: string; details?: unknown };
+
+function fail(code: string, message: string, details?: unknown): ActionError {
+  return { code, message, details };
+}
+
+function toIso(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
 }
 
 const sanitizeText = (value?: string | null) => {
@@ -45,25 +41,27 @@ const parseIntInput = (value?: string | null) => {
 };
 
 async function assertTenantUser(tenantId: string, userId: string) {
-  const member = await prisma.userTenant.findFirst({
-    where: { tenantId, userId },
-  });
+  const { data: member } = await getAdminDb()
+    .from("UserTenant")
+    .select("id")
+    .eq("tenantId", tenantId)
+    .eq("userId", userId)
+    .maybeSingle();
 
   if (!member) {
-    throw new Error("Ugyldig bruker for denne virksomheten");
+    throw fail("INVALID_OWNER", "That person is not a member of this organisation.");
   }
 }
 
 async function resolveTemplate(tenantId: string, templateId: string) {
-  const template = await prisma.documentTemplate.findFirst({
-    where: {
-      id: templateId,
-      OR: [{ tenantId }, { isGlobal: true }],
-    },
-  });
+  const { data: template } = await getAdminDb()
+    .from("DocumentTemplate")
+    .select("*")
+    .eq("id", templateId)
+    .maybeSingle();
 
-  if (!template) {
-    throw new Error("Fant ikke valgt dokumentmal");
+  if (!template || (template.tenantId !== tenantId && !template.isGlobal)) {
+    throw fail("TEMPLATE_NOT_FOUND", "The selected template was not found.");
   }
 
   return template;
@@ -71,60 +69,86 @@ async function resolveTemplate(tenantId: string, templateId: string) {
 
 export async function getDocuments(tenantId: string) {
   try {
-    // Sjekk tilgang
-    const context = await requirePermission("canReadDocuments");
+    await requirePermission("canReadDocuments");
 
-    const documents = await prisma.document.findMany({
-      where: { tenantId },
-      orderBy: { createdAt: "desc" },
-      include: {
-        versions: {
-          orderBy: { createdAt: "desc" },
-          take: 5, // Siste 5 versjoner
-        },
-      },
-    });
+    const { data: documents, error } = await getAdminDb()
+      .from("Document")
+      .select("*")
+      .eq("tenantId", tenantId)
+      .order("createdAt", { ascending: false });
 
-    return { success: true, data: documents };
-  } catch (error: any) {
-    console.error("Get documents error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente dokumenter" };
+    if (error) {
+      throw fail("DOCUMENT_LIST_FAILED", error.message);
+    }
+
+    const ids = ((documents ?? []) as Array<{ id: string }>).map((row) => row.id);
+    let versions: unknown[] = [];
+    if (ids.length > 0) {
+      const { data: versionRows } = await getAdminDb()
+        .from("DocumentVersion")
+        .select("*")
+        .in("documentId", ids)
+        .order("createdAt", { ascending: false });
+      versions = versionRows ?? [];
+    }
+
+    const versionsByDoc = new Map<string, unknown[]>();
+    for (const version of versions as Array<{ documentId: string }>) {
+      const list = versionsByDoc.get(version.documentId) ?? [];
+      if (list.length < 5) {
+        list.push(version);
+        versionsByDoc.set(version.documentId, list);
+      }
+    }
+
+    return {
+      success: true as const,
+      data: ((documents ?? []) as Array<{ id: string }>).map((doc) => ({
+        ...doc,
+        versions: versionsByDoc.get(doc.id) ?? [],
+      })),
+    };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not load documents." };
   }
 }
 
 export async function getDocument(id: string) {
   try {
-    // Sjekk tilgang til ressursen
-    const context = await requireResourceAccess("document", id);
+    await requireResourceAccess("document", id);
 
-    const document = await prisma.document.findUnique({
-      where: { id },
-      include: {
-        tenant: {
-          select: {
-            name: true,
-          },
-        },
-        versions: {
-          orderBy: { createdAt: "desc" },
-        },
-      },
-    });
+    const db = getAdminDb();
+    const { data: document, error } = await db.from("Document").select("*").eq("id", id).maybeSingle();
 
+    if (error) {
+      throw fail("DOCUMENT_LOAD_FAILED", error.message);
+    }
     if (!document) {
-      return { success: false, error: "Dokument ikke funnet" };
+      return { success: false as const, error: "Document not found." };
     }
 
-    return { success: true, data: document };
-  } catch (error: any) {
-    console.error("Get document error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente dokument" };
+    const [{ data: tenant }, { data: versions }] = await Promise.all([
+      db.from("Tenant").select("name").eq("id", document.tenantId).maybeSingle(),
+      db.from("DocumentVersion").select("*").eq("documentId", id).order("createdAt", { ascending: false }),
+    ]);
+
+    return {
+      success: true as const,
+      data: {
+        ...document,
+        tenant: tenant ? { name: tenant.name } : null,
+        versions: versions ?? [],
+      },
+    };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not load the document." };
   }
 }
 
 export async function createDocument(formData: FormData) {
   try {
-    // Sjekk tilgang
     const context = await requirePermission("canCreateDocuments");
 
     const fileEntry = formData.get("file");
@@ -145,12 +169,11 @@ export async function createDocument(formData: FormData) {
       tenantId: formData.get("tenantId") as string,
       kind: formData.get("kind") as string,
       title: formData.get("title") as string,
-      version: formData.get("version") as string || "v1.0",
+      version: (formData.get("version") as string) || "v1.0",
     };
 
-    // Valider at fil er en Blob (File extends Blob)
     if (!fileEntry || typeof fileEntry === "string") {
-      return { success: false, error: "Fil er påkrevd" };
+      return { success: false as const, error: "A file is required." };
     }
 
     const file = fileEntry as Blob & { name: string };
@@ -168,61 +191,47 @@ export async function createDocument(formData: FormData) {
       file,
     });
 
-    // Generer slug fra tittel
     const baseSlug = validated.title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
 
-    // VIKTIG: Sjekk om dokument med samme slug allerede eksisterer
-    const existingBySlug = await prisma.document.findUnique({
-      where: {
-        tenantId_slug: {
-          tenantId: validated.tenantId,
-          slug: baseSlug,
-        },
-      },
-    });
+    const db = getAdminDb();
+    const { data: existingBySlug } = await db
+      .from("Document")
+      .select("id")
+      .eq("tenantId", validated.tenantId)
+      .eq("slug", baseSlug)
+      .maybeSingle();
 
     if (existingBySlug) {
-      // Dokument eksisterer - dette er en ny versjon!
-      return { 
-        success: false, 
-        error: `Dokument "${validated.title}" eksisterer allerede. Bruk "Last opp ny versjon" i stedet.`,
+      return {
+        success: false as const,
+        error: `A document named "${validated.title}" already exists. Upload a new version instead.`,
         existingDocumentId: existingBySlug.id,
       };
     }
 
-    // Last opp fil
     const storage = getStorage();
     const fileKey = generateFileKey(validated.tenantId, "documents", file.name);
     await storage.upload(fileKey, file);
 
-    // Parse visibleToRoles
     let visibleToRoles: string[] | null = null;
     if (visibleToRolesStr) {
       try {
         visibleToRoles = JSON.parse(visibleToRolesStr);
-      } catch (e) {
-        console.error("Failed to parse visibleToRoles:", e);
+      } catch {
+        visibleToRoles = null;
       }
     }
 
     if (validated.ownerId) {
-      try {
-        await assertTenantUser(validated.tenantId, validated.ownerId);
-      } catch (error: any) {
-        return { success: false, error: error.message };
-      }
+      await assertTenantUser(validated.tenantId, validated.ownerId);
     }
 
     let template: Awaited<ReturnType<typeof resolveTemplate>> | null = null;
     if (validated.templateId) {
-      try {
-        template = await resolveTemplate(validated.tenantId, validated.templateId);
-      } catch (error: any) {
-        return { success: false, error: error.message };
-      }
+      template = await resolveTemplate(validated.tenantId, validated.templateId);
     }
 
     const resolvedReviewInterval = reviewIntervalProvided
@@ -231,73 +240,78 @@ export async function createDocument(formData: FormData) {
 
     const resolvedEffectiveFrom = validated.effectiveFrom ?? new Date();
     const nextReviewDate = calculateNextReviewDate(resolvedEffectiveFrom, resolvedReviewInterval);
+    const now = new Date().toISOString();
+    const documentId = createId();
+    const mime = file.type || "application/octet-stream";
 
-    // Opprett nytt dokument med første versjon
-    const document = await prisma.document.create({
-      data: {
+    const { data: document, error: insertError } = await db
+      .from("Document")
+      .insert({
+        id: documentId,
         tenantId: validated.tenantId,
         kind: validated.kind,
         title: validated.title,
         slug: baseSlug,
         version: validated.version,
-        status: DocStatus.DRAFT, // ALLTID DRAFT først - MÅ godkjennes
+        status: DocStatus.DRAFT,
         fileKey,
-        mime: file.type || "application/octet-stream",
+        mime,
         updatedBy: context.userEmail,
         ownerId: validated.ownerId,
         templateId: validated.templateId,
         reviewIntervalMonths: resolvedReviewInterval,
-        effectiveFrom: resolvedEffectiveFrom,
-        effectiveTo: validated.effectiveTo,
+        effectiveFrom: toIso(resolvedEffectiveFrom),
+        effectiveTo: toIso(validated.effectiveTo),
         planSummary: validated.planSummary ?? null,
         doSummary: validated.doSummary ?? null,
         checkSummary: validated.checkSummary ?? null,
         actSummary: validated.actSummary ?? null,
-        nextReviewDate,
+        nextReviewDate: toIso(nextReviewDate),
         visibleToRoles: visibleToRoles || null,
-        versions: {
-          create: {
-            tenantId: validated.tenantId,
-            version: validated.version,
-            fileKey,
-            mime: file.type || "application/octet-stream",
-            uploadedBy: context.userEmail,
-            changeComment: changeComment || "Første versjon opprettet",
-          },
-        },
-      },
-      include: {
-        versions: true,
-      },
+        createdAt: now,
+        updatedAt: now,
+      })
+      .select("*")
+      .single();
+
+    if (insertError || !document) {
+      throw fail("DOCUMENT_CREATE_FAILED", insertError?.message || "Could not create the document.");
+    }
+
+    const { error: versionError } = await db.from("DocumentVersion").insert({
+      id: createId(),
+      tenantId: validated.tenantId,
+      documentId,
+      version: validated.version,
+      fileKey,
+      mime,
+      uploadedBy: context.userEmail,
+      changeComment: changeComment || "Initial version",
     });
 
-    // Audit log
-    await logAudit(
-      validated.tenantId,
-      context.userId,
-      "DOCUMENT_CREATED",
-      `Document:${document.id}`,
-      {
-        title: validated.title,
-        version: validated.version,
-        kind: validated.kind,
-        templateId: validated.templateId,
-        ownerId: validated.ownerId,
-        reviewIntervalMonths: resolvedReviewInterval,
-      }
-    );
+    if (versionError) {
+      throw fail("DOCUMENT_VERSION_CREATE_FAILED", versionError.message);
+    }
+
+    await AuditLog.log(validated.tenantId, context.userId, "DOCUMENT_CREATED", "Document", document.id, {
+      title: validated.title,
+      version: validated.version,
+      kind: validated.kind,
+      templateId: validated.templateId,
+      ownerId: validated.ownerId,
+      reviewIntervalMonths: resolvedReviewInterval,
+    });
 
     revalidatePath(`/dashboard/documents`);
-    return { success: true, data: document };
-  } catch (error: any) {
-    console.error("Create document error:", error);
-    return { success: false, error: "Kunne ikke opprette dokument" };
+    return { success: true as const, data: document };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not create the document." };
   }
 }
 
 export async function uploadNewVersion(formData: FormData) {
   try {
-    // Sjekk tilgang
     const context = await requirePermission("canCreateDocuments");
 
     const documentId = formData.get("documentId") as string;
@@ -305,153 +319,136 @@ export async function uploadNewVersion(formData: FormData) {
     const version = formData.get("version") as string;
     const changeComment = formData.get("changeComment") as string;
 
-    // Valider at fil er en Blob (File extends Blob)
     if (!fileEntry || typeof fileEntry === "string" || !version || !changeComment) {
-      return { success: false, error: "Fil, versjon og endringskommentar er påkrevd" };
+      return { success: false as const, error: "File, version and change comment are required." };
     }
 
     const file = fileEntry as Blob & { name: string };
-
-    const document = await prisma.document.findUnique({
-      where: { id: documentId },
-      include: { versions: true },
-    });
+    const db = getAdminDb();
+    const { data: document } = await db.from("Document").select("*").eq("id", documentId).maybeSingle();
 
     if (!document) {
-      return { success: false, error: "Dokument ikke funnet" };
+      return { success: false as const, error: "Document not found." };
     }
 
-    // Sjekk om versjon allerede eksisterer
-    const versionExists = document.versions.some((v) => v.version === version);
-    if (versionExists) {
-      return { 
-        success: false, 
-        error: `Versjon ${version} eksisterer allerede. Bruk et nytt versjonsnummer.` 
+    const { data: existingVersions } = await db
+      .from("DocumentVersion")
+      .select("version")
+      .eq("documentId", document.id);
+
+    if ((existingVersions ?? []).some((row: { version: string }) => row.version === version)) {
+      return {
+        success: false as const,
+        error: `Version ${version} already exists. Use a new version number.`,
       };
     }
 
-    // Last opp ny fil
     const storage = getStorage();
     const fileKey = generateFileKey(document.tenantId, "documents", file.name);
     await storage.upload(fileKey, file);
 
-    // Marker forrige versjon som "superseded"
-    await prisma.documentVersion.updateMany({
-      where: {
-        documentId: document.id,
-        supersededAt: null,
-      },
-      data: {
-        supersededAt: new Date(),
-      },
+    const now = new Date().toISOString();
+    await db
+      .from("DocumentVersion")
+      .update({ supersededAt: now })
+      .eq("documentId", document.id)
+      .is("supersededAt", null);
+
+    const mime = file.type || "application/octet-stream";
+    const { error: versionError } = await db.from("DocumentVersion").insert({
+      id: createId(),
+      tenantId: document.tenantId,
+      documentId: document.id,
+      version,
+      fileKey,
+      mime,
+      uploadedBy: context.userEmail,
+      changeComment,
     });
 
-    // Opprett ny versjon
-    const newVersion = await prisma.documentVersion.create({
-      data: {
-        tenantId: document.tenantId,
-        documentId: document.id,
-        version,
-        fileKey,
-        mime: file.type || "application/octet-stream",
-        uploadedBy: context.userEmail,
-        changeComment,
-      },
-    });
+    if (versionError) {
+      throw fail("DOCUMENT_VERSION_CREATE_FAILED", versionError.message);
+    }
 
-    // Oppdater hovedDokument til DRAFT (må godkjennes på nytt)
-    const updatedDocument = await prisma.document.update({
-      where: { id: documentId },
-      data: {
+    const { data: updatedDocument, error: updateError } = await db
+      .from("Document")
+      .update({
         version,
         fileKey,
-        mime: file.type || "application/octet-stream",
-        status: DocStatus.DRAFT, // Tilbake til DRAFT - må godkjennes
+        mime,
+        status: DocStatus.DRAFT,
         approvedBy: null,
         approvedAt: null,
         updatedBy: context.userEmail,
-      },
-      include: {
-        versions: {
-          orderBy: { createdAt: "desc" },
-        },
-      },
+        updatedAt: now,
+      })
+      .eq("id", documentId)
+      .select("*")
+      .single();
+
+    if (updateError || !updatedDocument) {
+      throw fail("DOCUMENT_UPDATE_FAILED", updateError?.message || "Could not update the document.");
+    }
+
+    await AuditLog.log(document.tenantId, context.userId, "DOCUMENT_VERSION_UPLOADED", "Document", document.id, {
+      version,
+      changeComment,
+      previousVersion: document.version,
     });
 
-    // Audit log
-    await logAudit(
-      document.tenantId,
-      context.userId,
-      "DOCUMENT_VERSION_UPLOADED",
-      `Document:${document.id}`,
-      {
-        version,
-        changeComment,
-        previousVersion: document.version,
-      }
-    );
-
-    // Invalider PDF-visningscache (docx→pdf) slik at ny versjon vises
     const viewCacheKey = `${document.tenantId}/documents/pdf/${document.id}.pdf`;
     try {
       await storage.delete(viewCacheKey);
     } catch {
-      // Ignorer hvis cache ikke finnes
+      // Cache may not exist yet.
     }
 
     revalidatePath(`/dashboard/documents`);
     revalidatePath(`/dashboard/documents/${documentId}`);
-    return { success: true, data: updatedDocument };
-  } catch (error: any) {
-    console.error("Upload new version error:", error);
-    return { success: false, error: error.message || "Kunne ikke laste opp ny versjon" };
+    return { success: true as const, data: updatedDocument };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not upload the new version." };
   }
 }
 
-export async function updateDocument(input: any) {
+export async function updateDocument(input: Record<string, unknown>) {
   try {
-    // Sjekk tilgang
     const context = await requirePermission("canCreateDocuments");
 
     const hasField = (key: string) => Object.prototype.hasOwnProperty.call(input, key);
     const reviewIntervalProvided = hasField("reviewIntervalMonths");
     const payload = {
       ...input,
-      reviewIntervalMonths: reviewIntervalProvided ? parseIntInput(input.reviewIntervalMonths) : undefined,
-      effectiveFrom: hasField("effectiveFrom") ? parseDateInput(input.effectiveFrom as string | null) : undefined,
+      reviewIntervalMonths: reviewIntervalProvided
+        ? parseIntInput(input.reviewIntervalMonths as string | null)
+        : undefined,
+      effectiveFrom: hasField("effectiveFrom")
+        ? parseDateInput(input.effectiveFrom as string | null)
+        : undefined,
       effectiveTo: hasField("effectiveTo") ? parseDateInput(input.effectiveTo as string | null) : undefined,
-      planSummary: hasField("planSummary") ? sanitizeText(input.planSummary) : undefined,
-      doSummary: hasField("doSummary") ? sanitizeText(input.doSummary) : undefined,
-      checkSummary: hasField("checkSummary") ? sanitizeText(input.checkSummary) : undefined,
-      actSummary: hasField("actSummary") ? sanitizeText(input.actSummary) : undefined,
+      planSummary: hasField("planSummary") ? sanitizeText(input.planSummary as string | null) : undefined,
+      doSummary: hasField("doSummary") ? sanitizeText(input.doSummary as string | null) : undefined,
+      checkSummary: hasField("checkSummary") ? sanitizeText(input.checkSummary as string | null) : undefined,
+      actSummary: hasField("actSummary") ? sanitizeText(input.actSummary as string | null) : undefined,
     };
 
     const validated = updateDocumentSchema.parse(payload);
-
-    const document = await prisma.document.findUnique({
-      where: { id: validated.id },
-    });
+    const db = getAdminDb();
+    const { data: document } = await db.from("Document").select("*").eq("id", validated.id).maybeSingle();
 
     if (!document) {
-      return { success: false, error: "Dokument ikke funnet" };
+      return { success: false as const, error: "Document not found." };
     }
 
     if (validated.ownerId) {
-      try {
-        await assertTenantUser(document.tenantId, validated.ownerId);
-      } catch (error: any) {
-        return { success: false, error: error.message };
-      }
+      await assertTenantUser(document.tenantId, validated.ownerId);
     }
 
     let template: Awaited<ReturnType<typeof resolveTemplate>> | null = null;
     const templateFieldProvided = hasField("templateId");
     if (validated.templateId) {
-      try {
-        template = await resolveTemplate(document.tenantId, validated.templateId);
-      } catch (error: any) {
-        return { success: false, error: error.message };
-      }
+      template = await resolveTemplate(document.tenantId, validated.templateId);
     }
 
     const resolvedReviewInterval = (() => {
@@ -459,21 +456,24 @@ export async function updateDocument(input: any) {
         return validated.reviewIntervalMonths;
       }
       if (templateFieldProvided && template) {
-        return template.defaultReviewIntervalMonths;
+        return template.defaultReviewIntervalMonths as number;
       }
       return document.reviewIntervalMonths ?? 12;
     })();
 
     const resolvedEffectiveFrom = hasField("effectiveFrom")
-      ? validated.effectiveFrom ?? null
+      ? (validated.effectiveFrom ?? null)
       : document.effectiveFrom;
 
     const effectiveFromForCalc = resolvedEffectiveFrom ?? document.effectiveFrom ?? new Date();
-    const nextReviewDate = calculateNextReviewDate(effectiveFromForCalc, resolvedReviewInterval);
+    const nextReviewDate = calculateNextReviewDate(
+      new Date(effectiveFromForCalc),
+      resolvedReviewInterval
+    );
 
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       updatedBy: context.userEmail,
-      updatedAt: new Date(),
+      updatedAt: new Date().toISOString(),
     };
 
     if (validated.title) updateData.title = validated.title;
@@ -493,235 +493,212 @@ export async function updateDocument(input: any) {
     if (hasField("doSummary")) updateData.doSummary = validated.doSummary ?? null;
     if (hasField("checkSummary")) updateData.checkSummary = validated.checkSummary ?? null;
     if (hasField("actSummary")) updateData.actSummary = validated.actSummary ?? null;
-    if (hasField("effectiveFrom")) updateData.effectiveFrom = resolvedEffectiveFrom;
-    if (hasField("effectiveTo")) updateData.effectiveTo = validated.effectiveTo ?? null;
+    if (hasField("effectiveFrom")) updateData.effectiveFrom = toIso(resolvedEffectiveFrom);
+    if (hasField("effectiveTo")) updateData.effectiveTo = toIso(validated.effectiveTo ?? null);
 
     if (reviewIntervalProvided || templateFieldProvided || hasField("effectiveFrom")) {
       updateData.reviewIntervalMonths = resolvedReviewInterval;
-      updateData.nextReviewDate = nextReviewDate;
+      updateData.nextReviewDate = toIso(nextReviewDate);
     }
 
-    const updated = await prisma.document.update({
-      where: { id: validated.id },
-      data: updateData,
-    });
+    const { data: updated, error } = await db
+      .from("Document")
+      .update(updateData)
+      .eq("id", validated.id)
+      .select("*")
+      .single();
 
-    await logAudit(
-      updated.tenantId,
-      context.userId,
-      "DOCUMENT_UPDATED",
-      `Document:${updated.id}`,
-      {
-        ...validated,
-        reviewIntervalMonths: resolvedReviewInterval,
-      }
-    );
+    if (error || !updated) {
+      throw fail("DOCUMENT_UPDATE_FAILED", error?.message || "Could not update the document.");
+    }
+
+    await AuditLog.log(updated.tenantId, context.userId, "DOCUMENT_UPDATED", "Document", updated.id, {
+      ...validated,
+      reviewIntervalMonths: resolvedReviewInterval,
+    });
 
     revalidatePath(`/dashboard/documents`);
     revalidatePath(`/dashboard/documents/${validated.id}`);
-    return { success: true, data: updated };
-  } catch (error: any) {
-    console.error("Update document error:", error);
-    return { success: false, error: error.message || "Kunne ikke oppdatere dokument" };
+    return { success: true as const, data: updated };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not update the document." };
   }
 }
 
-export async function approveDocument(input: any) {
+export async function approveDocument(input: unknown) {
   try {
-    // Sjekk tilgang til å godkjenne
     const context = await requirePermission("canApproveDocuments");
-
     const validated = approveDocumentSchema.parse(input);
-
-    const document = await prisma.document.findUnique({
-      where: { id: validated.id },
-      include: { versions: { orderBy: { createdAt: "desc" }, take: 1 } },
-    });
+    const db = getAdminDb();
+    const { data: document } = await db.from("Document").select("*").eq("id", validated.id).maybeSingle();
 
     if (!document) {
-      return { success: false, error: "Dokument ikke funnet" };
+      return { success: false as const, error: "Document not found." };
     }
 
     const reviewIntervalMonths = document.reviewIntervalMonths ?? 12;
     const effectiveFrom = document.effectiveFrom ?? new Date();
-    const nextReviewDate = calculateNextReviewDate(effectiveFrom, reviewIntervalMonths);
+    const nextReviewDate = calculateNextReviewDate(new Date(effectiveFrom), reviewIntervalMonths);
+    const now = new Date().toISOString();
 
-    // Oppdater dokument til APPROVED
-    const approved = await prisma.document.update({
-      where: { id: validated.id },
-      data: {
+    const { data: approved, error } = await db
+      .from("Document")
+      .update({
         status: DocStatus.APPROVED,
         approvedBy: validated.approvedBy,
-        approvedAt: new Date(),
-        nextReviewDate,
-      },
-    });
+        approvedAt: now,
+        nextReviewDate: toIso(nextReviewDate),
+        updatedAt: now,
+      })
+      .eq("id", validated.id)
+      .select("*")
+      .single();
 
-    // Godkjenn også siste versjon
-    if (document.versions.length > 0) {
-      await prisma.documentVersion.update({
-        where: { id: document.versions[0].id },
-        data: {
-          approvedBy: validated.approvedBy,
-          approvedAt: new Date(),
-        },
-      });
+    if (error || !approved) {
+      throw fail("DOCUMENT_APPROVE_FAILED", error?.message || "Could not approve the document.");
     }
 
-    await logAudit(
-      document.tenantId,
-      context.userId,
-      "DOCUMENT_APPROVED",
-      `Document:${document.id}`,
-      {
-        version: document.version,
-        approvedBy: validated.approvedBy,
-      }
-    );
+    const { data: latestVersion } = await db
+      .from("DocumentVersion")
+      .select("id")
+      .eq("documentId", document.id)
+      .order("createdAt", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (latestVersion) {
+      await db
+        .from("DocumentVersion")
+        .update({
+          approvedBy: validated.approvedBy,
+          approvedAt: now,
+        })
+        .eq("id", latestVersion.id);
+    }
+
+    await AuditLog.log(document.tenantId, context.userId, "DOCUMENT_APPROVED", "Document", document.id, {
+      version: document.version,
+      approvedBy: validated.approvedBy,
+    });
 
     revalidatePath(`/dashboard/documents`);
     revalidatePath(`/dashboard/documents/${validated.id}`);
-    return { success: true, data: approved };
-  } catch (error: any) {
-    console.error("Approve document error:", error);
-    return { success: false, error: error.message || "Kunne ikke godkjenne dokument" };
+    return { success: true as const, data: approved };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not approve the document." };
   }
 }
 
 export async function deleteDocument(id: string) {
   try {
-    // Sjekk tilgang til å slette
     const context = await requirePermission("canDeleteDocuments");
-
-    const document = await prisma.document.findUnique({
-      where: { id },
-      include: { versions: true },
-    });
+    const db = getAdminDb();
+    const { data: document } = await db.from("Document").select("*").eq("id", id).maybeSingle();
 
     if (!document) {
-      return { success: false, error: "Dokument ikke funnet" };
+      return { success: false as const, error: "Document not found." };
     }
 
-    // Sjekk om det er et lovdokument (kan ikke slettes)
     if (document.kind === "LAW") {
-      return { success: false, error: "Lover og regler kan ikke slettes" };
+      return { success: false as const, error: "Legislation documents cannot be deleted." };
     }
 
+    const { data: versions } = await db.from("DocumentVersion").select("fileKey").eq("documentId", id);
     const storage = getStorage();
 
-    // Slett alle versjonsfiler
-    for (const version of document.versions) {
+    for (const version of versions ?? []) {
       try {
         await storage.delete(version.fileKey);
-      } catch (error) {
-        console.error(`Failed to delete file ${version.fileKey}:`, error);
+      } catch {
+        // Continue so the controlled-document record can still be removed.
       }
     }
 
-    // Slett gjeldende fil (hvis forskjellig)
     try {
       await storage.delete(document.fileKey);
-    } catch (error) {
-      console.error(`Failed to delete file ${document.fileKey}:`, error);
+    } catch {
+      // File may already be gone.
     }
 
-    // Slett PDF-visningscache (docx→pdf) hvis den finnes
     const viewCacheKey = `${document.tenantId}/documents/pdf/${document.id}.pdf`;
     try {
       await storage.delete(viewCacheKey);
     } catch {
-      // Ignorer
+      // Cache may not exist.
     }
 
-    await logAudit(
-      document.tenantId,
-      context.userId,
-      "DOCUMENT_DELETED",
-      `Document:${document.id}`,
-      {
-        title: document.title,
-        version: document.version,
-      }
-    );
-
-    // Slett fra database (cascade sletter versjoner)
-    await prisma.document.delete({
-      where: { id },
+    await AuditLog.log(document.tenantId, context.userId, "DOCUMENT_DELETED", "Document", document.id, {
+      title: document.title,
+      version: document.version,
     });
 
+    const { error } = await db.from("Document").delete().eq("id", id);
+    if (error) {
+      throw fail("DOCUMENT_DELETE_FAILED", error.message);
+    }
+
     revalidatePath(`/dashboard/documents`);
-    return { success: true, data: null };
-  } catch (error: any) {
-    console.error("Delete document error:", error);
-    return { success: false, error: error.message || "Kunne ikke slette dokument" };
+    return { success: true as const, data: null };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not delete the document." };
   }
 }
 
 export async function getDocumentDownloadUrl(id: string) {
   try {
-    // Sjekk tilgang
-    const context = await requireResourceAccess("document", id);
+    await requireResourceAccess("document", id);
 
-    const document = await prisma.document.findUnique({
-      where: { id },
-    });
+    const { data: document } = await getAdminDb().from("Document").select("fileKey").eq("id", id).maybeSingle();
 
     if (!document) {
-      return { success: false, error: "Dokument ikke funnet" };
+      return { success: false as const, error: "Document not found." };
     }
 
     const storage = getStorage();
-    const url = await storage.getUrl(document.fileKey, 3600); // 1 time
+    const url = await storage.getUrl(document.fileKey, 3600);
 
-    return { success: true, data: { url } };
-  } catch (error: any) {
-    console.error("Get download URL error:", error);
-    return { success: false, error: error.message || "Kunne ikke generere nedlastingslenke" };
+    return { success: true as const, data: { url } };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not generate a download link." };
   }
 }
 
 export async function convertDocumentToPDFAction(id: string) {
   try {
     const context = await requireResourceAccess("document", id);
-
-    const document = await prisma.document.findUnique({
-      where: { id },
-    });
+    const { data: document } = await getAdminDb().from("Document").select("*").eq("id", id).maybeSingle();
 
     if (!document) {
-      return { success: false, error: "Dokument ikke funnet" };
+      return { success: false as const, error: "Document not found." };
     }
 
-    const isWordDocument = 
+    const isWordDocument =
       document.mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
       document.mime === "application/msword";
 
     if (!isWordDocument) {
-      return { success: false, error: "Kun Word-dokumenter kan konverteres til PDF" };
+      return { success: false as const, error: "Only Word documents can be converted to PDF." };
     }
 
     const storage = getStorage();
     const documentBuffer = await storage.get(document.fileKey);
 
     if (!documentBuffer) {
-      return { success: false, error: "Kunne ikke laste dokument" };
+      return { success: false as const, error: "Could not load the document file." };
     }
 
     const pdfBuffer = await convertDocumentToPDF(documentBuffer, document.mime);
-
-    const pdfKey = generateFileKey(
-      context.tenantId,
-      "documents/pdf",
-      `${document.title}-converted.pdf`
-    );
-
+    const pdfKey = generateFileKey(context.tenantId, "documents/pdf", `${document.title}-converted.pdf`);
     await storage.upload(pdfKey, pdfBuffer, { "Content-Type": "application/pdf" });
-
     const pdfUrl = await storage.getUrl(pdfKey, 3600);
 
-    return { success: true, data: { url: pdfUrl, filename: `${document.title}.pdf` } };
-  } catch (error: any) {
-    console.error("Convert to PDF error:", error);
-    return { success: false, error: error.message || "Kunne ikke konvertere til PDF" };
+    return { success: true as const, data: { url: pdfUrl, filename: `${document.title}.pdf` } };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not convert the document to PDF." };
   }
 }

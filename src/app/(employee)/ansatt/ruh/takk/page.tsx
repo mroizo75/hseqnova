@@ -1,44 +1,6 @@
-import Link from "next/link";
-import { getTranslations } from "next-intl/server";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, Home } from "lucide-react";
+import { redirect } from "next/navigation";
 
-export default async function RuhTakk() {
-  const t = await getTranslations("employeeRuhThanksPage");
-
-  return (
-    <div className="min-h-[70vh] flex items-center justify-center px-4">
-      <Card className="max-w-md w-full">
-        <CardContent className="text-center py-12">
-          <div className="h-20 w-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="h-12 w-12 text-green-600" />
-          </div>
-
-          <h1 className="text-2xl font-bold mb-3">
-            {t("title")}
-          </h1>
-
-          <p className="text-muted-foreground mb-8">
-            {t("description")}
-          </p>
-
-          <div className="space-y-3">
-            <Link href="/ansatt">
-              <Button size="lg" className="w-full">
-                <Home className="mr-2 h-5 w-5" />
-                {t("backHome")}
-              </Button>
-            </Link>
-
-            <Link href="/ansatt/ruh/ny">
-              <Button variant="outline" size="lg" className="w-full">
-                {t("newReport")}
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+/** Not offered in the UK product. */
+export default function Page() {
+  redirect("/ansatt");
 }

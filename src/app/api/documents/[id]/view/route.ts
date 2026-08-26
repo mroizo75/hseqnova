@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { getStorage } from "@/lib/storage";
 import { convertDocumentToPDF } from "@/lib/adobe-pdf";
 
@@ -24,20 +24,19 @@ export async function GET(
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: "Ikke autorisert" }, { status: 401 });
+      return NextResponse.json({ error: "Not authorised." }, { status: 401 });
     }
 
     const tenantId = session.user.tenantId;
-
-    const document = await prisma.document.findUnique({
-      where: {
-        id,
-        tenantId,
-      },
-    });
+    const { data: document } = await getAdminDb()
+      .from("Document")
+      .select("fileKey, mime, title")
+      .eq("id", id)
+      .eq("tenantId", tenantId)
+      .maybeSingle();
 
     if (!document) {
-      return NextResponse.json({ error: "Dokument ikke funnet" }, { status: 404 });
+      return NextResponse.json({ error: "Document not found." }, { status: 404 });
     }
 
     const storage = getStorage();
@@ -47,7 +46,7 @@ export async function GET(
       const buffer = await storage.get(document.fileKey);
       if (!buffer) {
         return NextResponse.json(
-          { error: "Kunne ikke hente dokument" },
+          { error: "Could not load the document file." },
           { status: 500 }
         );
       }
@@ -62,7 +61,7 @@ export async function GET(
         const docBuffer = await storage.get(document.fileKey);
         if (!docBuffer) {
           return NextResponse.json(
-            { error: "Kunne ikke hente dokument" },
+            { error: "Could not load the document file." },
             { status: 500 }
           );
         }
@@ -72,7 +71,7 @@ export async function GET(
         } catch (err) {
           console.error("Adobe DOCX->PDF conversion error:", err);
           return NextResponse.json(
-            { error: "Kunne ikke konvertere dokument til PDF. Sjekk at Adobe PDF Services er konfigurert." },
+            { error: "Could not convert the document to PDF." },
             { status: 502 }
           );
         }
@@ -83,7 +82,7 @@ export async function GET(
       }
     } else {
       return NextResponse.json(
-        { error: "Dette formatet kan ikke vises i nettleser. Last ned filen." },
+        { error: "This format cannot be previewed in the browser. Download the file instead." },
         { status: 400 }
       );
     }
@@ -99,9 +98,9 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Feil ved visning av dokument:", error);
+    const err = error as { code?: string; message?: string };
     return NextResponse.json(
-      { error: "Kunne ikke vise dokument" },
+      { code: err.code || "DOCUMENT_VIEW_FAILED", message: err.message || "Could not display the document." },
       { status: 500 }
     );
   }

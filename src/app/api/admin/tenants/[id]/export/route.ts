@@ -4,6 +4,7 @@ import JSZip from "jszip";
 
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 
 export async function GET(
   _request: NextRequest,
@@ -280,21 +281,14 @@ export async function GET(
   });
   zip.file("routines.json", JSON.stringify(routines, null, 2));
 
-  const fireDrills = await prisma.fireDrill.findMany({
-    where: { tenantId },
-    select: {
-      title: true,
-      drillType: true,
-      plannedDate: true,
-      location: true,
-      objectives: true,
-      observations: true,
-      status: true,
-      completedAt: true,
-      createdAt: true,
-    },
-  });
-  zip.file("fire-drills.json", JSON.stringify(fireDrills, null, 2));
+  const { data: fireDrills, error: fireDrillError } = await getAdminDb()
+    .from("FireDrill")
+    .select("title, drillType, plannedDate, location, objectives, observations, status, completedAt, createdAt")
+    .eq("tenantId", tenantId);
+  if (fireDrillError) {
+    throw { code: "FIRE_DRILL_EXPORT_FAILED", message: fireDrillError.message };
+  }
+  zip.file("fire-drills.json", JSON.stringify(fireDrills ?? [], null, 2));
 
   const environment = await prisma.environmentalAspect.findMany({
     where: { tenantId },

@@ -2,9 +2,11 @@ import { notFound, redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { getAuthMembership } from "@/lib/auth-db";
+import type { Role } from "@prisma/client";
 import { getPermissions } from "@/lib/permissions";
 import { ConstructionComplianceClient } from "@/features/projects/components/construction-compliance-client";
+import { loadProjectSummary } from "@/server/queries/projects.queries";
 
 export default async function ProjectConstructionCompliancePage({
   params,
@@ -12,35 +14,21 @@ export default async function ProjectConstructionCompliancePage({
   params: Promise<{ id: string }>;
 }) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
+  if (!session?.user?.id || !session.user.tenantId) {
     redirect("/login");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { tenants: true },
-  });
-  if (!user || user.tenants.length === 0) {
-    return <div>Ingen tilgang</div>;
-  }
-
-  const { id } = await params;
-  const membership = user.tenants.find(
-    (tenantMembership) => tenantMembership.tenantId === session.user.tenantId,
-  );
+  const membership = await getAuthMembership(session.user.id, session.user.tenantId);
   if (!membership) {
-    return <div>Ingen tilgang</div>;
+    return <div>No access</div>;
   }
-  const tenantId = membership.tenantId;
-  const permissions = getPermissions(membership.role);
+  const permissions = getPermissions(membership.role as Role);
   if (!permissions.canReadConstructionCompliance) {
     redirect("/dashboard");
   }
 
-  const project = await prisma.project.findUnique({
-    where: { id, tenantId },
-    select: { id: true, name: true },
-  });
+  const { id } = await params;
+  const project = await loadProjectSummary(id, session.user.tenantId);
   if (!project) {
     notFound();
   }
@@ -48,9 +36,9 @@ export default async function ProjectConstructionCompliancePage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Bygg/anlegg-compliance</h1>
+        <h1 className="text-2xl font-bold">CDM 2015 compliance</h1>
         <p className="text-sm text-muted-foreground">
-          Prosjekt: {project.name}
+          Project: {project.name}
         </p>
       </div>
 

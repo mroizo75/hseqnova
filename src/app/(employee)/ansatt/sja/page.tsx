@@ -1,8 +1,8 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getLocale, getTranslations } from "next-intl/server";
-import { prisma } from "@/lib/db";
+import { getTranslations } from "next-intl/server";
+import { loadSjaAnalysesForTenant, loadSjaTemplates } from "@/server/queries/sja.queries";
 import {
   getSjaStatusColor,
   getSjaConclusionColor,
@@ -24,33 +24,19 @@ import { SjaConclusion, SjaStatus } from "@prisma/client";
 export default async function AnsattSja() {
   const session = await getServerSession(authOptions);
   const t = await getTranslations("employeeSjaPage");
-  const locale = await getLocale();
-  const dateLocale = locale === "en" ? "en-US" : "nb-NO";
+  const dateLocale = "en-GB";
 
   if (!session?.user?.tenantId) {
     redirect("/login");
   }
 
-  const mySjas = await prisma.sjaAnalysis.findMany({
-    where: {
-      tenantId: session.user.tenantId,
+  const [mySjas, templates] = await Promise.all([
+    loadSjaAnalysesForTenant(session.user.tenantId, {
       createdById: session.user.id,
-    },
-    include: {
-      hazards: { select: { id: true, riskLevel: true } },
-    },
-    orderBy: { plannedDate: "desc" },
-    take: 50,
-  });
-
-  const templates = await prisma.sjaTemplate.findMany({
-    where: {
-      tenantId: session.user.tenantId,
-      isActive: true,
-    },
-    select: { id: true, name: true, description: true },
-    orderBy: { name: "asc" },
-  });
+      take: 50,
+    }),
+    loadSjaTemplates(session.user.tenantId),
+  ]);
 
   const draftCount = mySjas.filter((s) => s.status === "DRAFT").length;
   const activeCount = mySjas.filter((s) => s.status === "ACTIVE").length;

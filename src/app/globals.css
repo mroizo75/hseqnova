@@ -246,3 +246,29 @@ body {
     font-size: 16px;
   }
 }
+
+/* Public homepage: industrial-editorial, scoped so the dashboard is untouched */
+.home-marketing {
+  --home-ink: 155 32% 8%;
+  --home-ink-fg: 40 33% 96%;
+  --home-paper: 40 28% 96%;
+  --home-rule: 40 14% 82%;
+  --home-ticket: 42 48% 92%;
+  background: hsl(var(--home-paper));
+  color: hsl(var(--home-ink));
+}
+
+.home-marketing h1,
+.home-marketing h2,
+.home-marketing h3,
+.home-marketing .font-display {
+  font-family: var(--font-display), Georgia, "Times New Roman", serif;
+  font-optical-sizing: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-marketing * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

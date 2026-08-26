@@ -6,8 +6,15 @@ import {
   buildConstructionComplianceValidation,
   evaluatePreNotificationRequirement,
 } from "@/lib/construction-compliance-rules";
-import { prisma } from "@/lib/db";
 import { generateConstructionCompliancePdf } from "@/lib/construction-compliance-pdf";
+import { loadProjectSummary } from "@/server/queries/projects.queries";
+import {
+  loadPreNotification,
+  loadRosterChecks,
+  loadRosterEntries,
+  loadShaPlan,
+  loadTenantOrg,
+} from "@/server/queries/construction-compliance.queries";
 
 function formatDateOnly(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -19,51 +26,24 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    if (!session?.user?.id || !session.user.tenantId) {
+      return new NextResponse("Unauthorised", { status: 401 });
     }
 
     const { id } = await params;
-    const userTenant = await prisma.userTenant.findFirst({
-      where: { userId: session.user.id },
-      select: { tenantId: true },
-    });
-    if (!userTenant) {
-      return new NextResponse("No tenant access", { status: 403 });
-    }
+    const tenantId = session.user.tenantId;
 
     const [project, tenant, shaPlan, preNotification, rosterEntries, rosterChecks] = await Promise.all([
-      prisma.project.findFirst({
-        where: { id, tenantId: userTenant.tenantId },
-        select: { id: true, name: true, location: true, clientName: true },
-      }),
-      prisma.tenant.findUnique({
-        where: { id: userTenant.tenantId },
-        select: { name: true },
-      }),
-      prisma.constructionShaPlan.findUnique({
-        where: { projectId: id },
-      }),
-      prisma.constructionPreNotification.findUnique({
-        where: { projectId: id },
-      }),
-      prisma.constructionRosterEntry.findMany({
-        where: { projectId: id, tenantId: userTenant.tenantId },
-        orderBy: [{ isActive: "desc" }, { fullName: "asc" }],
-      }),
-      prisma.constructionRosterDailyCheck.findMany({
-        where: { projectId: id, tenantId: userTenant.tenantId },
-        include: {
-          checkedBy: {
-            select: { name: true, email: true },
-          },
-        },
-        orderBy: { checkedDate: "desc" },
-      }),
+      loadProjectSummary(id, tenantId),
+      loadTenantOrg(tenantId),
+      loadShaPlan(id),
+      loadPreNotification(id),
+      loadRosterEntries(id, tenantId),
+      loadRosterChecks(id, tenantId),
     ]);
 
     if (!project) {
-      return new NextResponse("Prosjekt ikke funnet", { status: 404 });
+      return new NextResponse("Project not found", { status: 404 });
     }
 
     const latestCheck = rosterChecks[0];
@@ -75,7 +55,7 @@ export async function GET(
     const complianceValidation = buildConstructionComplianceValidation(shaPlan, preNotification);
 
     const pdfBuffer = await generateConstructionCompliancePdf({
-      tenantName: tenant?.name ?? "HMS Nova",
+      tenantName: tenant?.name ?? "HSEQ Nova",
       project,
       shaPlan,
       preNotification,
@@ -87,9 +67,9 @@ export async function GET(
     });
 
     const safeProjectName = project.name
-      .replace(/[^a-zA-Z0-9æøåÆØÅ\s-]/g, "")
+      .replace(/[^a-zA-Z0-9\s-]/g, "")
       .replace(/\s+/g, "-");
-    const filename = `Bygg-Anlegg-Compliance-${safeProjectName}.pdf`;
+    const filename = `CDM-2015-${safeProjectName}.pdf`;
 
     return new NextResponse(pdfBuffer as any, {
       headers: {
@@ -97,8 +77,7 @@ export async function GET(
         "Content-Disposition": `attachment; filename="${encodeURIComponent(filename)}"`,
       },
     });
-  } catch (error) {
-    console.error("[Construction Compliance PDF]", error);
+  } catch {
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

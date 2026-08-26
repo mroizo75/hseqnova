@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { loadHseStatisticsYear } from "@/server/queries/incidents.queries";
 
 export interface YearStats {
   year: number;
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     const tenantId = session.user.tenantId;
     if (!tenantId) {
-      return NextResponse.json({ error: "Ingen tenant" }, { status: 400 });
+      return NextResponse.json({ error: "No organisation" }, { status: 400 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -43,35 +43,13 @@ export async function GET(request: NextRequest) {
 
     for (let i = yearsBack - 1; i >= 0; i--) {
       const year = currentYear - i;
-      const from = new Date(`${year}-01-01T00:00:00.000Z`);
-      const to = new Date(`${year + 1}-01-01T00:00:00.000Z`);
-
-      // Hent alle relevante hendelser for dette året
-      const incidents = await prisma.incident.findMany({
-        where: {
-          tenantId,
-          occurredAt: { gte: from, lt: to },
-          type: { in: ["ULYKKE", "NESTEN", "YRKESSYKDOM"] },
-        },
-        select: {
-          isFatal: true,
-          isLostTimeIncident: true,
-          lostWorkdays: true,
-          isRestrictedWork: true,
-          medicalAttentionRequired: true,
-        },
+      const fromIso = `${year}-01-01T00:00:00.000Z`;
+      const toIso = `${year + 1}-01-01T00:00:00.000Z`;
+      const { incidents, hours: manHours } = await loadHseStatisticsYear({
+        tenantId,
+        fromIso,
+        toIso,
       });
-
-      // Hent arbeidede timer fra timeregistrering for samme år
-      const timeEntries = await prisma.timeEntry.findMany({
-        where: {
-          tenantId,
-          date: { gte: from, lt: to },
-        },
-        select: { hours: true },
-      });
-
-      const manHours = timeEntries.reduce((sum, e) => sum + e.hours, 0);
 
       const fatalities = incidents.filter((i) => i.isFatal).length;
       const lostTimeIncidents = incidents.filter((i) => i.isLostTimeIncident).length;
@@ -136,7 +114,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message || "Intern feil" },
+      { error: error.message || "Internal error" },
       { status: 500 }
     );
   }

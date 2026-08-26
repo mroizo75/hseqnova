@@ -24,11 +24,11 @@ import { ActivateTavleAddonButton } from "@/features/hms-tavle/components/activa
 
 function statusBadge(status: HmsTavleSubscriptionStatus) {
   const map: Record<HmsTavleSubscriptionStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-    TRIAL: { label: "Prøveperiode", variant: "secondary" },
+    TRIAL: { label: "Trial", variant: "secondary" },
     ACTIVE: { label: "Aktiv", variant: "default" },
-    EXPIRING_SOON: { label: "Utløper snart", variant: "outline" },
-    EXPIRED: { label: "Utløpt", variant: "destructive" },
-    CANCELLED: { label: "Kansellert", variant: "destructive" },
+    EXPIRING_SOON: { label: "Expires soon", variant: "outline" },
+    EXPIRED: { label: "Expired", variant: "destructive" },
+    CANCELLED: { label: "Cancelled", variant: "destructive" },
   };
   const { label, variant } = map[status];
   return <Badge variant={variant}>{label}</Badge>;
@@ -70,50 +70,50 @@ export default async function HmsTavleOversiktPage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Monitor className="h-6 w-6 text-blue-600" />
-            Digital HMS Tavle
+            Digital safety board
           </h1>
           <p className="text-muted-foreground mt-1">
-            Digital byggeplasstavel for bygg og anlegg – QR-tilgang, UE-portal og live HMS-data
+            Digital site safety board for construction — QR access, subcontractor portal and live HSEQ data
           </p>
         </div>
         {hasActiveSub && auth.permissions.canManageHmsTavle && (
           <Button asChild>
             <Link href="/dashboard/hms-tavle/ny">
               <Plus className="h-4 w-4 mr-2" />
-              Ny tavle
+              New board
             </Link>
           </Button>
         )}
       </div>
 
-      {/* Abonnementsstatus */}
+      {/* Subscriptionsstatus */}
       {subscription ? (
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
                 <div>
-                  <p className="text-sm text-muted-foreground">Abonnement</p>
+                  <p className="text-sm text-muted-foreground">Subscription</p>
                   <p className="font-semibold">{PLAN_LABELS[subscription.plan]}</p>
                 </div>
                 {statusBadge(subscription.status)}
                 {subscription.isAddon && (
                   <Badge variant="outline" className="text-xs">
-                    HMS Nova tillegg
+                    HSEQ Nova tillegg
                   </Badge>
                 )}
               </div>
               <div className="flex gap-6 text-sm text-muted-foreground">
                 <span>
-                  <span className="font-medium text-foreground">{tavler.length}</span> tavle(r)
+                  <span className="font-medium text-foreground">{tavler.length}</span> board(s)
                 </span>
                 <span>
-                  <span className="font-medium text-foreground">{todayCheckins}</span> innsjekk i dag
+                  <span className="font-medium text-foreground">{todayCheckins}</span> check-ins today
                 </span>
                 <span>
-                  Utløper{" "}
+                  Expires{" "}
                   <span className="font-medium text-foreground">
-                    {new Date(subscription.endsAt).toLocaleDateString("nb-NO")}
+                    {new Date(subscription.endsAt).toLocaleDateString("en-GB")}
                   </span>
                 </span>
               </div>
@@ -125,10 +125,10 @@ export default async function HmsTavleOversiktPage() {
           <CardContent className="p-8 text-center space-y-4">
             <Monitor className="h-12 w-12 mx-auto text-muted-foreground" />
             <div>
-              <h3 className="font-semibold text-lg">Ingen HMS Tavle-abonnement</h3>
+              <h3 className="font-semibold text-lg">No safety board subscription</h3>
               <p className="text-muted-foreground mt-1">
-                Aktiver Digital HMS Tavle som tillegg til ditt eksisterende HMS Nova-abonnement,
-                eller registrer deg for kun tavle-tilgang.
+                Activate Digital safety board as an add-on to your existing HSEQ Nova subscription,
+                or register for board-only access.
               </p>
             </div>
             <div className="flex gap-3 justify-center">
@@ -136,7 +136,7 @@ export default async function HmsTavleOversiktPage() {
               <Button variant="outline" asChild>
                 <Link href="/tavle-registrering">
                   <ExternalLink className="h-4 w-4 mr-2" />
-                  Kun tavle-abonnement
+                  Board-only subscription
                 </Link>
               </Button>
             </div>
@@ -152,16 +152,16 @@ export default async function HmsTavleOversiktPage() {
               <CardContent className="p-8 text-center space-y-4">
                 <Monitor className="h-10 w-10 mx-auto text-muted-foreground" />
                 <div>
-                  <h3 className="font-semibold">Ingen tavler opprettet ennå</h3>
+                  <h3 className="font-semibold">No boards created yet</h3>
                   <p className="text-muted-foreground text-sm">
-                    Opprett din første digitale HMS-tavle for et prosjekt eller byggeplass.
+                    Create your first digital safety board for a project or construction site.
                   </p>
                 </div>
                 {auth.permissions.canManageHmsTavle && (
                   <Button asChild>
                     <Link href="/dashboard/hms-tavle/ny">
                       <Plus className="h-4 w-4 mr-2" />
-                      Opprett første tavle
+                      Create first board
                     </Link>
                   </Button>
                 )}
@@ -181,12 +181,12 @@ export default async function HmsTavleOversiktPage() {
                         <CardTitle className="text-base">{tavle.name}</CardTitle>
                       </div>
                       <Badge variant={tavle.isPublic ? "default" : "secondary"} className="text-xs">
-                        {tavle.isPublic ? "Offentlig" : "Privat"}
+                        {tavle.isPublic ? "Public" : "Private"}
                       </Badge>
                     </div>
                     {tavle.project && (
                       <p className="text-xs text-muted-foreground">
-                        Prosjekt: {tavle.project.name}
+                        Project: {tavle.project.name}
                       </p>
                     )}
                   </CardHeader>
@@ -203,7 +203,7 @@ export default async function HmsTavleOversiktPage() {
                       {tavle.subcontractorPortal && (
                         <span className="flex items-center gap-1 text-green-600">
                           <CheckCircle2 className="h-3.5 w-3.5" />
-                          UE-portal
+                          Subcontractor portal
                         </span>
                       )}
                     </div>
@@ -212,7 +212,7 @@ export default async function HmsTavleOversiktPage() {
                       <Button size="sm" variant="outline" asChild>
                         <Link href={`/dashboard/hms-tavle/${tavle.id}`}>
                           <Settings className="h-3.5 w-3.5 mr-1" />
-                          Administrer
+                          Manage
                         </Link>
                       </Button>
                       {tavle.isPublic && (
@@ -223,14 +223,14 @@ export default async function HmsTavleOversiktPage() {
                             rel="noopener noreferrer"
                           >
                             <Eye className="h-3.5 w-3.5 mr-1" />
-                            Vis tavle
+                            View board
                           </a>
                         </Button>
                       )}
                       <Button size="sm" variant="outline" asChild>
                         <Link href={`/dashboard/hms-tavle/${tavle.id}?tab=qr`}>
                           <QrCode className="h-3.5 w-3.5 mr-1" />
-                          QR-kode
+                          QR code
                         </Link>
                       </Button>
                     </div>
@@ -242,24 +242,24 @@ export default async function HmsTavleOversiktPage() {
         </>
       )}
 
-      {/* Hva er HMS Tavle */}
+      {/* Hva er safety board */}
       {!subscription && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
             {
               icon: Monitor,
-              title: "Enkel – kr 390/mnd",
-              desc: "Kontaktinfo, SHA-lenke, dokumenthub. Perfekt for enkle prosjekter.",
+              title: "Simple – £30/month",
+              desc: "Contact details, CDM 2015 link, document hub. Ideal for simple projects.",
             },
             {
               icon: QrCode,
-              title: "Standard – kr 590/mnd",
-              desc: "Alle seksjoner, UE-portal for innsending uten konto, QR-innsjekk.",
+              title: "Standard – £45/month",
+              desc: "All sections, subcontractor portal for submissions without an account, QR check-in.",
             },
             {
               icon: CheckCircle2,
-              title: "Avansert – kr 790/mnd",
-              desc: "Kiosk-modus, AI-innsikt, lovkrav-sjekkliste, ubegrenset antall tavler.",
+              title: "Advanced – £60/month",
+              desc: "Kiosk mode, AI insight, legal checklist, unlimited boards.",
             },
           ].map((plan) => (
             <Card key={plan.title}>

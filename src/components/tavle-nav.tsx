@@ -32,7 +32,7 @@ export function TavleNav({ tenantName }: TavleNavProps) {
       {/* Logo + bedriftsnavn */}
       <div className="px-5 py-5 border-b border-gray-100">
         <Link href="/dashboard/hms-tavle" className="flex items-center gap-2.5">
-          <Image src="/logo-nova.png" alt="HMS Nova" width={110} height={40} className="h-8 w-auto" />
+          <Image src="/images/hseq-nova-logo.png" alt="HSEQ Nova" width={110} height={40} className="h-8 w-auto" />
         </Link>
         {tenantName && (
           <p className="mt-2 text-xs text-gray-500 truncate font-medium">{tenantName}</p>

@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { loadFireDrillUserNames, loadFireDrillsForList } from "@/server/queries/fire-drills.queries";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -63,17 +63,11 @@ export default async function AnsattBrannoevelserPage() {
 
   const tenantId = session.user.tenantId;
 
-  const drills = await prisma.fireDrill.findMany({
-    where: { tenantId },
-    orderBy: { plannedDate: "desc" },
-  });
-
-  const responsibleIds = [...new Set(drills.map((d) => d.responsibleId))];
-  const responsibleUsers = await prisma.user.findMany({
-    where: { id: { in: responsibleIds } },
-    select: { id: true, name: true },
-  });
-  const userMap = new Map(responsibleUsers.map((u) => [u.id, u.name]));
+  const [drills, userNames] = await Promise.all([
+    loadFireDrillsForList(tenantId),
+    loadFireDrillUserNames(tenantId),
+  ]);
+  const userMap = new Map(Object.entries(userNames));
 
   const upcoming = drills.filter(
     (d) => d.status === "PLANNED" || d.status === "IN_PROGRESS"

@@ -14,7 +14,7 @@
     "dashboard": "Dashboard",
     "documents": "Documents",
     "electro": "Compliance declarations",
-    "routines": "Routines",
+    "routines": "Procedures",
     "legalRegister": "Legal Register",
     "risks": "Risk Assessments",
     "riskRegister": "Risk Register",
@@ -22,8 +22,8 @@
     "projects": "Projects",
     "constructionCompliance": "Construction Compliance",
     "hseStatistics": "HSE Statistics",
-    "sja": "Safe Job Analysis",
-    "inspections": "Inspections",
+    "sja": "RAMS",
+    "inspections": "Workplace inspections",
     "fireDrills": "Fire Drills",
     "chemicals": "Chemical Registry",
     "environment": "Environment",
@@ -2837,8 +2837,8 @@
     }
   },
   "dashboardInspectionsPage": {
-    "title": "Safety inspections",
-    "description": "Perform and manage safety rounds and HSE inspections",
+    "title": "Workplace inspections",
+    "description": "Record monitoring of the workplace. These records stay with the company — they are not sent to the HSE.",
     "status": {
       "planned": "Planned",
       "inProgress": "In progress",
@@ -2846,12 +2846,12 @@
       "cancelled": "Cancelled"
     },
     "types": {
-      "vernerunde": "Safety round",
-      "hmsInspection": "HSE inspection",
+      "vernerunde": "Workplace inspection",
+      "hmsInspection": "Management inspection",
       "fireDrill": "Fire drill",
-      "shaPlan": "SHA plan",
-      "safetyWalk": "Safety walk",
-      "other": "Other"
+      "shaPlan": "Construction site inspection",
+      "safetyWalk": "Safety representative inspection",
+      "other": "Statutory / other"
     },
     "actions": {
       "showIndustry": "Show industry-specific",
@@ -2869,15 +2869,15 @@
       "openFindings": "Open findings"
     },
     "list": {
-      "title": "All inspections",
-      "description": "Overview of completed and planned inspections",
-      "empty": "No inspections registered yet"
+      "title": "Inspection records",
+      "description": "Date, workplace, who inspected, findings and actions — HSE F2534 / F2533",
+      "empty": "No workplace inspections recorded yet"
     },
     "table": {
       "title": "Title",
       "type": "Type",
-      "scheduledDate": "Scheduled date",
-      "location": "Location",
+      "scheduledDate": "Date",
+      "location": "Workplace",
       "status": "Status",
       "openFindings": "Open findings",
       "actions": "Actions"
@@ -2988,8 +2988,9 @@
   "dashboardActionsPage": {
     "noTenantAccess": "No tenant access",
     "title": "Actions",
-    "description": "ISO 9001: Planned actions with owners and timelines",
+    "description": "Preventive and protective measures with an owner and due date (MHSWR 1999)",
     "projectInfo": "New actions are created for project:",
+    "fireDrillInfo": "New actions are created for fire drill:",
     "stats": {
       "total": {
         "title": "Total",
@@ -3073,13 +3074,13 @@
     }
   },
   "dashboardRoutinesPage": {
-    "title": "Routines",
-    "description": "HMS Nova provides templates and alerts. Leader/HSE roles follow up incidents and deviations in the company.",
-    "loadFailed": "Could not load routines right now.",
+    "title": "Procedures",
+    "description": "Written arrangements for how health and safety is organised and carried out. HSWA 1974 s.2(3).",
+    "loadFailed": "Could not load procedures right now.",
     "status": {
-      "active": "Active",
+      "active": "Current",
       "draft": "Draft",
-      "needsReview": "Needs review",
+      "needsReview": "Requires review",
       "archived": "Archived"
     },
     "actions": {
@@ -3088,40 +3089,40 @@
       "viewDetails": "View details"
     },
     "list": {
-      "title": "Company routines",
-      "description": "Routines created and customized for your company.",
-      "empty": "No routines yet. Go to the template library and pick a template that fits your industry."
+      "title": "Organisation procedures",
+      "description": "Procedures created and customised for your organisation.",
+      "empty": "No procedures yet. Open the template library and pick a template that fits your industry."
     },
     "table": {
-      "routine": "Routine",
+      "routine": "Procedure",
       "status": "Status",
-      "responsible": "Responsible",
+      "responsible": "Owner",
       "nextReview": "Next review",
       "action": "Action"
     },
     "notSet": "Not set"
   },
   "dashboardRoutineTemplatesPage": {
-    "title": "Routine templates",
-    "loadFailed": "Could not load routine templates right now.",
+    "title": "Procedure templates",
+    "loadFailed": "Could not load procedure templates right now.",
     "descriptionAll": "Showing the full library across industries.",
     "descriptionRecommended": "Showing recommended templates for your industry + general templates.",
-    "info": "HMS Nova provides industry-adapted templates, alerts and follow-up support. Company leader/HSE roles are responsible for actual follow-up of incidents and deviations.",
+    "info": "HSEQ Nova provides industry templates, alerts and follow-up support. Line managers and competent persons remain responsible for following up incidents.",
     "actions": {
       "showRecommended": "Show recommended",
       "showAll": "Show all templates",
-      "saveAsMine": "Save as my routine",
+      "saveAsMine": "Save as my procedure",
       "savingCopy": "Adding…"
     },
     "toasts": {
       "successTitle": "\"{title}\" has been added",
-      "successDescription": "The routine is now available under Routines.",
-      "openRoutine": "Open routine",
+      "successDescription": "The procedure is now available under Procedures.",
+      "openRoutine": "Open procedure",
       "errorGeneric": "Could not add the template. Please try again."
     },
     "list": {
       "title": "Available templates",
-      "description": "Choose a template and save it as your own routine.",
+      "description": "Choose a template and save it as your own procedure.",
       "empty": "No templates found for selected filter."
     },
     "table": {
@@ -3136,45 +3137,49 @@
     }
   },
   "dashboardSjaPage": {
-    "noTenantAccess": "No tenant access",
-    "title": "SJA - Safe Job Analysis",
-    "description": "Overview of all SJA analyses and templates",
+    "noTenantAccess": "No organisation access",
+    "title": "RAMS",
+    "description": "Risk assessments and method statements for the task (MHSWR 1999; CDM 2015)",
     "actions": {
-      "new": "New SJA"
+      "new": "New RAMS"
+    },
+    "notices": {
+      "createOnly": "You can create RAMS, but you cannot view others. RAMS you submit are reviewed by the competent person or an administrator.",
+      "ownOnly": "You can see only the RAMS you created. Submissions are reviewed and approved by a line manager."
     },
     "stats": {
       "total": {
         "title": "Total",
-        "description": "SJA analyses"
+        "description": "RAMS records"
       },
       "draft": {
         "title": "Draft",
         "description": "Waiting for approval"
       },
       "active": {
-        "title": "Active",
-        "description": "Ongoing work"
+        "title": "Live",
+        "description": "Work in progress"
       },
       "completed": {
-        "title": "Completed",
-        "description": "Fully processed"
+        "title": "Complete",
+        "description": "Closed out"
       },
       "templates": {
         "title": "Templates",
-        "description": "Reusable templates"
+        "description": "Reusable task templates"
       }
     },
     "analyses": {
-      "title": "All SJA analyses",
-      "emptyTitle": "No SJA analyses",
-      "emptyDescription": "No SJA analyses have been created yet."
+      "title": "All RAMS",
+      "emptyTitle": "No RAMS yet",
+      "emptyDescription": "Create a RAMS before work starts so hazards and controls are agreed."
     },
     "table": {
       "number": "No.",
       "title": "Title",
       "location": "Location",
       "status": "Status",
-      "conclusion": "Conclusion",
+      "conclusion": "Decision",
       "createdBy": "Created by",
       "date": "Date",
       "risk": "Risk"
@@ -3183,20 +3188,24 @@
       "DRAFT": "Draft",
       "PENDING_APPROVAL": "Pending approval",
       "APPROVED": "Approved",
-      "ACTIVE": "Active",
-      "COMPLETED": "Completed",
+      "ACTIVE": "Live",
+      "COMPLETED": "Complete",
       "CANCELLED": "Cancelled"
     },
     "conclusion": {
-      "GO": "Can proceed",
-      "GO_WITH_MEASURES": "Can proceed with measures",
-      "NO_GO": "Cannot proceed"
+      "NOT_DECIDED": "Not decided",
+      "APPROVED": "Approved — work may start",
+      "CONDITIONAL": "Approved with conditions",
+      "REJECTED": "Rejected — work must not start",
+      "GO": "Approved — work may start",
+      "GO_WITH_MEASURES": "Approved with conditions",
+      "NO_GO": "Rejected — work must not start"
     },
     "templates": {
-      "title": "SJA templates ({count})",
-      "description": "Templates make it easy for employees to create daily SJA with predefined hazards and measures",
-      "emptyTitle": "No templates created",
-      "emptyDescription": "Create a template so employees can quickly create SJA for recurring tasks.",
+      "title": "RAMS templates ({count})",
+      "description": "Templates help the workforce complete RAMS for recurring tasks with predefined hazards and controls",
+      "emptyTitle": "No templates yet",
+      "emptyDescription": "Create a template so the workforce can complete RAMS quickly for recurring work.",
       "workLocation": "Work location: {value}",
       "hazards": "{count} hazards",
       "createdBy": "Created by {name}"
@@ -3271,8 +3280,8 @@
       "daysLeft": "{days} days left"
     },
     "list": {
-      "title": "Competence overview",
-      "description": "Registered competence, courses and certifications for all employees"
+      "title": "Competence files",
+      "description": "Open an employee to add courses, CVs and certificates. Use Add for a group when several people completed the same course."
     }
   },
   "dashboardProjectsPage": {
@@ -3464,7 +3473,7 @@
     "noTenantAccess": "No tenant access",
     "notFound": "Inspection not found",
     "unknown": "Unknown",
-    "details": "Inspection details",
+    "details": "Monitoring record — kept by the company, not sent to the HSE",
     "actions": {
       "back": "Back to inspections",
       "edit": "Edit",
@@ -3478,12 +3487,12 @@
       "cancelled": "Cancelled"
     },
     "types": {
-      "vernerunde": "Safety round",
-      "hmsInspection": "HSE inspection",
+      "vernerunde": "Workplace inspection",
+      "hmsInspection": "Management inspection",
       "fireDrill": "Fire drill",
-      "shaPlan": "HSE plan",
-      "safetyWalk": "Safety walk",
-      "other": "Other"
+      "shaPlan": "Construction site inspection",
+      "safetyWalk": "Safety representative inspection",
+      "other": "Statutory / other"
     },
     "riskCategories": {
       "safety": "Safety",
@@ -3509,19 +3518,20 @@
     "form": {
       "completed": "Completed",
       "view": "View completed form",
-      "warning": "The form must be completed and submitted to complete the safety round. Items marked \"Not OK\" must be registered as findings.",
+      "warning": "If you attached a checklist, complete it during the inspection. Anything unsafe must be recorded as a finding.",
       "fillNow": "Fill out form now"
     },
     "basicInfo": {
       "title": "Basic information",
-      "scheduledDate": "Scheduled date",
+      "scheduledDate": "Date and time of inspection",
       "completed": "Completed",
-      "location": "Location"
+      "location": "Area of workplace",
+      "area": "Part of workplace"
     },
     "performedBy": {
-      "title": "Performed by",
-      "responsible": "Responsible",
-      "participants": "Participants"
+      "title": "Who took part",
+      "responsible": "Inspector / safety representative",
+      "participants": "Employer or others taking part"
     },
     "descriptionTitle": "Description",
     "findingsStats": {
@@ -3536,16 +3546,16 @@
       "closed": "Closed"
     },
     "findings": {
-      "title": "Findings and observations",
-      "registered": "{count} findings registered from the safety round",
-      "noneDescription": "No findings registered. Findings are created directly in the safety round when answering \"Not OK\".",
-      "noneTitle": "No findings registered yet",
-      "noneHelp": "Findings are registered in the safety round when filling out items."
+      "title": "Findings (HSE F2533)",
+      "registered": "{count} unsafe or unhealthy conditions recorded",
+      "noneDescription": "No findings recorded. If conditions were satisfactory, leave this empty — the record still does not imply the workplace is safe.",
+      "noneTitle": "No findings recorded",
+      "noneHelp": "Add a finding for each unsafe condition, unhealthy practice or unsatisfactory welfare arrangement."
     },
     "compliance": {
-      "title": "📋 HSE Compliance",
-      "i1": "Inspection planned and documented",
-      "i2": "Responsible person appointed",
+      "title": "Record completeness",
+      "i1": "Date, workplace and inspector recorded (HSE F2534)",
+      "i2": "Copy stays with the company; give a copy to the employer if this was a safety representative inspection",
       "completed": "Inspection completed",
       "notCompleted": "Inspection not completed yet",
       "findingsDocumented": "{count} findings documented",
@@ -4149,8 +4159,8 @@
       }
     },
     "findingForm": {
-      "title": "Register new finding",
-      "description": "Document non-conformities, observations, or improvement areas from the inspection",
+      "title": "Record a finding",
+      "description": "Notify the employer of an unsafe or unhealthy condition (HSE F2533). Name who will act and by when.",
       "imageAlt": "Uploaded image",
       "fields": {
         "title": "Title",
@@ -4162,8 +4172,8 @@
         "images": "Images"
       },
       "placeholders": {
-        "title": "E.g. Missing protective equipment",
-        "description": "Describe the finding in detail...",
+        "title": "E.g. Unsatisfactory welfare — no drinking water",
+        "description": "What was found, where, and who may be harmed...",
         "selectSeverity": "Select severity",
         "location": "E.g. Production hall A",
         "selectResponsible": "Select responsible person"
@@ -4225,8 +4235,8 @@
         "locationOptional": "Location (optional)"
       },
       "placeholders": {
-        "title": "E.g. Missing protective equipment",
-        "description": "Describe the finding in detail...",
+        "title": "E.g. Unsatisfactory welfare — no drinking water",
+        "description": "What was found, where, and who may be harmed...",
         "location": "E.g. Production hall A"
       },
       "step1": {
@@ -4358,8 +4368,8 @@
       }
     },
     "findingForm": {
-      "title": "Register new finding",
-      "description": "Document non-conformities, observations, or improvement areas from the inspection",
+      "title": "Record a finding",
+      "description": "Notify the employer of an unsafe or unhealthy condition (HSE F2533). Name who will act and by when.",
       "imageAlt": "Uploaded image",
       "fields": {
         "title": "Title",
@@ -4371,8 +4381,8 @@
         "images": "Images"
       },
       "placeholders": {
-        "title": "E.g. Missing protective equipment",
-        "description": "Describe the finding in detail...",
+        "title": "E.g. Unsatisfactory welfare — no drinking water",
+        "description": "What was found, where, and who may be harmed...",
         "selectSeverity": "Select severity",
         "location": "E.g. Production hall A",
         "selectResponsible": "Select responsible person"
@@ -4434,8 +4444,8 @@
         "locationOptional": "Location (optional)"
       },
       "placeholders": {
-        "title": "E.g. Missing protective equipment",
-        "description": "Describe the finding in detail...",
+        "title": "E.g. Unsatisfactory welfare — no drinking water",
+        "description": "What was found, where, and who may be harmed...",
         "location": "E.g. Production hall A"
       },
       "step1": {
@@ -4651,13 +4661,13 @@
     }
   },
   "dashboardInspectionNewPage": {
-    "title": "New inspection",
-    "description": "Create a new safety round or HSE inspection",
+    "title": "New workplace inspection",
+    "description": "Record a monitoring visit. Keep the record here — do not send it to the HSE.",
     "card": {
-      "title": "Inspection details",
-      "description": "Fill in the information below to plan the inspection"
+      "title": "Inspection record",
+      "description": "HSE F2534: date, time, area of the workplace, and who took part."
     },
-    "projectNotice": "This safety round will be registered on the selected project.",
+    "projectNotice": "This inspection will be linked to the selected construction project (CDM 2015).",
     "loadingUsers": "Loading users...",
     "loadingTemplates": "Loading forms...",
     "noneCategory": "No category",
@@ -4665,46 +4675,47 @@
     "fields": {
       "title": "Title",
       "type": "Type",
-      "template": "📋 Template (form builder) *",
-      "conductedBy": "Conducted by",
-      "scheduledDate": "Scheduled date",
+      "template": "Checklist (optional)",
+      "conductedBy": "Inspector / safety representative",
+      "scheduledDate": "Date and time of inspection",
       "description": "Description",
       "riskCategory": "Risk category",
       "followUpBy": "Follow-up responsible",
-      "location": "Location",
-      "area": "Area / process",
-      "durationMinutes": "Estimated duration (min)",
-      "nextInspection": "Next inspection"
+      "location": "Area of workplace",
+      "area": "Part of workplace",
+      "durationMinutes": "Duration (min)",
+      "nextInspection": "Next inspection due",
+      "participants": "Others taking part"
     },
     "types": {
-      "vernerunde": "Safety round",
-      "hmsInspection": "HSE inspection",
+      "vernerunde": "Workplace inspection",
+      "hmsInspection": "Management inspection",
       "fireDrill": "Fire drill",
-      "shaPlan": "HSE plan",
-      "safetyWalk": "Safety walk",
-      "other": "Other"
+      "shaPlan": "Construction site inspection",
+      "safetyWalk": "Safety representative inspection",
+      "other": "Statutory / other"
     },
     "placeholders": {
-      "title": "E.g. Quarterly safety round - Production",
-      "selectTemplate": "Select template form",
-      "selectUser": "Select user",
-      "description": "Describe what should be inspected...",
+      "title": "E.g. Quarterly workplace inspection — warehouse",
+      "selectTemplate": "Optional checklist",
+      "selectUser": "Select who inspected",
+      "description": "What will be looked at, and why (link to the risk assessment if you can).",
       "selectOptionalCategory": "Select category (optional)",
       "selectResponsibleOptional": "Select responsible (optional)",
-      "location": "E.g. Production hall A",
-      "area": "E.g. Warehouse, Workshop",
+      "location": "E.g. Warehouse, first floor",
+      "area": "E.g. Goods in, racking",
       "duration": "E.g. 90"
     },
     "actions": {
       "cancel": "Cancel",
       "creating": "Creating...",
-      "create": "Create safety round",
-      "selectTemplate": "Select template"
+      "create": "Create inspection record",
+      "selectTemplate": "No checklist"
     },
     "toasts": {
       "missingTemplate": {
-        "title": "Template missing",
-        "description": "You must select a safety-round form from the template library."
+        "title": "Checklist missing",
+        "description": "A checklist is optional. You can record the inspection without one."
       },
       "created": {
         "title": "Inspection created",
@@ -4756,12 +4767,12 @@
       "description": "Description"
     },
     "types": {
-      "vernerunde": "Safety round",
-      "hmsInspection": "HSE inspection",
+      "vernerunde": "Workplace inspection",
+      "hmsInspection": "Management inspection",
       "fireDrill": "Fire drill",
-      "shaPlan": "HSE plan",
-      "safetyWalk": "Safety walk",
-      "other": "Other"
+      "shaPlan": "Construction site inspection",
+      "safetyWalk": "Safety representative inspection",
+      "other": "Statutory / other"
     },
     "status": {
       "planned": "Planned",

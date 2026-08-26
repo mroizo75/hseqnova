@@ -26,12 +26,12 @@ import type { RiskDocumentLink, RiskDocumentRelation } from "@prisma/client";
 import { Trash2 } from "lucide-react";
 
 const relationLabels: Record<RiskDocumentRelation, string> = {
-  SUPPORTING: "Understøtter",
+  SUPPORTING: "Supporting",
   POLICY: "Policy",
-  PROCEDURE: "Prosedyre",
-  CONTROL_REPORT: "Kontrollrapport",
-  WORK_INSTRUCTION: "Arbeidsinstruks",
-  OTHER: "Annet",
+  PROCEDURE: "Procedure",
+  CONTROL_REPORT: "Inspection / report",
+  WORK_INSTRUCTION: "Work instruction",
+  OTHER: "Other",
 };
 
 interface RiskDocumentLinksProps {
@@ -66,13 +66,13 @@ export function RiskDocumentLinks({ riskId, documents, links }: RiskDocumentLink
       if (!result.success) {
         toast({
           variant: "destructive",
-          title: "Feil",
-          description: result.error || "Kunne ikke koble dokument",
+          title: "Could not link",
+          description: result.error || "The document could not be linked.",
         });
       } else {
         toast({
-          title: "Dokument koblet",
-          description: "Dokumentet er nå en del av risikoregisteret",
+          title: "Document linked",
+          description: "The document is now linked to this risk.",
         });
         setNote("");
       }
@@ -86,13 +86,13 @@ export function RiskDocumentLinks({ riskId, documents, links }: RiskDocumentLink
       if (!result.success) {
         toast({
           variant: "destructive",
-          title: "Feil",
-          description: result.error || "Kunne ikke fjerne kobling",
+          title: "Could not remove",
+          description: result.error || "The link could not be removed.",
         });
       } else {
         toast({
-          title: "Kobling fjernet",
-          description: "Dokumentet er fjernet fra risikoen",
+          title: "Link removed",
+          description: "The document is no longer linked to this risk.",
         });
       }
     });
@@ -102,14 +102,14 @@ export function RiskDocumentLinks({ riskId, documents, links }: RiskDocumentLink
     <div className="space-y-4">
       <form onSubmit={handleAdd} className="grid gap-4 md:grid-cols-3">
         <div className="space-y-2">
-          <Label>Dokument</Label>
+          <Label>Document</Label>
           <Select
             value={selectedDocument}
             onValueChange={setSelectedDocument}
             disabled={isPending || documents.length === 0}
           >
             <SelectTrigger>
-              <SelectValue placeholder={documents.length ? "Velg dokument" : "Ingen dokumenter"} />
+              <SelectValue placeholder={documents.length ? "Select a document" : "No documents"} />
             </SelectTrigger>
             <SelectContent>
               {documents.map((doc) => (
@@ -121,7 +121,7 @@ export function RiskDocumentLinks({ riskId, documents, links }: RiskDocumentLink
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Relasjon</Label>
+          <Label>Type</Label>
           <Select value={relation} onValueChange={(value: RiskDocumentRelation) => setRelation(value)} disabled={isPending}>
             <SelectTrigger>
               <SelectValue />
@@ -136,32 +136,32 @@ export function RiskDocumentLinks({ riskId, documents, links }: RiskDocumentLink
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>Merknad</Label>
+          <Label>Note</Label>
           <Input
             value={note}
             onChange={(event) => setNote(event.target.value)}
-            placeholder="Valgfritt"
+            placeholder="Optional"
             disabled={isPending}
           />
         </div>
         <div className="md:col-span-3 flex justify-end">
           <Button type="submit" disabled={isPending || !selectedDocument}>
-            {isPending ? "Kobler..." : "Koble dokument"}
+            {isPending ? "Linking..." : "Link document"}
           </Button>
         </div>
       </form>
 
       {links.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Ingen dokumenter er koblet til denne risikoen.</p>
+        <p className="text-sm text-muted-foreground">No documents linked to this risk.</p>
       ) : (
         <div className="rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Dokument</TableHead>
-                <TableHead>Relasjon</TableHead>
-                <TableHead>Notat</TableHead>
-                <TableHead className="text-right">Handling</TableHead>
+                <TableHead>Document</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Note</TableHead>
+                <TableHead className="text-right sr-only">Remove</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -177,7 +177,7 @@ export function RiskDocumentLinks({ riskId, documents, links }: RiskDocumentLink
                     <Badge variant="outline">{relationLabels[link.relation]}</Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {link.note ? link.note : <span className="text-xs text-muted-foreground">Ingen</span>}
+                    {link.note ? link.note : <span className="text-xs text-muted-foreground">None</span>}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button

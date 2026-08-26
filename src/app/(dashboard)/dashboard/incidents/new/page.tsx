@@ -1,7 +1,5 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { getAuthContext } from "@/lib/server-authorization";
 import { IncidentForm } from "@/features/incidents/components/incident-form";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -9,6 +7,9 @@ import Link from "next/link";
 import type { IncidentType } from "@prisma/client";
 import { hasTenantFeature } from "@/lib/tenant-features";
 import { getTranslations } from "next-intl/server";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { loadNewIncidentFormData, loadEnabledModuleKeys } from "@/server/queries/incidents.queries";
+import { tenantHasProjectsAddon } from "@/lib/tenant-modules";
 
 type PageSearchParams =
   | Promise<{
@@ -30,74 +31,31 @@ export default async function NewIncidentPage({ searchParams }: { searchParams?:
   const resolvedSearchParams =
     typeof searchParams === "object" && searchParams !== null && "then" in searchParams
       ? await searchParams
-    : (searchParams as {
-        type?: IncidentType;
-        projectId?: string;
-        tablet?: string;
-        template?: "homeVisitRisk" | "violenceThreat" | "infectionExposure";
-      } | undefined);
-  const session = await getServerSession(authOptions);
+      : (searchParams as {
+          type?: IncidentType;
+          projectId?: string;
+          tablet?: string;
+          template?: "homeVisitRisk" | "violenceThreat" | "infectionExposure";
+        } | undefined);
 
-  if (!session?.user?.email) {
+  const auth = await getAuthContext();
+  if (!auth) {
     redirect("/login");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: {
-      tenants: {
-        include: {
-          tenant: {
-            select: {
-              industry: true,
-              ruhModuleEnabled: true,
-            },
-          },
-        },
-      },
-    },
-  });
+  const { data: tenant } = await getAdminDb()
+    .from("Tenant")
+    .select("industry")
+    .eq("id", auth.tenantId)
+    .maybeSingle();
 
-  if (!user || user.tenants.length === 0) {
-    return <div>{t("errors.noTenantAccess")}</div>;
-  }
-
-  const selectedMembership = user.tenants.find(
-    (membership) => membership.tenantId === session.user.tenantId,
-  );
-  if (!selectedMembership) {
-    return <div>{t("errors.noTenantAccess")}</div>;
-  }
-
-  const tenantId = selectedMembership.tenantId;
-  const isHealthcareTenant = hasTenantFeature(
-    selectedMembership.tenant?.industry,
-    "helseforetak",
-  );
+  const isHealthcareTenant = hasTenantFeature(tenant?.industry, "helseforetak");
   const isTabletMode = resolvedSearchParams?.tablet === "1" && isHealthcareTenant;
 
-  const [risks, users, projects] = await Promise.all([
-    prisma.risk.findMany({
-      where: { tenantId },
-      select: { id: true, title: true, category: true, score: true },
-      orderBy: [{ score: "desc" }, { createdAt: "desc" }],
-      take: 25,
-    }),
-    prisma.userTenant.findMany({
-      where: { tenantId },
-      include: { user: { select: { id: true, name: true, email: true } } },
-      orderBy: { user: { name: "asc" } },
-    }),
-    prisma.project.findMany({
-      where: { tenantId, status: { in: ["PLANNING", "ACTIVE"] } },
-      select: { id: true, name: true, code: true, status: true },
-      orderBy: { name: "asc" },
-    }),
-  ]);
-
-  const userList = users
-    .map((ut) => ut.user)
-    .filter((u) => u.id !== user.id);
+  const { risks, users, projects } = await loadNewIncidentFormData(auth.tenantId);
+  const enabledModules = await loadEnabledModuleKeys(auth.tenantId);
+  const showProjectFields = tenantHasProjectsAddon(enabledModules);
+  const userList = users.filter((person) => person.id !== auth.userId);
 
   return (
     <div className="space-y-6">
@@ -109,29 +67,24 @@ export default async function NewIncidentPage({ searchParams }: { searchParams?:
           </Link>
         </Button>
         <h1 className="text-3xl font-bold">{t("title")}</h1>
-        <p className="text-muted-foreground">
-          {t("description")}
-        </p>
+        <p className="text-muted-foreground">{t("description")}</p>
         {isTabletMode && (
-          <p className="mt-2 text-sm font-medium text-blue-700">
-            {t("tabletModeActive")}
-          </p>
+          <p className="mt-2 text-sm font-medium text-blue-700">{t("tabletModeActive")}</p>
         )}
       </div>
 
       <IncidentForm
-        tenantId={tenantId}
-        userId={user.id}
+        tenantId={auth.tenantId}
+        userId={auth.userId}
         risks={risks}
         users={userList}
-        projects={projects}
+        projects={showProjectFields ? projects : []}
+        showProjectFields={showProjectFields}
         defaultType={resolvedSearchParams?.type}
         defaultProjectId={resolvedSearchParams?.projectId}
         isTabletMode={isTabletMode}
         templatePreset={resolvedSearchParams?.template}
-        ruhModuleEnabled={selectedMembership.tenant.ruhModuleEnabled}
       />
     </div>
   );
 }
-

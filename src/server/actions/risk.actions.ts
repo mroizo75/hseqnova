@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { createId } from "@/lib/ids";
 import {
   createRiskSchema,
   updateRiskSchema,
@@ -12,10 +13,13 @@ import {
 import { ControlFrequency, RiskCategory } from "@prisma/client";
 import { calculateNextReviewDate } from "@/lib/document-utils";
 import { getActionContext } from "./action-context";
-import { generateRiskAnalysis, generateRiskAssessmentItemDraft } from "@/lib/ai";
-import { getIndustryLabel, isSupportedIndustry } from "@/lib/industry-packages";
-import { z } from "zod";
 import { getPermissions } from "@/lib/permissions";
+import {
+  loadRiskAssessmentDetail,
+  loadRiskAssessmentsForList,
+  loadRiskDetail,
+  loadRisksForList,
+} from "@/server/queries/risks.queries";
 
 const sanitizeString = (value?: string | null) => {
   if (!value) return null;
@@ -54,139 +58,50 @@ const getNextReviewDateForFrequency = (base: Date, frequency: ControlFrequency) 
   }
 };
 
-const applyAiRiskSuggestionsSchema = z.object({
-  assessmentTitle: z.string().trim().min(2).max(200),
-  suggestions: z
-    .array(
-      z.object({
-        title: z.string().min(2),
-        severity: z.string().min(1),
-        category: z.string().min(1),
-      })
-    )
-    .min(1),
-});
+function toIso(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
 
-const mapAiSeverityToValues = (severity: string): { likelihood: number; consequence: number } => {
-  const normalizedSeverity = severity.trim().toUpperCase();
-  if (normalizedSeverity === "HIGH") return { likelihood: 3, consequence: 4 };
-  if (normalizedSeverity === "MEDIUM") return { likelihood: 2, consequence: 3 };
-  return { likelihood: 1, consequence: 2 };
-};
+async function insertAuditLog(input: {
+  tenantId: string;
+  userId: string;
+  action: string;
+  resource: string;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  await getAdminDb().from("AuditLog").insert({
+    id: createId(),
+    tenantId: input.tenantId,
+    userId: input.userId,
+    action: input.action,
+    resource: input.resource,
+    metadata: input.metadata ? JSON.stringify(input.metadata) : null,
+  });
+}
 
-const mapAiCategoryToRiskCategory = (category: string): RiskCategory => {
-  const normalizedCategory = category.trim().toLowerCase();
-  if (normalizedCategory.includes("ergonomi")) return "ERGONOMIC";
-  if (normalizedCategory.includes("sikker")) return "SAFETY";
-  if (normalizedCategory.includes("psyk")) return "PSYCHOSOCIAL";
-  if (normalizedCategory.includes("kjem")) return "HEALTH";
-  if (normalizedCategory.includes("fysisk")) return "PHYSICAL";
-  if (normalizedCategory.includes("milj")) return "ENVIRONMENTAL";
-  if (normalizedCategory.includes("jurid")) return "LEGAL";
-  return "OPERATIONAL";
-};
-
-const assessmentItemCategoryOptions: RiskCategory[] = [
-  "PSYCHOSOCIAL",
-  "ERGONOMIC",
-  "ORGANISATIONAL",
-  "PHYSICAL",
-  "SAFETY",
-  "HEALTH",
-  "OPERATIONAL",
-  "ENVIRONMENTAL",
-];
-
-const generateAiRiskAssessmentItemDraftSchema = z.object({
-  riskType: z.string().min(2).max(120),
-  category: z.string().min(2).max(50),
-  industryContext: z.string().max(120).optional(),
-});
-
-const mapAiAssessmentCategoryToRiskCategory = (value: string, fallback: RiskCategory): RiskCategory => {
-  const normalizedValue = value.trim().toUpperCase();
-  if (assessmentItemCategoryOptions.includes(normalizedValue as RiskCategory)) {
-    return normalizedValue as RiskCategory;
-  }
-  return fallback;
-};
-
-const resolveIndustryPromptLabel = (
-  industry: string | null | undefined,
-  industryContext?: string | null
-): string => {
-  const base = isSupportedIndustry(industry)
-    ? getIndustryLabel(industry || "other")
-    : industry?.trim() || "Annet";
-  const extra = industryContext?.trim();
-  return extra ? `${base} (${extra})` : base;
-};
-
-// Hent alle risikoer for en tenant
 export async function getRisks(tenantId: string) {
   try {
     await getActionContext();
-    
-    const risks = await prisma.risk.findMany({
-      where: { tenantId },
-      include: {
-        measures: {
-          orderBy: { createdAt: "desc" },
-        },
-        owner: {
-          select: { id: true, name: true, email: true },
-        },
-        inspectionTemplate: {
-          select: { id: true, name: true },
-        },
-        kpi: {
-          select: { id: true, title: true },
-        },
-      },
-      orderBy: [
-        { score: "desc" },
-        { createdAt: "desc" },
-      ],
-    });
-    
+    const risks = await loadRisksForList(tenantId);
     return { success: true, data: risks };
   } catch (error: any) {
-    console.error("Get risks error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente risikoer" };
+    return { success: false, error: error.message || "Could not load risks" };
   }
 }
 
-// Hent en spesifikk risiko
 export async function getRisk(id: string) {
   try {
     const { tenantId } = await getActionContext();
-    
-    const risk = await prisma.risk.findUnique({
-      where: { id, tenantId },
-      include: {
-        measures: {
-          orderBy: { createdAt: "desc" },
-        },
-        owner: {
-          select: { id: true, name: true, email: true },
-        },
-        inspectionTemplate: {
-          select: { id: true, name: true },
-        },
-        kpi: {
-          select: { id: true, title: true },
-        },
-      },
-    });
-    
+    const risk = await loadRiskDetail(tenantId, id);
     if (!risk) {
-      return { success: false, error: "Risiko ikke funnet" };
+      return { success: false, error: "Risk not found" };
     }
-    
     return { success: true, data: risk };
   } catch (error: any) {
-    console.error("Get risk error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente risiko" };
+    return { success: false, error: error.message || "Could not load risk" };
   }
 }
 
@@ -217,8 +132,12 @@ export async function createRisk(input: any) {
       validated.nextReviewDate ??
       getNextReviewDateForFrequency(new Date(), controlFrequency);
     
-    const risk = await prisma.risk.create({
-      data: {
+    const now = new Date().toISOString();
+    const riskId = createId();
+    const { data: risk, error } = await getAdminDb()
+      .from("Risk")
+      .insert({
+        id: riskId,
         tenantId: validated.tenantId,
         riskAssessmentId: validated.riskAssessmentId ?? null,
         title: validated.title,
@@ -235,9 +154,9 @@ export async function createRisk(input: any) {
         status: validated.status,
         riskStatement: sanitizeString(validated.riskStatement),
         controlFrequency,
-        nextReviewDate,
-        residualLikelihood: validated.residualLikelihood,
-        residualConsequence: validated.residualConsequence,
+        nextReviewDate: toIso(nextReviewDate),
+        residualLikelihood: validated.residualLikelihood ?? null,
+        residualConsequence: validated.residualConsequence ?? null,
         residualScore,
         kpiId: validated.kpiId ?? null,
         inspectionTemplateId: validated.inspectionTemplateId ?? null,
@@ -246,20 +165,24 @@ export async function createRisk(input: any) {
         riskTolerance: sanitizeString(validated.riskTolerance),
         responseStrategy: validated.responseStrategy,
         trend: validated.trend,
-        reviewedAt: validated.reviewedAt ?? null,
-        assessmentDate: validated.assessmentDate ?? null,
-      },
-    });
-    
-    // Audit log
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "RISK_CREATED",
-        resource: `Risk:${risk.id}`,
-        metadata: JSON.stringify({ title: risk.title, score }),
-      },
+        reviewedAt: toIso(validated.reviewedAt ?? null),
+        assessmentDate: toIso(validated.assessmentDate ?? null),
+        createdAt: now,
+        updatedAt: now,
+      })
+      .select("*")
+      .single();
+
+    if (error || !risk) {
+      throw { code: "RISK_CREATE_FAILED", message: error?.message || "Could not create risk" };
+    }
+
+    await insertAuditLog({
+      tenantId,
+      userId: user.id,
+      action: "RISK_CREATED",
+      resource: `Risk:${risk.id}`,
+      metadata: { title: risk.title, score },
     });
     
     revalidatePath("/dashboard/risks");
@@ -289,9 +212,12 @@ export async function updateRisk(input: any) {
     };
     const validated = updateRiskSchema.parse(normalizedInput);
     
-    const existingRisk = await prisma.risk.findUnique({
-      where: { id: validated.id, tenantId },
-    });
+    const { data: existingRisk } = await getAdminDb()
+      .from("Risk")
+      .select("*")
+      .eq("id", validated.id)
+      .eq("tenantId", tenantId)
+      .maybeSingle();
     
     if (!existingRisk) {
       return { success: false, error: "Risiko ikke funnet" };
@@ -308,9 +234,9 @@ export async function updateRisk(input: any) {
         ? residualLikelihood * residualConsequence
         : null;
 
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       score,
-      updatedAt: new Date(),
+      updatedAt: new Date().toISOString(),
     };
 
     if (validated.title) updateData.title = validated.title;
@@ -336,7 +262,7 @@ export async function updateRisk(input: any) {
     if (validated.residualConsequence !== undefined) updateData.residualConsequence = validated.residualConsequence;
     updateData.residualScore = residualScore;
     if (validated.reviewedAt !== undefined) {
-      updateData.reviewedAt = validated.reviewedAt ?? null;
+      updateData.reviewedAt = toIso(validated.reviewedAt ?? null);
     }
 
     let nextReviewDateToPersist = validated.nextReviewDate;
@@ -344,34 +270,39 @@ export async function updateRisk(input: any) {
       nextReviewDateToPersist = null;
     } else if (validated.nextReviewDate === undefined && validated.controlFrequency) {
       nextReviewDateToPersist = getNextReviewDateForFrequency(
-        existingRisk.nextReviewDate ?? new Date(),
+        existingRisk.nextReviewDate ? new Date(existingRisk.nextReviewDate) : new Date(),
         validated.controlFrequency
       );
     }
 
     if (nextReviewDateToPersist !== undefined) {
-      updateData.nextReviewDate = nextReviewDateToPersist;
+      updateData.nextReviewDate = toIso(nextReviewDateToPersist);
     }
 
     if (validated.controlFrequency) {
       updateData.controlFrequency = validated.controlFrequency;
     }
     if (validated.riskAssessmentId !== undefined) updateData.riskAssessmentId = validated.riskAssessmentId;
-    if (validated.assessmentDate !== undefined) updateData.assessmentDate = validated.assessmentDate;
+    if (validated.assessmentDate !== undefined) updateData.assessmentDate = toIso(validated.assessmentDate);
 
-    const risk = await prisma.risk.update({
-      where: { id: validated.id, tenantId },
-      data: updateData,
-    });
-    
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "RISK_UPDATED",
-        resource: `Risk:${risk.id}`,
-        metadata: JSON.stringify({ title: risk.title, score }),
-      },
+    const { data: risk, error } = await getAdminDb()
+      .from("Risk")
+      .update(updateData)
+      .eq("id", validated.id)
+      .eq("tenantId", tenantId)
+      .select("*")
+      .single();
+
+    if (error || !risk) {
+      throw { code: "RISK_UPDATE_FAILED", message: error?.message || "Could not update risk" };
+    }
+
+    await insertAuditLog({
+      tenantId,
+      userId: user.id,
+      action: "RISK_UPDATED",
+      resource: `Risk:${risk.id}`,
+      metadata: { title: risk.title, score },
     });
     
     revalidatePath("/dashboard/risks");
@@ -388,26 +319,28 @@ export async function deleteRisk(id: string) {
   try {
     const { user, tenantId, role } = await getActionContext();
     
-    const risk = await prisma.risk.findUnique({
-      where: { id, tenantId },
-    });
+    const { data: risk } = await getAdminDb()
+      .from("Risk")
+      .select("id, title")
+      .eq("id", id)
+      .eq("tenantId", tenantId)
+      .maybeSingle();
     
     if (!risk) {
       return { success: false, error: "Risiko ikke funnet" };
     }
     
-    await prisma.risk.delete({
-      where: { id, tenantId },
-    });
-    
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "RISK_DELETED",
-        resource: `Risk:${id}`,
-        metadata: JSON.stringify({ title: risk.title }),
-      },
+    const { error } = await getAdminDb().from("Risk").delete().eq("id", id).eq("tenantId", tenantId);
+    if (error) {
+      throw { code: "RISK_DELETE_FAILED", message: error.message };
+    }
+
+    await insertAuditLog({
+      tenantId,
+      userId: user.id,
+      action: "RISK_DELETED",
+      resource: `Risk:${id}`,
+      metadata: { title: risk.title },
     });
     
     revalidatePath("/dashboard/risks");
@@ -423,9 +356,8 @@ export async function getRiskStats(tenantId: string) {
   try {
     await getActionContext();
     
-    const risks = await prisma.risk.findMany({
-      where: { tenantId },
-    });
+    const { data: rows } = await getAdminDb().from("Risk").select("score, status").eq("tenantId", tenantId);
+    const risks = (rows ?? []) as Array<{ score: number; status: string }>;
     
     const stats = {
       total: risks.length,
@@ -459,43 +391,50 @@ export async function createRiskAssessment(input: {
     const { user, tenantId } = await getActionContext();
     const validated = createRiskAssessmentSchema.parse({ ...input, tenantId });
     if (validated.projectId) {
-      const project = await prisma.project.findFirst({
-        where: {
-          id: validated.projectId,
-          tenantId: validated.tenantId,
-        },
-        select: { id: true },
-      });
+      const { data: project } = await getAdminDb()
+        .from("Project")
+        .select("id")
+        .eq("id", validated.projectId)
+        .eq("tenantId", validated.tenantId)
+        .maybeSingle();
       if (!project) {
-        return { success: false, error: "Prosjekt ikke funnet for valgt tenant" };
+        return { success: false, error: "Project not found for this organisation" };
       }
     }
 
-    const assessment = await prisma.riskAssessment.create({
-      data: {
+    const now = new Date().toISOString();
+    const { data: assessment, error } = await getAdminDb()
+      .from("RiskAssessment")
+      .insert({
+        id: createId(),
         tenantId: validated.tenantId,
         projectId: validated.projectId ?? null,
         title: validated.title,
         assessmentYear: validated.assessmentYear,
         participants: validated.participants?.trim() || null,
-      },
-    });
+        createdAt: now,
+        updatedAt: now,
+      })
+      .select("*")
+      .single();
 
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "RISK_ASSESSMENT_CREATED",
-        resource: `RiskAssessment:${assessment.id}`,
-        metadata: JSON.stringify({ title: assessment.title, year: assessment.assessmentYear }),
-      },
+    if (error || !assessment) {
+      throw { code: "RISK_ASSESSMENT_CREATE_FAILED", message: error?.message || "Could not create assessment" };
+    }
+
+    await insertAuditLog({
+      tenantId,
+      userId: user.id,
+      action: "RISK_ASSESSMENT_CREATED",
+      resource: `RiskAssessment:${assessment.id}`,
+      metadata: { title: assessment.title, year: assessment.assessmentYear },
     });
 
     revalidatePath("/dashboard/risks");
     revalidatePath(`/dashboard/risks/assessment/${assessment.id}`);
     return { success: true, data: assessment };
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Kunne ikke opprette risikovurdering";
+    const message = error instanceof Error ? error.message : "Could not create the risk assessment";
     return { success: false, error: message };
   }
 }
@@ -513,9 +452,12 @@ export async function updateRiskAssessment(input: {
     const { user, tenantId, role } = await getActionContext();
     const validated = updateRiskAssessmentSchema.parse(input);
 
-    const existing = await prisma.riskAssessment.findFirst({
-      where: { id: validated.id, tenantId },
-    });
+    const { data: existing } = await getAdminDb()
+      .from("RiskAssessment")
+      .select("*")
+      .eq("id", validated.id)
+      .eq("tenantId", tenantId)
+      .maybeSingle();
     if (!existing) return { success: false, error: "Risikovurdering ikke funnet" };
 
     if (validated.title !== undefined) {
@@ -525,31 +467,35 @@ export async function updateRiskAssessment(input: {
       }
     }
 
-    const assessment = await prisma.riskAssessment.update({
-      where: { id: validated.id },
-      data: {
+    const { data: assessment, error } = await getAdminDb()
+      .from("RiskAssessment")
+      .update({
         ...(validated.title !== undefined && { title: validated.title }),
-        participants: validated.participants !== undefined
-          ? (validated.participants?.trim() || null)
-          : undefined,
+        participants:
+          validated.participants !== undefined ? validated.participants?.trim() || null : undefined,
         approvedById: validated.approvedById,
-        approvedAt: validated.approvedAt,
+        approvedAt: validated.approvedAt ? toIso(validated.approvedAt) : validated.approvedAt,
         reviewedById: validated.reviewedById,
-        reviewedAt: validated.reviewedAt,
-        updatedAt: new Date(),
-      },
-    });
+        reviewedAt: validated.reviewedAt ? toIso(validated.reviewedAt) : validated.reviewedAt,
+        updatedAt: new Date().toISOString(),
+      })
+      .eq("id", validated.id)
+      .eq("tenantId", tenantId)
+      .select("*")
+      .single();
 
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "RISK_ASSESSMENT_UPDATED",
-        resource: `RiskAssessment:${assessment.id}`,
-        metadata: JSON.stringify({
-          title: assessment.title,
-          previousTitle: validated.title !== undefined ? existing.title : undefined,
-        }),
+    if (error || !assessment) {
+      throw { code: "RISK_ASSESSMENT_UPDATE_FAILED", message: error?.message || "Could not update assessment" };
+    }
+
+    await insertAuditLog({
+      tenantId,
+      userId: user.id,
+      action: "RISK_ASSESSMENT_UPDATED",
+      resource: `RiskAssessment:${assessment.id}`,
+      metadata: {
+        title: assessment.title,
+        previousTitle: validated.title !== undefined ? existing.title : undefined,
       },
     });
 
@@ -565,13 +511,7 @@ export async function updateRiskAssessment(input: {
 export async function getRiskAssessments(tenantId: string) {
   try {
     await getActionContext();
-    const assessments = await prisma.riskAssessment.findMany({
-      where: { tenantId },
-      include: {
-        _count: { select: { risks: true } },
-      },
-      orderBy: [{ assessmentYear: "desc" }, { createdAt: "desc" }],
-    });
+    const assessments = await loadRiskAssessmentsForList(tenantId);
     return { success: true, data: assessments };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Kunne ikke hente risikovurderinger";
@@ -582,17 +522,7 @@ export async function getRiskAssessments(tenantId: string) {
 export async function getRiskAssessment(assessmentId: string) {
   try {
     const { tenantId } = await getActionContext();
-    const assessment = await prisma.riskAssessment.findFirst({
-      where: { id: assessmentId, tenantId },
-      include: {
-        risks: {
-          orderBy: [{ score: "desc" }, { assessmentDate: "desc" }, { createdAt: "asc" }],
-          include: {
-            owner: { select: { id: true, name: true, email: true } },
-          },
-        },
-      },
-    });
+    const assessment = await loadRiskAssessmentDetail(tenantId, assessmentId);
     if (!assessment) return { success: false, error: "Risikovurdering ikke funnet" };
     return { success: true, data: assessment };
   } catch (error: unknown) {
@@ -604,22 +534,31 @@ export async function getRiskAssessment(assessmentId: string) {
 export async function deleteRiskAssessment(assessmentId: string) {
   try {
     const { user, tenantId } = await getActionContext();
-    const assessment = await prisma.riskAssessment.findFirst({
-      where: { id: assessmentId, tenantId },
-      include: { _count: { select: { risks: true } } },
-    });
+    const { data: assessment } = await getAdminDb()
+      .from("RiskAssessment")
+      .select("id, title")
+      .eq("id", assessmentId)
+      .eq("tenantId", tenantId)
+      .maybeSingle();
     if (!assessment) return { success: false, error: "Risikovurdering ikke funnet" };
 
-    await prisma.riskAssessment.delete({ where: { id: assessmentId } });
+    const { count } = await getAdminDb()
+      .from("Risk")
+      .select("id", { count: "exact", head: true })
+      .eq("riskAssessmentId", assessmentId)
+      .eq("tenantId", tenantId);
 
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "RISK_ASSESSMENT_DELETED",
-        resource: `RiskAssessment:${assessmentId}`,
-        metadata: JSON.stringify({ title: assessment.title, risksCount: assessment._count.risks }),
-      },
+    const { error } = await getAdminDb().from("RiskAssessment").delete().eq("id", assessmentId).eq("tenantId", tenantId);
+    if (error) {
+      throw { code: "RISK_ASSESSMENT_DELETE_FAILED", message: error.message };
+    }
+
+    await insertAuditLog({
+      tenantId,
+      userId: user.id,
+      action: "RISK_ASSESSMENT_DELETED",
+      resource: `RiskAssessment:${assessmentId}`,
+      metadata: { title: assessment.title, risksCount: count ?? 0 },
     });
 
     revalidatePath("/dashboard/risks");
@@ -648,9 +587,12 @@ export async function addRiskAssessmentItem(input: {
     const { tenantId: ctxTenantId } = await getActionContext();
     if (input.tenantId !== ctxTenantId) return { success: false, error: "Ugyldig tenant" };
 
-    const assessment = await prisma.riskAssessment.findFirst({
-      where: { id: input.riskAssessmentId, tenantId: input.tenantId },
-    });
+    const { data: assessment } = await getAdminDb()
+      .from("RiskAssessment")
+      .select("id")
+      .eq("id", input.riskAssessmentId)
+      .eq("tenantId", input.tenantId)
+      .maybeSingle();
     if (!assessment) return { success: false, error: "Risikovurdering ikke funnet" };
 
     const { likelihood, consequence } = riskLevelToMatrix[input.level];
@@ -669,45 +611,58 @@ export async function addRiskAssessmentItem(input: {
       .filter((item, index, array) => item.length > 0 && array.indexOf(item) === index)
       .slice(0, 5);
 
-    const risk = await prisma.$transaction(async (tx) => {
-      const createdRisk = await tx.risk.create({
-        data: {
+    const now = new Date().toISOString();
+    const riskId = createId();
+    const { data: risk, error } = await getAdminDb()
+      .from("Risk")
+      .insert({
+        id: riskId,
+        tenantId: input.tenantId,
+        riskAssessmentId: input.riskAssessmentId,
+        title: input.title,
+        context,
+        riskStatement,
+        likelihood,
+        consequence,
+        score,
+        ownerId: input.ownerId,
+        status: "OPEN",
+        category: input.category as RiskCategory,
+        assessmentDate: input.assessmentDate ? toIso(input.assessmentDate) : null,
+        nextReviewDate: input.nextReviewDate ? toIso(input.nextReviewDate) : null,
+        controlFrequency: input.nextReviewDate ? "ANNUAL" : null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .select("*")
+      .single();
+
+    if (error || !risk) {
+      throw { code: "RISK_ITEM_CREATE_FAILED", message: error?.message || "Could not add risk item" };
+    }
+
+    if (normalizedMeasures.length > 0) {
+      const dueAt = new Date();
+      dueAt.setDate(dueAt.getDate() + 30);
+      const { error: measureError } = await getAdminDb().from("Measure").insert(
+        normalizedMeasures.map((measureTitle) => ({
+          id: createId(),
           tenantId: input.tenantId,
-          riskAssessmentId: input.riskAssessmentId,
-          title: input.title,
-          context,
-          riskStatement,
-          likelihood,
-          consequence,
-          score,
-          ownerId: input.ownerId,
-          status: "OPEN",
-          category: input.category as RiskCategory,
-          assessmentDate: input.assessmentDate ? new Date(input.assessmentDate) : null,
-          nextReviewDate: input.nextReviewDate ? new Date(input.nextReviewDate) : null,
-          controlFrequency: input.nextReviewDate ? "ANNUAL" : undefined,
-        },
-      });
-
-      if (normalizedMeasures.length > 0) {
-        const dueAt = new Date();
-        dueAt.setDate(dueAt.getDate() + 30);
-        await tx.measure.createMany({
-          data: normalizedMeasures.map((measureTitle) => ({
-            tenantId: input.tenantId,
-            riskId: createdRisk.id,
-            title: measureTitle,
-            description: "AI-foreslått tiltak. Bekreft ansvarlig, frist og effekt ved oppfølging.",
-            dueAt,
-            responsibleId: input.ownerId,
-            category: "MITIGATION",
-            followUpFrequency: "ANNUAL",
-          })),
-        });
+          riskId: risk.id,
+          title: measureTitle,
+          description: "AI-suggested action. Confirm owner, due date and effect when you follow it up.",
+          dueAt: dueAt.toISOString(),
+          responsibleId: input.ownerId,
+          category: "MITIGATION",
+          followUpFrequency: "ANNUAL",
+          createdAt: now,
+          updatedAt: now,
+        })),
+      );
+      if (measureError) {
+        throw { code: "MEASURE_CREATE_FAILED", message: measureError.message };
       }
-
-      return createdRisk;
-    });
+    }
 
     revalidatePath("/dashboard/risks");
     revalidatePath(`/dashboard/risks/assessment/${input.riskAssessmentId}`);
@@ -717,245 +672,3 @@ export async function addRiskAssessmentItem(input: {
     return { success: false, error: message };
   }
 }
-
-export async function generateAiRiskAssessmentItem(input: {
-  riskType: string;
-  category: string;
-  industryContext?: string;
-}) {
-  try {
-    const { tenantId, role } = await getActionContext();
-    const permissions = getPermissions(role);
-    if (!permissions.canCreateRisks) {
-      return { success: false, error: "Ingen tilgang til AI-forslag for risikopunkt" };
-    }
-
-    const validated = generateAiRiskAssessmentItemDraftSchema.parse(input);
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { industry: true },
-    });
-    if (!tenant) {
-      return { success: false, error: "Bedrift ikke funnet" };
-    }
-
-    const existingRisks = await prisma.risk.findMany({
-      where: { tenantId },
-      select: { title: true },
-      orderBy: { createdAt: "desc" },
-      take: 200,
-    });
-
-    const draft = await generateRiskAssessmentItemDraft(
-      resolveIndustryPromptLabel(tenant.industry, validated.industryContext),
-      validated.riskType,
-      validated.category,
-      existingRisks.map((item) => item.title),
-      validated.industryContext,
-      {
-        cacheScope: `tenant:${tenantId}:riskAssessmentItem`,
-        rateLimitScope: `tenant:${tenantId}`,
-        budgetScope: `tenant:${tenantId}`,
-      }
-    );
-
-    const normalizedTitle = draft.title.trim();
-    if (!normalizedTitle) {
-      return { success: false, error: "AI kunne ikke lage et gyldig forslag" };
-    }
-
-    const level = draft.level?.toUpperCase();
-    const normalizedLevel =
-      level === "LOW" || level === "MEDIUM" || level === "HIGH" || level === "CRITICAL"
-        ? level
-        : "MEDIUM";
-
-    const fallbackCategory = mapAiAssessmentCategoryToRiskCategory(validated.category, "OPERATIONAL");
-    const normalizedCategory = mapAiAssessmentCategoryToRiskCategory(draft.category || "", fallbackCategory);
-    const suggestedMeasures = (draft.suggestedMeasures ?? [])
-      .map((item) => item.trim())
-      .filter((item, index, array) => item.length > 0 && array.indexOf(item) === index)
-      .slice(0, 5);
-
-    return {
-      success: true,
-      data: {
-        title: normalizedTitle,
-        beskrivelse: draft.beskrivelse?.trim() || "",
-        konsekvens: draft.konsekvens?.trim() || "",
-        level: normalizedLevel,
-        category: normalizedCategory,
-        suggestedMeasures,
-      },
-    };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke generere AI-forslag" };
-  }
-}
-
-export async function previewAiRiskSuggestions() {
-  try {
-    const { tenantId, role } = await getActionContext();
-    const permissions = getPermissions(role);
-    if (!permissions.canCreateRisks) {
-      return { success: false, error: "Ingen tilgang til AI-risikoforslag" };
-    }
-
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: {
-        industry: true,
-        employeeCount: true,
-      },
-    });
-
-    if (!tenant) {
-      return { success: false, error: "Bedrift ikke funnet" };
-    }
-
-    const [existingRisks, existingIncidents] = await Promise.all([
-      prisma.risk.findMany({
-        where: { tenantId },
-        select: { title: true },
-        orderBy: { createdAt: "desc" },
-        take: 200,
-      }),
-      prisma.incident.findMany({
-        where: { tenantId },
-        select: { title: true },
-        orderBy: { occurredAt: "desc" },
-        take: 100,
-      }),
-    ]);
-
-    const analysis = await generateRiskAnalysis(
-      resolveIndustryPromptLabel(tenant.industry),
-      tenant.employeeCount || 1,
-      existingRisks.map((item) => item.title),
-      existingIncidents.map((item) => item.title),
-      {
-        cacheScope: `tenant:${tenantId}:riskSuggestions`,
-        rateLimitScope: `tenant:${tenantId}`,
-        budgetScope: `tenant:${tenantId}`,
-      }
-    );
-
-    const existingRiskTitles = new Set(existingRisks.map((item) => item.title.trim().toLowerCase()));
-    const suggestions = analysis.suggestedRisks
-      .map((suggestion) => {
-        const title = suggestion.risk.trim();
-        return {
-          title,
-          severity: suggestion.severity.trim().toUpperCase(),
-          category: suggestion.category.trim(),
-          rationale: (suggestion.rationale || "").trim(),
-          isDuplicate: existingRiskTitles.has(title.toLowerCase()),
-        };
-      })
-      .filter((item) => item.title.length > 0);
-
-    return {
-      success: true,
-      data: {
-        suggestions,
-      },
-    };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke hente AI-risikoforslag" };
-  }
-}
-
-export async function applyAiRiskSuggestions(input: {
-  assessmentTitle: string;
-  suggestions: Array<{ title: string; severity: string; category: string }>;
-}) {
-  try {
-    const { tenantId, role } = await getActionContext();
-    const permissions = getPermissions(role);
-    if (!permissions.canCreateRisks) {
-      return { success: false, error: "Ingen tilgang til å lagre AI-risikoforslag" };
-    }
-
-    const validated = applyAiRiskSuggestionsSchema.parse(input);
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { industry: true },
-    });
-    if (!tenant) {
-      return { success: false, error: "Bedrift ikke funnet" };
-    }
-
-    const ownerCandidate = await prisma.userTenant.findFirst({
-      where: {
-        tenantId,
-        role: { in: ["ADMIN", "HMS", "LEDER"] },
-      },
-      orderBy: { createdAt: "asc" },
-      select: { userId: true },
-    });
-    if (!ownerCandidate) {
-      return { success: false, error: "Fant ingen ansvarlig bruker for nye risikoforslag" };
-    }
-
-    const currentYear = new Date().getFullYear();
-    const assessmentTitle = validated.assessmentTitle.trim();
-    const industryLabel = resolveIndustryPromptLabel(tenant.industry);
-    let created = 0;
-    let skipped = 0;
-
-    await prisma.$transaction(async (tx) => {
-      let assessment = await tx.riskAssessment.findFirst({
-        where: { tenantId, title: assessmentTitle, assessmentYear: currentYear },
-        select: { id: true },
-      });
-      if (!assessment) {
-        assessment = await tx.riskAssessment.create({
-          data: { tenantId, title: assessmentTitle, assessmentYear: currentYear },
-          select: { id: true },
-        });
-      }
-
-      for (const suggestion of validated.suggestions) {
-        const title = suggestion.title.trim();
-        if (!title) {
-          skipped += 1;
-          continue;
-        }
-
-        const exists = await tx.risk.findFirst({
-          where: { tenantId, title },
-          select: { id: true },
-        });
-        if (exists) {
-          skipped += 1;
-          continue;
-        }
-
-        const severity = mapAiSeverityToValues(suggestion.severity);
-        await tx.risk.create({
-          data: {
-            tenantId,
-            riskAssessmentId: assessment.id,
-            title,
-            context: `AI-forslag for ${industryLabel}: ${title}`,
-            likelihood: severity.likelihood,
-            consequence: severity.consequence,
-            score: severity.likelihood * severity.consequence,
-            ownerId: ownerCandidate.userId,
-            category: mapAiCategoryToRiskCategory(suggestion.category),
-            description: "Manuelt godkjent AI-forslag basert på bransje og historikk.",
-            existingControls: "Vurder tiltak via SJA, vernerunde og opplæringsplan.",
-            riskStatement: title,
-          },
-        });
-        created += 1;
-      }
-    });
-
-    revalidatePath("/dashboard/risks");
-    return { success: true, data: { created, skipped } };
-  } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke lagre AI-risikoforslag" };
-  }
-}
-

@@ -1,68 +1,23 @@
-import { getCurrentUser } from "@/lib/server-action";
 import { redirect } from "next/navigation";
+import { getAuthContext } from "@/lib/server-authorization";
 import { DocumentForm } from "@/features/documents/components/document-form";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { prisma } from "@/lib/db";
+import { loadDocumentFormOptions } from "@/server/queries/documents.queries";
 
 export default async function NewDocumentPage() {
-  const user = await getCurrentUser();
+  const auth = await getAuthContext();
 
-  if (!user) {
+  if (!auth) {
     redirect("/login");
   }
 
-  const userTenant = user.tenants.at(0);
-  if (!userTenant) {
-    return <div>Ingen tilgang til tenant</div>;
+  if (!auth.permissions.canCreateDocuments) {
+    redirect("/dashboard/documents");
   }
 
-  const tenantUsers = await prisma.userTenant.findMany({
-    where: { tenantId: userTenant.tenantId },
-    include: {
-      user: {
-        select: { id: true, name: true, email: true },
-      },
-    },
-    orderBy: {
-      user: {
-        name: "asc",
-      },
-    },
-  });
-
-  const templates = await prisma.documentTemplate.findMany({
-    where: {
-      OR: [
-        { isGlobal: true },
-        { tenantId: userTenant.tenantId },
-      ],
-    },
-    orderBy: [
-      { isGlobal: "desc" },
-      { name: "asc" },
-    ],
-  });
-
-  const ownerOptions = tenantUsers
-    .map((member) => ({
-      id: member.user?.id ?? "",
-      name: member.user?.name ?? member.user?.email ?? "Ukjent",
-      email: member.user?.email ?? "",
-      role: member.role,
-    }))
-    .filter((user) => user.id);
-
-  const templateOptions = templates.map((template) => ({
-    id: template.id,
-    name: template.name,
-    category: template.category,
-    description: template.description,
-    defaultReviewIntervalMonths: template.defaultReviewIntervalMonths,
-    isGlobal: template.isGlobal,
-    pdcaGuidance: template.pdcaGuidance as Record<string, string> | null,
-  }));
+  const { owners, templates } = await loadDocumentFormOptions(auth.tenantId);
 
   return (
     <div className="space-y-6">
@@ -70,21 +25,16 @@ export default async function NewDocumentPage() {
         <Button variant="ghost" asChild className="mb-4">
           <Link href="/dashboard/documents">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Tilbake til dokumenter
+            Back to documents
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold">Nytt dokument</h1>
+        <h1 className="text-3xl font-bold">New document</h1>
         <p className="text-muted-foreground">
-          Last opp et nytt dokument til systemet
+          Upload a controlled document. Drafts must be approved before they become the current version.
         </p>
       </div>
 
-      <DocumentForm
-        tenantId={userTenant.tenantId}
-        owners={ownerOptions}
-        templates={templateOptions}
-      />
+      <DocumentForm tenantId={auth.tenantId} owners={owners} templates={templates} />
     </div>
   );
 }
-

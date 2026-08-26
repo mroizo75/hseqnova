@@ -1,15 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { tenantCanUseGlobalFormTemplate } from "@/lib/form-template-industry";
+
+type FormTemplateRow = {
+  id: string;
+  tenantId: string | null;
+  title: string;
+  description: string | null;
+  category: string;
+  isGlobal: boolean;
+  isActive: boolean;
+  industryScope: unknown;
+  createdAt: string;
+};
+
+type FormFieldRow = {
+  id: string;
+  formTemplateId: string;
+  fieldType: string;
+  label: string;
+  isRequired: boolean;
+  order: number;
+};
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-
     if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ code: "UNAUTHORIZED", message: "Not authenticated" }, { status: 401 });
     }
 
     const tenantId = session.user.tenantId;
@@ -17,55 +37,79 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ forms: [] });
     }
 
-    // Hent category fra query parameters
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
     const showAll = searchParams.get("view") === "all";
+    const db = getAdminDb();
 
-    // Bygg where-clause - hent både tenant-spesifikke og globale skjemaer
-    const where: any = {
-      OR: [
-        { tenantId, isActive: true },
-        { isGlobal: true, isActive: true },
-      ],
-    };
+    const [tenantFormsRes, globalFormsRes, tenantRes] = await Promise.all([
+      db
+        .from("FormTemplate")
+        .select("id, tenantId, title, description, category, isGlobal, isActive, industryScope, createdAt")
+        .eq("tenantId", tenantId)
+        .eq("isActive", true),
+      db
+        .from("FormTemplate")
+        .select("id, tenantId, title, description, category, isGlobal, isActive, industryScope, createdAt")
+        .eq("isGlobal", true)
+        .eq("isActive", true),
+      db.from("Tenant").select("industry").eq("id", tenantId).maybeSingle(),
+    ]);
 
-    // Filtrer på kategori hvis spesifisert
-    if (category) {
-      where.category = category;
+    if (tenantFormsRes.error) {
+      throw { code: "FORM_LIST_FAILED", message: tenantFormsRes.error.message };
+    }
+    if (globalFormsRes.error) {
+      throw { code: "FORM_LIST_FAILED", message: globalFormsRes.error.message };
     }
 
-    const forms = await prisma.formTemplate.findMany({
-      where,
-      include: {
-        fields: {
-          orderBy: { order: "asc" },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-    if (showAll) {
-      return NextResponse.json({ forms });
+    const seen = new Set<string>();
+    const templates = [...(tenantFormsRes.data ?? []), ...(globalFormsRes.data ?? [])].filter((row) => {
+      const template = row as FormTemplateRow;
+      if (seen.has(template.id)) return false;
+      seen.add(template.id);
+      if (category && template.category !== category) return false;
+      return true;
+    }) as FormTemplateRow[];
+
+    const templateIds = templates.map((template) => template.id);
+    const { data: fieldRows, error: fieldsError } =
+      templateIds.length === 0
+        ? { data: [] as FormFieldRow[], error: null }
+        : await db
+            .from("FormField")
+            .select("id, formTemplateId, fieldType, label, isRequired, order")
+            .in("formTemplateId", templateIds)
+            .order("order", { ascending: true });
+
+    if (fieldsError) {
+      throw { code: "FORM_FIELD_LIST_FAILED", message: fieldsError.message };
     }
 
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { industry: true },
-    });
-    const scopedForms = forms.filter((form) =>
-      tenantCanUseGlobalFormTemplate(form, tenant?.industry ?? null, {
-        allTemplatesView: showAll,
-      })
-    );
+    const fieldsByTemplate = new Map<string, FormFieldRow[]>();
+    for (const field of (fieldRows ?? []) as FormFieldRow[]) {
+      const list = fieldsByTemplate.get(field.formTemplateId) ?? [];
+      list.push(field);
+      fieldsByTemplate.set(field.formTemplateId, list);
+    }
 
-    return NextResponse.json({ forms: scopedForms });
-  } catch (error: any) {
-    console.error("Get forms error:", error);
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
-    );
+    const tenantIndustry = (tenantRes.data?.industry as string | null | undefined) ?? null;
+    const scoped = templates
+      .filter((form) =>
+        tenantCanUseGlobalFormTemplate(form, tenantIndustry, { allTemplatesView: showAll }),
+      )
+      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+      .map((form) => ({
+        ...form,
+        fields: (fieldsByTemplate.get(form.id) ?? []).sort((a, b) => a.order - b.order),
+      }));
+
+    return NextResponse.json({ forms: scoped });
+  } catch (error: unknown) {
+    const message =
+      typeof error === "object" && error && "message" in error
+        ? String((error as { message: string }).message)
+        : "Could not load forms";
+    return NextResponse.json({ code: "INTERNAL_ERROR", message }, { status: 500 });
   }
 }

@@ -45,9 +45,13 @@ interface IncidentTreatmentFormProps {
   currentInjuryType: string | null;
   currentInjuryDescription: string | null;
   currentSuggestedActions: string | null;
+  currentOverSevenDayInjury: boolean;
+  currentRiddorReportedAt?: Date | string | null;
+  currentRiddorReference?: string | null;
+  currentLocation?: string | null;
+  showProjectFields?: boolean;
   users: Array<{ id: string; name: string | null; email: string }>;
   projects: Array<{ id: string; name: string; code: string | null; status: string }>;
-  ruhModuleEnabled?: boolean;
 }
 
 const NO_PROJECT_VALUE = "__none_project__";
@@ -57,6 +61,14 @@ const NOT_ASSESSED_SEVERITY_VALUE = "__not_assessed__";
 
 function severityToSelectValue(severity: number | null): string {
   return severity === null ? NOT_ASSESSED_SEVERITY_VALUE : severity.toString();
+}
+
+function toDatetimeLocalValue(value: Date | string | null | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 export function IncidentTreatmentForm({
@@ -85,9 +97,13 @@ export function IncidentTreatmentForm({
   currentInjuryType,
   currentInjuryDescription,
   currentSuggestedActions,
+  currentOverSevenDayInjury,
+  currentRiddorReportedAt = null,
+  currentRiddorReference = null,
+  currentLocation = null,
+  showProjectFields = false,
   users,
   projects,
-  ruhModuleEnabled = true,
 }: IncidentTreatmentFormProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -104,6 +120,7 @@ export function IncidentTreatmentForm({
   const [projectId, setProjectId] = useState(currentProjectId ?? NO_PROJECT_VALUE);
   const [projectReference, setProjectReference] = useState(currentProjectReference ?? "");
   const [responsibleId, setResponsibleId] = useState(currentResponsibleId || "NONE");
+  const [location, setLocation] = useState(currentLocation ?? "");
   const [medicalAttentionRequired, setMedicalAttentionRequired] = useState(currentMedicalAttentionRequired);
   const [isFatal, setIsFatal] = useState(currentIsFatal);
   const [isLostTimeIncident, setIsLostTimeIncident] = useState(currentIsLostTimeIncident);
@@ -128,6 +145,9 @@ export function IncidentTreatmentForm({
   const [injuryType, setInjuryType] = useState(currentInjuryType ?? "");
   const [injuryDescription, setInjuryDescription] = useState(currentInjuryDescription ?? "");
   const [suggestedActions, setSuggestedActions] = useState(currentSuggestedActions ?? "");
+  const [overSevenDayInjury, setOverSevenDayInjury] = useState(currentOverSevenDayInjury);
+  const [riddorReportedAt, setRiddorReportedAt] = useState(toDatetimeLocalValue(currentRiddorReportedAt));
+  const [riddorReference, setRiddorReference] = useState(currentRiddorReference ?? "");
   const requiresHseCompletion = status !== "OPEN";
   const lostWorkdaysValue = lostWorkdays.trim();
   const isLostWorkdaysInvalid =
@@ -192,8 +212,8 @@ export function IncidentTreatmentForm({
   async function handleUpdate() {
     if (isLostWorkdaysInvalid) {
       toast({
-        title: "Manglende HSE-data",
-        description: "Fyll ut fravaersdager naar fravaersskade er valgt.",
+        title: "Missing HSE data",
+        description: "Enter lost workdays when a lost-time injury is selected.",
         variant: "destructive",
       });
       return;
@@ -230,25 +250,29 @@ export function IncidentTreatmentForm({
           injuryType: injuryType.trim() || null,
           injuryDescription: injuryDescription.trim() || null,
           suggestedActions: suggestedActions.trim() || null,
+          overSevenDayInjury,
           source,
+          location: location.trim() || null,
+          riddorReportedAt: riddorReportedAt ? new Date(riddorReportedAt).toISOString() : null,
+          riddorReference: riddorReference.trim() || null,
         }),
       });
 
       const payload = (await response.json()) as { error?: string };
       if (!response.ok) {
-        throw new Error(payload.error || "Kunne ikke oppdatere avvik");
+        throw new Error(payload.error || "Could not update incident");
       }
 
       toast({
-        title: "✅ Oppdatert",
-        description: "Avviket er oppdatert",
+        title: "Updated",
+        description: "The incident has been updated",
       });
 
       router.refresh();
     } catch (error) {
       toast({
-        title: "❌ Feil",
-        description: "Kunne ikke oppdatere avvik. Prøv igjen.",
+        title: "Error",
+        description: "Could not update the incident. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -264,6 +288,7 @@ export function IncidentTreatmentForm({
     status !== currentStatus ||
     severity !== severityToSelectValue(currentSeverity) ||
     responsibleId !== (currentResponsibleId || "NONE") ||
+    location.trim() !== (currentLocation ?? "") ||
     medicalAttentionRequired !== currentMedicalAttentionRequired ||
     isFatal !== currentIsFatal ||
     isLostTimeIncident !== currentIsLostTimeIncident ||
@@ -280,32 +305,31 @@ export function IncidentTreatmentForm({
     injuryType !== (currentInjuryType ?? "") ||
     injuryDescription !== (currentInjuryDescription ?? "") ||
     suggestedActions !== (currentSuggestedActions ?? "") ||
+    overSevenDayInjury !== currentOverSevenDayInjury ||
+    riddorReportedAt !== toDatetimeLocalValue(currentRiddorReportedAt) ||
+    riddorReference.trim() !== (currentRiddorReference ?? "") ||
     source !== (currentSource || "INTERNAL");
 
   return (
     <div className="space-y-4">
       <div className="grid md:grid-cols-2 gap-4">
         <div>
-          <Label className="mb-2 block">Hendelsestype</Label>
+          <Label className="mb-2 block">Incident type</Label>
           <Select value={type} onValueChange={setType}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ULYKKE">
-                {ruhModuleEnabled ? "Arbeidsulykke / RUH" : "Arbeidsulykke"}
-              </SelectItem>
-              <SelectItem value="NESTEN">
-                {ruhModuleEnabled ? "Nestenulykke / RUH" : "Nestenulykke"}
-              </SelectItem>
-              <SelectItem value="FARLIG_SITUASJON">Farlig situasjon / observasjon</SelectItem>
-              <SelectItem value="YRKESSYKDOM">Yrkessykdom</SelectItem>
-              <SelectItem value="AVVIK">Avvik</SelectItem>
-              <SelectItem value="MILJO">Miljøavvik</SelectItem>
-              <SelectItem value="KVALITET">Kvalitetsavvik</SelectItem>
-              <SelectItem value="CUSTOMER">Kundeklage</SelectItem>
-              <SelectItem value="HMS">HMS-avvik</SelectItem>
-              <SelectItem value="SKADE">Personskade (legacy)</SelectItem>
+              <SelectItem value="ULYKKE">Accident / injury (RIDDOR)</SelectItem>
+              <SelectItem value="NESTEN">Near miss</SelectItem>
+              <SelectItem value="FARLIG_SITUASJON">Unsafe condition / dangerous occurrence</SelectItem>
+              <SelectItem value="YRKESSYKDOM">Occupational disease</SelectItem>
+              <SelectItem value="AVVIK">Non-conformance</SelectItem>
+              <SelectItem value="MILJO">Environmental incident</SelectItem>
+              <SelectItem value="KVALITET">Quality non-conformance</SelectItem>
+              <SelectItem value="CUSTOMER">Customer complaint</SelectItem>
+              <SelectItem value="HMS">H&S non-conformance</SelectItem>
+              <SelectItem value="SKADE">Personal injury (legacy)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -317,88 +341,101 @@ export function IncidentTreatmentForm({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="OPEN">Åpen</SelectItem>
-              <SelectItem value="INVESTIGATING">Under utredning</SelectItem>
-              <SelectItem value="ACTION_TAKEN">Tiltak igangsatt</SelectItem>
+              <SelectItem value="OPEN">Open</SelectItem>
+              <SelectItem value="INVESTIGATING">Under investigation</SelectItem>
+              <SelectItem value="ACTION_TAKEN">Action started</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div>
-          <Label className="mb-2 block">Alvorlighet</Label>
+          <Label className="mb-2 block">Severity</Label>
           <Select value={severity} onValueChange={setSeverity}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={NOT_ASSESSED_SEVERITY_VALUE}>Ikke vurdert</SelectItem>
-              <SelectItem value="1">1 - Ubetydelig</SelectItem>
-              <SelectItem value="2">2 - Liten</SelectItem>
-              <SelectItem value="3">3 - Moderat</SelectItem>
-              <SelectItem value="4">4 - Alvorlig</SelectItem>
-              <SelectItem value="5">5 - Kritisk</SelectItem>
+              <SelectItem value={NOT_ASSESSED_SEVERITY_VALUE}>Not assessed</SelectItem>
+              <SelectItem value="1">1 - Negligible</SelectItem>
+              <SelectItem value="2">2 - Minor</SelectItem>
+              <SelectItem value="3">3 - Moderate</SelectItem>
+              <SelectItem value="4">4 - Serious</SelectItem>
+              <SelectItem value="5">5 - Critical</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div>
-          <Label className="mb-2 block">Kilde</Label>
+          <Label className="mb-2 block">Source</Label>
           <Select value={source} onValueChange={setSource}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="INTERNAL">Intern</SelectItem>
-              <SelectItem value="EXTERNAL">Ekstern</SelectItem>
+              <SelectItem value="INTERNAL">Internal</SelectItem>
+              <SelectItem value="EXTERNAL">External</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      <div>
-        <Label className="mb-2 block">Knyttet prosjekt</Label>
-        <Select value={projectId} onValueChange={setProjectId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Velg prosjekt (valgfritt)" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={NO_PROJECT_VALUE}>Ingen / ikke prosjektrelatert</SelectItem>
-            {projects
-              .filter((project) => project.status === "ACTIVE" || project.status === "PLANNING")
-              .map((project) => (
-                <SelectItem key={project.id} value={project.id}>
-                  {project.name}
-                  {project.code ? ` (${project.code})` : ""}
-                </SelectItem>
-              ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {showProjectFields && (
+        <>
+          <div>
+            <Label className="mb-2 block">Linked project</Label>
+            <Select value={projectId} onValueChange={setProjectId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select project (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_PROJECT_VALUE}>None / not project-related</SelectItem>
+                {projects
+                  .filter((project) => project.status === "ACTIVE" || project.status === "PLANNING")
+                  .map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                      {project.code ? ` (${project.code})` : ""}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="projectReference" className="mb-2 block">
+              Project number / reference
+            </Label>
+            <Input
+              id="projectReference"
+              value={projectReference}
+              onChange={(event) => setProjectReference(event.target.value)}
+              placeholder="e.g. 24-1187 or 12 Main Street"
+              maxLength={PROJECT_REFERENCE_MAX_LENGTH}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Use when the job is not registered as a project.
+            </p>
+          </div>
+        </>
+      )}
 
       <div>
-        <Label htmlFor="projectReference" className="mb-2 block">
-          Prosjektnummer / referanse
-        </Label>
+        <Label className="mb-2 block">Place of accident (BI 510)</Label>
         <Input
-          id="projectReference"
-          value={projectReference}
-          onChange={(event) => setProjectReference(event.target.value)}
-          placeholder="F.eks. 24-1187 eller Storgata 12"
-          maxLength={PROJECT_REFERENCE_MAX_LENGTH}
+          value={location}
+          onChange={(event) => setLocation(event.target.value)}
+          placeholder="Room, site or workplace where it happened"
         />
-        <p className="mt-1 text-xs text-muted-foreground">
-          Brukes når oppdraget ikke er registrert som eget prosjekt.
-        </p>
       </div>
 
       <div>
-        <Label className="mb-2 block">Ansvarlig for oppfølging</Label>
+        <Label className="mb-2 block">Responsible for follow-up</Label>
         <Select value={responsibleId} onValueChange={setResponsibleId}>
           <SelectTrigger>
-            <SelectValue placeholder="Velg ansvarlig..." />
+            <SelectValue placeholder="Select owner..." />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="NONE">Ingen tildelt</SelectItem>
+            <SelectItem value="NONE">Not assigned</SelectItem>
             {users.map((user) => (
               <SelectItem key={user.id} value={user.id}>
                 {user.name || user.email}
@@ -410,16 +447,16 @@ export function IncidentTreatmentForm({
 
       <div className="rounded-lg border p-4 space-y-3">
         <Label className="block">
-          Hendelsen dreier seg om
+          The incident concerns
           <span className="ml-1 text-xs font-normal text-muted-foreground">
-            (velg en eller flere)
+            (select one or more)
           </span>
         </Label>
         {loadingSubcategories ? (
-          <p className="text-xs text-muted-foreground">Laster kategorier...</p>
+          <p className="text-xs text-muted-foreground">Loading categories...</p>
         ) : subcategoryOptions.length === 0 ? (
           <p className="text-xs text-muted-foreground">
-            Ingen underkategorier for valgt hendelsestype.
+            No subcategories for the selected type.
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 rounded-lg border bg-muted/30 p-3">
@@ -441,61 +478,62 @@ export function IncidentTreatmentForm({
 
       <div className="rounded-lg border p-4 space-y-4">
         <div>
-          <Label className="block font-semibold">Personinvolvering og resultat</Label>
+          <Label className="block font-semibold">People involved and outcome</Label>
           <p className="text-xs text-muted-foreground mt-1">
-            Fylles ut under behandlingen når omfanget er kjent (AML § 5-1 registreringsplikt).
+            Complete during handling when the extent is known (accident book; RIDDOR 2013).
           </p>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="involvedPersons">Involverte personer</Label>
-            <Input
+            <Label htmlFor="involvedPersons">Injured / involved person *</Label>
+            <Textarea
               id="involvedPersons"
               value={involvedPersons}
               onChange={(event) => setInvolvedPersons(event.target.value)}
-              placeholder="Navn eller rolle på involverte"
+              rows={3}
+              placeholder="Full name, occupation and address (accident book / BI 510)"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="injuryType">Skadetype</Label>
+            <Label htmlFor="injuryType">Injury type</Label>
             <Input
               id="injuryType"
               value={injuryType}
               onChange={(event) => setInjuryType(event.target.value)}
-              placeholder="F.eks. kuttskade, klemskade"
+              placeholder="e.g. cut, crush, fracture"
             />
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="injuryDescription">Beskrivelse av skade</Label>
+          <Label htmlFor="injuryDescription">Injury description</Label>
           <Textarea
             id="injuryDescription"
             value={injuryDescription}
             onChange={(event) => setInjuryDescription(event.target.value)}
             rows={3}
-            placeholder="Skadeomfang, kroppsdel og behandling"
+            placeholder="Extent of injury, body part and treatment"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="suggestedActions">Foreslåtte tiltak</Label>
+          <Label htmlFor="suggestedActions">Suggested actions</Label>
           <Textarea
             id="suggestedActions"
             value={suggestedActions}
             onChange={(event) => setSuggestedActions(event.target.value)}
             rows={3}
-            placeholder="Tiltak for å hindre gjentakelse"
+            placeholder="Actions to prevent recurrence"
           />
         </div>
       </div>
 
       <div className="rounded-lg border p-4 space-y-4">
         <div>
-          <Label className="block font-semibold">HSE-statistikk (TRIR)</Label>
+          <Label className="block font-semibold">RIDDOR 2013</Label>
           <p className="text-xs text-muted-foreground mt-1">
-            Klassifiser hendelsen for HMS-rapportering. Ved behandling (status ulik &quot;Åpen&quot;) skal HSE-felter fylles ut.
+            Report to HSE before the investigation is finished. Record the date and reference here — this does not submit the report.
           </p>
         </div>
 
@@ -505,14 +543,14 @@ export function IncidentTreatmentForm({
               checked={isFatal}
               onCheckedChange={(checked) => setIsFatal(!!checked)}
             />
-            <span className="text-sm">Dødsfall</span>
+            <span className="text-sm">Fatality (report without delay)</span>
           </label>
           <label className="flex items-center gap-2">
             <Checkbox
               checked={medicalAttentionRequired}
               onCheckedChange={(checked) => setMedicalAttentionRequired(!!checked)}
             />
-            <span className="text-sm">Legebehandling</span>
+            <span className="text-sm">Medical treatment / specified injury</span>
           </label>
           <label className="flex items-center gap-2">
             <Checkbox
@@ -525,48 +563,87 @@ export function IncidentTreatmentForm({
                 }
               }}
             />
-            <span className="text-sm">Fraværsskade (LTI)</span>
+            <span className="text-sm">Lost time injury</span>
           </label>
+          <label className="flex items-center gap-2">
+            <Checkbox
+              checked={overSevenDayInjury}
+              onCheckedChange={(checked) => setOverSevenDayInjury(!!checked)}
+            />
+            <span className="text-sm">Over-seven-day injury (report within 15 days)</span>
+          </label>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="lostWorkdays">Lost workdays</Label>
+            <Input
+              id="lostWorkdays"
+              type="number"
+              min={0}
+              value={lostWorkdays}
+              onChange={(event) => setLostWorkdays(event.target.value)}
+              disabled={!isLostTimeIncident}
+              placeholder="Number of lost workdays"
+            />
+            {isLostWorkdaysInvalid && (
+              <p className="text-xs text-red-600">
+                Lost workdays must be entered when a lost-time injury is selected.
+              </p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="riddorReportedAt">Date reported to HSE</Label>
+            <Input
+              id="riddorReportedAt"
+              type="datetime-local"
+              value={riddorReportedAt}
+              onChange={(event) => setRiddorReportedAt(event.target.value)}
+            />
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="riddorReference">HSE / Incident Contact Centre reference</Label>
+            <Input
+              id="riddorReference"
+              value={riddorReference}
+              onChange={(event) => setRiddorReference(event.target.value)}
+              placeholder="Reference from hse.gov.uk/riddor"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-lg border p-4 space-y-4">
+        <div>
+          <Label className="block font-semibold">Optional HSE statistics (TRIR)</Label>
+          <p className="text-xs text-muted-foreground mt-1">
+            For client reporting. Not a RIDDOR duty.
+          </p>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
           <label className="flex items-center gap-2">
             <Checkbox
               checked={isRestrictedWork}
               onCheckedChange={(checked) => setIsRestrictedWork(!!checked)}
             />
-            <span className="text-sm">Begrenset arbeid</span>
+            <span className="text-sm">Restricted work</span>
           </label>
           <label className="flex items-center gap-2">
             <Checkbox
               checked={isFirstAidCase}
               onCheckedChange={(checked) => setIsFirstAidCase(!!checked)}
             />
-            <span className="text-sm">Førstehjelp gitt</span>
+            <span className="text-sm">First aid given</span>
           </label>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="lostWorkdays">Fraværsdager</Label>
-          <Input
-            id="lostWorkdays"
-            type="number"
-            min={0}
-            value={lostWorkdays}
-            onChange={(event) => setLostWorkdays(event.target.value)}
-            disabled={!isLostTimeIncident}
-            placeholder="Antall fraværsdager"
-          />
-          {isLostWorkdaysInvalid && (
-            <p className="text-xs text-red-600">
-              Fraværsdager må fylles ut når fraværsskade er valgt.
-            </p>
-          )}
         </div>
       </div>
 
       <div className="rounded-lg border p-4 space-y-4">
         <div>
-          <Label className="block font-semibold">Produksjon og materiell</Label>
+          <Label className="block font-semibold">Production and property</Label>
           <p className="text-xs text-muted-foreground mt-1">
-            Registrer eventuelle konsekvenser for produksjon, utstyr eller miljø.
+            Optional — not required for the accident book.
           </p>
         </div>
 
@@ -580,7 +657,7 @@ export function IncidentTreatmentForm({
                 if (!nextValue) setProductionStopHours("");
               }}
             />
-            <span className="text-sm">Produksjonsstopp</span>
+            <span className="text-sm">Production stop</span>
           </label>
           <label className="flex items-center gap-2">
             <Checkbox
@@ -591,7 +668,7 @@ export function IncidentTreatmentForm({
                 if (!nextValue) setEstimatedDamageCost("");
               }}
             />
-            <span className="text-sm">Materiell skade</span>
+            <span className="text-sm">Property damage</span>
           </label>
           <label className="flex items-center gap-2">
             <Checkbox
@@ -602,13 +679,13 @@ export function IncidentTreatmentForm({
                 if (!nextValue) setEnvironmentalDescription("");
               }}
             />
-            <span className="text-sm">Miljøutslipp</span>
+            <span className="text-sm">Environmental release</span>
           </label>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="productionStopHours">Timer produksjonsstopp</Label>
+            <Label htmlFor="productionStopHours">Production stop hours</Label>
             <Input
               id="productionStopHours"
               type="number"
@@ -617,11 +694,11 @@ export function IncidentTreatmentForm({
               value={productionStopHours}
               onChange={(event) => setProductionStopHours(event.target.value)}
               disabled={!isProductionStop}
-              placeholder="F.eks. 4.5"
+              placeholder="e.g. 4.5"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="estimatedDamageCost">Estimert skadekostnad (NOK)</Label>
+            <Label htmlFor="estimatedDamageCost">Estimated damage cost (£)</Label>
             <Input
               id="estimatedDamageCost"
               type="number"
@@ -630,19 +707,19 @@ export function IncidentTreatmentForm({
               value={estimatedDamageCost}
               onChange={(event) => setEstimatedDamageCost(event.target.value)}
               disabled={!isPropertyDamage}
-              placeholder="F.eks. 50000"
+              placeholder="e.g. 50000"
             />
           </div>
         </div>
 
         {isEnvironmentalRelease && (
           <div className="space-y-2">
-            <Label htmlFor="environmentalDescription">Beskrivelse av miljøutslipp</Label>
+            <Label htmlFor="environmentalDescription">Environmental release description</Label>
             <Input
               id="environmentalDescription"
               value={environmentalDescription}
               onChange={(event) => setEnvironmentalDescription(event.target.value)}
-              placeholder="Type utslipp, mengde, og konsekvens"
+              placeholder="Type of release, quantity and consequence"
             />
           </div>
         )}
@@ -653,10 +730,10 @@ export function IncidentTreatmentForm({
           {isUpdating ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Oppdaterer...
+              Updating...
             </>
           ) : (
-            "💾 Lagre endringer"
+            "Save changes"
           )}
         </Button>
       )}

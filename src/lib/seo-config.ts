@@ -1,10 +1,5 @@
 /**
- * HMS Nova SEO Configuration
- * 
- * Fokusområder:
- * - "HMS Nova bygger trygghet" som kjerneverdi
- * - Overgå konkurrenter (Grønn Jobb, Avonova, Kuba)
- * - Optimalisert for både tradisjonelle søkemotorer og AI (ChatGPT, Perplexity, etc.)
+ * HSEQ Nova SEO configuration for the UK product.
  */
 
 const rawBaseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://hseqnova.co.uk";
@@ -59,6 +54,7 @@ export const SECONDARY_KEYWORDS = [
 export const ORGANIZATION_SCHEMA = {
   "@context": "https://schema.org",
   "@type": "Organization",
+  "@id": `${SITE_CONFIG.url}/#organisation`,
   name: SITE_CONFIG.name,
   slogan: SITE_CONFIG.tagline,
   url: SITE_CONFIG.url,
@@ -70,40 +66,31 @@ export const ORGANIZATION_SCHEMA = {
     "@type": "PostalAddress",
     addressCountry: "GB",
   },
-  sameAs: [
-    SITE_CONFIG.socialMedia.linkedin,
-    SITE_CONFIG.socialMedia.facebook,
-  ],
+  sameAs: [SITE_CONFIG.socialMedia.linkedin].filter(Boolean),
   areaServed: {
     "@type": "Country",
     name: "United Kingdom",
   },
   hasOfferCatalog: {
     "@type": "OfferCatalog",
-    name: "HMS-tjenester",
+    name: "HSEQ software",
     itemListElement: [
       {
         "@type": "Offer",
         itemOffered: {
-          "@type": "Service",
-          name: "HMS-system",
-          description: "Komplett digitalt HMS-system for norske bedrifter",
+          "@type": "SoftwareApplication",
+          name: "HSEQ Nova Core",
+          description:
+            "Living health and safety policy, digital accident book, RIDDOR triage, risk assessments, inspections, training and fire drills. Unlimited users.",
         },
       },
       {
         "@type": "Offer",
         itemOffered: {
           "@type": "Service",
-          name: "Bedriftshelsetjeneste",
-          description: "HMS Nova etablerer seg som godkjent bedriftshelsetjeneste med minimum krav, tilleggstjenester og kurs.",
-        },
-      },
-      {
-        "@type": "Offer",
-        itemOffered: {
-          "@type": "Service",
-          name: "HMS-kurs",
-          description: "Lovpålagte HMS-kurs og førstehjelp",
+          name: "RAMS, COSHH and CDM add-ons",
+          description:
+            "Optional packs for method statements, hazardous substances, construction duty holders and a digital site safety board.",
         },
       },
     ],
@@ -218,9 +205,10 @@ export const getBreadcrumbSchema = (items: Array<{ name: string; url: string }>)
 // Page-spesifikke metadata templates
 export const PAGE_METADATA = {
   home: {
-    title: "HSEQ Nova — Health and safety software for the UK",
-    description: "Digital accident book, RIDDOR, living H&S policy, inspections and training. Priced per company, unlimited users. RAMS, COSHH, CDM and safety board add-ons.",
-    keywords: [...PRIMARY_KEYWORDS, ...SECONDARY_KEYWORDS.slice(0, 10)].join(", "),
+    title: "Health and Safety Software for UK Employers | HSEQ Nova",
+    description:
+      "Digital accident book, RIDDOR triage, living H&S policy and inspections. £29/month per company, unlimited users. RAMS, COSHH and CDM as add-ons.",
+    keywords: [...PRIMARY_KEYWORDS, ...SECONDARY_KEYWORDS.slice(0, 8)].join(", "),
   },
   priser: {
     title: "Pricing — HSEQ Nova | Per company, unlimited users",

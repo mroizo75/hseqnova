@@ -17,7 +17,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { rejectRegistration } from "@/server/actions/onboarding.actions";
+import { rejectRegistration } from "@/server/actions/admin-registration.actions";
 import { Loader2, XCircle } from "lucide-react";
 
 interface RejectRegistrationFormProps {

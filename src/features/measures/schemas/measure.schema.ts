@@ -6,29 +6,30 @@ import {
   MeasureCategory,
 } from "@prisma/client";
 
-/**
- * ISO 9001 Compliance:
- * - Tiltak må ha ansvarlig person (responsibleId)
- * - Tiltak må ha tidsplan (dueAt)
- * - Tiltak må dokumenteres (description)
- * - Tiltak må følges opp (status tracking)
- * - Tiltak må evalueres (completedAt)
- */
+const optionalId = z.preprocess(
+  (value) => (value === "" || value == null ? undefined : value),
+  z.string().min(1).optional(),
+);
 
+/**
+ * MHSWR 1999: preventive and protective measures after risk assessment.
+ * HSWA s.2: organisation and arrangements — owner, due date, follow-up.
+ */
 export const createMeasureSchema = z.object({
-  tenantId: z.string().cuid(),
-  projectId: z.string().cuid().optional(),
-  riskId: z.string().cuid().optional(),
-  incidentId: z.string().cuid().optional(),
-  auditId: z.string().cuid().optional(),
-  goalId: z.string().cuid().optional(),
-  title: z.string().min(3, "Tittel må være minst 3 tegn"),
+  tenantId: z.string().min(1),
+  projectId: optionalId,
+  riskId: optionalId,
+  incidentId: optionalId,
+  auditId: optionalId,
+  goalId: optionalId,
+  fireDrillId: optionalId,
+  title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.preprocess(
-    (v) => (v === "" || v == null ? undefined : v),
-    z.string().min(10, "Beskrivelse må være minst 10 tegn").optional()
+    (value) => (value === "" || value == null ? undefined : value),
+    z.string().min(10, "Description must be at least 10 characters").optional(),
   ),
   dueAt: z.date(),
-  responsibleId: z.string().cuid({ message: "Ansvarlig person må velges" }),
+  responsibleId: z.string().min(1),
   status: z.nativeEnum(ActionStatus).default("PENDING"),
   category: z.nativeEnum(MeasureCategory).default("CORRECTIVE"),
   followUpFrequency: z.nativeEnum(ControlFrequency).default("ANNUAL"),
@@ -37,14 +38,14 @@ export const createMeasureSchema = z.object({
 });
 
 export const updateMeasureSchema = z.object({
-  id: z.string().cuid(),
+  id: z.string().min(1),
   title: z.string().min(3).optional(),
   description: z.preprocess(
-    (v) => (v === "" || v == null ? undefined : v),
-    z.string().min(1).optional()
+    (value) => (value === "" || value == null ? undefined : value),
+    z.string().min(1).optional(),
   ),
   dueAt: z.date().optional(),
-  responsibleId: z.string().cuid().optional(),
+  responsibleId: z.string().min(1).optional(),
   status: z.nativeEnum(ActionStatus).optional(),
   category: z.nativeEnum(MeasureCategory).optional(),
   followUpFrequency: z.nativeEnum(ControlFrequency).optional(),
@@ -56,9 +57,9 @@ export const updateMeasureSchema = z.object({
 });
 
 export const completeMeasureSchema = z.object({
-  id: z.string().cuid(),
+  id: z.string().min(1),
   completedAt: z.date(),
-  completionNote: z.string().optional(), // Evaluering av tiltaket
+  completionNote: z.string().optional(),
   effectiveness: z.nativeEnum(ActionEffectiveness).default("EFFECTIVE"),
 });
 
@@ -66,30 +67,21 @@ export type CreateMeasureInput = z.infer<typeof createMeasureSchema>;
 export type UpdateMeasureInput = z.infer<typeof updateMeasureSchema>;
 export type CompleteMeasureInput = z.infer<typeof completeMeasureSchema>;
 
-/**
- * Helper function to determine if measure is overdue
- */
 export function isMeasureOverdue(dueAt: Date, status: ActionStatus): boolean {
   if (status === "DONE") return false;
   return new Date() > new Date(dueAt);
 }
 
-/**
- * Get status label
- */
 export function getMeasureStatusLabel(status: ActionStatus): string {
   const labels: Record<ActionStatus, string> = {
-    PENDING: "Ikke startet",
-    IN_PROGRESS: "Pågår",
-    DONE: "Fullført",
-    OVERDUE: "Forfalt",
+    PENDING: "Not started",
+    IN_PROGRESS: "In progress",
+    DONE: "Complete",
+    OVERDUE: "Overdue",
   };
   return labels[status];
 }
 
-/**
- * Get status color
- */
 export function getMeasureStatusColor(status: ActionStatus): string {
   const colors: Record<ActionStatus, string> = {
     PENDING: "bg-gray-100 text-gray-800 border-gray-300",
@@ -99,4 +91,3 @@ export function getMeasureStatusColor(status: ActionStatus): string {
   };
   return colors[status];
 }
-

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ExposureRegisterStatus, ExposureType } from "@prisma/client";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -30,8 +29,9 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale";
 import { EndExposureDialog } from "./end-exposure-dialog";
+import { effectiveExposureStatus } from "@/features/exposure-register/lib/exposure-status";
 
 type Entry = {
   id: string;
@@ -66,13 +66,13 @@ type Entry = {
 };
 
 const EXPOSURE_TYPE_LABELS: Record<ExposureType, string> = {
-  INHALATION: "Innånding",
-  SKIN: "Hudkontakt",
-  NOISE: "Støy",
-  VIBRATION: "Vibrasjon",
-  BIOLOGICAL: "Biologisk",
-  RADIATION: "Stråling",
-  OTHER: "Annet",
+  INHALATION: "Inhalation",
+  SKIN: "Skin contact",
+  NOISE: "Noise",
+  VIBRATION: "Vibration",
+  BIOLOGICAL: "Biological",
+  RADIATION: "Radiation",
+  OTHER: "Other",
 };
 
 const EXPOSURE_TYPE_COLORS: Record<ExposureType, string> = {
@@ -97,36 +97,35 @@ function StatusHelpTip() {
           "opacity-0 group-hover:opacity-100 transition-opacity duration-150",
         ].join(" ")}
       >
-        {/* Pil */}
         <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-slate-200" />
         <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-[5px] border-4 border-transparent border-t-white" />
 
-        <p className="text-xs font-semibold text-slate-800 mb-2">Hva betyr statusene?</p>
+        <p className="text-xs font-semibold text-slate-800 mb-2">What do the statuses mean?</p>
         <div className="space-y-2">
           <div className="flex items-start gap-2">
             <span className="mt-0.5 h-2 w-2 rounded-full bg-orange-500 shrink-0 animate-pulse" />
             <div>
-              <p className="text-xs font-semibold text-orange-800">Pågående</p>
+              <p className="text-xs font-semibold text-orange-800">Ongoing</p>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Ansatt er fortsatt eksponert. Klikk <strong>Avslutt</strong> når eksponeringen opphører.
+                The employee is still exposed. Click <strong>End</strong> when exposure stops.
               </p>
             </div>
           </div>
           <div className="flex items-start gap-2">
             <span className="mt-0.5 h-2 w-2 rounded-full bg-slate-400 shrink-0" />
             <div>
-              <p className="text-xs font-semibold text-slate-700">Avsluttet</p>
+              <p className="text-xs font-semibold text-slate-700">Ended</p>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Eksponeringen er ferdig, men registreringen beholdes i 40–60 år iht. regelverket.
+                Exposure has finished. The record is kept for 40 years under COSHH 2002.
               </p>
             </div>
           </div>
           <div className="flex items-start gap-2">
             <span className="mt-0.5 h-2 w-2 rounded-full bg-gray-300 shrink-0" />
             <div>
-              <p className="text-xs font-semibold text-gray-500">Arkivert</p>
+              <p className="text-xs font-semibold text-gray-500">Archived</p>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Oppbevaringsplikt utløpt. Kan kun arkiveres etter 40–60 år.
+                Retention period has expired. Archive only after 40 years.
               </p>
             </div>
           </div>
@@ -141,19 +140,19 @@ function StatusIndicator({ status }: { status: ExposureRegisterStatus }) {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-full px-2.5 py-0.5">
         <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
-        Pågående
+        Ongoing
       </span>
     );
   if (status === "INACTIVE")
     return (
       <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-full px-2.5 py-0.5">
         <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-        Avsluttet
+        Ended
       </span>
     );
   return (
     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-2.5 py-0.5">
-      Arkivert
+      Archived
     </span>
   );
 }
@@ -172,21 +171,6 @@ function RiskScoreBadge({ score }: { score: number }) {
   );
 }
 
-/**
- * Effektiv status: hvis sluttdato er satt og har passert → Avsluttet,
- * uavhengig av hva som er lagret i status-feltet i DB.
- */
-function effectiveStatus(entry: Pick<Entry, "status" | "exposureEndDate">): ExposureRegisterStatus {
-  if (
-    entry.status !== "ARCHIVED" &&
-    entry.exposureEndDate &&
-    new Date(entry.exposureEndDate) < new Date()
-  ) {
-    return "INACTIVE";
-  }
-  return entry.status;
-}
-
 export function ExposureRegisterList({ entries }: { entries: Entry[] }) {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -203,19 +187,18 @@ export function ExposureRegisterList({ entries }: { entries: Entry[] }) {
       (e.department?.toLowerCase().includes(q) ?? false) ||
       e.workLocation.toLowerCase().includes(q);
     const matchType = typeFilter === "all" || e.exposureType === typeFilter;
-    const matchStatus = statusFilter === "all" || effectiveStatus(e) === statusFilter;
+    const matchStatus = statusFilter === "all" || effectiveExposureStatus(e.status, e.exposureEndDate) === statusFilter;
     return matchSearch && matchType && matchStatus;
   });
 
   return (
     <div>
-      {/* Filterbar */}
       <div className="p-4 border-b bg-gray-50/50 space-y-3">
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
-              placeholder="Søk ansatt, stoff, CAS-nr, sted..."
+              placeholder="Search employee, substance, CAS, location..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 bg-white"
@@ -235,10 +218,10 @@ export function ExposureRegisterList({ entries }: { entries: Entry[] }) {
           <div className="flex flex-col sm:flex-row gap-2">
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger className="bg-white sm:w-[200px]">
-                <SelectValue placeholder="Type eksponering" />
+                <SelectValue placeholder="Type of exposure" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Alle eksponeringer</SelectItem>
+                <SelectItem value="all">All exposures</SelectItem>
                 {Object.entries(EXPOSURE_TYPE_LABELS).map(([val, label]) => (
                   <SelectItem key={val} value={val}>
                     {label}
@@ -252,9 +235,9 @@ export function ExposureRegisterList({ entries }: { entries: Entry[] }) {
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Alle statuser</SelectItem>
-                  <SelectItem value="ACTIVE">Pågående</SelectItem>
-                  <SelectItem value="INACTIVE">Avsluttet</SelectItem>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="ACTIVE">Ongoing</SelectItem>
+                  <SelectItem value="INACTIVE">Ended</SelectItem>
                 </SelectContent>
               </Select>
               <StatusHelpTip />
@@ -266,26 +249,25 @@ export function ExposureRegisterList({ entries }: { entries: Entry[] }) {
                 onClick={() => { setTypeFilter("all"); setStatusFilter("all"); }}
                 className="text-muted-foreground"
               >
-                Nullstill filter
+                Clear filters
               </Button>
             )}
           </div>
         )}
       </div>
 
-      {/* Tom tilstand */}
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
           <div className="h-14 w-14 rounded-full bg-muted/50 flex items-center justify-center">
             <AlertCircle className="h-7 w-7" />
           </div>
-          <p className="font-medium">Ingen registreringer funnet</p>
-          <p className="text-sm">Prøv å justere søk eller filter</p>
+          <p className="font-medium">No records found</p>
+          <p className="text-sm">Try adjusting the search or filters</p>
         </div>
       ) : (
         <div className="divide-y">
           {filtered.map((entry) => {
-            const status = effectiveStatus(entry);
+            const status = effectiveExposureStatus(entry.status, entry.exposureEndDate);
             const isActive = status === "ACTIVE";
             const healthAlert = entry.healthCheckRequired && !entry.healthCheckDone;
 
@@ -296,7 +278,6 @@ export function ExposureRegisterList({ entries }: { entries: Entry[] }) {
                   healthAlert ? "border-l-4 border-l-red-400" : isActive ? "border-l-4 border-l-orange-400" : "border-l-4 border-l-transparent"
                 }`}
               >
-                {/* Topplinje: ansatt + status + redigerknapp */}
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center shrink-0 text-slate-600">
@@ -330,14 +311,12 @@ export function ExposureRegisterList({ entries }: { entries: Entry[] }) {
                   </div>
                 </div>
 
-                {/* Innhold: to kolonner */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2 pl-10">
-                  {/* Eksponeringsfaktor */}
                   <div className="lg:col-span-1">
                     <div className="flex items-start gap-2">
                       <FlaskConical className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">Eksponeringsfaktor</p>
+                        <p className="text-xs text-muted-foreground">Substance / agent</p>
                         <p className="text-sm font-medium truncate">
                           {entry.chemical?.productName ?? entry.exposureAgent}
                         </p>
@@ -348,17 +327,16 @@ export function ExposureRegisterList({ entries }: { entries: Entry[] }) {
                     </div>
                   </div>
 
-                  {/* Periode + sted */}
                   <div>
                     <div className="flex items-start gap-2">
                       <Calendar className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
                       <div>
-                        <p className="text-xs text-muted-foreground">Periode</p>
+                        <p className="text-xs text-muted-foreground">Period</p>
                         <p className="text-sm">
-                          {format(new Date(entry.exposureStartDate), "dd.MM.yyyy", { locale: nb })}
+                          {format(new Date(entry.exposureStartDate), "dd MMM yyyy", { locale: enGB })}
                           {entry.exposureEndDate
-                            ? ` – ${format(new Date(entry.exposureEndDate), "dd.MM.yyyy", { locale: nb })}`
-                            : <span className="text-orange-600"> – pågående</span>}
+                            ? ` – ${format(new Date(entry.exposureEndDate), "dd MMM yyyy", { locale: enGB })}`
+                            : <span className="text-orange-600"> – ongoing</span>}
                         </p>
                         <div className="flex items-center gap-1 mt-0.5">
                           <MapPin className="h-3 w-3 text-muted-foreground" />
@@ -368,29 +346,27 @@ export function ExposureRegisterList({ entries }: { entries: Entry[] }) {
                     </div>
                   </div>
 
-                  {/* Helsekontroll */}
                   <div>
                     <div className="flex items-start gap-2">
                       <Heart className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
                       <div>
-                        <p className="text-xs text-muted-foreground">Helsekontroll</p>
+                        <p className="text-xs text-muted-foreground">Health surveillance</p>
                         {!entry.healthCheckRequired ? (
-                          <p className="text-xs text-muted-foreground">Ikke påkrevd</p>
+                          <p className="text-xs text-muted-foreground">Not required</p>
                         ) : entry.healthCheckDone ? (
                           <p className="text-xs text-green-700 font-medium">
-                            ✓ Utført{" "}
+                            ✓ Completed{" "}
                             {entry.healthCheckDate &&
-                              format(new Date(entry.healthCheckDate), "dd.MM.yyyy", { locale: nb })}
+                              format(new Date(entry.healthCheckDate), "dd MMM yyyy", { locale: enGB })}
                           </p>
                         ) : (
-                          <p className="text-xs text-red-600 font-semibold">⚠ Ikke utført</p>
+                          <p className="text-xs text-red-600 font-semibold">⚠ Not completed</p>
                         )}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Nedre rad: type-badge + PPE + RUH/Risiko */}
                 <div className="flex flex-wrap items-center gap-2 mt-3 pl-10">
                   <span
                     className={`inline-flex items-center text-xs font-medium rounded-full px-2 py-0.5 ${
@@ -413,7 +389,7 @@ export function ExposureRegisterList({ entries }: { entries: Entry[] }) {
                       className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-full px-2 py-0.5 transition-colors"
                     >
                       <FileWarning className="h-3 w-3" />
-                      RUH {entry.ruhReport.ruhNummer ?? ""}
+                      Accident book {entry.ruhReport.ruhNummer ?? ""}
                       <ExternalLink className="h-2.5 w-2.5" />
                     </Link>
                   )}
@@ -436,14 +412,13 @@ export function ExposureRegisterList({ entries }: { entries: Entry[] }) {
         </div>
       )}
 
-      {/* Bunntekst */}
       <div className="px-5 py-3 border-t bg-gray-50/50 flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          Viser <span className="font-medium text-foreground">{filtered.length}</span> av{" "}
-          <span className="font-medium text-foreground">{entries.length}</span> registreringer
+          Showing <span className="font-medium text-foreground">{filtered.length}</span> of{" "}
+          <span className="font-medium text-foreground">{entries.length}</span> records
         </p>
         <p className="text-xs text-muted-foreground hidden sm:block">
-          Oppbevares ihht. Arbeidstilsynets krav (40–60 år)
+          Kept for 40 years under COSHH 2002
         </p>
       </div>
     </div>

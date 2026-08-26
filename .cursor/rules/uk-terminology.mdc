@@ -1,0 +1,46 @@
+---
+description: UK HSEQ product language — never Norwegian HMS copy in the product UI
+alwaysApply: true
+---
+
+# HSEQ Nova — UK product language
+
+All user-facing text is **British English**. Do not leave Norwegian HMS copy in the app, emails, PDFs or toasts.
+
+## Term map (use the UK column)
+
+| Do not use | Use instead | Legal hook |
+|---|---|---|
+| HMS | HSEQ / health and safety | HSWA 1974 |
+| HMS-håndbok | Health and safety policy | HSWA s.2(3) |
+| Avvik | Incident / accident book entry | Accident book; RIDDOR 2013 |
+| Nestenulykke | Near miss | Accident book (not RIDDOR) |
+| Ulykke / skade | Accident / injury | RIDDOR |
+| Farlig situasjon | Unsafe condition / dangerous occurrence | RIDDOR if listed |
+| Vernerunde | Workplace inspection | MHSWR 1999 |
+| Verneombud | Safety representative | SRSCWR 1977 |
+| Stoffkartotek | COSHH register / COSHH assessment | COSHH 2002 |
+| SJA | RAMS (risk assessment and method statement) | MHSWR; CDM 2015 |
+| SHA / Byggherreforskriften | CDM 2015 | CDM 2015 |
+| Digital HMS-tavle | Digital safety board | CDM site information |
+| Rutine | Procedure / arrangement | HSWA s.2 organisation + arrangements |
+| Tiltak | Action | MHSWR |
+| Årsplan HMS | Annual H&S plan | MHSWR |
+| Varsling | Whistleblowing | PIDA 1998 |
+| Arbeidstilsynet | HSE | — |
+| Organisasjonskart | Organisation chart | HSWA s.2(3) |
+| Ledelsens gjennomgang | Management review | ISO 45001 |
+| Brannøvelse | Fire drill | Fire Safety Order 2005 |
+| Opplæring | Training / competence | HSWA s.2(2)(c) |
+| HMS-ansvarlig | HSE manager / competent person | MHSWR reg.7 |
+| Ansatt | Employee | — |
+| Leder | Line manager / supervisor | — |
+| Bedriftshelsetjeneste / BHT | Occupational health | — |
+
+## Spelling
+
+Organisation, colour, programme, defence. Never "HMS Nova" in the product.
+
+## Do not change
+
+Route paths (`/dashboard/hms-handbok`, `/rutiner`), Prisma enum values (`AVVIK`, `VERNEOMBUD`), or database column names. Change **labels only**.

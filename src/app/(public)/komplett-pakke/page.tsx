@@ -1,8 +1,6 @@
-import { permanentRedirect } from "next/navigation";
+import { redirect } from "next/navigation";
 
-/**
- * Komplett pakke er flyttet til /bedriftshelsetjeneste
- */
-export default function KomplettPakkePage() {
-  permanentRedirect("/bedriftshelsetjeneste");
+/** Not offered in the UK product. */
+export default function Page() {
+  redirect("/");
 }

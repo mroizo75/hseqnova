@@ -1,43 +1,27 @@
 /**
- * Felles konfigurasjon for dashboard-meny.
- * Brukes av sidebar, mobil-meny og innstillinger for enkel meny.
+ * UK dashboard menu. Core HSEQ is always listed. Add-ons appear when TenantModule is on.
+ * Simple/advanced is not used — that hid legal duties such as risk assessment.
  */
 
 export type NavPermission =
   | "dashboard"
   | "documents"
-  | "routines"
-  | "legalRegister"
   | "incidents"
-  | "hseStatistics"
-  | "exposureRegister"
-  | "sja"
+  | "risks"
   | "inspections"
   | "training"
   | "actions"
+  | "sja"
   | "chemicals"
-  | "risks"
-  | "feedback"
+  | "exposureRegister"
+  | "constructionCompliance"
+  | "hmsTavle"
   | "environment"
   | "audits"
   | "managementReviews"
-  | "annualHmsPlan"
-  | "meetings"
-  | "timeRegistration"
-  | "whistleblowing"
-  | "goals"
-  | "constructionCompliance"
-  | "hmsTavle"
-  | "hmsHandbok"
-  | "employeeReviews"
   | "settings"
-  | "ikMat"
-  | "aktivitetssikkerhet"
-  | "transport"
-  | "bhtNattarbeid"
   | "support"
-  | "benchmark"
-  | "hmsCockpit";
+  | "hmsHandbok";
 
 export interface DashboardNavItemConfig {
   href: string;
@@ -46,48 +30,57 @@ export interface DashboardNavItemConfig {
   defaultSimple: boolean;
 }
 
+/** Not offered in the UK product. Hidden from menu, widgets and simple-menu settings. */
+export const UK_EXCLUDED_NAV_HREFS = new Set([
+  "/dashboard/procedures",
+  "/dashboard/rutiner",
+  "/dashboard/juridisk-register",
+  "/dashboard/incidents/statistics",
+  "/dashboard/risk-register",
+  "/dashboard/wellbeing",
+  "/dashboard/complaints",
+  "/dashboard/feedback",
+  "/dashboard/bcm",
+  "/dashboard/annual-hms-plan",
+  "/dashboard/meetings",
+  "/dashboard/time-registration",
+  "/dashboard/medarbeidersamtale",
+  "/dashboard/whistleblowing",
+  "/dashboard/goals",
+  "/dashboard/hms-cockpit",
+  "/dashboard/benchmark",
+  "/dashboard/transport",
+  "/dashboard/samsvarserklaringer",
+  "/dashboard/ik-mat",
+  "/dashboard/beredskap-reiseliv",
+  "/dashboard/aktivitetssikkerhet",
+  "/dashboard/bht-nattarbeid",
+  "/dashboard/ruh",
+  "/dashboard/hms-pulse",
+  "/dashboard/hms-handbok",
+]);
+
 export const DASHBOARD_NAV_CONFIG: DashboardNavItemConfig[] = [
   { href: "/dashboard", label: "nav.dashboard", permission: "dashboard", defaultSimple: true },
-  { href: "/dashboard/hms-handbok", label: "nav.hmsHandbok", permission: "hmsHandbok", defaultSimple: true },
+  { href: "/dashboard/health-safety-policy", label: "nav.hmsHandbok", permission: "hmsHandbok", defaultSimple: true },
   { href: "/dashboard/documents", label: "nav.documents", permission: "documents", defaultSimple: true },
-  { href: "/dashboard/rutiner", label: "nav.routines", permission: "routines", defaultSimple: true },
-  { href: "/dashboard/samsvarserklaringer", label: "nav.electro", permission: "documents", defaultSimple: true },
-  { href: "/dashboard/juridisk-register", label: "nav.legalRegister", permission: "legalRegister", defaultSimple: true },
   { href: "/dashboard/incidents", label: "nav.incidents", permission: "incidents", defaultSimple: true },
-  { href: "/dashboard/projects", label: "nav.projects", permission: "incidents", defaultSimple: true },
-  { href: "/dashboard/incidents/statistics", label: "nav.hseStatistics", permission: "hseStatistics", defaultSimple: false },
-  { href: "/dashboard/sja", label: "nav.sja", permission: "sja", defaultSimple: true },
+  { href: "/dashboard/risks", label: "nav.risks", permission: "risks", defaultSimple: true },
   { href: "/dashboard/inspections", label: "nav.inspections", permission: "inspections", defaultSimple: true },
   { href: "/dashboard/fire-drills", label: "nav.fireDrills", permission: "inspections", defaultSimple: true },
   { href: "/dashboard/training", label: "nav.training", permission: "training", defaultSimple: true },
   { href: "/dashboard/actions", label: "nav.actions", permission: "actions", defaultSimple: true },
+  { href: "/dashboard/sja", label: "nav.sja", permission: "sja", defaultSimple: true },
   { href: "/dashboard/chemicals", label: "nav.chemicals", permission: "chemicals", defaultSimple: true },
   { href: "/dashboard/exposure-register", label: "nav.exposureRegister", permission: "exposureRegister", defaultSimple: true },
-  { href: "/dashboard/risks", label: "nav.risks", permission: "risks", defaultSimple: false },
-  { href: "/dashboard/risk-register", label: "nav.riskRegister", permission: "risks", defaultSimple: false },
-  { href: "/dashboard/wellbeing", label: "nav.wellbeing", permission: "inspections", defaultSimple: true },
-  { href: "/dashboard/complaints", label: "nav.complaints", permission: "incidents", defaultSimple: false },
-  { href: "/dashboard/feedback", label: "nav.feedback", permission: "feedback", defaultSimple: false },
-  { href: "/dashboard/environment", label: "nav.environment", permission: "environment", defaultSimple: false },
-  { href: "/dashboard/bcm", label: "nav.bcm", permission: "audits", defaultSimple: false },
-  { href: "/dashboard/audits", label: "nav.audits", permission: "audits", defaultSimple: false },
-  { href: "/dashboard/management-reviews", label: "nav.managementReviews", permission: "managementReviews", defaultSimple: false },
-  { href: "/dashboard/annual-hms-plan", label: "nav.annualHmsPlan", permission: "annualHmsPlan", defaultSimple: true },
-  { href: "/dashboard/meetings", label: "nav.meetings", permission: "meetings", defaultSimple: false },
-  { href: "/dashboard/time-registration", label: "nav.timeRegistration", permission: "timeRegistration", defaultSimple: true },
+  { href: "/dashboard/projects", label: "nav.projects", permission: "constructionCompliance", defaultSimple: true },
   { href: "/dashboard/construction-compliance", label: "nav.constructionCompliance", permission: "constructionCompliance", defaultSimple: true },
   { href: "/dashboard/hms-tavle", label: "nav.hmsTavle", permission: "hmsTavle", defaultSimple: true },
-  { href: "/dashboard/ik-mat", label: "nav.ikMat", permission: "ikMat", defaultSimple: false },
-  { href: "/dashboard/beredskap-reiseliv", label: "nav.beredskapReiseliv", permission: "inspections", defaultSimple: false },
-  { href: "/dashboard/aktivitetssikkerhet", label: "nav.aktivitetssikkerhet", permission: "aktivitetssikkerhet", defaultSimple: false },
-  { href: "/dashboard/transport", label: "nav.transport", permission: "transport", defaultSimple: false },
-  { href: "/dashboard/bht-nattarbeid", label: "nav.bhtNattarbeid", permission: "bhtNattarbeid", defaultSimple: false },
-  { href: "/dashboard/medarbeidersamtale", label: "nav.employeeReviews", permission: "employeeReviews", defaultSimple: false },
-  { href: "/dashboard/whistleblowing", label: "nav.whistleblowing", permission: "whistleblowing", defaultSimple: false },
-  { href: "/dashboard/goals", label: "nav.goals", permission: "goals", defaultSimple: false },
+  { href: "/dashboard/environment", label: "nav.environment", permission: "environment", defaultSimple: true },
+  { href: "/dashboard/audits", label: "nav.audits", permission: "audits", defaultSimple: true },
+  { href: "/dashboard/management-reviews", label: "nav.managementReviews", permission: "managementReviews", defaultSimple: true },
   { href: "/dashboard/organisasjonskart", label: "nav.orgChart", permission: "settings", defaultSimple: true },
-  { href: "/dashboard/hms-cockpit", label: "nav.hmsCockpit", permission: "hmsCockpit", defaultSimple: true },
-  { href: "/dashboard/benchmark", label: "nav.benchmark", permission: "benchmark", defaultSimple: false },
+  { href: "/dashboard/users", label: "nav.users", permission: "settings", defaultSimple: true },
   { href: "/dashboard/support", label: "nav.support", permission: "support", defaultSimple: true },
   { href: "/dashboard/settings", label: "nav.settings", permission: "settings", defaultSimple: true },
 ];
@@ -95,3 +88,47 @@ export const DASHBOARD_NAV_CONFIG: DashboardNavItemConfig[] = [
 export const DEFAULT_SIMPLE_MENU_HREFS = DASHBOARD_NAV_CONFIG.filter((i) => i.defaultSimple).map(
   (i) => i.href
 );
+
+/** Always-on UK HSEQ. Industry does not change this list. */
+export const CORE_HSEQ_NAV_HREFS = [
+  "/dashboard",
+  "/dashboard/health-safety-policy",
+  "/dashboard/documents",
+  "/dashboard/incidents",
+  "/dashboard/risks",
+  "/dashboard/inspections",
+  "/dashboard/fire-drills",
+  "/dashboard/training",
+  "/dashboard/actions",
+  "/dashboard/organisasjonskart",
+  "/dashboard/users",
+  "/dashboard/support",
+  "/dashboard/settings",
+] as const;
+
+const ALLOWED_MENU_HREFS = new Set(
+  DASHBOARD_NAV_CONFIG.map((item) => item.href).filter((href) => !UK_EXCLUDED_NAV_HREFS.has(href))
+);
+
+export function normalizeSimpleMenuHrefs(hrefs: string[]): string[] {
+  const unique: string[] = [];
+  for (const href of hrefs) {
+    if (!ALLOWED_MENU_HREFS.has(href) || unique.includes(href)) continue;
+    unique.push(href);
+  }
+  if (!unique.includes("/dashboard")) {
+    unique.unshift("/dashboard");
+  }
+  return unique;
+}
+
+export function resolveSimpleMenuItems(opts: {
+  dashboardLocked: boolean;
+  tenantItems: string[] | null;
+  userItems: string[] | null;
+}): string[] | null {
+  const tenantItems = Array.isArray(opts.tenantItems) ? opts.tenantItems : null;
+  const userItems = Array.isArray(opts.userItems) ? opts.userItems : null;
+  if (opts.dashboardLocked) return tenantItems;
+  return userItems ?? tenantItems;
+}

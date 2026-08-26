@@ -93,7 +93,7 @@ export default function NewAuditPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Kunne ikke opprette revisjon");
+        throw new Error(data.message || "Could not create audit");
       }
 
       toast({

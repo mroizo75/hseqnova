@@ -23,7 +23,7 @@ export function HmsTrendChart({ data }: HmsTrendChartProps) {
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
           <TrendingUp className="h-4 w-4" />
-          HMS-trender
+          Incident trends
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -56,7 +56,7 @@ export function HmsTrendChart({ data }: HmsTrendChartProps) {
               <Line
                 type="monotone"
                 dataKey="opened"
-                name="Nye avvik"
+                name="Opened"
                 stroke="#16a34a"
                 strokeWidth={2}
                 dot={{ r: 3, fill: "#16a34a" }}
@@ -65,7 +65,7 @@ export function HmsTrendChart({ data }: HmsTrendChartProps) {
               <Line
                 type="monotone"
                 dataKey="closed"
-                name="Lukkede avvik"
+                name="Closed"
                 stroke="#2563eb"
                 strokeWidth={2}
                 strokeDasharray="5 5"

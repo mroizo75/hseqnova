@@ -2,9 +2,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
 import { getPermissions } from "@/lib/permissions";
-import { db } from "@/lib/db";
+import {
+  loadInspectionPeople,
+  loadInspectionsForReport,
+} from "@/server/queries/inspections.queries";
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
-import { enUS, nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -20,7 +23,7 @@ import {
 import { ArrowLeft, Download, AlertTriangle, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { RapportCharts } from "@/components/inspections/rapport-charts";
 import { PeriodSelector } from "@/components/inspections/period-selector";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 
 const SEVERITY_COLORS: Record<number, string> = {
   1: "bg-green-100 text-green-800 border-green-200",
@@ -76,8 +79,7 @@ export default async function InspeksjonRapportPage({ searchParams }: PageProps)
     4: t("labels.severity.serious"),
     5: t("labels.severity.critical"),
   };
-  const locale = await getLocale();
-  const dateLocale = locale === "en" ? enUS : nb;
+  const dateLocale = enGB;
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.role || !session.user.tenantId) return notFound();
@@ -100,18 +102,7 @@ export default async function InspeksjonRapportPage({ searchParams }: PageProps)
 
   const { tenantId } = session.user;
 
-  const inspections = await db.inspection.findMany({
-    where: {
-      tenantId,
-      scheduledDate: { gte: startDate, lte: endDate },
-    },
-    include: {
-      findings: {
-        orderBy: { severity: "desc" },
-      },
-    },
-    orderBy: { scheduledDate: "asc" },
-  });
+  const inspections = await loadInspectionsForReport(tenantId, startDate, endDate);
 
   const allUserIds = [
     ...new Set([
@@ -120,10 +111,7 @@ export default async function InspeksjonRapportPage({ searchParams }: PageProps)
     ]),
   ] as string[];
 
-  const users = await db.user.findMany({
-    where: { id: { in: allUserIds } },
-    select: { id: true, name: true },
-  });
+  const users = await loadInspectionPeople(allUserIds);
   const userMap = Object.fromEntries(users.map((u) => [u.id, u.name ?? ""]));
 
   const allFindings = inspections.flatMap((ins) =>

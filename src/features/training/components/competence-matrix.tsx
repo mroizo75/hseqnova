@@ -53,8 +53,12 @@ export function CompetenceMatrix({ matrix, courseTemplates, tenantId }: Competen
           return {
             courseTitle: course.title,
             status,
-            completedAt: training.completedAt?.toISOString(),
-            validUntil: training.validUntil?.toISOString(),
+            completedAt: training.completedAt
+              ? new Date(training.completedAt).toISOString()
+              : undefined,
+            validUntil: training.validUntil
+              ? new Date(training.validUntil).toISOString()
+              : undefined,
             isRequired: course.isRequired,
           };
         }),
@@ -79,7 +83,7 @@ export function CompetenceMatrix({ matrix, courseTemplates, tenantId }: Competen
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `kompetansematrise-${new Date().toISOString().split("T")[0]}.pdf`;
+      a.download = `competence-matrix-${new Date().toISOString().split("T")[0]}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

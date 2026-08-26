@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { resendWelcomeEmail } from "@/server/actions/onboarding.actions";
+import { resendWelcomeEmail } from "@/server/actions/admin-registration.actions";
 import { Loader2, Mail } from "lucide-react";
 
 interface ResendWelcomeEmailFormProps {

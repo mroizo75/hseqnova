@@ -8,8 +8,8 @@ import { getPrivilegedRoleLabel, PrivilegedRole } from "./privileged-users";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "HMS Nova <noreply@hmsnova.no>";
-const BASE_URL = process.env.NEXTAUTH_URL || "http://localhost:3000";
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "HSEQ Nova <noreply@hseqnova.co.uk>";
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://hseqnova.co.uk";
 
 interface SendUserInvitationEmailParams {
   to: string;
@@ -44,57 +44,49 @@ export async function sendUserInvitationEmail({
 
     const html = `
 <!DOCTYPE html>
-<html lang="no">
+<html lang="en-GB">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Velkommen til HMS Nova</title>
+  <title>You have been invited to HSEQ Nova</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
     <tr>
       <td align="center">
         <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden;">
-          
-          <!-- Header -->
           <tr>
             <td style="background: linear-gradient(135deg, #2d9c92 0%, #3db88a 100%); padding: 40px 40px 30px; text-align: center;">
-              <img src="${logoUrl}" alt="HMS Nova" style="max-width: 180px; height: auto; margin-bottom: 20px;" />
+              <img src="${logoUrl}" alt="HSEQ Nova" style="max-width: 180px; height: auto; margin-bottom: 20px;" />
               <h1 style="color: #ffffff; font-size: 28px; margin: 0; font-weight: 600; letter-spacing: -0.5px;">
-                Velkommen til HMS Nova! 🎉
+                Welcome to HSEQ Nova
               </h1>
             </td>
           </tr>
-          
-          <!-- Content -->
           <tr>
             <td style="padding: 40px;">
               <p style="color: #1a1a1a; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                Hei <strong>${userName}</strong>,
+                Hello <strong>${userName}</strong>,
               </p>
-              
               <p style="color: #1a1a1a; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                Du har blitt invitert til HMS Nova av <strong>${invitedByName}</strong> fra <strong>${companyName}</strong>.
+                <strong>${invitedByName}</strong> at <strong>${companyName}</strong> has invited you to HSEQ Nova.
               </p>
-              
               <p style="color: #1a1a1a; font-size: 16px; line-height: 1.6; margin: 0 0 30px;">
-                HMS Nova er deres digitale HMS-system for dokumenthåndtering, risikovurderinger, hendelsesrapportering og mye mer.
+                This is the company’s health, safety, environment and quality system: accident book, health and safety policy, inspections, training and related records.
               </p>
-              
-              <!-- Påloggingsinformasjon -->
               <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f0fdf4; border-left: 4px solid #3db88a; border-radius: 4px; margin: 30px 0;">
                 <tr>
                   <td style="padding: 20px;">
                     <h3 style="color: #1a1a1a; font-size: 16px; margin: 0 0 15px; font-weight: 600;">
-                      🔐 Dine påloggingsopplysninger
+                      Sign-in details
                     </h3>
                     <table cellpadding="0" cellspacing="0" style="width: 100%; font-size: 14px;">
                       <tr>
-                        <td style="color: #666; padding: 4px 0; width: 40%;">E-post:</td>
+                        <td style="color: #666; padding: 4px 0; width: 40%;">Email</td>
                         <td style="color: #1a1a1a; padding: 4px 0; font-weight: 600;">${userEmail}</td>
                       </tr>
                       <tr>
-                        <td style="color: #666; padding: 4px 0;">Midlertidig passord:</td>
+                        <td style="color: #666; padding: 4px 0;">Temporary password</td>
                         <td style="color: #1a1a1a; padding: 4px 0;">
                           <code style="background-color: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-family: monospace; font-weight: 600;">${tempPassword}</code>
                         </td>
@@ -103,74 +95,59 @@ export async function sendUserInvitationEmail({
                   </td>
                 </tr>
               </table>
-              
-              <!-- CTA Button -->
               <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
                 <tr>
                   <td align="center">
                     <a href="${loginUrl}" style="display: inline-block; background-color: #3db88a; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: 600; font-size: 16px;">
-                      Logg inn nå
+                      Sign in
                     </a>
                   </td>
                 </tr>
               </table>
-              
               <p style="color: #666; font-size: 14px; text-align: center; margin: 20px 0;">
-                Eller kopier denne linken til nettleseren din:<br/>
+                Or paste this link into your browser:<br/>
                 <a href="${loginUrl}" style="color: #2d9c92; text-decoration: none;">${loginUrl}</a>
               </p>
-              
-              <!-- Sikkerhetsinformasjon -->
               <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px; margin: 30px 0;">
                 <tr>
                   <td style="padding: 20px;">
                     <h3 style="color: #1a1a1a; font-size: 16px; margin: 0 0 10px; font-weight: 600;">
-                      ⚠️ Viktig sikkerhetsinformasjon
+                      Change your password
                     </h3>
                     <p style="color: #666; font-size: 14px; margin: 0 0 10px; line-height: 1.6;">
-                      Av sikkerhetsmessige årsaker må du <strong>endre passordet ditt ved første pålogging</strong>. 
-                      Gå til <strong>Innstillinger → Profil</strong> etter du har logget inn.
+                      After you sign in, go to <strong>Settings → Profile</strong> and set a password of your own.
                     </p>
                     <p style="color: #666; font-size: 14px; margin: 0; line-height: 1.6;">
-                      Hvis du ikke gjenkjenner denne invitasjonen, vennligst kontakt bedriftens administrator.
+                      If you were not expecting this invitation, tell your company administrator.
                     </p>
                   </td>
                 </tr>
               </table>
-              
-              <!-- Contact Info -->
               <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border-radius: 6px; padding: 20px; margin-top: 30px;">
                 <tr>
                   <td>
                     <p style="color: #1a1a1a; font-size: 14px; margin: 0 0 10px; font-weight: 600;">
-                      Trenger du hjelp?
+                      Need help?
                     </p>
                     <p style="color: #666; font-size: 14px; margin: 0; line-height: 1.6;">
-                      📧 <a href="mailto:support@hmsnova.com" style="color: #2d9c92; text-decoration: none;">support@hmsnova.com</a><br/>
-                      📞 <a href="tel:+4799112916" style="color: #2d9c92; text-decoration: none;">+47 99 11 29 16</a>
+                      <a href="mailto:hello@hseqnova.co.uk" style="color: #2d9c92; text-decoration: none;">hello@hseqnova.co.uk</a>
                     </p>
                   </td>
                 </tr>
               </table>
-              
               <p style="color: #1a1a1a; font-size: 16px; line-height: 1.6; margin: 30px 0 0;">
-                Med vennlig hilsen,<br/>
-                <strong>HMS Nova-teamet</strong>
+                Kind regards,<br/>
+                <strong>HSEQ Nova</strong>
               </p>
             </td>
           </tr>
-          
-          <!-- Footer -->
           <tr>
             <td style="background-color: #f9fafb; padding: 30px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
               <p style="color: #9ca3af; font-size: 12px; margin: 0 0 10px; line-height: 1.5;">
-                HMS Nova - Norges mest intuitive HMS-system<br/>
-                ISO 9001 compliance på autopilot
+                HSEQ Nova — health, safety, environment and quality software for the UK
               </p>
               <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                <a href="${BASE_URL}" style="color: #2d9c92; text-decoration: none; margin: 0 8px;">hmsnova.com</a> |
-                <a href="${BASE_URL}/priser" style="color: #2d9c92; text-decoration: none; margin: 0 8px;">Priser</a> |
-                <a href="${BASE_URL}/hva-er-hms-nova" style="color: #2d9c92; text-decoration: none; margin: 0 8px;">Om oss</a>
+                <a href="${BASE_URL}" style="color: #2d9c92; text-decoration: none;">hseqnova.co.uk</a>
               </p>
             </td>
           </tr>
@@ -185,7 +162,7 @@ export async function sendUserInvitationEmail({
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: [to],
-      subject: `Velkommen til HMS Nova - ${companyName}`,
+      subject: `You have been invited to HSEQ Nova — ${companyName}`,
       html: html,
     });
 

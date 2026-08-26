@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RiskList } from "@/features/risks/components/risk-list";
@@ -11,9 +10,13 @@ import Link from "next/link";
 import { PageHelpDialog } from "@/components/dashboard/page-help-dialog";
 import { helpContent } from "@/lib/help-content";
 import { getPermissions } from "@/lib/permissions";
-import { AiRiskSuggestionsCard } from "@/features/risks/components/ai-risk-suggestions-card";
 import { RiskAssessmentDeleteButton } from "@/features/risks/components/risk-assessment-delete-button";
 import { getTranslations } from "next-intl/server";
+import {
+  loadRiskAssessmentsForList,
+  loadRiskSession,
+  loadRisksForList,
+} from "@/server/queries/risks.queries";
 
 export default async function RisksPage() {
   const t = await getTranslations("dashboardRisksPage");
@@ -23,53 +26,18 @@ export default async function RisksPage() {
     redirect("/login");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { tenants: true },
-  });
-
-  if (!user || user.tenants.length === 0) {
+  const context = await loadRiskSession(session.user.email, session.user.tenantId);
+  if (!context) {
     return <div>{t("noTenantAccess")}</div>;
   }
 
-  const selectedMembership = user.tenants.find(
-    (membership) => membership.tenantId === session.user.tenantId,
-  );
-  if (!selectedMembership) {
-    return <div>{t("noTenantAccess")}</div>;
-  }
-
-  const tenantId = selectedMembership.tenantId;
-  const tenantRole = selectedMembership.role;
-  const permissions = getPermissions(tenantRole);
-  const canUseAiSuggestions = permissions.canCreateRisks;
+  const permissions = getPermissions(context.role);
   const canDeleteRiskAssessments = permissions.canDeleteRisks;
 
-  const riskAssessments = await prisma.riskAssessment.findMany({
-    where: { tenantId },
-    include: { _count: { select: { risks: true } } },
-    orderBy: [{ assessmentYear: "desc" }, { createdAt: "desc" }],
-  });
-
-  const risks = await prisma.risk.findMany({
-    where: { tenantId },
-    include: {
-      measures: true,
-      owner: {
-        select: { id: true, name: true, email: true },
-      },
-      inspectionTemplate: {
-        select: { id: true, name: true },
-      },
-      kpi: {
-        select: { id: true, title: true },
-      },
-    },
-    orderBy: [
-      { score: "desc" },
-      { createdAt: "desc" },
-    ],
-  });
+  const [riskAssessments, risks] = await Promise.all([
+    loadRiskAssessmentsForList(context.tenantId),
+    loadRisksForList(context.tenantId),
+  ]);
 
   const getActiveScore = (risk: (typeof risks)[number]) => risk.residualScore ?? risk.score;
   const risksImprovedCount = risks.filter(
@@ -105,8 +73,6 @@ export default async function RisksPage() {
           </Link>
         </Button>
       </div>
-
-      {canUseAiSuggestions && <AiRiskSuggestionsCard />}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>

@@ -8,176 +8,25 @@ import { authOptions } from "@/lib/auth";
 import { getPermissions } from "@/lib/permissions";
 import { notifyUsersByRoles } from "@/server/actions/notification.actions";
 import type { HandbookVersionStatus } from "@prisma/client";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { createId } from "@/lib/ids";
+import {
+  DEFAULT_POLICY_SECTIONS as DEFAULT_SECTIONS,
+  HEALTH_SAFETY_POLICY_LEGACY_PATH,
+  HEALTH_SAFETY_POLICY_PATH,
+  applyUkPolicyDefaults,
+  policySectionNeedsUkSync,
+} from "@/lib/health-safety-policy";
 
-// ── Standard seksjoner (IK-HMS § 5, AML kap. 3) ─────────────────────────────
+const POLICY_REVALIDATE_PATHS = [HEALTH_SAFETY_POLICY_PATH, HEALTH_SAFETY_POLICY_LEGACY_PATH] as const;
 
-const DEFAULT_SECTIONS = [
-  {
-    sectionKey: "s1",
-    sectionNumber: "1",
-    title: "HMS-policy og mål",
-    content: "<p>Bedriftens overordnede HMS-policy, konkrete mål for helse, miljø og sikkerhet, og hvordan disse følges opp. Målene skal være målbare og gjennomgås minimum årlig.</p>",
-    legalRef: "IK-HMS § 5 nr. 4, AML § 3-1",
-    sortOrder: 1,
-    moduleLink: null,
-  },
-  {
-    sectionKey: "s2",
-    sectionNumber: "2",
-    title: "Organisasjon, roller og ansvar",
-    content: "<p>Daglig leder, HMS-ansvarlig, verneombud, brannvernleder og organisasjonskart. Oversikt over hvordan ansvar, oppgaver og myndighet for HMS-arbeidet er fordelt.</p>",
-    legalRef: "IK-HMS § 5 nr. 5, AML § 3-1, § 6-1, § 6-2",
-    sortOrder: 2,
-    moduleLink: "/dashboard/organisasjonskart",
-  },
-  {
-    sectionKey: "s2b",
-    sectionNumber: "3",
-    title: "Medvirkning og HMS-organisering",
-    content: "<p>Hvordan ansatte medvirker i HMS-arbeidet. Verneombudets rolle, arbeidsmiljøutvalg (AMU) der det er påkrevd, og prosesser for at samlet kunnskap og erfaring utnyttes i HMS-arbeidet.</p>",
-    legalRef: "IK-HMS § 5 nr. 3, AML § 6-1, § 6-2, § 7-1, § 7-2",
-    sortOrder: 3,
-    moduleLink: null,
-  },
-  {
-    sectionKey: "s2c",
-    sectionNumber: "4",
-    title: "Gjeldende lover og forskrifter",
-    content: "<p>Oversikt over de lover og forskrifter i HMS-lovgivningen som gjelder for virksomheten, med særlig fokus på krav som er av spesiell viktighet for bedriftens bransje og aktiviteter.</p>",
-    legalRef: "IK-HMS § 5 nr. 1",
-    sortOrder: 4,
-    moduleLink: null,
-  },
-  {
-    sectionKey: "s3",
-    sectionNumber: "5",
-    title: "Risikostyring",
-    content: "<p>Prinsipp for risikostyring, metode for risikovurdering og tiltaksstyring.</p>",
-    legalRef: "IK-HMS § 5 nr. 6, AML § 3-1",
-    sortOrder: 5,
-    moduleLink: "/dashboard/risks",
-  },
-  {
-    sectionKey: "s4",
-    sectionNumber: "6",
-    title: "Avvik, hendelser og forbedring",
-    content: "<p>Avviksprosess, alvorlige hendelser, trendanalyse og RUH-rapportering. Meldeplikt til Arbeidstilsynet og politi ved alvorlige personskader og dødsfall.</p>",
-    legalRef: "AML § 5-1, § 5-2, § 5-3, IK-HMS § 5 nr. 7",
-    sortOrder: 6,
-    moduleLink: "/dashboard/incidents",
-  },
-  {
-    sectionKey: "s5",
-    sectionNumber: "7",
-    title: "Kompetanse og opplæring",
-    content: "<p>Kompetansekartlegging, påkrevd opplæring, opplæringsplan for nyansatte og dokumentasjon av gjennomført opplæring.</p>",
-    legalRef: "AML § 3-2, IK-HMS § 5 nr. 2",
-    sortOrder: 7,
-    moduleLink: "/dashboard/training",
-  },
-  {
-    sectionKey: "s6",
-    sectionNumber: "8",
-    title: "Operasjonell kontroll",
-    content: "<p>Bransje-spesifikke prosedyrer, SJA og daglige kontroller.</p>",
-    legalRef: "AML § 3-1, IK-HMS § 5 nr. 7",
-    sortOrder: 8,
-    moduleLink: "/dashboard/sja",
-  },
-  {
-    sectionKey: "s7",
-    sectionNumber: "9",
-    title: "Brannvern og beredskap",
-    content: "<p>Brannvernorganisering, slokkeutstyr, evakueringsplan og øvelser.</p>",
-    legalRef: "Brann- og eksplosjonsvernloven § 13, forskrift om brannforebygging § 12",
-    sortOrder: 9,
-    moduleLink: "/dashboard/fire-drills",
-  },
-  {
-    sectionKey: "s8",
-    sectionNumber: "10",
-    title: "Vernerunder og løpende internkontroll",
-    content: "<p>Frekvens, sjekklister, funn og oppfølging av vernerunder.</p>",
-    legalRef: "AML § 6-2, IK-HMS § 5 nr. 7",
-    sortOrder: 10,
-    moduleLink: "/dashboard/inspections",
-  },
-  {
-    sectionKey: "s9",
-    sectionNumber: "11",
-    title: "Ledelsens gjennomgang",
-    content: "<p>Frekvens, deltakere, innhold og beslutninger fra ledelsens gjennomgang.</p>",
-    legalRef: "IK-HMS § 5 nr. 8, ISO 45001 kap. 9.3",
-    sortOrder: 11,
-    moduleLink: "/dashboard/management-reviews",
-  },
-  {
-    sectionKey: "s10",
-    sectionNumber: "12",
-    title: "Dokumentstyring og systemkontroll",
-    content: "<p>Versjonskontroll, tilgang, arkivering og styrende dokumenter.</p>",
-    legalRef: "IK-HMS § 5 nr. 2",
-    sortOrder: 12,
-    moduleLink: "/dashboard/documents",
-  },
-  {
-    sectionKey: "s11",
-    sectionNumber: "13",
-    title: "Arbeidsmiljø – fysisk og psykososialt",
-    content: "<p>Kartlegging av fysisk og psykososialt arbeidsmiljø, medarbeiderundersøkelser, varsling og sykefravær. Systemet for psykososialt arbeidsmiljø gir oversikt over trivsel, arbeidsmiljøundersøkelser og oppfølging.</p>",
-    legalRef: "AML § 4-1, § 4-3, Varslerloven § 2",
-    sortOrder: 13,
-    moduleLink: "/dashboard/wellbeing",
-  },
-  {
-    sectionKey: "s11b",
-    sectionNumber: "14",
-    title: "Varsling av kritikkverdige forhold",
-    content: "<p>Varslingsrutiner, intern varslingskanal, behandlingsprosess for varsler og vern av varslere. Alle ansatte skal ha tilgang til informasjon om hvordan varsling foregår.</p>",
-    legalRef: "AML § 2 A-1 til § 2 A-7, Varslerloven",
-    sortOrder: 14,
-    moduleLink: null,
-  },
-  {
-    sectionKey: "s12",
-    sectionNumber: "15",
-    title: "Ytre miljø og avfall",
-    content: "<p>Miljørisiko, avfallshåndtering, kjemikaliehåndtering og beredskap.</p>",
-    legalRef: "Forurensningsloven, Produktkontrolloven, AML § 4-5",
-    sortOrder: 15,
-    moduleLink: "/dashboard/chemicals",
-  },
-  {
-    sectionKey: "s13",
-    sectionNumber: "16",
-    title: "Årshjul for HMS-aktiviteter",
-    content: "<p>Planlagte HMS-aktiviteter gjennom året med ansvarlige og frister.</p>",
-    legalRef: "IK-HMS § 5 nr. 8",
-    sortOrder: 16,
-    moduleLink: "/dashboard/annual-hms-plan",
-  },
-  {
-    sectionKey: "s14",
-    sectionNumber: "17",
-    title: "Intern revisjon og systemevaluering",
-    content: "<p>Formål, gjennomføring, rapportering og oppfølging av internrevisjoner.</p>",
-    legalRef: "IK-HMS § 5 nr. 8, ISO 45001 kap. 9.2",
-    sortOrder: 17,
-    moduleLink: "/dashboard/audits",
-  },
-  {
-    sectionKey: "s15",
-    sectionNumber: "18",
-    title: "Rutiner og prosedyrer",
-    content: "<p>Oversikt over bedriftens styrende rutiner og instrukser, med lesebekreftelse og gjennomgangspåminnelser. Rutinene kobles til relevante lovkrav og oppdateres ved behov.</p>",
-    legalRef: "IK-HMS § 5 nr. 5, AML § 3-1",
-    sortOrder: 18,
-    moduleLink: "/dashboard/rutiner",
-  },
-] as const;
+function revalidatePolicyPaths() {
+  for (const path of POLICY_REVALIDATE_PATHS) {
+    revalidatePath(path);
+  }
+}
 
 // ── Typer ───────────────────────────────────────────────────────────────────
-
 export type HandbookSignaturePublic = {
   id: string;
   userId: string;
@@ -251,64 +100,120 @@ export type LiveHandbookStats = {
 // ── Hjelpefunksjoner ─────────────────────────────────────────────────────────
 
 async function getOrCreateHandbook(tenantId: string) {
-  const existing = await prisma.hmsHandbook.findUnique({
-    where: { tenantId },
-    include: {
-      versions: {
-        where: { status: "APPROVED" },
-        orderBy: { createdAt: "desc" },
-        take: 1,
-      },
-    },
-  });
+  const db = getAdminDb();
+  const { data: existing } = await db
+    .from("HmsHandbook")
+    .select("id, tenantId, currentVersionId")
+    .eq("tenantId", tenantId)
+    .maybeSingle();
 
-  if (existing) {
-    if (existing.versions.length === 0) {
+  if (existing?.id) {
+    const { data: versions } = await db
+      .from("HandbookVersion")
+      .select("id")
+      .eq("handbookId", existing.id)
+      .limit(1);
+    if (!versions || versions.length === 0) {
       await seedDefaultVersion(existing.id, tenantId);
     }
     return existing;
   }
 
-  const handbook = await prisma.hmsHandbook.create({
-    data: { tenantId },
-  });
-
+  const handbook = {
+    id: createId(),
+    tenantId,
+    currentVersionId: null as string | null,
+    updatedAt: new Date().toISOString(),
+  };
+  const { error } = await db.from("HmsHandbook").insert(handbook);
+  if (error) {
+    throw { code: "HANDBOOK_CREATE_FAILED", message: error.message };
+  }
   await seedDefaultVersion(handbook.id, tenantId);
   return handbook;
 }
 
 async function seedDefaultVersion(handbookId: string, tenantId: string) {
-  const existingVersion = await prisma.handbookVersion.findFirst({
-    where: { handbookId },
-  });
+  const db = getAdminDb();
+  const { data: existingVersion } = await db
+    .from("HandbookVersion")
+    .select("id")
+    .eq("handbookId", handbookId)
+    .maybeSingle();
   if (existingVersion) return;
 
-  const version = await prisma.handbookVersion.create({
-    data: {
-      handbookId,
-      version: "1.0",
-      status: "DRAFT",
-      changeNote: "Første versjon – standardseksjoner opprettet",
-    },
+  const versionId = createId();
+  const now = new Date().toISOString();
+  const { error: versionError } = await db.from("HandbookVersion").insert({
+    id: versionId,
+    handbookId,
+    version: "1.0",
+    status: "DRAFT",
+    changeNote: "First version — default H&S policy sections",
+    updatedAt: now,
   });
+  if (versionError) {
+    throw { code: "HANDBOOK_VERSION_FAILED", message: versionError.message };
+  }
 
-  await prisma.handbookSection.createMany({
-    data: DEFAULT_SECTIONS.map((s) => ({
-      versionId: version.id,
-      sectionKey: s.sectionKey,
-      sectionNumber: s.sectionNumber,
-      title: s.title,
-      content: s.content,
-      legalRef: s.legalRef,
-      sortOrder: s.sortOrder,
-      moduleLink: s.moduleLink,
+  const { error: sectionError } = await db.from("HandbookSection").insert(
+    DEFAULT_SECTIONS.map((section) => ({
+      id: createId(),
+      versionId,
+      sectionKey: section.sectionKey,
+      sectionNumber: section.sectionNumber,
+      title: section.title,
+      content: section.content,
+      legalRef: section.legalRef,
+      sortOrder: section.sortOrder,
+      moduleLink: section.moduleLink,
+      updatedAt: now,
     })),
-  });
+  );
+  if (sectionError) {
+    throw { code: "HANDBOOK_SECTION_FAILED", message: sectionError.message };
+  }
 
-  await prisma.hmsHandbook.update({
-    where: { id: handbookId },
-    data: { currentVersionId: version.id },
-  });
+  await db
+    .from("HmsHandbook")
+    .update({ currentVersionId: versionId, updatedAt: now })
+    .eq("id", handbookId);
+}
+
+async function syncUkPolicySections(
+  sections: Array<{
+    id: string;
+    sectionKey: string;
+    sectionNumber: string;
+    title: string;
+    content: string;
+    legalRef: string | null;
+  }>,
+) {
+  const db = getAdminDb();
+  const now = new Date().toISOString();
+  let updated = 0;
+  for (const section of sections) {
+    const def =
+      DEFAULT_SECTIONS.find((d) => d.sectionKey === section.sectionKey) ??
+      DEFAULT_SECTIONS.find((d) => d.sectionNumber === section.sectionNumber);
+    if (!def) continue;
+    if (!policySectionNeedsUkSync(section)) continue;
+    const { error } = await db
+      .from("HandbookSection")
+      .update({
+        title: def.title,
+        content: def.content,
+        legalRef: def.legalRef,
+        moduleLink: def.moduleLink,
+        sectionNumber: def.sectionNumber,
+        sortOrder: def.sortOrder,
+        updatedAt: now,
+      })
+      .eq("id", section.id);
+    if (!error) updated += 1;
+  }
+  return updated;
 }
 
 function buildSectionTree(sections: Array<{
@@ -326,15 +231,16 @@ function buildSectionTree(sections: Array<{
   const roots: HandbookSectionData[] = [];
 
   for (const s of sections) {
+    const uk = applyUkPolicyDefaults(s);
     map.set(s.id, {
-      id: s.id,
-      sectionKey: s.sectionKey,
-      sectionNumber: s.sectionNumber,
-      title: s.title,
-      content: s.content,
-      legalRef: s.legalRef,
-      sortOrder: s.sortOrder,
-      moduleLink: s.moduleLink,
+      id: uk.id,
+      sectionKey: uk.sectionKey,
+      sectionNumber: uk.sectionNumber,
+      title: uk.title,
+      content: uk.content,
+      legalRef: uk.legalRef,
+      sortOrder: uk.sortOrder,
+      moduleLink: uk.moduleLink,
       children: [],
     });
   }
@@ -365,79 +271,161 @@ export async function getHandbookData(tenantId: string): Promise<{
 } | { success: false; error: string }> {
   try {
     await getOrCreateHandbook(tenantId);
+    const db = getAdminDb();
 
-    const fullHandbook = await prisma.hmsHandbook.findUniqueOrThrow({
-      where: { tenantId },
-      include: {
-        reviewedBy: { select: { id: true, name: true } },
-        signatures: {
-          include: { user: { select: { id: true, name: true, email: true } } },
-          orderBy: { signedAt: "desc" },
-        },
-        versions: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
-          include: {
-            approvedBy: { select: { name: true } },
-            sections: { orderBy: { sortOrder: "asc" } },
-            signatures: true,
-          },
-        },
-      },
-    });
+    const { data: fullHandbook, error: handbookError } = await db
+      .from("HmsHandbook")
+      .select("*")
+      .eq("tenantId", tenantId)
+      .single();
+    if (handbookError || !fullHandbook) {
+      throw handbookError ?? { message: "Handbook not found" };
+    }
 
-    const currentVersion = fullHandbook.currentVersionId
-      ? await prisma.handbookVersion.findUnique({
-          where: { id: fullHandbook.currentVersionId },
-          include: {
-            approvedBy: { select: { name: true } },
-            sections: { orderBy: { sortOrder: "asc" } },
-            signatures: true,
-          },
-        })
-      : fullHandbook.versions[0] ?? null;
+    const { data: signatures } = await db
+      .from("HandbookSignature")
+      .select("id, userId, signedAt, comment")
+      .eq("handbookId", fullHandbook.id)
+      .order("signedAt", { ascending: false });
 
-    const totalEmployees = await prisma.userTenant.count({
-      where: { tenantId },
-    });
+    const signerIds = [...new Set((signatures ?? []).map((row) => row.userId as string))];
+    const { data: signerUsers } = signerIds.length
+      ? await db.from("User").select("id, name, email").in("id", signerIds)
+      : { data: [] as Array<{ id: string; name: string | null; email: string }> };
+    const signerById = new Map((signerUsers ?? []).map((user) => [user.id, user]));
+
+    let reviewedByName: string | null = null;
+    if (fullHandbook.reviewedById) {
+      const { data: reviewer } = await db
+        .from("User")
+        .select("name")
+        .eq("id", fullHandbook.reviewedById)
+        .maybeSingle();
+      reviewedByName = reviewer?.name ?? null;
+    }
+
+    const versionId = fullHandbook.currentVersionId as string | null;
+    let currentVersion: {
+      id: string;
+      version: string;
+      status: HandbookVersionStatus;
+      changeNote: string | null;
+      approvedAt: string | null;
+      publishedAt: string | null;
+      createdAt: string;
+      approvedByName: string | null;
+      signatures: unknown[];
+      sections: Array<{
+        id: string;
+        sectionKey: string;
+        sectionNumber: string;
+        title: string;
+        content: string;
+        legalRef: string | null;
+        sortOrder: number;
+        moduleLink: string | null;
+        parentId: string | null;
+      }>;
+    } | null = null;
+
+    if (versionId) {
+      const { data: version } = await db.from("HandbookVersion").select("*").eq("id", versionId).maybeSingle();
+      if (version) {
+        const { data: sections } = await db
+          .from("HandbookSection")
+          .select("*")
+          .eq("versionId", version.id)
+          .order("sortOrder", { ascending: true });
+        if (sections && sections.length > 0) {
+          const synced = await syncUkPolicySections(
+            sections.map((row) => ({
+              id: row.id as string,
+              sectionKey: row.sectionKey as string,
+              sectionNumber: String(row.sectionNumber ?? ""),
+              title: row.title as string,
+              content: row.content as string,
+              legalRef: (row.legalRef as string | null) ?? null,
+            })),
+          );
+          if (synced > 0) {
+            const { data: refreshed } = await db
+              .from("HandbookSection")
+              .select("*")
+              .eq("versionId", version.id)
+              .order("sortOrder", { ascending: true });
+            if (refreshed) {
+              sections.splice(0, sections.length, ...refreshed);
+            }
+          }
+        }
+        const { data: versionSignatures } = await db
+          .from("HandbookSignature")
+          .select("id")
+          .eq("versionId", version.id);
+        let approvedByName: string | null = null;
+        if (version.approvedById) {
+          const { data: approver } = await db
+            .from("User")
+            .select("name")
+            .eq("id", version.approvedById)
+            .maybeSingle();
+          approvedByName = approver?.name ?? null;
+        }
+        currentVersion = {
+          ...version,
+          approvedByName,
+          signatures: versionSignatures ?? [],
+          sections: (sections ?? []) as Array<{
+            id: string;
+            sectionKey: string;
+            sectionNumber: string;
+            title: string;
+            content: string;
+            legalRef: string | null;
+            sortOrder: number;
+            moduleLink: string | null;
+            parentId: string | null;
+          }>,
+        };
+      }
+    }
+
+    const { count: totalEmployees } = await db
+      .from("UserTenant")
+      .select("id", { count: "exact", head: true })
+      .eq("tenantId", tenantId);
 
     const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
     const [
-      activeRiskAssessments,
-      activeRoutines,
-      openIncidentsLast30d,
-      activeTrainings,
+      riskCount,
+      routineCount,
+      incidentCount,
+      trainingCount,
       lastIncident,
       lastRiskReview,
       lastRoutineReview,
     ] = await Promise.all([
-      prisma.riskAssessment.count({ where: { tenantId } }),
-      prisma.routine.count({ where: { tenantId, status: "ACTIVE" } }),
-      prisma.incident.count({
-        where: {
-          tenantId,
-          occurredAt: { gte: thirtyDaysAgo },
-          status: { not: "CLOSED" },
-        },
-      }),
-      prisma.training.count({ where: { tenantId, completedAt: null } }),
-      prisma.incident.findFirst({
-        where: { tenantId },
-        orderBy: { occurredAt: "desc" },
-        select: { occurredAt: true },
-      }),
-      prisma.riskAssessment.findFirst({
-        where: { tenantId },
-        orderBy: { updatedAt: "desc" },
-        select: { updatedAt: true },
-      }),
-      prisma.routine.findFirst({
-        where: { tenantId, status: "ACTIVE" },
-        orderBy: { lastReviewedAt: "desc" },
-        select: { lastReviewedAt: true },
-      }),
+      db.from("RiskAssessment").select("id", { count: "exact", head: true }).eq("tenantId", tenantId),
+      db.from("Routine").select("id", { count: "exact", head: true }).eq("tenantId", tenantId).eq("status", "ACTIVE"),
+      db
+        .from("Incident")
+        .select("id", { count: "exact", head: true })
+        .eq("tenantId", tenantId)
+        .gte("occurredAt", thirtyDaysAgo)
+        .neq("status", "CLOSED"),
+      db.from("Training").select("id", { count: "exact", head: true }).eq("tenantId", tenantId).is("completedAt", null),
+      db.from("Incident").select("occurredAt").eq("tenantId", tenantId).order("occurredAt", { ascending: false }).limit(1).maybeSingle(),
+      db.from("RiskAssessment").select("updatedAt").eq("tenantId", tenantId).order("updatedAt", { ascending: false }).limit(1).maybeSingle(),
+      db
+        .from("Routine")
+        .select("lastReviewedAt")
+        .eq("tenantId", tenantId)
+        .eq("status", "ACTIVE")
+        .order("lastReviewedAt", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
     ]);
 
     const versionData: HandbookVersionData | null = currentVersion
@@ -446,12 +434,12 @@ export async function getHandbookData(tenantId: string): Promise<{
           version: currentVersion.version,
           status: currentVersion.status,
           changeNote: currentVersion.changeNote,
-          approvedByName: currentVersion.approvedBy?.name ?? null,
-          approvedAt: currentVersion.approvedAt,
-          publishedAt: currentVersion.publishedAt,
-          createdAt: currentVersion.createdAt,
+          approvedByName: currentVersion.approvedByName,
+          approvedAt: currentVersion.approvedAt ? new Date(currentVersion.approvedAt) : null,
+          publishedAt: currentVersion.publishedAt ? new Date(currentVersion.publishedAt) : null,
+          createdAt: new Date(currentVersion.createdAt),
           signatureCount: currentVersion.signatures.length,
-          totalEmployees,
+          totalEmployees: totalEmployees ?? 0,
           sections: buildSectionTree(currentVersion.sections),
         }
       : null;
@@ -461,33 +449,35 @@ export async function getHandbookData(tenantId: string): Promise<{
       handbook: {
         id: fullHandbook.id,
         tenantId: fullHandbook.tenantId,
-        lastReviewedAt: fullHandbook.lastReviewedAt,
-        reviewedByName: fullHandbook.reviewedBy?.name ?? null,
+        lastReviewedAt: fullHandbook.lastReviewedAt ? new Date(fullHandbook.lastReviewedAt) : null,
+        reviewedByName,
         currentVersion: versionData,
-        signatures: fullHandbook.signatures.map((s) => ({
-          id: s.id,
-          userId: s.userId,
-          userName: s.user.name,
-          userEmail: s.user.email,
-          signedAt: s.signedAt,
-          comment: s.comment,
+        signatures: (signatures ?? []).map((row) => ({
+          id: row.id,
+          userId: row.userId,
+          userName: signerById.get(row.userId)?.name ?? null,
+          userEmail: signerById.get(row.userId)?.email ?? "",
+          signedAt: new Date(row.signedAt),
+          comment: row.comment,
         })),
-        createdAt: fullHandbook.createdAt,
-        updatedAt: fullHandbook.updatedAt,
+        createdAt: new Date(fullHandbook.createdAt),
+        updatedAt: new Date(fullHandbook.updatedAt),
       },
       stats: {
-        activeRiskAssessments,
-        activeRoutines,
-        openIncidentsLast30d,
-        activeTrainings,
-        lastIncidentAt: lastIncident?.occurredAt ?? null,
-        lastRiskReviewAt: lastRiskReview?.updatedAt ?? null,
-        lastRoutineReviewAt: lastRoutineReview?.lastReviewedAt ?? null,
+        activeRiskAssessments: riskCount.count ?? 0,
+        activeRoutines: routineCount.count ?? 0,
+        openIncidentsLast30d: incidentCount.count ?? 0,
+        activeTrainings: trainingCount.count ?? 0,
+        lastIncidentAt: lastIncident.data?.occurredAt ? new Date(lastIncident.data.occurredAt) : null,
+        lastRiskReviewAt: lastRiskReview.data?.updatedAt ? new Date(lastRiskReview.data.updatedAt) : null,
+        lastRoutineReviewAt: lastRoutineReview.data?.lastReviewedAt
+          ? new Date(lastRoutineReview.data.lastReviewedAt)
+          : null,
         annualPlanProgress: await getAnnualPlanProgress(tenantId),
       },
     };
   } catch {
-    return { success: false, error: "Kunne ikke laste HMS Håndbok" };
+    return { success: false, error: "Could not load the health and safety policy" };
   }
 }
 
@@ -500,10 +490,13 @@ async function getAnnualPlanProgress(
     );
     const currentYear = new Date().getFullYear();
 
-    const completions = await prisma.hmsAnnualPlanCompletion.findMany({
-      where: { tenantId, year: currentYear },
-      select: { stepKey: true, completedAt: true },
-    });
+    const completionsRes = await getAdminDb()
+      .from("HmsAnnualPlanCompletion")
+      .select("stepKey, completedAt")
+      .eq("tenantId", tenantId)
+      .eq("year", currentYear);
+
+    const completions = completionsRes.data ?? [];
 
     const completedMap = new Map(
       completions.map((c) => [c.stepKey, c.completedAt]),
@@ -537,7 +530,7 @@ export async function createNewDraft(
     const { tenantId, changeNote } = createDraftSchema.parse(input);
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.tenantId !== tenantId) {
-      return { success: false, error: "Ikke autorisert" };
+      return { success: false, error: "Not authorised" };
     }
     const permissions = getPermissions(session.user.role as import("@prisma/client").Role);
     if (!permissions.canUpdateSettings) return { success: false, error: "Ingen tilgang" };
@@ -588,10 +581,10 @@ export async function createNewDraft(
       });
     }
 
-    revalidatePath("/dashboard/hms-handbok");
+    revalidatePolicyPaths();
     return { success: true, versionId: newVersion.id };
   } catch {
-    return { success: false, error: "Kunne ikke opprette utkast" };
+    return { success: false, error: "Could not create draft" };
   }
 }
 
@@ -608,7 +601,7 @@ export async function updateDraftSection(
   try {
     const { sectionId, ...data } = updateSectionSchema.parse(input);
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) return { success: false, error: "Ikke autorisert" };
+    if (!session?.user?.id) return { success: false, error: "Not authorised" };
 
     const section = await prisma.handbookSection.findUniqueOrThrow({
       where: { id: sectionId },
@@ -620,7 +613,7 @@ export async function updateDraftSection(
     });
 
     if (section.version.handbook.tenantId !== session.user.tenantId) {
-      return { success: false, error: "Ikke autorisert" };
+      return { success: false, error: "Not authorised" };
     }
     if (section.version.status !== "DRAFT") {
       return { success: false, error: "Kan kun redigere seksjoner i utkast" };
@@ -638,10 +631,10 @@ export async function updateDraftSection(
       },
     });
 
-    revalidatePath("/dashboard/hms-handbok");
+    revalidatePolicyPaths();
     return { success: true };
   } catch {
-    return { success: false, error: "Kunne ikke oppdatere seksjon" };
+    return { success: false, error: "Could not update section" };
   }
 }
 
@@ -653,7 +646,7 @@ export async function submitForApproval(
   try {
     const { versionId } = submitForApprovalSchema.parse(input);
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) return { success: false, error: "Ikke autorisert" };
+    if (!session?.user?.id) return { success: false, error: "Not authorised" };
 
     const version = await prisma.handbookVersion.findUniqueOrThrow({
       where: { id: versionId },
@@ -661,7 +654,7 @@ export async function submitForApproval(
     });
 
     if (version.handbook.tenantId !== session.user.tenantId) {
-      return { success: false, error: "Ikke autorisert" };
+      return { success: false, error: "Not authorised" };
     }
     if (version.status !== "DRAFT") {
       return { success: false, error: "Kun utkast kan sendes til godkjenning" };
@@ -674,15 +667,15 @@ export async function submitForApproval(
 
     notifyUsersByRoles(version.handbook.tenantId, ["ADMIN", "HMS"], {
       type: "HANDBOOK_APPROVAL_REQUESTED",
-      title: "HMS Håndbok krever godkjenning",
+      title: "Health and safety policy needs approval",
       message: `Versjon ${version.version} er sendt til godkjenning`,
-      link: "/dashboard/hms-handbok",
+      link: HEALTH_SAFETY_POLICY_PATH,
     }).catch(() => {});
 
-    revalidatePath("/dashboard/hms-handbok");
+    revalidatePolicyPaths();
     return { success: true };
   } catch {
-    return { success: false, error: "Kunne ikke sende til godkjenning" };
+    return { success: false, error: "Could not submit for approval" };
   }
 }
 
@@ -694,7 +687,7 @@ export async function approveVersion(
   try {
     const { versionId } = approveVersionSchema.parse(input);
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) return { success: false, error: "Ikke autorisert" };
+    if (!session?.user?.id) return { success: false, error: "Not authorised" };
 
     const permissions = getPermissions(session.user.role as import("@prisma/client").Role);
     if (!permissions.canUpdateSettings && !permissions.canApproveDocuments) {
@@ -707,7 +700,7 @@ export async function approveVersion(
     });
 
     if (version.handbook.tenantId !== session.user.tenantId) {
-      return { success: false, error: "Ikke autorisert" };
+      return { success: false, error: "Not authorised" };
     }
     if (version.status !== "PENDING_APPROVAL") {
       return { success: false, error: "Versjonen er ikke til godkjenning" };
@@ -743,15 +736,15 @@ export async function approveVersion(
 
     notifyUsersByRoles(version.handbook.tenantId, ["EMPLOYEE", "VERNEOMBUD", "HMS", "ADMIN"], {
       type: "HANDBOOK_NEW_VERSION",
-      title: "Ny HMS Håndbok-versjon publisert",
+      title: "New health and safety policy version published",
       message: `Versjon ${version.version} er godkjent – vennligst les og signer`,
-      link: "/dashboard/hms-handbok",
+      link: HEALTH_SAFETY_POLICY_PATH,
     }).catch(() => {});
 
-    revalidatePath("/dashboard/hms-handbok");
+    revalidatePolicyPaths();
     return { success: true };
   } catch {
-    return { success: false, error: "Kunne ikke godkjenne versjonen" };
+    return { success: false, error: "Could not approve the version" };
   }
 }
 
@@ -766,7 +759,7 @@ export async function rejectDraft(
   try {
     const { versionId, rejectedNote } = rejectDraftSchema.parse(input);
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) return { success: false, error: "Ikke autorisert" };
+    if (!session?.user?.id) return { success: false, error: "Not authorised" };
 
     const permissions = getPermissions(session.user.role as import("@prisma/client").Role);
     if (!permissions.canUpdateSettings && !permissions.canApproveDocuments) {
@@ -779,7 +772,7 @@ export async function rejectDraft(
     });
 
     if (version.handbook.tenantId !== session.user.tenantId) {
-      return { success: false, error: "Ikke autorisert" };
+      return { success: false, error: "Not authorised" };
     }
     if (version.status !== "PENDING_APPROVAL") {
       return { success: false, error: "Versjonen er ikke til godkjenning" };
@@ -790,10 +783,10 @@ export async function rejectDraft(
       data: { status: "DRAFT", rejectedNote },
     });
 
-    revalidatePath("/dashboard/hms-handbok");
+    revalidatePolicyPaths();
     return { success: true };
   } catch {
-    return { success: false, error: "Kunne ikke avvise utkastet" };
+    return { success: false, error: "Could not reject the draft" };
   }
 }
 
@@ -812,26 +805,29 @@ export async function signHandbook(
     const { tenantId, versionId, comment } = signHandbookSchema.parse(input);
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.tenantId !== tenantId) {
-      return { success: false, error: "Ikke autorisert" };
+      return { success: false, error: "Not authorised" };
     }
 
     const handbook = await getOrCreateHandbook(tenantId);
+    const db = getAdminDb();
+    const targetVersionId = versionId ?? handbook.currentVersionId ?? null;
 
-    const targetVersionId = versionId ?? handbook.currentVersionId ?? undefined;
-
-    await prisma.handbookSignature.create({
-      data: {
-        handbookId: handbook.id,
-        versionId: targetVersionId ?? null,
-        userId: session.user.id,
-        comment: comment ?? null,
-      },
+    const { error } = await db.from("HandbookSignature").insert({
+      id: createId(),
+      handbookId: handbook.id,
+      versionId: targetVersionId,
+      userId: session.user.id,
+      comment: comment ?? null,
+      signedAt: new Date().toISOString(),
     });
+    if (error) {
+      throw { code: "HANDBOOK_ACK_FAILED", message: error.message };
+    }
 
-    revalidatePath("/dashboard/hms-handbok");
+    revalidatePolicyPaths();
     return { success: true };
   } catch {
-    return { success: false, error: "Kunne ikke lagre signatur" };
+    return { success: false, error: "Could not save signature" };
   }
 }
 
@@ -846,21 +842,28 @@ export async function markHandbookReviewed(
     const { tenantId } = markReviewedSchema.parse(input);
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.tenantId !== tenantId) {
-      return { success: false, error: "Ikke autorisert" };
+      return { success: false, error: "Not authorised" };
     }
     const permissions = getPermissions(session.user.role as import("@prisma/client").Role);
     if (!permissions.canReadDocuments) return { success: false, error: "Ingen tilgang" };
 
     await getOrCreateHandbook(tenantId);
-    await prisma.hmsHandbook.update({
-      where: { tenantId },
-      data: { lastReviewedAt: new Date(), reviewedById: session.user.id },
-    });
+    const { error } = await getAdminDb()
+      .from("HmsHandbook")
+      .update({
+        lastReviewedAt: new Date().toISOString(),
+        reviewedById: session.user.id,
+        updatedAt: new Date().toISOString(),
+      })
+      .eq("tenantId", tenantId);
+    if (error) {
+      throw { code: "HANDBOOK_REVIEW_FAILED", message: error.message };
+    }
 
-    revalidatePath("/dashboard/hms-handbok");
+    revalidatePolicyPaths();
     return { success: true };
   } catch {
-    return { success: false, error: "Kunne ikke lagre gjennomgang" };
+    return { success: false, error: "Could not save review" };
   }
 }
 
@@ -896,15 +899,15 @@ export async function getDraftVersion(tenantId: string) {
 }
 
 export async function getHandbookSuggestions(tenantId: string) {
-  return prisma.improvementSuggestion.findMany({
-    where: {
-      tenantId,
-      targetSectionKey: { not: null },
-      status: "PENDING",
-    },
-    orderBy: { priority: "desc" },
-    take: 20,
-  });
+  const { data } = await getAdminDb()
+    .from("ImprovementSuggestion")
+    .select("*")
+    .eq("tenantId", tenantId)
+    .eq("status", "PENDING")
+    .not("targetSectionKey", "is", null)
+    .order("priority", { ascending: false })
+    .limit(20);
+  return data ?? [];
 }
 
 // ── Mal-import (superadmin) ──────────────────────────────────────────────────
@@ -912,7 +915,7 @@ export async function getHandbookSuggestions(tenantId: string) {
 const applyTemplateSchema = z.object({
   tenantId: z.string().min(1),
   industryKey: z.string().min(1),
-  variables: z.record(z.string()),
+  variables: z.record(z.string(), z.string()),
 });
 
 export async function applyHandbookTemplate(
@@ -922,19 +925,18 @@ export async function applyHandbookTemplate(
     const { tenantId, industryKey, variables } = applyTemplateSchema.parse(input);
 
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) return { success: false, error: "Ikke autorisert" };
+    if (!session?.user?.id) return { success: false, error: "Not authorised" };
 
-    const role = session.user.role as import("@prisma/client").Role;
-    if (role !== "SUPERADMIN" && role !== "SUPPORT") {
-      return { success: false, error: "Kun superadmin/support kan importere maler" };
+    if (!session.user.isSuperAdmin && !session.user.isSupport) {
+      return { success: false, error: "Only superadmin or support can import templates" };
     }
 
     const { buildIndustryTemplate, replaceTemplateVariables } = await import(
       "@/lib/handbook-templates"
     );
 
-    const bransjeModules = (await import("@/lib/bransje-modules")).BRANSJE_MODULES;
-    const bransjeLabel = bransjeModules[industryKey]?.label ?? industryKey;
+    const { getIndustryPackage } = await import("@/lib/industry-packages");
+    const bransjeLabel = getIndustryPackage(industryKey)?.displayName ?? industryKey;
     const template = buildIndustryTemplate(industryKey, bransjeLabel);
 
     const handbook = await getOrCreateHandbook(tenantId);
@@ -960,7 +962,7 @@ export async function applyHandbookTemplate(
           handbookId: handbook.id,
           version: newVersionNumber,
           status: "DRAFT",
-          changeNote: `Importert bransjemal: ${bransjeLabel}`,
+          changeNote: `Imported industry template: ${bransjeLabel}`,
         },
         include: { sections: true },
       });

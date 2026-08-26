@@ -1,102 +1,57 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { NextRequest } from "next/server";
+import { getRequiredTenantContext } from "@/lib/tenant-context";
 import { createErrorResponse, createSuccessResponse, ErrorCodes } from "@/lib/validations/api";
+import { insertFinding, loadAudit } from "@/server/queries/audits.queries";
 
-/**
- * GET /api/audits/[id]/findings
- */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Ikke autentisert", 401);
-    }
-
-    const sessionTenantId = session.user.tenantId ?? (
-      await prisma.userTenant.findFirst({
-        where: { userId: session.user.id },
-        select: { tenantId: true },
-      })
-    )?.tenantId;
-    if (!sessionTenantId) {
-      return createErrorResponse(ErrorCodes.FORBIDDEN, "Ingen tenant tilgang", 403);
-    }
+    const { tenantId } = await getRequiredTenantContext();
     const { id: auditId } = await params;
-    const audit = await prisma.audit.findFirst({
-      where: { id: auditId, tenantId: sessionTenantId },
-      select: { id: true },
-    });
+    const audit = await loadAudit(auditId, tenantId);
     if (!audit) {
-      return createErrorResponse(ErrorCodes.NOT_FOUND, "Revisjon ikke funnet", 404);
+      return createErrorResponse(ErrorCodes.NOT_FOUND, "Audit not found", 404);
     }
-
-    const findings = await prisma.auditFinding.findMany({
-      where: { auditId: audit.id },
-      orderBy: { createdAt: "desc" },
-    });
-
-    return createSuccessResponse({ findings });
+    return createSuccessResponse({ findings: audit.findings });
   } catch (error) {
-    console.error("[Audit Findings GET] Error:", error);
-    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, "Kunne ikke hente funn", 500);
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Not authenticated", 401);
+    }
+    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, "Could not load findings", 500);
   }
 }
 
-/**
- * POST /api/audits/[id]/findings
- */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Ikke autentisert", 401);
-    }
-
-    const sessionTenantId = session.user.tenantId ?? (
-      await prisma.userTenant.findFirst({
-        where: { userId: session.user.id },
-        select: { tenantId: true },
-      })
-    )?.tenantId;
-    if (!sessionTenantId) {
-      return createErrorResponse(ErrorCodes.FORBIDDEN, "Ingen tenant tilgang", 403);
-    }
+    const { tenantId } = await getRequiredTenantContext();
     const { id: auditId } = await params;
     const data = await request.json();
-    const audit = await prisma.audit.findFirst({
-      where: { id: auditId, tenantId: sessionTenantId },
-      select: { id: true },
-    });
+    const audit = await loadAudit(auditId, tenantId);
     if (!audit) {
-      return createErrorResponse(ErrorCodes.NOT_FOUND, "Revisjon ikke funnet", 404);
+      return createErrorResponse(ErrorCodes.NOT_FOUND, "Audit not found", 404);
     }
 
-    const finding = await prisma.auditFinding.create({
-      data: {
-        auditId: audit.id,
-        findingType: data.findingType || "OBSERVATION",
-        clause: data.clause,
-        description: data.description,
-        evidence: data.evidence,
-        requirement: data.requirement,
-        responsibleId: data.responsibleId,
-        dueDate: data.dueDate ? new Date(data.dueDate) : null,
-        status: "OPEN",
-      },
+    const finding = await insertFinding({
+      auditId: audit.id,
+      findingType: data.findingType || "OBSERVATION",
+      clause: data.clause,
+      description: data.description,
+      evidence: data.evidence,
+      requirement: data.requirement,
+      responsibleId: data.responsibleId,
+      dueDate: data.dueDate ? new Date(data.dueDate) : null,
     });
 
-    return createSuccessResponse({ finding }, "Funn registrert", 201);
+    return createSuccessResponse({ finding }, "Finding recorded", 201);
   } catch (error) {
-    console.error("[Audit Finding POST] Error:", error);
-    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, "Kunne ikke registrere funn", 500);
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Not authenticated", 401);
+    }
+    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, "Could not record the finding", 500);
   }
 }
-

@@ -3,28 +3,26 @@ import { ActionEffectiveness, IncidentStage, IncidentType, IncidentStatus } from
 import { PROJECT_REFERENCE_MAX_LENGTH } from "@/lib/incident-project-reference";
 
 /**
- * ISO 9001 - 10.2 Avvik og korrigerende tiltak
- * 
- * Krav:
- * a) Reagere på avvik, og om aktuelt:
- *    1) iverksette tiltak for å kontrollere og rette opp i avviket
- *    2) håndtere konsekvensene
- * b) Vurdere behovet for tiltak for å eliminere årsakene til avviket
- * c) Implementere nødvendige tiltak
- * d) Gjennomgå effektiviteten av korrigerende tiltak som er iverksatt
- * e) Oppdatere risikoer og muligheter bestemt under planlegging, om nødvendig
- * f) Foreta endringer i kvalitetsstyringssystemet, om nødvendig
- * 
- * Avvik skal dokumenteres og bevares som dokumentert informasjon.
+ * Accident book + RIDDOR record.
+ *
+ * Legal basis:
+ * - Social Security (Claims and Payments) Regulations 1979 (accident book; keep 3 years)
+ * - RIDDOR 2013 (reportable death, specified injury, over-seven-day, disease, listed dangerous occurrence)
+ * - HSWA 1974 s.2 (safe system of work)
+ * - MHSWR 1999 (manage risk; competent person)
+ * - HSE HSG245 (investigate accidents and incidents)
+ *
+ * Prisma enum keys stay (AVVIK, ULYKKE, NESTEN, …). Labels are British English.
  */
 
 export const createIncidentSchema = z.object({
   tenantId: z.string().cuid(),
   type: z.nativeEnum(IncidentType),
-  title: z.string().min(5, "Tittel må være minst 5 tegn"),
-  description: z.string().min(20, "Beskrivelse må være minst 20 tegn"),
-  // Valgfri: leder vurderer alvorlighetsgrad ved behandling (IK-HMS § 5)
-  severity: z.number().int().min(1).max(5, "Alvorlighetsgrad må være 1-5").nullish(),
+  title: z.string().min(5, "Title must be at least 5 characters"),
+  description: z.string().min(20, "Description must be at least 20 characters"),
+  // Optional at report: severity, RIDDOR flags, risk link, subcategories and
+  // suggested actions are completed when the record is handled (HSG245; MHSWR 1999).
+  severity: z.number().int().min(1).max(5, "Severity must be 1–5").nullish(),
   occurredAt: z.date(),
   reportedBy: z.string().cuid(),
   reportedForUserId: z.string().cuid().optional(),
@@ -41,17 +39,12 @@ export const createIncidentSchema = z.object({
   customerTicketId: z.string().max(120).optional().or(z.literal("")),
   responseDeadline: z.date().optional(),
   customerSatisfaction: z.number().int().min(1).max(5).optional(),
-  // Prosjektkobling
   projectId: z.string().cuid().optional(),
-  // Fritekst prosjektnummer/adresse for oppdrag som ikke er registrert som prosjekt
   projectReference: z.string().max(PROJECT_REFERENCE_MAX_LENGTH).optional().nullable(),
-  // Underkategorier (sjekkbokser per hendelsestype)
   subcategoryKeys: z.array(z.string()).optional(),
-  // RUH-felt (AML § 5-2)
   involvedPersons: z.string().optional(),
   injuryDescription: z.string().optional(),
   suggestedActions: z.string().optional(),
-  // HSE-statistikk (TRIR-beregning)
   isFatal: z.boolean().optional(),
   isLostTimeIncident: z.boolean().optional(),
   lostWorkdays: z.number().int().min(0).optional(),
@@ -68,7 +61,7 @@ export const updateIncidentSchema = z.object({
   location: z.string().optional(),
   witnessName: z.string().optional(),
   immediateAction: z.string().optional(),
-  rootCause: z.string().optional(), // ISO 9001: Årsaksanalyse
+  rootCause: z.string().optional(),
   contributingFactors: z.string().optional(),
   status: z.nativeEnum(IncidentStatus).optional(),
   injuryType: z.string().max(120).optional(),
@@ -83,12 +76,9 @@ export const updateIncidentSchema = z.object({
   customerTicketId: z.string().max(120).optional().or(z.literal("")),
   responseDeadline: z.date().optional().nullable(),
   customerSatisfaction: z.number().int().min(1).max(5).optional().nullable(),
-  // Prosjektkobling
   projectId: z.string().cuid().optional().nullable(),
   projectReference: z.string().max(PROJECT_REFERENCE_MAX_LENGTH).optional().nullable(),
-  // Underkategorier
   subcategoryKeys: z.array(z.string()).optional(),
-  // RUH-felt
   involvedPersons: z.string().optional(),
   injuryDescription: z.string().optional(),
   suggestedActions: z.string().optional(),
@@ -103,7 +93,7 @@ export const updateIncidentSchema = z.object({
 
 export const investigateIncidentSchema = z.object({
   id: z.string().cuid(),
-  rootCause: z.string().min(20, "Årsaksanalyse må være minst 20 tegn"),
+  rootCause: z.string().min(20, "Investigation findings must be at least 20 characters"),
   contributingFactors: z.string().optional(),
   investigatedBy: z.string().cuid(),
 });
@@ -111,9 +101,10 @@ export const investigateIncidentSchema = z.object({
 export const closeIncidentSchema = z.object({
   id: z.string().cuid(),
   closedBy: z.string().cuid(),
-  effectivenessReview: z.string().min(20, "Effektivitetsvurdering må være minst 20 tegn"),
+  effectivenessReview: z.string().min(20, "Effectiveness review must be at least 20 characters"),
   lessonsLearned: z.string().optional(),
   measureEffectiveness: z.nativeEnum(ActionEffectiveness).optional(),
+  noActionReason: z.string().optional(),
 });
 
 export type CreateIncidentInput = z.infer<typeof createIncidentSchema>;
@@ -121,26 +112,21 @@ export type UpdateIncidentInput = z.infer<typeof updateIncidentSchema>;
 export type InvestigateIncidentInput = z.infer<typeof investigateIncidentSchema>;
 export type CloseIncidentInput = z.infer<typeof closeIncidentSchema>;
 
+/** Stored enum keys — labels are “Accident book” vs “Other record”. */
 export type MainIncidentCategory = "AVVIK" | "RUH";
 
-const RUH_TYPES: ReadonlySet<IncidentType> = new Set<IncidentType>([
+const ACCIDENT_BOOK_TYPES: ReadonlySet<IncidentType> = new Set<IncidentType>([
   "ULYKKE",
   "NESTEN",
   "FARLIG_SITUASJON",
   "YRKESSYKDOM",
+  "SKADE",
 ]);
 
 export function getMainCategory(type: IncidentType): MainIncidentCategory {
-  return RUH_TYPES.has(type) ? "RUH" : "AVVIK";
+  return ACCIDENT_BOOK_TYPES.has(type) ? "RUH" : "AVVIK";
 }
 
-/**
- * Toppnivå i typevalget når et avvik meldes.
- *
- * Virksomheter som bruker RUH velger først mellom Avvik og RUH. Virksomheter som
- * har slått av RUH velger i stedet fagområde, slik at meldeplikten etter
- * arbeidsmiljøloven § 5-2 dekkes av HMS-gruppen.
- */
 export type IncidentTypeGroup =
   | "AVVIK"
   | "RUH"
@@ -152,27 +138,18 @@ export type IncidentTypeGroup =
 export interface IncidentTypeGroupDefinition {
   group: IncidentTypeGroup;
   types: readonly IncidentType[];
-  /**
-   * Typer som hører til gruppen, men ikke tilbys i skjemaet. Dekker eldre data og
-   * systemgenererte avvik, slik at et lagret avvik alltid finner gruppen sin.
-   */
+  /** Types kept for stored records that can no longer be selected in the form. */
   legacyTypes?: readonly IncidentType[];
 }
 
-export const RUH_MODE_GROUPS: readonly IncidentTypeGroupDefinition[] = [
-  { group: "AVVIK", types: ["HMS", "KVALITET", "MILJO", "CUSTOMER"], legacyTypes: ["AVVIK"] },
-  {
-    group: "RUH",
-    types: ["ULYKKE", "NESTEN", "FARLIG_SITUASJON", "YRKESSYKDOM"],
-    legacyTypes: ["SKADE"],
-  },
-];
-
-export const AVVIK_ONLY_GROUPS: readonly IncidentTypeGroupDefinition[] = [
-  // AML § 5-1, § 5-2 og § 2-3: ulykke, tilløp, sykdom og farlige forhold
+/**
+ * One UK track: accident book / RIDDOR first, then quality, environment, customer.
+ * The ruhModuleEnabled argument is ignored (kept so existing callers compile).
+ */
+export const UK_ACCIDENT_BOOK_GROUPS: readonly IncidentTypeGroupDefinition[] = [
   {
     group: "HMS",
-    types: ["HMS", "ULYKKE", "NESTEN", "FARLIG_SITUASJON", "YRKESSYKDOM"],
+    types: ["ULYKKE", "NESTEN", "FARLIG_SITUASJON", "YRKESSYKDOM", "HMS"],
     legacyTypes: ["AVVIK", "SKADE"],
   },
   { group: "KVALITET", types: ["KVALITET"] },
@@ -180,15 +157,18 @@ export const AVVIK_ONLY_GROUPS: readonly IncidentTypeGroupDefinition[] = [
   { group: "CUSTOMER", types: ["CUSTOMER"] },
 ];
 
+export const AVVIK_ONLY_GROUPS = UK_ACCIDENT_BOOK_GROUPS;
+export const RUH_MODE_GROUPS = UK_ACCIDENT_BOOK_GROUPS;
+
 export function getIncidentTypeGroups(
-  ruhModuleEnabled: boolean
+  _ruhModuleEnabled?: boolean
 ): readonly IncidentTypeGroupDefinition[] {
-  return ruhModuleEnabled ? RUH_MODE_GROUPS : AVVIK_ONLY_GROUPS;
+  return UK_ACCIDENT_BOOK_GROUPS;
 }
 
 export function getIncidentTypesForGroup(
   group: IncidentTypeGroup,
-  ruhModuleEnabled: boolean
+  ruhModuleEnabled?: boolean
 ): readonly IncidentType[] {
   const definition = getIncidentTypeGroups(ruhModuleEnabled).find(
     (candidate) => candidate.group === group
@@ -202,7 +182,7 @@ export function getIncidentTypesForGroup(
  */
 export function getIncidentTypeGroup(
   type: IncidentType | "",
-  ruhModuleEnabled: boolean
+  ruhModuleEnabled?: boolean
 ): IncidentTypeGroup | null {
   if (!type) return null;
   const definition = getIncidentTypeGroups(ruhModuleEnabled).find(
@@ -217,14 +197,14 @@ export function getIncidentTypeGroup(
  */
 export function getSingleTypeForGroup(
   group: IncidentTypeGroup,
-  ruhModuleEnabled: boolean
+  ruhModuleEnabled?: boolean
 ): IncidentType | null {
   const types = getIncidentTypesForGroup(group, ruhModuleEnabled);
   return types.length === 1 ? types[0] : null;
 }
 
 export function getMainCategoryLabel(category: MainIncidentCategory): string {
-  return category === "RUH" ? "RUH" : "Avvik";
+  return category === "RUH" ? "Accident book" : "Other record";
 }
 
 export function getMainCategoryColor(category: MainIncidentCategory): string {
@@ -238,16 +218,16 @@ export function getMainCategoryColor(category: MainIncidentCategory): string {
  */
 export function getIncidentTypeLabel(type: IncidentType): string {
   const labels: Record<IncidentType, string> = {
-    AVVIK: "Avvik",
-    NESTEN: "Nestenulykke",
-    ULYKKE: "Arbeidsulykke",
-    FARLIG_SITUASJON: "Farlig situasjon / observasjon",
-    YRKESSYKDOM: "Yrkessykdom",
-    SKADE: "Personskade",
-    MILJO: "Miljøavvik",
-    KVALITET: "Kvalitetsavvik",
-    HMS: "HMS-avvik",
-    CUSTOMER: "Kundeklage",
+    AVVIK: "Non-conformance",
+    NESTEN: "Near miss",
+    ULYKKE: "Accident / injury",
+    FARLIG_SITUASJON: "Unsafe condition / dangerous occurrence",
+    YRKESSYKDOM: "Occupational disease",
+    SKADE: "Personal injury",
+    MILJO: "Environmental incident",
+    KVALITET: "Quality non-conformance",
+    HMS: "H&S non-conformance",
+    CUSTOMER: "Customer complaint",
   };
   return labels[type];
 }
@@ -271,14 +251,10 @@ export function getIncidentTypeColor(type: IncidentType): string {
   return colors[type];
 }
 
-/**
- * Get severity label and color.
- * Null betyr at alvorlighetsgraden ennå ikke er vurdert av leder.
- */
 export function getSeverityInfo(severity: number | null | undefined): { label: string; color: string; bgColor: string; textColor: string } {
   if (severity === null || severity === undefined) {
     return {
-      label: "Ikke vurdert",
+      label: "Not assessed",
       color: "text-slate-700",
       bgColor: "bg-slate-100 border-slate-300",
       textColor: "text-slate-700",
@@ -286,35 +262,35 @@ export function getSeverityInfo(severity: number | null | undefined): { label: s
   }
   if (severity >= 5) {
     return {
-      label: "Kritisk",
+      label: "Critical",
       color: "text-red-900",
       bgColor: "bg-red-100 border-red-300",
       textColor: "text-red-900",
     };
   } else if (severity >= 4) {
     return {
-      label: "Alvorlig",
+      label: "Serious",
       color: "text-orange-900",
       bgColor: "bg-orange-100 border-orange-300",
       textColor: "text-orange-900",
     };
   } else if (severity >= 3) {
     return {
-      label: "Moderat",
+      label: "Moderate",
       color: "text-yellow-900",
       bgColor: "bg-yellow-100 border-yellow-300",
       textColor: "text-yellow-900",
     };
   } else if (severity >= 2) {
     return {
-      label: "Mindre",
+      label: "Minor",
       color: "text-blue-900",
       bgColor: "bg-blue-100 border-blue-300",
       textColor: "text-blue-900",
     };
   } else {
     return {
-      label: "Ubetydelig",
+      label: "Negligible",
       color: "text-gray-900",
       bgColor: "bg-gray-100 border-gray-300",
       textColor: "text-gray-900",
@@ -322,16 +298,12 @@ export function getSeverityInfo(severity: number | null | undefined): { label: s
   }
 }
 
-/**
- * Get status label
- */
-// ISO 9001/45001 kap. 10.2 – avvik skal følges opp til lukket
 export function getIncidentStatusLabel(status: string): string {
   const labels: Record<string, string> = {
-    OPEN: "Registrert",
-    INVESTIGATING: "Under utredning",
-    ACTION_TAKEN: "Tiltak iverksatt",
-    CLOSED: "Lukket",
+    OPEN: "Recorded",
+    INVESTIGATING: "Under investigation",
+    ACTION_TAKEN: "Action taken",
+    CLOSED: "Closed",
   };
   return labels[status] || status;
 }
@@ -351,13 +323,25 @@ export function getIncidentStatusColor(status: string): string {
 
 export function getIncidentStageLabel(stage: IncidentStage): string {
   const labels: Record<IncidentStage, string> = {
-    REPORTED: "Rapportert",
-    UNDER_REVIEW: "Under vurdering",
-    ROOT_CAUSE: "Årsak funnet",
-    ACTIONS_DEFINED: "Tiltak planlagt",
-    ACTIONS_COMPLETE: "Tiltak utført",
-    VERIFIED: "Verifisert",
+    REPORTED: "Reported",
+    UNDER_REVIEW: "Under review",
+    ROOT_CAUSE: "Root cause found",
+    ACTIONS_DEFINED: "Actions planned",
+    ACTIONS_COMPLETE: "Actions completed",
+    VERIFIED: "Verified",
   };
   return labels[stage];
+}
+
+export function getRiddorCategoryLabel(category: string | null | undefined): string {
+  const labels: Record<string, string> = {
+    death: "Death — report to HSE without delay",
+    specified_injury: "Specified injury — report within 10 days",
+    over_seven_day: "Over-seven-day injury — report within 15 days",
+    occupational_disease: "Occupational disease — RIDDOR 2013",
+    dangerous_occurrence: "Dangerous occurrence — RIDDOR if listed",
+  };
+  if (!category) return "Not RIDDOR-reportable (accident book)";
+  return labels[category] ?? category;
 }
 
