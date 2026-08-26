@@ -123,9 +123,10 @@ export function SubscriptionInfo({
     const result = await removeAddonFromSubscription(pack.id);
     setRemovingPackId(null);
     if (result.success) {
+      const endsDate = result.endsAt ? formatDate(result.endsAt) : "end of period";
       toast({
-        title: `${pack.name} removed`,
-        description: `Subscription is now ${formatMoneyGbp(result.price)} / month ex VAT.`,
+        title: `${pack.name} cancelled`,
+        description: `Access continues until ${endsDate}. Next month's invoice will be ${formatMoneyGbp(result.price)} / month.`,
       });
       router.refresh();
       return;

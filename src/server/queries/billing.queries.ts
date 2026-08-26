@@ -9,13 +9,19 @@ function nowIso(): string {
 export async function loadEnabledBillingModuleKeys(tenantId: string): Promise<string[]> {
   const { data, error } = await getAdminDb()
     .from("TenantModule")
-    .select("moduleKey")
+    .select("moduleKey, status, endsAt")
     .eq("tenantId", tenantId)
-    .in("status", ["ACTIVE", "TRIAL"]);
+    .in("status", ["ACTIVE", "TRIAL", "PENDING_CANCEL"]);
   if (error) {
     throw { code: "MODULE_LOOKUP_FAILED", message: error.message };
   }
-  return (data ?? []).map((row) => String(row.moduleKey));
+  const now = new Date().toISOString();
+  return (data ?? [])
+    .filter((row) => {
+      if (row.status === "PENDING_CANCEL" && row.endsAt && row.endsAt < now) return false;
+      return true;
+    })
+    .map((row) => String(row.moduleKey));
 }
 
 async function upsertTenantModule(input: {

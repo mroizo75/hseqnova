@@ -90,31 +90,43 @@ export async function removeAddonFromSubscription(packId: string) {
     const db = getAdminDb();
     const now = new Date().toISOString();
 
-    // Deactivate all module keys for this pack
-    for (const moduleKey of pack.moduleKeys) {
-      await db
-        .from("TenantModule")
-        .update({ status: "INACTIVE", endsAt: now, updatedAt: now })
-        .eq("tenantId", auth.tenantId)
-        .eq("moduleKey", moduleKey);
-    }
-
-    // Remove subscription item from Stripe if possible
+    // Find current period end from Stripe so access stays until paid period expires
     const { data: tenant } = await db
       .from("Tenant")
       .select("stripeSubscriptionId")
       .eq("id", auth.tenantId)
       .maybeSingle();
 
+    let periodEnd: string = now;
     const priceId = stripePriceIdFromEnv(pack.stripePriceEnv);
-    if (tenant?.stripeSubscriptionId && priceId) {
+
+    if (tenant?.stripeSubscriptionId) {
       const { getStripe } = await import("@/lib/stripe");
       const stripe = getStripe();
-      const subscription = await stripe.subscriptions.retrieve(tenant.stripeSubscriptionId as string);
-      const item = subscription.items.data.find((si) => si.price.id === priceId);
-      if (item) {
-        await stripe.subscriptionItems.del(item.id, { proration_behavior: "create_prorations" });
+      const subscription = await stripe.subscriptions.retrieve(tenant.stripeSubscriptionId as string) as unknown as {
+        current_period_end: number;
+        items: { data: Array<{ id: string; price: { id: string } }> };
+      };
+
+      // Keep access until the end of the current billing period
+      periodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+
+      // Remove the item from Stripe with no proration — they paid for this month already
+      if (priceId) {
+        const item = subscription.items.data.find((si) => si.price.id === priceId);
+        if (item) {
+          await stripe.subscriptionItems.del(item.id, { proration_behavior: "none" });
+        }
       }
+    }
+
+    // Mark modules as ending at period end (not immediately)
+    for (const moduleKey of pack.moduleKeys) {
+      await db
+        .from("TenantModule")
+        .update({ status: "PENDING_CANCEL", endsAt: periodEnd, updatedAt: now })
+        .eq("tenantId", auth.tenantId)
+        .eq("moduleKey", moduleKey);
     }
 
     const nextKeys = await loadEnabledBillingModuleKeys(auth.tenantId);
@@ -122,7 +134,7 @@ export async function removeAddonFromSubscription(packId: string) {
 
     revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard");
-    return { success: true as const, price };
+    return { success: true as const, price, endsAt: periodEnd };
   } catch (error: unknown) {
     return { success: false as const, error: errorMessage(error, "Could not remove the add-on") };
   }
