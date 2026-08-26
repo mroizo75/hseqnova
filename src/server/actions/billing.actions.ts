@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getAuthContext } from "@/lib/server-authorization";
 import { getAdminDb } from "@/lib/supabase/admin";
-import { getAddonPack, isAddonPackActive, stripePriceIdFromEnv } from "@/lib/billing-catalog";
+import { getAddonPack, isAddonPackActive, stripePriceIdFromEnv, ADDON_PACKS } from "@/lib/billing-catalog";
 import {
   activateAddonPackForTenant,
   loadEnabledBillingModuleKeys,
@@ -71,5 +71,59 @@ export async function addAddonToSubscription(packId: string) {
     return { success: true as const, price };
   } catch (error: unknown) {
     return { success: false as const, error: errorMessage(error, "Could not add the add-on to the subscription") };
+  }
+}
+
+export async function removeAddonFromSubscription(packId: string) {
+  try {
+    const auth = await requireAdminTenant();
+    const pack = getAddonPack(packId);
+    if (!pack) {
+      return { success: false as const, error: "Unknown add-on pack" };
+    }
+
+    const enabled = await loadEnabledBillingModuleKeys(auth.tenantId);
+    if (!isAddonPackActive(enabled, pack)) {
+      return { success: false as const, error: `${pack.name} is not on this subscription` };
+    }
+
+    const db = getAdminDb();
+    const now = new Date().toISOString();
+
+    // Deactivate all module keys for this pack
+    for (const moduleKey of pack.moduleKeys) {
+      await db
+        .from("TenantModule")
+        .update({ status: "INACTIVE", endsAt: now, updatedAt: now })
+        .eq("tenantId", auth.tenantId)
+        .eq("moduleKey", moduleKey);
+    }
+
+    // Remove subscription item from Stripe if possible
+    const { data: tenant } = await db
+      .from("Tenant")
+      .select("stripeSubscriptionId")
+      .eq("id", auth.tenantId)
+      .maybeSingle();
+
+    const priceId = stripePriceIdFromEnv(pack.stripePriceEnv);
+    if (tenant?.stripeSubscriptionId && priceId) {
+      const { getStripe } = await import("@/lib/stripe");
+      const stripe = getStripe();
+      const subscription = await stripe.subscriptions.retrieve(tenant.stripeSubscriptionId as string);
+      const item = subscription.items.data.find((si) => si.price.id === priceId);
+      if (item) {
+        await stripe.subscriptionItems.del(item.id, { proration_behavior: "create_prorations" });
+      }
+    }
+
+    const nextKeys = await loadEnabledBillingModuleKeys(auth.tenantId);
+    const price = await upsertSubscriptionTotal(auth.tenantId, nextKeys);
+
+    revalidatePath("/dashboard/settings");
+    revalidatePath("/dashboard");
+    return { success: true as const, price };
+  } catch (error: unknown) {
+    return { success: false as const, error: errorMessage(error, "Could not remove the add-on") };
   }
 }

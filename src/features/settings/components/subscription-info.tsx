@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CreditCard, Calendar, Users, ExternalLink, Receipt, CheckCircle2 } from "lucide-react";
 import type { BillingMethod, Subscription, Tenant } from "@prisma/client";
 import { openStripeBillingPortal, updateTenantBilling } from "@/server/actions/settings.actions";
-import { addAddonToSubscription } from "@/server/actions/billing.actions";
+import { addAddonToSubscription, removeAddonFromSubscription } from "@/server/actions/billing.actions";
 import { useToast } from "@/hooks/use-toast";
 import { SITE_CONFIG } from "@/lib/seo-config";
 import {
@@ -74,6 +74,7 @@ export function SubscriptionInfo({
   const [saving, setSaving] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [buyingPackId, setBuyingPackId] = useState<string | null>(null);
+  const [removingPackId, setRemovingPackId] = useState<string | null>(null);
   const subscription = tenant.subscription;
   const tenantStatus = tenant.status;
   const monthlyTotal = monthlyTotalGbp(enabledModuleKeys);
@@ -113,6 +114,26 @@ export function SubscriptionInfo({
       variant: "destructive",
       title: "Could not open Stripe",
       description: result.error || "No Stripe customer is linked yet. Contact support.",
+    });
+  };
+
+  const handleRemovePack = async (pack: AddonPack) => {
+    if (!isAdmin) return;
+    setRemovingPackId(pack.id);
+    const result = await removeAddonFromSubscription(pack.id);
+    setRemovingPackId(null);
+    if (result.success) {
+      toast({
+        title: `${pack.name} removed`,
+        description: `Subscription is now ${formatMoneyGbp(result.price)} / month ex VAT.`,
+      });
+      router.refresh();
+      return;
+    }
+    toast({
+      variant: "destructive",
+      title: "Could not remove",
+      description: result.error,
     });
   };
 
@@ -262,10 +283,24 @@ export function SubscriptionInfo({
                       <span className="font-normal text-muted-foreground">/month</span>
                     </p>
                     {included ? (
-                      <span className="inline-flex items-center gap-1 text-sm text-green-700">
-                        <CheckCircle2 className="h-4 w-4" />
-                        Active
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 text-sm text-green-700">
+                          <CheckCircle2 className="h-4 w-4" />
+                          Active
+                        </span>
+                        {isAdmin && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                            onClick={() => handleRemovePack(pack)}
+                            disabled={removingPackId === pack.id}
+                          >
+                            {removingPackId === pack.id ? "Removing…" : "Remove"}
+                          </Button>
+                        )}
+                      </div>
                     ) : isAdmin ? (
                       <Button
                         type="button"

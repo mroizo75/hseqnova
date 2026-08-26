@@ -5,11 +5,10 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { updateTenantSettings, updateDashboardLocked } from "@/server/actions/settings.actions";
+import { updateTenantSettings } from "@/server/actions/settings.actions";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, ShieldAlert, LayoutDashboard } from "lucide-react";
+import { Building2, ShieldAlert } from "lucide-react";
 import type { Tenant } from "@prisma/client";
 
 interface TenantSettingsFormProps {
@@ -21,8 +20,6 @@ export function TenantSettingsForm({ tenant, isAdmin }: TenantSettingsFormProps)
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [dashboardLocked, setDashboardLocked] = useState(tenant.dashboardLocked);
-  const [lockLoading, setLockLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -230,58 +227,6 @@ export function TenantSettingsForm({ tenant, isAdmin }: TenantSettingsFormProps)
         </CardContent>
       </Card>
 
-      {isAdmin && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <LayoutDashboard className="h-5 w-5 text-blue-600" />
-              Dashboard lock
-            </CardTitle>
-            <CardDescription>
-              When locked, your dashboard tiles and Simple menu apply to everyone in the company.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="dashboardLocked" className="text-sm font-medium">
-                  Lock dashboard and Simple menu for all users
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Employees cannot change tiles or Simple mode items until you unlock.
-                </p>
-              </div>
-              <Switch
-                id="dashboardLocked"
-                checked={dashboardLocked}
-                disabled={lockLoading}
-                onCheckedChange={async (checked) => {
-                  setLockLoading(true);
-                  const result = await updateDashboardLocked(checked);
-                  if (result.success) {
-                    setDashboardLocked(checked);
-                    toast({
-                      title: checked ? "Dashboard locked" : "Dashboard unlocked",
-                      description: checked
-                        ? "Your layout now applies to everyone"
-                        : "People can choose their own Simple menu and tiles again",
-                      className: "bg-green-50 border-green-200",
-                    });
-                    router.refresh();
-                  } else {
-                    toast({
-                      variant: "destructive",
-                      title: "Could not save",
-                      description: result.error || "Could not update the lock",
-                    });
-                  }
-                  setLockLoading(false);
-                }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {isAdmin && (
         <div className="flex justify-end">
