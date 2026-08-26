@@ -155,12 +155,18 @@ export default async function HmsTavleOversiktPage() {
                 <span>
                   <span className="font-medium text-foreground">{todayCheckins}</span> check-ins today
                 </span>
-                <span>
-                  Renews{" "}
-                  <span className="font-medium text-foreground">
-                    {new Date(subscription.endsAt).toLocaleDateString("en-GB")}
+                {subscription.autoRenew ? (
+                  <span>
+                    Active until cancelled
                   </span>
-                </span>
+                ) : (
+                  <span>
+                    Expires{" "}
+                    <span className="font-medium text-foreground">
+                      {new Date(subscription.endsAt).toLocaleDateString("en-GB")}
+                    </span>
+                  </span>
+                )}
               </div>
             </div>
           </CardContent>
