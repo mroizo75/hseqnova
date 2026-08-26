@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getRequiredTenantContext } from "@/lib/tenant-context";
+import { withAuditLog } from "@/lib/audit-log";
 import {
   createFireDrillSchema,
   completeFireDrillSchema,
@@ -49,17 +50,22 @@ export async function createFireDrill(input: CreateFireDrillInput) {
     totalBuildingOccupants: validated.totalBuildingOccupants ?? null,
   });
 
+  const { userId } = await getRequiredTenantContext();
+  await withAuditLog(tenantId, userId, "FireDrill", drill.id, "CREATED", { title: validated.title });
+
   revalidatePath(REVALIDATE_PATH);
   return drill;
 }
 
 export async function updateFireDrill(id: string, input: UpdateFireDrillInput) {
-  const { tenantId } = await getRequiredTenantContext();
+  const { tenantId, userId } = await getRequiredTenantContext();
 
   await assertFireDrillOwnership(id, tenantId);
 
   const validated = updateFireDrillSchema.parse(input);
   const drill = await updateFireDrillRecord(id, tenantId, fireDrillDbPatchFromUpdate(validated));
+
+  await withAuditLog(tenantId, userId, "FireDrill", id, "UPDATED");
 
   revalidatePath(REVALIDATE_PATH);
   revalidatePath(`${REVALIDATE_PATH}/${id}`);
@@ -80,6 +86,9 @@ export async function completeFireDrill(id: string, input: CompleteFireDrillInpu
     evacuationTimeSeconds: validated.evacuationTimeSeconds ?? null,
     observations: validated.observations,
   });
+
+  const { userId } = await getRequiredTenantContext();
+  await withAuditLog(tenantId, userId, "FireDrill", id, "COMPLETED");
 
   revalidatePath(REVALIDATE_PATH);
   revalidatePath(`${REVALIDATE_PATH}/${id}`);
@@ -104,16 +113,20 @@ export async function evaluateFireDrill(id: string, input: EvaluateFireDrillInpu
     evaluatedAt: new Date(),
   });
 
+  await withAuditLog(tenantId, evaluatedByUserId, "FireDrill", id, "EVALUATED");
+
   revalidatePath(REVALIDATE_PATH);
   revalidatePath(`${REVALIDATE_PATH}/${id}`);
   return drill;
 }
 
 export async function deleteFireDrill(id: string) {
-  const { tenantId } = await getRequiredTenantContext();
+  const { tenantId, userId } = await getRequiredTenantContext();
 
   await assertFireDrillOwnership(id, tenantId);
   await deleteFireDrillRecord(id, tenantId);
+
+  await withAuditLog(tenantId, userId, "FireDrill", id, "DELETED");
 
   revalidatePath(REVALIDATE_PATH);
 }

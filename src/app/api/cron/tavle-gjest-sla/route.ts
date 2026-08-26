@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateCronRequest } from "@/lib/cron-auth";
 import { prisma } from "@/lib/db";
+import { startCronExecution } from "@/lib/cron-tracker";
 import { getStorage } from "@/lib/storage";
 import { getPlanLimits } from "@/features/hms-tavle/lib/tavle-plan-limits";
 import {
@@ -74,6 +75,7 @@ async function slettUtgaatteOversiktslister(
 }
 
 export async function GET(request: NextRequest) {
+  const cron = await startCronExecution("tavle-gjest-sla");
   const unauthorizedResponse = validateCronRequest(request);
   if (unauthorizedResponse) return unauthorizedResponse;
 
@@ -166,8 +168,11 @@ export async function GET(request: NextRequest) {
 
     await slettUtgaatteOversiktslister(now, results);
 
+    await cron.succeed(results);
+
     return NextResponse.json({ success: true, timestamp: now.toISOString(), results });
   } catch (error) {
+    await cron.fail(error);
     const message = error instanceof Error ? error.message : "Ukjent feil";
     return NextResponse.json({ success: false, error: message, results }, { status: 500 });
   }

@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { getAuthContext } from "@/lib/server-authorization";
+import { withAuditLog } from "@/lib/audit-log";
 import { createNotification, notifyUsersByRole } from "./notification.actions";
 
 /**
@@ -156,6 +157,15 @@ export async function analyzeWellbeingSubmission(submissionId: string): Promise<
     );
     riskId = result.riskId;
     measures = result.measures;
+  }
+
+  const auth = await getAuthContext();
+  if (auth) {
+    await withAuditLog(submission.tenantId, auth.userId, "WellbeingSurvey", submissionId, "CREATED", {
+      overallScore,
+      riskLevel: overallRiskLevel,
+      riskId,
+    });
   }
 
   return {

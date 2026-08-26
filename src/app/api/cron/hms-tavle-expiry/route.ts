@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateCronRequest } from "@/lib/cron-auth";
 import { prisma } from "@/lib/db";
+import { startCronExecution } from "@/lib/cron-tracker";
 
 /**
  * Cron-jobb for HMS Tavle-abonnementovervåking.
@@ -16,6 +17,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
+  const cron = await startCronExecution("hms-tavle-expiry");
   const unauthorizedResponse = validateCronRequest(request);
   if (unauthorizedResponse) return unauthorizedResponse;
 
@@ -75,12 +77,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    await cron.succeed(results);
+
     return NextResponse.json({
       success: true,
       timestamp: now.toISOString(),
       results,
     });
   } catch (error: any) {
+    await cron.fail(error);
     return NextResponse.json(
       { success: false, error: error.message, results },
       { status: 500 }

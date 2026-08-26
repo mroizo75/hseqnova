@@ -6,6 +6,7 @@ import { generateSequenceNumber } from "@/lib/sequence";
 import { getRequiredTenantContext } from "@/lib/tenant-context";
 import { getAuthContext } from "@/lib/server-authorization";
 import { onRuhCreated } from "@/features/hms-ai/lib/event-handler";
+import { withAuditLog } from "@/lib/audit-log";
 import {
   createRuhSchema,
   updateRuhSchema,
@@ -176,6 +177,8 @@ export async function createRuhReport(input: any) {
       },
     });
 
+    await withAuditLog(tenantId, user.id, "RuhReport", report.id, "CREATED", { title: report.title, category: report.category });
+
     const visConfig = await getTenantModuleVisibility(tenantId);
     const ruhNotifyRoles = getNotifyRolesForModule(visConfig, "ruh", ["ADMIN", "HMS", "LEDER"]);
     if (ruhNotifyRoles.length > 0) {
@@ -248,6 +251,8 @@ export async function updateRuhReport(input: any) {
       where: { id: validated.id, tenantId },
       data: updateData,
     });
+
+    await withAuditLog(tenantId, user.id, "RuhReport", report.id, "UPDATED", { title: report.title, status: report.status });
 
     const statusChanged = existing.status !== report.status;
     const substantiveRuhFields = [
@@ -352,6 +357,8 @@ export async function deleteRuhReport(id: string) {
         metadata: JSON.stringify({ title: report.title }),
       },
     });
+
+    await withAuditLog(tenantId, user.id, "RuhReport", id, "DELETED", { title: report.title });
 
     revalidatePath("/dashboard/ruh");
     return { success: true };

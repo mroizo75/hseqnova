@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runScheduledAlerts } from "@/lib/scheduled-alerts";
 import { validateCronRequest } from "@/lib/cron-auth";
+import { startCronExecution } from "@/lib/cron-tracker";
 
 /**
  * Cron Job API Route for HMS Nova Alerts
@@ -24,39 +25,31 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60; // 60 sekunder timeout
 
 export async function GET(request: NextRequest) {
+  const cron = await startCronExecution("alerts");
   try {
     const unauthorizedResponse = validateCronRequest(request);
     if (unauthorizedResponse) {
       return unauthorizedResponse;
     }
 
-    console.log("🔔 Starting scheduled alerts cron job...");
-    const startTime = Date.now();
-
-    // Kjør alle varselssjekker
     const alertResults = await runScheduledAlerts();
 
-    // Beregn statistikk
     const totalTenants = alertResults.length;
     const totalNotifications = alertResults.reduce((sum, r) => sum + r.totalNotifications, 0);
     const totalAlerts = alertResults.reduce((sum, r) => sum + r.alerts.length, 0);
 
-    const duration = Date.now() - startTime;
+    const stats = {
+      tenantsProcessed: totalTenants,
+      alertsFound: totalAlerts,
+      notificationsCreated: totalNotifications,
+    };
 
-    console.log(`✅ Cron job completed in ${duration}ms`);
-    console.log(`   - Tenants processed: ${totalTenants}`);
-    console.log(`   - Total alerts found: ${totalAlerts}`);
-    console.log(`   - Notifications created: ${totalNotifications}`);
+    await cron.succeed(stats);
 
     return NextResponse.json({
       success: true,
       message: "Scheduled alerts completed",
-      stats: {
-        tenantsProcessed: totalTenants,
-        alertsFound: totalAlerts,
-        notificationsCreated: totalNotifications,
-        durationMs: duration,
-      },
+      stats,
       results: alertResults.map(r => ({
         tenant: r.tenantName,
         notifications: r.totalNotifications,
@@ -64,7 +57,8 @@ export async function GET(request: NextRequest) {
       })),
     });
   } catch (error) {
-    console.error("❌ Cron job failed:", error);
+    await cron.fail(error);
+    console.error("Cron job failed:", error);
     return NextResponse.json(
       { 
         success: false, 

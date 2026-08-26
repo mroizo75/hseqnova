@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runHealthcareTrainingExpiryAlerts } from "@/lib/healthcare-training-alerts";
 import { validateCronRequest } from "@/lib/cron-auth";
+import { startCronExecution } from "@/lib/cron-tracker";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
+  const cron = await startCronExecution("healthcare-training-alerts");
   try {
     const unauthorizedResponse = validateCronRequest(request);
     if (unauthorizedResponse) {
@@ -15,6 +17,12 @@ export async function GET(request: NextRequest) {
     const startedAt = Date.now();
     const result = await runHealthcareTrainingExpiryAlerts();
     const durationMs = Date.now() - startedAt;
+
+    await cron.succeed({
+      tenantsProcessed: result.tenantsProcessed,
+      notificationsSent: result.totalSent,
+      durationMs,
+    });
 
     return NextResponse.json({
       success: true,
@@ -27,6 +35,7 @@ export async function GET(request: NextRequest) {
       results: result.results,
     });
   } catch (error: any) {
+    await cron.fail(error);
     return NextResponse.json(
       {
         success: false,

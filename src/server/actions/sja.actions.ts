@@ -11,6 +11,7 @@ import {
   updateSjaSchema,
   createSjaTemplateSchema,
 } from "@/features/sja/schemas/sja.schema";
+import { withAuditLog } from "@/lib/audit-log";
 import {
   deactivateSjaTemplate,
   deleteSjaAnalysisRecord,
@@ -148,6 +149,8 @@ export async function createSjaAnalysis(input: unknown) {
       metadata: { title: analysis.title },
     });
 
+    await withAuditLog(tenantId, userId, "SjaAnalysis", analysis.id, "CREATED", { title: analysis.title });
+
     revalidateSjaPaths(validated.projectId, analysis.id);
     return { success: true, data: analysis };
   } catch (error: unknown) {
@@ -201,6 +204,8 @@ export async function updateSjaAnalysis(input: unknown) {
       metadata: { title: analysis.title, status: analysis.status },
     });
 
+    await withAuditLog(tenantId, userId, "SjaAnalysis", analysis.id, "UPDATED", { title: analysis.title, status: analysis.status });
+
     revalidateSjaPaths(analysis.projectId, analysis.id);
     return { success: true, data: analysis };
   } catch (error: unknown) {
@@ -224,6 +229,8 @@ export async function deleteSjaAnalysis(id: string) {
       resource: `SjaAnalysis:${id}`,
       metadata: { title: analysis.title },
     });
+
+    await withAuditLog(tenantId, userId, "SjaAnalysis", id, "DELETED", { title: analysis.title });
 
     revalidateSjaPaths(analysis.projectId);
     return { success: true };
@@ -266,6 +273,8 @@ export async function createSjaTemplate(input: unknown) {
       metadata: { name: template.name },
     });
 
+    await withAuditLog(tenantId, userId, "SjaTemplate", template.id, "CREATED", { name: template.name });
+
     revalidateSjaPaths();
     return { success: true, data: template };
   } catch (error: unknown) {
@@ -289,6 +298,8 @@ export async function deleteSjaTemplate(id: string) {
       resource: `SjaTemplate:${id}`,
       metadata: { name: template.name },
     });
+
+    await withAuditLog(tenantId, userId, "SjaTemplate", id, "DELETED", { name: template.name });
 
     revalidateSjaPaths();
     return { success: true };

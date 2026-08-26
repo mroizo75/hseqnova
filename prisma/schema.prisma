@@ -1063,6 +1063,8 @@ model Risk {
   trend                RiskTrend            @default(STABLE)
   reviewedAt           DateTime?
   assessmentDate       DateTime? // vurderingsdato for dette punktet (i listen)
+  createdById          String? // Red thread: who created this risk
+  updatedById          String? // Red thread: who last updated
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
 
@@ -1565,6 +1567,8 @@ model Measure {
   benefitEstimate       Int?
   category              MeasureCategory     @default(CORRECTIVE)
   projectId             String?
+  createdById           String? // Red thread: who created this action
+  updatedById           String? // Red thread: who last updated
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
 
@@ -1783,6 +1787,8 @@ model Incident {
   riddorReference          String?
   overSevenDayInjury       Boolean              @default(false)
   accidentBookEntry        Boolean              @default(true)
+  createdById              String? // Red thread: who created this incident
+  updatedById              String? // Red thread: who last updated
   createdAt                DateTime             @default(now())
   updatedAt                DateTime             @updatedAt
 
@@ -1866,6 +1872,7 @@ model RuhReport {
   completedBy       String?
   completedAt       DateTime?
   completedComment  String?     @db.Text
+  updatedById       String? // Red thread: who last updated
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
@@ -1957,6 +1964,7 @@ model SjaAnalysis {
   approvedByName String?
   approvedAt     DateTime?
   projectId      String?
+  updatedById    String? // Red thread: who last updated
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2084,6 +2092,8 @@ model Training {
   effectiveness String?   @db.Text // ISO 9001: Evaluering av effektivitet
   evaluatedBy   String?
   evaluatedAt   DateTime?
+  createdById   String? // Red thread: who registered this training
+  updatedById   String? // Red thread: who last updated
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -2142,6 +2152,8 @@ model Audit {
   reportKey     String? // PDF-rapport i storage
   approvedBy    String? // Hvem som godkjente revisjonen
   approvedAt    DateTime? // Når revisjonen ble godkjent
+  createdById   String? // Red thread: who created this audit
+  updatedById   String? // Red thread: who last updated
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -2336,6 +2348,8 @@ model Chemical {
   autoSuggestedAlternatives String?   @db.Text // JSON array av foreslåtte alternativer
   lastEchaSync              DateTime? // Sist synkronisert med ECHA
   aiExtractedData           String?   @db.Text // JSON med AI-ekstraherte data fra SDS
+  createdById               String? // Red thread: who added this chemical
+  updatedById               String? // Red thread: who last updated
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2528,6 +2542,8 @@ model Inspection {
   nextInspection   DateTime?
   projectId        String?
   findings         InspectionFinding[]
+  createdById      String? // Red thread: who created this inspection
+  updatedById      String? // Red thread: who last updated
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
@@ -2802,6 +2818,7 @@ model Routine {
   lastReviewedAt       DateTime? // Sist rutinen ble revidert (registreres ved gjennomført revisjon)
   createdBy            String
   updatedBy            String?
+  updatedById          String? // Red thread: who last updated (FK)
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 
@@ -2949,6 +2966,8 @@ model ManagementReview {
   approvedAt  DateTime?
   notes       String?                @db.Text
   attachments String?                @db.Text // JSON array of file keys
+  createdById String? // Red thread: who created
+  updatedById String? // Red thread: who last updated
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2993,6 +3012,8 @@ model Meeting {
   completedAt DateTime?
   organizer   String // userId
   minuteTaker String? // Referent/protokollfører
+  createdById String? // Red thread: who created this meeting
+  updatedById String? // Red thread: who last updated
 
   // Relations
   participants MeetingParticipant[]
@@ -3128,6 +3149,7 @@ model Whistleblowing {
   acknowledgedAt DateTime?
   investigatedAt DateTime?
   closedAt       DateTime?
+  updatedById    String? // Red thread: who last updated
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -4223,6 +4245,8 @@ model FireDrill {
   procedureChangesDesc   String?   @db.Text
   evaluatedBy            String? // userId for øvingsleder som bekreftet
   evaluatedAt            DateTime?
+  createdById            String? // Red thread: who created this fire drill
+  updatedById            String? // Red thread: who last updated
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -5575,4 +5599,24 @@ enum ScoreTrend {
   IMPROVING
   STABLE
   DECLINING
+}
+
+// ============================================
+// Cron Execution History (Red Thread Phase 4)
+// ============================================
+
+model CronExecution {
+  id          String    @id @default(cuid())
+  jobName     String
+  status      String    @default("RUNNING") // RUNNING | SUCCESS | FAILED
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  durationMs  Int?
+  stats       Json?
+  error       String?   @db.Text
+  createdAt   DateTime  @default(now())
+
+  @@index([jobName])
+  @@index([startedAt(sort: Desc)])
+  @@index([status])
 }

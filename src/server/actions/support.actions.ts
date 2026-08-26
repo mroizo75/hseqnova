@@ -12,6 +12,7 @@ import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { withAuditLog } from "@/lib/audit-log";
 import { sendEmail } from "@/lib/email";
 import { getRequiredTenantContext } from "@/lib/tenant-context";
 import { createNotification } from "@/server/actions/notification.actions";
@@ -228,6 +229,8 @@ export async function createSupportTicket(
       select: { id: true, ticketNumber: true },
     });
 
+    await withAuditLog(ctx.tenantId, ctx.userId, "SupportTicket", ticket.id, "CREATED", { ticketNumber: ticket.ticketNumber, subject: input.subject });
+
     try {
       await notifySupportInbox({
         subject: input.subject,
@@ -373,6 +376,8 @@ export async function replyToSupportTicketAsCustomer(
 
       return created;
     });
+
+    await withAuditLog(ctx.tenantId, ctx.userId, "SupportTicket", ticket.id, "UPDATED", { action: "customer_reply" });
 
     try {
       await notifySupportInbox({
@@ -524,6 +529,8 @@ export async function replyToSupportTicketAsStaff(
       return created;
     });
 
+    await withAuditLog(ticket.tenantId, staff.id, "SupportTicket", ticket.id, "UPDATED", { action: "staff_reply", isInternal });
+
     if (!isInternal) {
       try {
         const membership = await prisma.userTenant.findUnique({
@@ -597,6 +604,8 @@ export async function updateSupportTicketStatus(
       },
     });
 
+    await withAuditLog(ticket.tenantId, staff.id, "SupportTicket", ticket.id, "UPDATED", { status: input.status });
+
     if (
       input.status === SupportTicketStatus.RESOLVED ||
       input.status === SupportTicketStatus.CLOSED
@@ -668,8 +677,10 @@ export async function assignSupportTicket(
             ? SupportTicketStatus.IN_PROGRESS
             : undefined,
       },
-      select: { id: true },
+      select: { id: true, tenantId: true },
     });
+
+    await withAuditLog(ticket.tenantId, staff.id, "SupportTicket", ticket.id, "UPDATED", { assignedTo: input.assignedToId });
 
     revalidatePath(`/admin/support/${ticket.id}`);
     revalidatePath("/admin/support");

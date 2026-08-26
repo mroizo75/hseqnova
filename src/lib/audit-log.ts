@@ -1,41 +1,57 @@
-import { prisma } from "@/lib/db";
 import { getAdminDb } from "@/lib/supabase/admin";
 import { createId } from "@/lib/ids";
 
 /**
  * Audit Log Utility
- * 
- * Sentralisert logging av alle endringer i systemet for ISO 9001 compliance.
- * Hver endring dokumenteres med:
- * - Hvem: userId
- * - Hva: action (f.eks. "DOCUMENT_CREATED")
- * - Hvor: resource (f.eks. "Document:abc123")
- * - Når: timestamp (automatisk)
- * - Detaljer: metadata (JSON)
+ *
+ * Centralised logging of all changes for ISO 9001 / ISO 45001 compliance.
+ * Every change is documented with:
+ * - Who:   userId
+ * - What:  action (e.g. "DOCUMENT_CREATED")
+ * - Where: resource (e.g. "Document:abc123")
+ * - When:  timestamp (automatic)
+ * - Detail: metadata (JSON)
+ *
+ * All read and write operations go through Supabase REST API.
  */
 
+export type AuditAction =
+  | "CREATED"
+  | "UPDATED"
+  | "DELETED"
+  | "APPROVED"
+  | "COMPLETED"
+  | "CLOSED"
+  | "REOPENED"
+  | "SUBMITTED"
+  | "SIGNED"
+  | "EVALUATED"
+  | "ASSIGNED"
+  | "STATUS_CHANGED"
+  | string;
+
+export interface AuditLogEntry {
+  id: string;
+  tenantId: string;
+  userId: string;
+  action: string;
+  resource: string | null;
+  metadata: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}
+
 export class AuditLog {
-  /**
-   * Log en handling til audit trail
-   * 
-   * @param tenantId - ID til tenant som handlingen gjelder
-   * @param userId - ID til brukeren som utførte handlingen
-   * @param action - Type handling (f.eks. "DOCUMENT_CREATED", "AUDIT_CREATED")
-   * @param resource - Ressurs som ble påvirket (f.eks. "Document:abc123")
-   * @param resourceId - ID til ressursen
-   * @param metadata - Ekstra informasjon (JSON)
-   * @param ipAddress - IP-adresse (valgfritt)
-   * @param userAgent - User agent string (valgfritt)
-   */
   static async log(
     tenantId: string,
     userId: string,
     action: string,
     resource: string,
     resourceId: string,
-    metadata?: Record<string, any>,
+    metadata?: Record<string, unknown>,
     ipAddress?: string,
-    userAgent?: string
+    userAgent?: string,
   ): Promise<void> {
     try {
       await getAdminDb().from("AuditLog").insert({
@@ -49,23 +65,10 @@ export class AuditLog {
         userAgent,
       });
     } catch (error) {
-      // Log til console hvis database-logging feiler
       console.error("Failed to create audit log:", error);
-      console.log("Audit log details:", {
-        tenantId,
-        userId,
-        action,
-        resource: `${resource}:${resourceId}`,
-        metadata,
-        ipAddress,
-        userAgent,
-      });
     }
   }
 
-  /**
-   * Hent audit logs for en tenant
-   */
   static async getLogsForTenant(
     tenantId: string,
     options?: {
@@ -74,80 +77,92 @@ export class AuditLog {
       action?: string;
       userId?: string;
       resource?: string;
+      from?: string;
+      to?: string;
+    },
+  ): Promise<AuditLogEntry[]> {
+    let query = getAdminDb()
+      .from("AuditLog")
+      .select("*")
+      .eq("tenantId", tenantId)
+      .order("createdAt", { ascending: false })
+      .range(options?.offset ?? 0, (options?.offset ?? 0) + (options?.limit ?? 100) - 1);
+
+    if (options?.action) query = query.eq("action", options.action);
+    if (options?.userId) query = query.eq("userId", options.userId);
+    if (options?.resource) query = query.ilike("resource", `%${options.resource}%`);
+    if (options?.from) query = query.gte("createdAt", options.from);
+    if (options?.to) query = query.lte("createdAt", options.to);
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("Failed to read audit logs:", error);
+      return [];
     }
-  ) {
-    return prisma.auditLog.findMany({
-      where: {
-        tenantId,
-        ...(options?.action && { action: options.action }),
-        ...(options?.userId && { userId: options.userId }),
-        ...(options?.resource && { resource: { contains: options.resource } }),
-      },
-      orderBy: { createdAt: "desc" },
-      take: options?.limit || 100,
-      skip: options?.offset || 0,
-      include: {
-        tenant: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    });
+    return (data ?? []) as AuditLogEntry[];
+  }
+
+  static async getLogsForResource(resourceId: string): Promise<AuditLogEntry[]> {
+    const { data, error } = await getAdminDb()
+      .from("AuditLog")
+      .select("*")
+      .ilike("resource", `%${resourceId}%`)
+      .order("createdAt", { ascending: false });
+
+    if (error) {
+      console.error("Failed to read resource audit logs:", error);
+      return [];
+    }
+    return (data ?? []) as AuditLogEntry[];
+  }
+
+  static async getLogsForUser(userId: string, limit = 100): Promise<AuditLogEntry[]> {
+    const { data, error } = await getAdminDb()
+      .from("AuditLog")
+      .select("*")
+      .eq("userId", userId)
+      .order("createdAt", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error("Failed to read user audit logs:", error);
+      return [];
+    }
+    return (data ?? []) as AuditLogEntry[];
   }
 
   /**
-   * Hent audit logs for en spesifikk ressurs
+   * Delete old logs (UK GDPR compliance).
+   * ISO 9001: documented information shall be retained but may be purged.
    */
-  static async getLogsForResource(resourceId: string) {
-    return prisma.auditLog.findMany({
-      where: {
-        resource: { contains: resourceId },
-      },
-      orderBy: { createdAt: "desc" },
-      include: {
-        tenant: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    });
-  }
+  static async deleteOldLogs(daysToKeep = 365): Promise<void> {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - daysToKeep);
 
-  /**
-   * Hent audit logs for en bruker
-   */
-  static async getLogsForUser(userId: string, limit: number = 100) {
-    return prisma.auditLog.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-      include: {
-        tenant: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    });
-  }
+    const { error } = await getAdminDb()
+      .from("AuditLog")
+      .delete()
+      .lt("createdAt", cutoff.toISOString());
 
-  /**
-   * Slett gamle audit logs (for GDPR compliance)
-   * ISO 9001: Dokumentert informasjon skal bevares, men kan slettes etter en viss tid
-   */
-  static async deleteOldLogs(daysToKeep: number = 365) {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
-
-    return prisma.auditLog.deleteMany({
-      where: {
-        createdAt: {
-          lt: cutoffDate,
-        },
-      },
-    });
+    if (error) console.error("Failed to delete old audit logs:", error);
   }
 }
 
+/**
+ * withAuditLog — fire-and-forget audit wrapper for server actions / API routes.
+ *
+ * Usage:
+ *   await withAuditLog(tenantId, userId, "Measure", measureId, "CREATED", { title });
+ *   await withAuditLog(tenantId, userId, "Incident", id, "UPDATED", { changedFields });
+ */
+export async function withAuditLog(
+  tenantId: string,
+  userId: string,
+  resourceType: string,
+  resourceId: string,
+  action: AuditAction,
+  metadata?: Record<string, unknown>,
+): Promise<void> {
+  const fullAction = `${resourceType.toUpperCase()}_${action}`;
+  await AuditLog.log(tenantId, userId, fullAction, resourceType, resourceId, metadata);
+}

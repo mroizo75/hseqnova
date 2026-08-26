@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendDigestEmails } from "@/lib/email-digest";
 import { validateCronRequest } from "@/lib/cron-auth";
+import { startCronExecution } from "@/lib/cron-tracker";
 
 /**
  * Cron Job API Route for HMS Nova Email Digest
@@ -23,39 +24,30 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 120; // 2 minutter timeout
 
 export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const typeParam = searchParams.get("type")?.toUpperCase();
+  const type = typeParam === "WEEKLY" ? "WEEKLY" : "DAILY";
+  const cron = await startCronExecution(`digest-${type.toLowerCase()}`);
+
   try {
     const unauthorizedResponse = validateCronRequest(request);
     if (unauthorizedResponse) {
       return unauthorizedResponse;
     }
 
-    // Hent digest type fra query parameter
-    const { searchParams } = new URL(request.url);
-    const typeParam = searchParams.get("type")?.toUpperCase();
-    const type = typeParam === "WEEKLY" ? "WEEKLY" : "DAILY";
-
-    console.log(`📧 Starting ${type} email digest cron job...`);
-    const startTime = Date.now();
-
     const result = await sendDigestEmails(type);
 
-    const duration = Date.now() - startTime;
-
-    console.log(`✅ ${type} digest completed in ${duration}ms`);
-    console.log(`   - Emails sent: ${result.emailsSent}`);
-    console.log(`   - Errors: ${result.errors}`);
+    const stats = { emailsSent: result.emailsSent, errors: result.errors };
+    await cron.succeed(stats);
 
     return NextResponse.json({
       success: true,
       message: `${type} digest completed`,
-      stats: {
-        emailsSent: result.emailsSent,
-        errors: result.errors,
-        durationMs: duration,
-      },
+      stats,
     });
   } catch (error) {
-    console.error("❌ Digest cron job failed:", error);
+    await cron.fail(error);
+    console.error("Digest cron job failed:", error);
     return NextResponse.json(
       { 
         success: false, 

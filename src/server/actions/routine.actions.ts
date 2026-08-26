@@ -10,6 +10,7 @@ import { createNotification } from "@/server/actions/notification.actions";
 import { ensureGlobalRoutineTemplateLibrarySeeded } from "@/server/actions/routine-library.actions";
 import { onRoutineUpdated } from "@/features/hms-ai/lib/event-handler";
 import { canCreateInspectionTemplate } from "@/lib/template-policy";
+import { withAuditLog } from "@/lib/audit-log";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import type { SessionUser } from "@/types";
@@ -206,6 +207,8 @@ export async function createRoutineFromTemplate(templateId: string) {
       throw { code: "ROUTINE_CREATE_FAILED", message: error?.message || "Could not create the procedure." };
     }
 
+    await withAuditLog(context.tenantId, context.userId, "Routine", routine.id, "CREATED", { title: routine.title });
+
     revalidatePath(PROCEDURES_PATH);
     revalidatePath(`${PROCEDURES_PATH}/templates`);
     return { success: true as const, data: routine };
@@ -255,6 +258,8 @@ export async function updateRoutine(input: RoutineUpdateInput) {
       throw { code: "ROUTINE_UPDATE_FAILED", message: error?.message || "Could not update the procedure." };
     }
 
+    await withAuditLog(context.tenantId, context.userId, "Routine", routine.id, "UPDATED", { title: routine.title });
+
     revalidatePath(PROCEDURES_PATH);
     revalidatePath(`${PROCEDURES_PATH}/${routine.id}`);
     onRoutineUpdated(context.tenantId, routine.id).catch(() => undefined);
@@ -301,6 +306,8 @@ export async function assignRoutineResponsible(routineId: string, responsibleUse
     if (error || !updated) {
       throw { code: "ROUTINE_ASSIGN_FAILED", message: error?.message || "Could not assign the owner." };
     }
+
+    await withAuditLog(context.tenantId, context.userId, "Routine", routineId, "UPDATED", { assignedTo: responsibleUserId });
 
     await createNotification({
       tenantId: context.tenantId,
@@ -355,6 +362,8 @@ export async function scheduleRoutineFollowUp(
     if (error || !updated) {
       throw { code: "ROUTINE_SCHEDULE_FAILED", message: error?.message || "Could not set the review date." };
     }
+
+    await withAuditLog(context.tenantId, context.userId, "Routine", routineId, "UPDATED", { scheduledReview: true });
 
     await notifyLeadersAndHms(
       context.tenantId,
@@ -415,6 +424,8 @@ export async function createRoutineTemplate(input: {
     if (error || !template) {
       throw { code: "ROUTINE_TEMPLATE_CREATE_FAILED", message: error?.message || "Could not create the template." };
     }
+
+    await withAuditLog(context.tenantId, context.userId, "RoutineTemplate", template.id, "CREATED", { title: template.title });
 
     revalidatePath(`${PROCEDURES_PATH}/templates`);
     return { success: true as const, data: template };
