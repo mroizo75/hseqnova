@@ -1,6 +1,5 @@
 import { getStripe, UK_VAT_PERCENT, DEFAULT_CURRENCY } from "@/lib/stripe";
 import { getAdminDb } from "@/lib/supabase/admin";
-import Stripe from "stripe";
 
 export async function createOrGetStripeCustomer(tenantId: string): Promise<string> {
   const { data: tenant, error } = await getAdminDb()
@@ -36,13 +35,6 @@ export async function createOrGetStripeCustomer(tenantId: string): Promise<strin
   return customer.id;
 }
 
-function paymentMethodTypes(
-  billingMethod: "INVOICE" | "DIRECT_DEBIT" | "CARD",
-): Stripe.Checkout.SessionCreateParams.PaymentMethodType[] {
-  if (billingMethod === "DIRECT_DEBIT") return ["bacs_debit"];
-  return ["card"];
-}
-
 export async function createCheckoutSession(input: {
   tenantId: string;
   priceIds: string[];
@@ -57,7 +49,6 @@ export async function createCheckoutSession(input: {
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: "subscription",
-    payment_method_types: paymentMethodTypes(input.billingMethod),
     line_items: input.priceIds.map((price) => ({ price, quantity: 1 })),
     success_url: input.successUrl,
     cancel_url: input.cancelUrl,
