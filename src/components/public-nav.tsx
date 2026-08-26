@@ -23,10 +23,10 @@ export function PublicNav() {
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center">
             <Image
-              src="/images/hseq-nova-logo.png"
+              src="/logo-black.png"
               alt="HSEQ Nova"
-              width={168}
-              height={40}
+              width={200}
+              height={48}
               className="h-9 w-auto"
               priority
             />

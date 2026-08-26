@@ -1,11 +1,16 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 export const alt = "HSEQ Nova — health and safety software for UK employers";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default async function Image() {
+  const logoBuffer = await readFile(join(process.cwd(), "public", "logo-white.png"));
+  const logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+
   return new ImageResponse(
     (
       <div
@@ -20,21 +25,42 @@ export default async function Image() {
           color: "#f6f1e8",
         }}
       >
-        <div style={{ display: "flex", fontSize: "22px", letterSpacing: "0.18em", color: "#86efac" }}>
-          HSEQ SOFTWARE FOR UK EMPLOYERS
+        <div style={{ display: "flex" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logoBase64} alt="" height={52} style={{ objectFit: "contain" }} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          <div style={{ fontSize: "64px", fontWeight: 600, lineHeight: 1.1, maxWidth: "920px" }}>
+          <div
+            style={{
+              fontSize: "58px",
+              fontWeight: 600,
+              lineHeight: 1.12,
+              maxWidth: "920px",
+            }}
+          >
             Run health and safety as the work happens
           </div>
-          <div style={{ fontSize: "28px", color: "#d4cbb8", maxWidth: "820px", lineHeight: 1.35 }}>
-            Digital accident book, RIDDOR, living policy and inspections. £29/month per company,
-            unlimited users.
+          <div
+            style={{
+              fontSize: "26px",
+              color: "#d4cbb8",
+              maxWidth: "820px",
+              lineHeight: 1.35,
+            }}
+          >
+            Digital accident book, RIDDOR, living policy and inspections. £29/month per
+            company, unlimited users.
           </div>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-          <div style={{ display: "flex", fontSize: "36px", fontWeight: 700 }}>HSEQ Nova</div>
-          <div style={{ display: "flex", fontSize: "22px", color: "#86efac" }}>hseqnova.co.uk</div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            fontSize: "22px",
+            color: "#86efac",
+          }}
+        >
+          hseqnova.co.uk
         </div>
       </div>
     ),

@@ -11,10 +11,10 @@ export function PublicFooter() {
           <div className="space-y-4">
             <Link href="/" className="inline-block">
               <Image
-                src="/images/hseq-nova-logo.png"
+                src="/logo-black.png"
                 alt="HSEQ Nova"
-                width={168}
-                height={40}
+                width={200}
+                height={48}
                 className="h-9 w-auto"
               />
             </Link>

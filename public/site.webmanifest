@@ -1,16 +1,7 @@
 {
-  "name": "HMS Nova",
-  "short_name": "HMS Nova",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0f172a",
-  "icons": []
-}
-{
-  "name": "HMS Nova - Norges beste HMS-system",
-  "short_name": "HMS Nova",
-  "description": "HMS Nova bygger trygghet gjennom moderne HMS-styring. Digital signatur, 7 roller, ISO 9001 compliant.",
+  "name": "HSEQ Nova — Health and Safety Software",
+  "short_name": "HSEQ Nova",
+  "description": "Health and safety software for UK employers. Digital accident book, RIDDOR, living policy, inspections and training.",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",
@@ -23,12 +14,12 @@
       "type": "image/png"
     }
   ],
-  "theme_color": "#16a34a",
+  "theme_color": "#0d1f18",
   "background_color": "#ffffff",
   "display": "standalone",
   "start_url": "/",
   "scope": "/",
-  "lang": "nb-NO",
+  "lang": "en-GB",
   "orientation": "portrait-primary",
   "categories": ["business", "productivity", "safety"]
 }

@@ -157,7 +157,7 @@ export function DashboardNav() {
       <div className="flex h-full flex-col">
         <div className="border-b p-6">
           <div className="flex items-start justify-between mb-2">
-            <Image src="/images/hseq-nova-logo.png" alt="HSEQ Nova" width={168} height={40} className="h-9 w-auto" />
+            <Image src="/logo-black.png" alt="HSEQ Nova" width={200} height={48} className="h-9 w-auto" />
             <NotificationBell />
           </div>
           {tenantName && (
