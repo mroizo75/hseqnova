@@ -156,7 +156,7 @@ export default async function HmsTavleOversiktPage() {
                   <span className="font-medium text-foreground">{todayCheckins}</span> check-ins today
                 </span>
                 <span>
-                  Expires{" "}
+                  Renews{" "}
                   <span className="font-medium text-foreground">
                     {new Date(subscription.endsAt).toLocaleDateString("en-GB")}
                   </span>
