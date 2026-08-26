@@ -52,7 +52,7 @@ export async function createCheckoutSession(input: {
     line_items: input.priceIds.map((price) => ({ price, quantity: 1 })),
     success_url: input.successUrl,
     cancel_url: input.cancelUrl,
-    automatic_tax: { enabled: false },
+    automatic_tax: { enabled: true },
     metadata: { tenantId: input.tenantId, vatPercent: String(UK_VAT_PERCENT), ...input.metadata },
     subscription_data: {
       metadata: { tenantId: input.tenantId, ...input.metadata },
