@@ -1,0 +1,57 @@
+# HSEQ Nova — brand colour palette
+
+## Logo colours (from the circular arrows)
+
+| Colour | Hex | Usage guidance |
+|--------|-----|----------------|
+| Green | `#40bc80` | Primary brand accent. OK on dark backgrounds (≥4.5:1 on #0d1f18). Do NOT place on white — fails WCAG AA for text. Use as decorative/icon colour only on light backgrounds. |
+| Blue | `#00d0ff` | Secondary accent. Fails contrast on white for text. Use on dark surfaces or as decorative highlight only. |
+| Orange | `#ff9d00` | Warm accent. Passes AA on dark backgrounds. Fails on white for body text. Safe for icons/badges on light bg. |
+| Red | `#ff1900` | Alert/destructive accent. Passes on dark bg. For text on white, darken to at least #c41400 to meet 4.5:1. |
+
+## Contrast rules (PageSpeed / Lighthouse / WCAG 2.1 AA)
+
+- **Normal text** (< 24px / < 18.5px bold): contrast ratio ≥ 4.5:1
+- **Large text** (≥ 24px / ≥ 18.5px bold): contrast ratio ≥ 3:1
+- **UI components & graphical objects**: contrast ratio ≥ 3:1
+
+### Safe pairings
+
+| Foreground | Background | Ratio | OK for |
+|------------|------------|-------|--------|
+| `#40bc80` | `#0d1f18` | ~5.8:1 | All text |
+| `#40bc80` | `#ffffff` | ~2.6:1 | Icons/decorative only — NOT text |
+| `#00d0ff` | `#0d1f18` | ~8.4:1 | All text |
+| `#00d0ff` | `#ffffff` | ~2.1:1 | Decorative only |
+| `#ff9d00` | `#0d1f18` | ~6.5:1 | All text |
+| `#ff9d00` | `#ffffff` | ~2.4:1 | Decorative only |
+| `#ff1900` | `#0d1f18` | ~4.1:1 | Large text / icons |
+| `#ff1900` | `#ffffff` | ~3.9:1 | Large text only (≥24px) |
+| `#ffffff` | `#0d1f18` | ~16:1 | All text |
+
+### When you need text on white background
+
+Use darkened variants that pass 4.5:1:
+
+| Original | Darkened for white bg | Ratio |
+|----------|----------------------|-------|
+| `#40bc80` → | `#1d7a4a` | ~4.6:1 |
+| `#00d0ff` → | `#007a99` | ~4.5:1 |
+| `#ff9d00` → | `#995e00` | ~4.7:1 |
+| `#ff1900` → | `#c41400` | ~4.5:1 |
+
+## Do not
+
+- Use brand colours as text colour on white without checking ratio.
+- Mix multiple bright brand colours adjacent to each other (looks chaotic).
+- Override the existing CSS `--primary` token for the whole app — the green is only for marketing/branding areas.
+
+## CSS custom properties (if needed)
+
+```css
+--brand-green: #40bc80;
+--brand-blue: #00d0ff;
+--brand-orange: #ff9d00;
+--brand-red: #ff1900;
+--brand-ink: #0d1f18;
+```
