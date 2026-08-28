@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Cookie, Shield, BarChart, Target, Settings } from "lucide-react";
 
 export function CookiesContent() {
-  const lastUpdated = "2. november 2024";
+  const lastUpdated = "28 August 2026";
 
   return (
     <div className="bg-gradient-to-b from-background to-muted/20">
@@ -17,194 +17,200 @@ export function CookiesContent() {
             Cookies
           </Badge>
           <h1 className="text-5xl md:text-6xl font-bold mb-6">
-            Informasjonskapsler (Cookies)
+            Cookie Policy
           </h1>
           <p className="text-xl text-muted-foreground">
-            Hvordan HMS Nova bruker cookies for å forbedre din opplevelse
+            How HSEQ Nova uses cookies to deliver and improve our service
           </p>
           <p className="text-sm text-muted-foreground mt-4">
-            Sist oppdatert: {lastUpdated}
+            Last updated: {lastUpdated}
           </p>
         </div>
 
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Hva er cookies?</CardTitle>
+              <CardTitle>What Are Cookies?</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                Cookies (informasjonskapsler) er små tekstfiler som lagres på din enhet når du besøker 
-                et nettsted. De brukes til å huske dine preferanser, holde deg innlogget, og analysere 
-                hvordan du bruker nettstedet.
+                Cookies are small text files placed on your device when you
+                visit a website. They are used to remember your preferences,
+                keep you signed in, and help us understand how you use the site.
               </p>
               <p className="text-muted-foreground">
-                Cookies kan settes av oss (førsteparts-cookies) eller av tredjeparter som 
-                analyseverktøy (tredjeparts-cookies).
+                Cookies may be set by us (first-party cookies) or by third
+                parties such as analytics providers (third-party cookies). This
+                policy complies with the Privacy and Electronic Communications
+                Regulations 2003 (PECR) and the UK GDPR.
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Hvilke cookies bruker HMS Nova?</CardTitle>
+              <CardTitle>Cookies Used by HSEQ Nova</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Strengt nødvendige */}
+              {/* Essential */}
               <div className="border-l-4 border-green-500 pl-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Shield className="h-5 w-5 text-green-600" />
-                  <h4 className="font-semibold text-lg">Strengt nødvendige cookies</h4>
-                  <Badge variant="outline" className="ml-auto">Kan ikke avslås</Badge>
+                  <h4 className="font-semibold text-lg">Essential Cookies</h4>
+                  <Badge variant="outline" className="ml-auto">Always on</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Disse cookies er nødvendige for at nettstedet skal fungere og kan ikke slås av. 
-                  De settes kun som respons på handlinger du utfører.
+                  These cookies are strictly necessary for the website to
+                  function and cannot be switched off. They are set only in
+                  response to actions you take.
                 </p>
-                
+
                 <div className="bg-muted/30 rounded-lg p-4 space-y-3 text-sm">
                   <div className="border-b pb-2">
-                    <p className="font-semibold">next-auth.session-token</p>
+                    <p className="font-semibold">sb-access-token / sb-refresh-token</p>
                     <div className="grid grid-cols-2 gap-2 mt-1 text-xs text-muted-foreground">
-                      <div><strong>Formål:</strong> Autentisering</div>
-                      <div><strong>Varighet:</strong> Til utlogging</div>
-                      <div className="col-span-2"><strong>Beskrivelse:</strong> Holder deg innlogget i HMS Nova</div>
+                      <div><strong>Purpose:</strong> Authentication</div>
+                      <div><strong>Duration:</strong> Session / 7 days</div>
+                      <div className="col-span-2"><strong>Description:</strong> Keeps you signed in to HSEQ Nova (Supabase Auth)</div>
                     </div>
                   </div>
-                  
+
                   <div className="border-b pb-2">
-                    <p className="font-semibold">next-auth.csrf-token</p>
+                    <p className="font-semibold">csrf-token</p>
                     <div className="grid grid-cols-2 gap-2 mt-1 text-xs text-muted-foreground">
-                      <div><strong>Formål:</strong> Sikkerhet</div>
-                      <div><strong>Varighet:</strong> Sesjon</div>
-                      <div className="col-span-2"><strong>Beskrivelse:</strong> Beskytter mot CSRF-angrep</div>
+                      <div><strong>Purpose:</strong> Security</div>
+                      <div><strong>Duration:</strong> Session</div>
+                      <div className="col-span-2"><strong>Description:</strong> Protects against cross-site request forgery attacks</div>
                     </div>
                   </div>
-                  
+
                   <div className="border-b pb-2">
-                    <p className="font-semibold">hms-nova-tenant</p>
+                    <p className="font-semibold">hseq-nova-tenant</p>
                     <div className="grid grid-cols-2 gap-2 mt-1 text-xs text-muted-foreground">
-                      <div><strong>Formål:</strong> Multi-tenant</div>
-                      <div><strong>Varighet:</strong> 30 dager</div>
-                      <div className="col-span-2"><strong>Beskrivelse:</strong> Husker hvilken bedrift du er tilknyttet</div>
+                      <div><strong>Purpose:</strong> Multi-tenancy</div>
+                      <div><strong>Duration:</strong> 30 days</div>
+                      <div className="col-span-2"><strong>Description:</strong> Remembers which organisation you belong to</div>
                     </div>
                   </div>
-                  
+
                   <div>
                     <p className="font-semibold">cookie-consent</p>
                     <div className="grid grid-cols-2 gap-2 mt-1 text-xs text-muted-foreground">
-                      <div><strong>Formål:</strong> GDPR-samtykke</div>
-                      <div><strong>Varighet:</strong> 12 måneder</div>
-                      <div className="col-span-2"><strong>Beskrivelse:</strong> Lagrer dine cookie-preferanser</div>
+                      <div><strong>Purpose:</strong> Consent record</div>
+                      <div><strong>Duration:</strong> 12 months</div>
+                      <div className="col-span-2"><strong>Description:</strong> Stores your cookie preferences</div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Funksjonelle */}
+              {/* Functional */}
               <div className="border-l-4 border-blue-500 pl-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Settings className="h-5 w-5 text-blue-600" />
-                  <h4 className="font-semibold text-lg">Funksjonelle cookies</h4>
-                  <Badge variant="outline" className="ml-auto">Valgfritt</Badge>
+                  <h4 className="font-semibold text-lg">Functional Cookies</h4>
+                  <Badge variant="outline" className="ml-auto">Optional</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Disse cookies gjør det mulig å huske valg du har gjort (f.eks. språk, region) 
-                  for å gi deg en mer personlig opplevelse.
+                  These cookies remember choices you make (such as theme or
+                  layout) to provide a more personalised experience.
                 </p>
-                
+
                 <div className="bg-muted/30 rounded-lg p-4 space-y-3 text-sm">
                   <div className="border-b pb-2">
                     <p className="font-semibold">user-preferences</p>
                     <div className="grid grid-cols-2 gap-2 mt-1 text-xs text-muted-foreground">
-                      <div><strong>Formål:</strong> Brukeropplevelse</div>
-                      <div><strong>Varighet:</strong> 12 måneder</div>
-                      <div className="col-span-2"><strong>Beskrivelse:</strong> Lagrer språk, tema (mørk/lys), dashbordlayout</div>
+                      <div><strong>Purpose:</strong> User experience</div>
+                      <div><strong>Duration:</strong> 12 months</div>
+                      <div className="col-span-2"><strong>Description:</strong> Stores theme (dark/light) and dashboard layout</div>
                     </div>
                   </div>
-                  
+
                   <div>
                     <p className="font-semibold">notification-settings</p>
                     <div className="grid grid-cols-2 gap-2 mt-1 text-xs text-muted-foreground">
-                      <div><strong>Formål:</strong> Notifikasjoner</div>
-                      <div><strong>Varighet:</strong> 6 måneder</div>
-                      <div className="col-span-2"><strong>Beskrivelse:</strong> Husker hvilke notifikasjoner du vil motta</div>
+                      <div><strong>Purpose:</strong> Notifications</div>
+                      <div><strong>Duration:</strong> 6 months</div>
+                      <div className="col-span-2"><strong>Description:</strong> Remembers which notifications you wish to receive</div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Analyse */}
+              {/* Analytics */}
               <div className="border-l-4 border-purple-500 pl-4">
                 <div className="flex items-center gap-2 mb-3">
                   <BarChart className="h-5 w-5 text-purple-600" />
-                  <h4 className="font-semibold text-lg">Analyse-cookies</h4>
-                  <Badge variant="outline" className="ml-auto">Valgfritt</Badge>
+                  <h4 className="font-semibold text-lg">Analytics Cookies</h4>
+                  <Badge variant="outline" className="ml-auto">Optional</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Disse cookies hjelper oss å forstå hvordan besøkende bruker nettstedet, 
-                  slik at vi kan forbedre brukeropplevelsen.
+                  These cookies help us understand how visitors use the website
+                  so that we can improve the user experience. They are only set
+                  with your consent.
                 </p>
-                
+
                 <div className="bg-muted/30 rounded-lg p-4 space-y-3 text-sm">
                   <div className="border-b pb-2">
                     <p className="font-semibold">_ga (Google Analytics)</p>
                     <div className="grid grid-cols-2 gap-2 mt-1 text-xs text-muted-foreground">
-                      <div><strong>Formål:</strong> Analyse</div>
-                      <div><strong>Varighet:</strong> 2 år</div>
-                      <div className="col-span-2"><strong>Beskrivelse:</strong> Brukes til å skille brukere</div>
+                      <div><strong>Purpose:</strong> Analytics</div>
+                      <div><strong>Duration:</strong> 2 years</div>
+                      <div className="col-span-2"><strong>Description:</strong> Distinguishes unique visitors</div>
                     </div>
                   </div>
-                  
+
                   <div className="border-b pb-2">
                     <p className="font-semibold">_gid (Google Analytics)</p>
                     <div className="grid grid-cols-2 gap-2 mt-1 text-xs text-muted-foreground">
-                      <div><strong>Formål:</strong> Analyse</div>
-                      <div><strong>Varighet:</strong> 24 timer</div>
-                      <div className="col-span-2"><strong>Beskrivelse:</strong> Brukes til å skille brukere</div>
+                      <div><strong>Purpose:</strong> Analytics</div>
+                      <div><strong>Duration:</strong> 24 hours</div>
+                      <div className="col-span-2"><strong>Description:</strong> Distinguishes unique visitors</div>
                     </div>
                   </div>
-                  
+
                   <div>
                     <p className="font-semibold">_gat (Google Analytics)</p>
                     <div className="grid grid-cols-2 gap-2 mt-1 text-xs text-muted-foreground">
-                      <div><strong>Formål:</strong> Analyse</div>
-                      <div><strong>Varighet:</strong> 1 minutt</div>
-                      <div className="col-span-2"><strong>Beskrivelse:</strong> Brukes til å redusere antall forespørsler</div>
+                      <div><strong>Purpose:</strong> Analytics</div>
+                      <div><strong>Duration:</strong> 1 minute</div>
+                      <div className="col-span-2"><strong>Description:</strong> Throttles request rate</div>
                     </div>
                   </div>
                 </div>
-                
+
                 <p className="text-xs text-muted-foreground mt-3">
-                  <strong>Merk:</strong> Vi bruker Google Analytics med IP-anonymisering. 
-                  Les mer i{" "}
-                  <a 
-                    href="https://policies.google.com/privacy" 
-                    target="_blank" 
+                  <strong>Note:</strong> We use Google Analytics with IP
+                  anonymisation enabled. See{" "}
+                  <a
+                    href="https://policies.google.com/privacy"
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary hover:underline"
                   >
-                    Googles personvernerklæring
-                  </a>.
+                    Google&rsquo;s privacy policy
+                  </a>
+                  .
                 </p>
               </div>
 
-              {/* Markedsføring */}
+              {/* Marketing */}
               <div className="border-l-4 border-orange-500 pl-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Target className="h-5 w-5 text-orange-600" />
-                  <h4 className="font-semibold text-lg">Markedsførings-cookies</h4>
-                  <Badge variant="outline" className="ml-auto">Valgfritt</Badge>
+                  <h4 className="font-semibold text-lg">Marketing Cookies</h4>
+                  <Badge variant="outline" className="ml-auto">Optional</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Disse cookies brukes til å vise deg relevante annonser og måle effekten av 
-                  markedsføringskampanjer.
+                  These cookies are used to show you relevant adverts and
+                  measure the effectiveness of marketing campaigns.
                 </p>
-                
+
                 <div className="bg-muted/30 rounded-lg p-4 text-sm">
                   <p className="text-muted-foreground">
-                    <strong>Vi bruker for øyeblikket ikke markedsførings-cookies.</strong> 
-                    Hvis dette endres, vil vi oppdatere denne siden og be om nytt samtykke.
+                    <strong>We do not currently use marketing cookies.</strong>{" "}
+                    If this changes, we will update this page and request fresh
+                    consent.
                   </p>
                 </div>
               </div>
@@ -213,62 +219,66 @@ export function CookiesContent() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Hvordan administrere cookies?</CardTitle>
+              <CardTitle>How to Manage Cookies</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <h4 className="font-semibold mb-2">1. Via vårt samtykke-verktøy</h4>
+                <h4 className="font-semibold mb-2">1. Via our consent tool</h4>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Du kan når som helst endre dine cookie-preferanser ved å klikke på knappen nedenfor:
+                  You can change your cookie preferences at any time by clicking
+                  the button below:
                 </p>
-                <Button 
+                <Button
                   onClick={() => {
-                    if (typeof window !== 'undefined') {
-                      localStorage.removeItem('cookie-consent');
+                    if (typeof window !== "undefined") {
+                      localStorage.removeItem("cookie-consent");
                       window.location.reload();
                     }
                   }}
                   className="w-full md:w-auto"
                 >
                   <Cookie className="mr-2 h-4 w-4" />
-                  Endre cookie-innstillinger
+                  Change cookie settings
                 </Button>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">2. Via nettleseren din</h4>
+                <h4 className="font-semibold mb-2">2. Via your browser</h4>
                 <p className="text-sm text-muted-foreground mb-2">
-                  Du kan også administrere eller slette cookies gjennom nettleserens innstillinger:
+                  You can also manage or delete cookies through your browser
+                  settings:
                 </p>
                 <ul className="space-y-1 text-sm text-muted-foreground">
                   <li className="flex items-start gap-2">
                     <span className="font-semibold min-w-[100px]">Chrome:</span>
-                    <span>Innstillinger → Personvern og sikkerhet → Cookies</span>
+                    <span>Settings → Privacy and security → Cookies</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-semibold min-w-[100px]">Firefox:</span>
-                    <span>Innstillinger → Personvern og sikkerhet → Cookies</span>
+                    <span>Settings → Privacy & Security → Cookies</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-semibold min-w-[100px]">Safari:</span>
-                    <span>Preferanser → Personvern → Cookies</span>
+                    <span>Preferences → Privacy → Cookies</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-semibold min-w-[100px]">Edge:</span>
-                    <span>Innstillinger → Cookies og nettstedstillatelser</span>
+                    <span>Settings → Cookies and site permissions</span>
                   </li>
                 </ul>
-                
+
                 <p className="text-xs text-muted-foreground mt-3">
-                  <strong>Merk:</strong> Hvis du blokkerer alle cookies, kan noen funksjoner i HMS Nova slutte å virke.
+                  <strong>Note:</strong> Blocking all cookies may cause some
+                  features of HSEQ Nova to stop working.
                 </p>
               </div>
 
               <div>
                 <h4 className="font-semibold mb-2">3. Do Not Track (DNT)</h4>
                 <p className="text-sm text-muted-foreground">
-                  Vi respekterer &quot;Do Not Track&quot;-signaler fra nettleseren din. 
-                  Hvis DNT er aktivert, vil vi ikke sette analyse- eller markedsførings-cookies.
+                  We respect &ldquo;Do Not Track&rdquo; signals from your
+                  browser. When DNT is enabled, we will not set analytics or
+                  marketing cookies.
                 </p>
               </div>
             </CardContent>
@@ -276,7 +286,7 @@ export function CookiesContent() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Konsekvenser av å avslå cookies</CardTitle>
+              <CardTitle>What Happens If You Decline Cookies</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3 text-sm">
@@ -285,9 +295,10 @@ export function CookiesContent() {
                     ✓
                   </div>
                   <div>
-                    <p className="font-semibold">Strengt nødvendige cookies</p>
+                    <p className="font-semibold">Essential cookies</p>
                     <p className="text-muted-foreground">
-                      Kan ikke avslås. Hvis du blokkerer disse via nettleseren, vil HMS Nova ikke fungere.
+                      Cannot be declined. If you block these via your browser,
+                      HSEQ Nova will not function.
                     </p>
                   </div>
                 </div>
@@ -297,9 +308,10 @@ export function CookiesContent() {
                     ⚠
                   </div>
                   <div>
-                    <p className="font-semibold">Funksjonelle cookies</p>
+                    <p className="font-semibold">Functional cookies</p>
                     <p className="text-muted-foreground">
-                      Hvis avslått, husker ikke systemet dine preferanser (språk, tema, layout).
+                      If declined, the system will not remember your preferences
+                      (theme, layout).
                     </p>
                   </div>
                 </div>
@@ -309,9 +321,10 @@ export function CookiesContent() {
                     ℹ
                   </div>
                   <div>
-                    <p className="font-semibold">Analyse-cookies</p>
+                    <p className="font-semibold">Analytics cookies</p>
                     <p className="text-muted-foreground">
-                      Hvis avslått, kan vi ikke forbedre brukeropplevelsen basert på bruksmønstre.
+                      If declined, we cannot improve the user experience based
+                      on usage patterns.
                     </p>
                   </div>
                 </div>
@@ -321,9 +334,10 @@ export function CookiesContent() {
                     ℹ
                   </div>
                   <div>
-                    <p className="font-semibold">Markedsførings-cookies</p>
+                    <p className="font-semibold">Marketing cookies</p>
                     <p className="text-muted-foreground">
-                      Hvis avslått, vil du ikke se personaliserte annonser (vi bruker for øyeblikket ikke disse).
+                      If declined, you will not see personalised adverts (we do
+                      not currently use these).
                     </p>
                   </div>
                 </div>
@@ -333,76 +347,89 @@ export function CookiesContent() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Tredjeparts-cookies</CardTitle>
+              <CardTitle>Third-Party Cookies</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                HMS Nova kan inneholde innhold fra tredjeparter som setter sine egne cookies:
+                HSEQ Nova may include content from third parties that set their
+                own cookies:
               </p>
 
               <div className="space-y-2 text-sm">
                 <div className="bg-muted/30 p-3 rounded-lg">
                   <p className="font-semibold">Google Analytics</p>
                   <p className="text-muted-foreground text-xs mt-1">
-                    Brukes til analyse av bruksmønstre. 
-                    <a 
-                      href="https://policies.google.com/technologies/cookies" 
-                      target="_blank" 
+                    Used for usage analytics.{" "}
+                    <a
+                      href="https://policies.google.com/technologies/cookies"
+                      target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary hover:underline ml-1"
+                      className="text-primary hover:underline"
                     >
-                      Les mer →
+                      Learn more →
                     </a>
                   </p>
                 </div>
 
                 <div className="bg-muted/30 p-3 rounded-lg">
-                  <p className="font-semibold">Cloudflare</p>
+                  <p className="font-semibold">Stripe</p>
                   <p className="text-muted-foreground text-xs mt-1">
-                    Sikkerhet og ytelse (CDN).
-                    <a 
-                      href="https://www.cloudflare.com/cookie-policy/" 
-                      target="_blank" 
+                    Payment processing and fraud prevention.{" "}
+                    <a
+                      href="https://stripe.com/gb/cookie-settings"
+                      target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary hover:underline ml-1"
+                      className="text-primary hover:underline"
                     >
-                      Les mer →
+                      Learn more →
                     </a>
                   </p>
                 </div>
               </div>
 
               <p className="text-xs text-muted-foreground mt-4">
-                Vi er ikke ansvarlige for cookies satt av tredjeparter. 
-                Les deres personvernerklæringer for mer informasjon.
+                We are not responsible for cookies set by third parties. Please
+                refer to their privacy policies for further information.
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Endringer i cookie-policyen</CardTitle>
+              <CardTitle>Changes to This Cookie Policy</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">
-                Vi kan oppdatere denne cookie-policyen fra tid til annen for å gjenspeile endringer 
-                i teknologien eller lovgivningen. Vi oppfordrer deg til å sjekke denne siden regelmessig.
+                We may update this cookie policy from time to time to reflect
+                changes in technology or legislation. We encourage you to review
+                this page periodically.
               </p>
               <p className="text-sm text-muted-foreground mt-4">
-                Sist oppdatert: <strong>{lastUpdated}</strong>
+                Last updated: <strong>{lastUpdated}</strong>
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                For details on how we handle your personal data, see our{" "}
+                <a href="/personvern" className="text-primary hover:underline">
+                  Privacy Policy
+                </a>
+                .
               </p>
             </CardContent>
           </Card>
 
           <Card className="bg-primary/5 border-primary/20">
             <CardContent className="pt-6">
-              <h3 className="font-bold text-lg mb-4">Spørsmål om cookies?</h3>
+              <h3 className="font-bold text-lg mb-4">Questions about cookies?</h3>
               <p className="text-muted-foreground mb-4">
-                Hvis du har spørsmål om hvordan vi bruker cookies, ta kontakt:
+                If you have any questions about how we use cookies, please
+                contact us:
               </p>
               <p className="text-sm">
-                <a href="mailto:post@hmsnova.no" className="text-primary font-semibold hover:underline">
-                  post@hmsnova.no
+                <a
+                  href="mailto:hello@hseqnova.co.uk"
+                  className="text-primary font-semibold hover:underline"
+                >
+                  hello@hseqnova.co.uk
                 </a>
               </p>
             </CardContent>
@@ -412,4 +439,3 @@ export function CookiesContent() {
     </div>
   );
 }
-

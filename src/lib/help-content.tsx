@@ -885,6 +885,90 @@ export const helpContent: Record<string, HelpContent> = {
     ],
   },
 
+  coshhAssessments: {
+    title: "COSHH assessments",
+    description: "Assess exposure to hazardous substances and record control measures under COSHH 2002",
+    sections: [
+      {
+        heading: "What is a COSHH assessment?",
+        emoji: "⚗️",
+        content:
+          "A COSHH assessment records how employees are exposed to hazardous substances during a specific task, what controls are in place, and what additional controls are needed. COSHH 2002 reg. 6 requires a suitable and sufficient assessment before work with any hazardous substance begins.",
+      },
+      {
+        heading: "Why do you need this?",
+        emoji: "⚠️",
+        items: [
+          {
+            title: "Legal duty",
+            description:
+              "COSHH 2002 reg. 6 requires employers to make a suitable and sufficient assessment of the risk to health from hazardous substances.",
+          },
+          {
+            title: "Control exposure",
+            description:
+              "The assessment identifies exposure routes and the hierarchy of control measures: elimination, substitution, engineering controls, administrative controls, PPE.",
+          },
+          {
+            title: "Health surveillance",
+            description:
+              "Where the assessment shows employees are exposed to substances linked to identifiable disease, health surveillance must be arranged (reg. 11). Health records must be kept for 40 years.",
+          },
+          {
+            title: "Review and update",
+            description:
+              "Assessments must be reviewed regularly, and immediately if there is reason to believe they are no longer valid (reg. 6(3)).",
+          },
+        ],
+      },
+      {
+        heading: "How to use this module",
+        emoji: "📋",
+        items: [
+          {
+            title: "1. Describe the task",
+            description:
+              "Record the activity, who does it, and which hazardous substances are involved.",
+          },
+          {
+            title: "2. Identify exposure routes",
+            description:
+              "Inhalation, skin contact, ingestion, injection — list all relevant routes.",
+          },
+          {
+            title: "3. Record existing controls",
+            description:
+              "Document current control measures: ventilation, PPE, safe systems of work.",
+          },
+          {
+            title: "4. Identify additional controls",
+            description:
+              "If existing controls are not adequate, record what else is needed and assign actions.",
+          },
+          {
+            title: "5. Set a review date",
+            description:
+              "COSHH assessments should be reviewed at least annually or when circumstances change.",
+          },
+        ],
+      },
+    ],
+    isoStandards: [
+      "COSHH 2002 reg. 6 — suitable and sufficient assessment",
+      "COSHH 2002 reg. 7 — prevention or control of exposure",
+      "COSHH 2002 reg. 11 — health surveillance",
+      "COSHH 2002 reg. 12 — information, instruction and training",
+      "ISO 45001 (OH&S): clause 8.1.3 — management of change / hazardous substances",
+    ],
+    tips: [
+      "Link each assessment to the substance in the COSHH register",
+      "Use the hierarchy of control: eliminate, substitute, engineer, administer, PPE",
+      "Record who is exposed, how often and for how long",
+      "Review assessments when substances, processes or people change",
+      "Flag health surveillance where appropriate — keep records for 40 years",
+    ],
+  },
+
   chemicals: {
     title: "COSHH management",
     description: "Manage hazardous substances and safety data sheets",

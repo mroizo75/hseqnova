@@ -11,7 +11,8 @@ const NAV_LINKS = [
   { href: "/pricing", label: "Pricing" },
   { href: "/riddor", label: "RIDDOR" },
   { href: "/rams", label: "RAMS" },
-  { href: "/digital-safety-board", label: "Safety board" },
+  { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
 ] as const;
 
 export function PublicNav() {

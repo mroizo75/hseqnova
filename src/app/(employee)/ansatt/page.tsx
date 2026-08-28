@@ -11,6 +11,7 @@ import {
   GraduationCap,
   Clock,
 } from "lucide-react";
+import { QuickReportFab } from "@/features/incidents/components/quick-report-fab";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { prisma } from "@/lib/db";
@@ -102,6 +103,7 @@ export default async function AnsattDashboard() {
 
   return (
     <div className="space-y-6">
+      <QuickReportFab />
       <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
           {t("welcome.title", { name: session.user.name?.split(" ")[0] ?? "" })}

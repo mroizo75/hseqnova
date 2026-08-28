@@ -357,6 +357,20 @@ model Tenant {
   tenantHmsScores                     TenantHmsScore[]
   anonymizedStats                     AnonymizedTenantStats[]
   modules                             TenantModule[]
+  assets                              Asset[]
+  assetInspections                    AssetInspection[]
+  assetMaintenances                   AssetMaintenance[]
+  healthSafetyFileEntries             HealthSafetyFileEntry[]
+  riskHistories                       RiskHistory[]
+  fireRiskAssessments                 FireRiskAssessment[]
+  roleTrainingRequirements            RoleTrainingRequirement[]
+
+  // AI Pro add-on (£30/month per tenant)
+  aiAddonEnabled                      Boolean                        @default(false)
+  aiAddonEnabledAt                    DateTime?
+  aiMonthlyCallCount                  Int                            @default(0)
+  aiMonthlyCallResetAt                DateTime?
+
   createdAt                           DateTime                       @default(now())
   updatedAt                           DateTime                       @updatedAt
 
@@ -1083,6 +1097,7 @@ model Risk {
   chemicalLinks        RiskChemicalLink[]
   trainingRequirements RiskTrainingRequirement[]
   exposureRegisters    ExposureRegister[]
+  history              RiskHistory[]
 
   @@index([tenantId])
   @@index([riskAssessmentId])
@@ -1092,6 +1107,26 @@ model Risk {
   @@index([nextReviewDate])
   @@index([kpiId])
   @@index([inspectionTemplateId])
+}
+
+model RiskHistory {
+  id              String   @id @default(cuid())
+  tenantId        String
+  riskId          String
+  changeType      String   // CREATED, UPDATED, SCORE_CHANGED, CONTROL_ADDED, CONTROL_REMOVED, REVIEWED, CLOSED
+  previousScore   Int?
+  newScore        Int?
+  changedFields   String?  @db.Text // JSON of changed field names and old/new values
+  changedById     String?
+  changeNote      String?  @db.Text
+  createdAt       DateTime @default(now())
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  risk    Risk   @relation(fields: [riskId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([riskId])
+  @@index([createdAt])
 }
 
 enum RiskStatus {
@@ -1146,11 +1181,16 @@ enum RiskAuditRelation {
 }
 
 enum RiskControlType {
-  PREVENTIVE
-  DETECTIVE
-  CORRECTIVE
-  DIRECTIONAL
-  COMPENSATING
+  ELIMINATION        // Level 1: Remove the hazard entirely (SFAIRP / MHSWR Sch.1)
+  SUBSTITUTION       // Level 2: Replace with less hazardous
+  ENGINEERING        // Level 3: Isolate people from the hazard
+  ADMINISTRATIVE     // Level 4: Change the way people work
+  PPE                // Level 5: Protect the worker with equipment
+  PREVENTIVE         // Legacy — maps to ADMINISTRATIVE
+  DETECTIVE          // Legacy — maps to ENGINEERING
+  CORRECTIVE         // Legacy — maps to ADMINISTRATIVE
+  DIRECTIONAL        // Legacy — maps to ADMINISTRATIVE
+  COMPENSATING       // Legacy — maps to ENGINEERING
 }
 
 enum RiskControlStatus {
@@ -2127,6 +2167,24 @@ model CourseTemplate {
   @@index([tenantId])
   @@index([isGlobal])
   @@index([isActive])
+}
+
+// HSWA 1974 s.2(2)(c): role-based training requirements
+model RoleTrainingRequirement {
+  id          String   @id @default(cuid())
+  tenantId    String
+  role        Role
+  courseKey    String
+  isMandatory Boolean  @default(true)
+  reason      String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, role, courseKey])
+  @@index([tenantId])
+  @@index([role])
 }
 
 // ============================================
@@ -3108,7 +3166,7 @@ enum DecisionStatus {
 model Whistleblowing {
   id         String @id @default(cuid())
   tenantId   String
-  caseNumber String @unique // "VAR-2025-001"
+  caseNumber String // "WB-2026-001" — unique per tenant
   accessCode String @unique // Tilgangskode for anonym oppfølging
 
   // Report details
@@ -3156,8 +3214,8 @@ model Whistleblowing {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@unique([tenantId, caseNumber])
   @@index([tenantId])
-  @@index([caseNumber])
   @@index([accessCode])
   @@index([status])
   @@index([category])
@@ -3887,6 +3945,7 @@ model Project {
   riskAssessments             RiskAssessment[]
   formSubmissions             FormSubmission[]
   hmsTavle                    HmsTavle?
+  healthSafetyFile            HealthSafetyFileEntry[]
 
   @@index([tenantId])
   @@index([status])
@@ -4513,6 +4572,66 @@ enum SubcontractorSubmissionStatus {
   UNDER_REVIEW // Under behandling
   LINKED // Koblet til HMS Nova-objekt
   REJECTED // Avvist
+}
+
+// ─── Contractor Pre-Qualification ───────────────────────────────────────────
+// CDM 2015: duty holders must assess competence of contractors
+// MHSWR 1999 reg.7: appointment of competent persons
+// Employers' Liability (Compulsory Insurance) Act 1969
+
+enum PreQualStatus {
+  PENDING
+  APPROVED
+  CONDITIONALLY_APPROVED
+  REJECTED
+  EXPIRED
+}
+
+/// Contractor registration with pre-qualification data
+model ContractorRegistration {
+  id                             String          @id @default(cuid())
+  tenantId                       String
+  companyName                    String
+  companyNumber                  String?         // Companies House number
+  contactName                    String
+  contactEmail                   String
+  contactPhone                   String?
+  address                        String?         @db.Text
+  tradeCategory                  String?         // e.g. Electrical, Plumbing, Groundworks
+
+  // Insurance — Employers' Liability (Compulsory Insurance) Act 1969
+  hasPublicLiabilityInsurance    Boolean?
+  publicLiabilityAmount          String?         // e.g. "£5,000,000"
+  publicLiabilityExpiry          DateTime?
+  hasEmployersLiabilityInsurance Boolean?
+  employersLiabilityAmount       String?
+  employersLiabilityExpiry       DateTime?
+
+  // H&S competence — CDM 2015, MHSWR 1999 reg.7
+  hasHealthSafetyPolicy          Boolean?
+  healthSafetyPolicyFile         String?         // storage key
+  hasRiskAssessments             Boolean?
+  hasMethodStatements            Boolean?
+
+  // Accreditations — SSIP, CHAS, SafeContractor, Constructionline
+  safetyAccreditations           String?         @db.Text  // JSON array
+
+  // Enforcement history
+  previousEnforcementAction      Boolean?
+  enforcementDetails             String?         @db.Text
+
+  // Pre-qualification decision
+  preQualificationStatus         PreQualStatus   @default(PENDING)
+  preQualificationNotes          String?         @db.Text
+  preQualifiedById               String?
+  preQualifiedAt                 DateTime?
+
+  createdAt                      DateTime        @default(now())
+  updatedAt                      DateTime        @updatedAt
+
+  @@index([tenantId])
+  @@index([preQualificationStatus])
+  @@index([tenantId, preQualificationStatus])
 }
 
 // ─── Medarbeidersamtale ─────────────────────────────────────────────────────
@@ -5619,4 +5738,212 @@ model CronExecution {
   @@index([jobName])
   @@index([startedAt(sort: Desc)])
   @@index([status])
+}
+
+// ============================================
+// Asset / Equipment Register (PUWER 1998, LOLER 1998)
+// ============================================
+
+model Asset {
+  id                String        @id @default(cuid())
+  tenantId          String
+  name              String
+  assetTag          String?
+  category          AssetCategory
+  manufacturer      String?
+  model             String?
+  serialNumber      String?
+  location          String?
+  department        String?
+  purchaseDate      DateTime?
+  commissionDate    DateTime?
+  decommissionDate  DateTime?
+  status            AssetStatus   @default(ACTIVE)
+  notes             String?       @db.Text
+  inspectionFrequency   ControlFrequency? @default(ANNUAL)
+  lastInspectionDate    DateTime?
+  nextInspectionDue     DateTime?
+  inspectionProvider    String?
+  safeWorkingLoad       String?
+  thoroughExamDue       DateTime?
+  lastThoroughExam      DateTime?
+  insuranceCertKey      String?
+  certificationExpiry   DateTime?
+  createdById           String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  tenant              Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  inspections         AssetInspection[]
+  maintenanceRecords  AssetMaintenance[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([category])
+  @@index([nextInspectionDue])
+  @@index([thoroughExamDue])
+  @@index([certificationExpiry])
+}
+
+model AssetInspection {
+  id              String                @id @default(cuid())
+  tenantId        String
+  assetId         String
+  inspectionDate  DateTime
+  inspectedBy     String
+  inspectionType  AssetInspectionType   @default(ROUTINE)
+  result          AssetInspectionResult @default(PASS)
+  findings        String?               @db.Text
+  actionRequired  String?               @db.Text
+  nextDueDate     DateTime?
+  certificateKey  String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([assetId])
+  @@index([inspectionDate])
+}
+
+model AssetMaintenance {
+  id              String   @id @default(cuid())
+  tenantId        String
+  assetId         String
+  maintenanceDate DateTime
+  performedBy     String
+  description     String   @db.Text
+  cost            Decimal? @db.Decimal(10, 2)
+  nextDueDate     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([assetId])
+  @@index([maintenanceDate])
+}
+
+enum AssetCategory {
+  LIFTING_EQUIPMENT
+  PRESSURE_EQUIPMENT
+  ELECTRICAL
+  VEHICLES
+  POWER_TOOLS
+  HAND_TOOLS
+  PPE
+  FIRE_EQUIPMENT
+  SCAFFOLDING
+  OTHER
+}
+
+enum AssetStatus {
+  ACTIVE
+  OUT_OF_SERVICE
+  UNDER_REPAIR
+  DECOMMISSIONED
+  DISPOSED
+}
+
+enum AssetInspectionType {
+  ROUTINE
+  THOROUGH_EXAMINATION
+  PRE_USE
+  POST_INCIDENT
+  RETURN_TO_SERVICE
+}
+
+enum AssetInspectionResult {
+  PASS
+  CONDITIONAL_PASS
+  FAIL
+  REQUIRES_REPAIR
+}
+
+// CDM 2015 reg.12(5) — Health & Safety File
+model HealthSafetyFileEntry {
+  id          String         @id @default(cuid())
+  tenantId    String
+  projectId   String
+  category    HsFileCategory
+  title       String
+  description String?        @db.Text
+  fileKey     String?
+  fileName    String?
+  addedById   String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([projectId])
+  @@index([category])
+}
+
+enum HsFileCategory {
+  AS_BUILT_DRAWINGS
+  DESIGN_CRITERIA
+  HAZARDOUS_MATERIALS
+  MAINTENANCE_PROCEDURES
+  SERVICES_INFORMATION
+  STRUCTURAL_INFORMATION
+  EQUIPMENT_MANUALS
+  EMERGENCY_PROCEDURES
+  CLEANING_PROCEDURES
+  OTHER
+}
+
+/// Regulatory Reform (Fire Safety) Order 2005 — Article 9
+model FireRiskAssessment {
+  id                String   @id @default(cuid())
+  tenantId          String
+  title             String
+  buildingName      String
+  buildingAddress   String?  @db.Text
+  assessedById      String?
+  assessedAt        DateTime?
+  reviewDate        DateTime?
+  status            FireRiskAssessmentStatus @default(DRAFT)
+
+  ignitionSources       String?  @db.Text
+  fuelSources           String?  @db.Text
+  oxygenSources         String?  @db.Text
+
+  peopleAtRisk          String?  @db.Text
+  maxOccupancy          Int?
+
+  fireDetection         String?  @db.Text
+  fireAlarmSystem       String?  @db.Text
+  emergencyLighting     String?  @db.Text
+  fireExtinguishers     String?  @db.Text
+  escapeRoutes          String?  @db.Text
+  signage               String?  @db.Text
+
+  likelihoodOfFire      Int?
+  consequenceSeverity   Int?
+  overallRiskLevel      String?
+
+  additionalMeasures    String?  @db.Text
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+enum FireRiskAssessmentStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  REVIEW_DUE
+  ARCHIVED
 }

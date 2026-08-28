@@ -27,25 +27,23 @@ export function PwaInstallButton() {
       {
         title: "iPhone (Safari)",
         icon: Share2,
-        steps: ["Trykk Del-ikonet nederst i Safari", "Velg Legg til på Hjem-skjerm"],
+        steps: ["Tap the Share icon at the bottom of Safari", "Select Add to Home Screen"],
       },
       {
         title: "Android (Chrome)",
         icon: Smartphone,
-        steps: ["Trykk menyen (tre prikker) i nettleseren", "Velg Installer app eller Legg til på startskjerm"],
+        steps: ["Tap the menu (three dots) in the browser", "Select Install app or Add to Home screen"],
       },
       {
-        title: "Desktop (Chrome/Edge)",
+        title: "Desktop (Chrome / Edge)",
         icon: Monitor,
-        steps: ["Klikk installer-ikonet i adressefeltet", "Bekreft ved å velge Installer"],
+        steps: ["Click the install icon in the address bar", "Confirm by selecting Install"],
       },
     ];
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
+    if (typeof window === "undefined") return;
 
     const standaloneMediaQuery = window.matchMedia("(display-mode: standalone)");
     const isIosStandalone =
@@ -73,10 +71,6 @@ export function PwaInstallButton() {
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     window.addEventListener("appinstalled", handleAppInstalled);
 
-    if ("serviceWorker" in navigator && window.isSecureContext) {
-      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
-    }
-
     return () => {
       standaloneMediaQuery.removeEventListener("change", updateStandaloneState);
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -84,9 +78,7 @@ export function PwaInstallButton() {
     };
   }, []);
 
-  if (isStandalone) {
-    return null;
-  }
+  if (isStandalone) return null;
 
   const handleInstall = async () => {
     if (!deferredPrompt) {
@@ -109,15 +101,15 @@ export function PwaInstallButton() {
     <>
       <Button size="lg" variant="outline" className="text-lg px-8" onClick={handleInstall} disabled={isInstalling}>
         <Download className="mr-2 h-5 w-5" aria-hidden="true" />
-        {deferredPrompt ? "Installer app" : "Hvordan installere appen"}
+        {deferredPrompt ? "Install app" : "How to install the app"}
       </Button>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Installer HMS Nova</DialogTitle>
+            <DialogTitle>Install HSEQ Nova</DialogTitle>
             <DialogDescription>
-              HMS Nova kan installeres på både mobil og desktop for raskere tilgang.
+              HSEQ Nova can be installed on mobile and desktop for faster access.
             </DialogDescription>
           </DialogHeader>
 

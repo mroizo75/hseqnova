@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { TrainingHeaderActions } from "@/features/training/components/training-header-actions";
 import { TrainingList } from "@/features/training/components/training-list";
 import {
@@ -11,7 +12,9 @@ import {
   AlertTriangle,
   XCircle,
   Users,
+  ShieldCheck,
 } from "lucide-react";
+import Link from "next/link";
 import { PageHelpDialog } from "@/components/dashboard/page-help-dialog";
 import { helpContent } from "@/lib/help-content";
 import { getTranslations } from "next-intl/server";
@@ -20,6 +23,8 @@ import {
   loadTrainingPeople,
   loadTrainingsForTenant,
 } from "@/server/queries/training.queries";
+import { AiToolboxTalk } from "@/features/training/components/ai-toolbox-talk";
+import { hasAiAddon } from "@/lib/ai-gate";
 
 export default async function TrainingPage() {
   const t = await getTranslations("dashboardTrainingPage");
@@ -31,10 +36,11 @@ export default async function TrainingPage() {
 
   const tenantId = session.user.tenantId;
 
-  const [trainingsRaw, tenantUsers, courseTemplates] = await Promise.all([
+  const [trainingsRaw, tenantUsers, courseTemplates, aiEnabled] = await Promise.all([
     loadTrainingsForTenant(tenantId),
     loadTrainingPeople(tenantId),
     loadCourseTemplatesForTenant(tenantId, { activeOnly: true }),
+    hasAiAddon(tenantId),
   ]);
 
   const userMap = new Map(tenantUsers.map((u) => [u.id, u]));
@@ -96,8 +102,8 @@ export default async function TrainingPage() {
       <div className="page-header">
         <div className="flex min-w-0 items-start gap-3">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <GraduationCap className="h-8 w-8" />
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold flex items-center gap-2">
+              <GraduationCap className="h-6 w-6 sm:h-8 sm:w-8" />
               {t("title")}
             </h1>
             <p className="text-muted-foreground">
@@ -106,11 +112,19 @@ export default async function TrainingPage() {
           </div>
           <PageHelpDialog content={helpContent.training} />
         </div>
-        <TrainingHeaderActions
-          tenantId={tenantId}
-          users={tenantUsers}
-          courseTemplates={courseTemplates}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/dashboard/training/roles">
+            <Button variant="outline" className="gap-1.5">
+              <ShieldCheck className="h-4 w-4" />
+              Role Requirements
+            </Button>
+          </Link>
+          <TrainingHeaderActions
+            tenantId={tenantId}
+            users={tenantUsers}
+            courseTemplates={courseTemplates}
+          />
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -190,7 +204,7 @@ export default async function TrainingPage() {
                 return (
                   <div
                     key={training.id}
-                    className="flex items-center justify-between rounded-md border border-amber-200 bg-white p-3"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-md border border-amber-200 bg-white p-3"
                   >
                     <div>
                       <p className="font-medium">{training.title}</p>
@@ -210,6 +224,8 @@ export default async function TrainingPage() {
           </CardContent>
         </Card>
       )}
+
+      {aiEnabled && <AiToolboxTalk aiEnabled={aiEnabled} />}
 
       <Card>
         <CardHeader>

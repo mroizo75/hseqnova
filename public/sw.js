@@ -1,10 +1,9 @@
-const CACHE_NAME = "hmsnova-app-shell-v1";
+const CACHE_NAME = "hseqnova-app-shell-v2";
 
 const APP_SHELL_URLS = [
-  "/ansatt",
-  "/ansatt/avvik/ny",
-  "/ansatt/ruh/ny",
   "/offline",
+  "/dashboard",
+  "/ansatt",
 ];
 
 self.addEventListener("install", (event) => {
@@ -16,11 +15,16 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key !== CACHE_NAME)
+            .map((key) => caches.delete(key))
+        )
       )
-    ).then(() => self.clients.claim())
+      .then(() => self.clients.claim())
   );
 });
 
@@ -38,9 +42,9 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() =>
-          caches.match(request).then((cached) =>
-            cached || caches.match("/offline")
-          )
+          caches
+            .match(request)
+            .then((cached) => cached || caches.match("/offline"))
         )
     );
     return;
@@ -54,13 +58,17 @@ self.addEventListener("fetch", (event) => {
   ) {
     event.respondWith(
       caches.match(request).then((cached) => {
-        const fetchPromise = fetch(request).then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        }).catch(() => cached);
+        const fetchPromise = fetch(request)
+          .then((response) => {
+            if (response.ok) {
+              const clone = response.clone();
+              caches
+                .open(CACHE_NAME)
+                .then((cache) => cache.put(request, clone));
+            }
+            return response;
+          })
+          .catch(() => cached);
 
         return cached || fetchPromise;
       })

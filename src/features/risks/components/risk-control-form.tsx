@@ -30,34 +30,57 @@ import type {
 } from "@prisma/client";
 import { createRiskControl } from "@/server/actions/risk-register.actions";
 
-const controlTypeOptions: Array<{ value: RiskControlType; label: string }> = [
-  { value: "PREVENTIVE", label: "Forebyggende" },
-  { value: "DETECTIVE", label: "Detekterende" },
-  { value: "CORRECTIVE", label: "Korrigerende" },
-  { value: "DIRECTIONAL", label: "Styrende" },
-  { value: "COMPENSATING", label: "Kompenserende" },
+// SFAIRP hierarchy — MHSWR 1999 Sch.1 general principles of prevention
+const SFAIRP_HIERARCHY: Array<{
+  value: RiskControlType;
+  label: string;
+  level: number;
+  description: string;
+}> = [
+  { value: "ELIMINATION", level: 1, label: "Elimination", description: "Remove the hazard entirely" },
+  { value: "SUBSTITUTION", level: 2, label: "Substitution", description: "Replace with less hazardous" },
+  { value: "ENGINEERING", level: 3, label: "Engineering controls", description: "Isolate people from the hazard" },
+  { value: "ADMINISTRATIVE", level: 4, label: "Administrative controls", description: "Change the way people work" },
+  { value: "PPE", level: 5, label: "PPE", description: "Protect the worker with equipment" },
+];
+
+const LEGACY_CONTROL_TYPES: Array<{ value: RiskControlType; label: string }> = [
+  { value: "PREVENTIVE", label: "Preventive (legacy)" },
+  { value: "DETECTIVE", label: "Detective (legacy)" },
+  { value: "CORRECTIVE", label: "Corrective (legacy)" },
+  { value: "DIRECTIONAL", label: "Directional (legacy)" },
+  { value: "COMPENSATING", label: "Compensating (legacy)" },
 ];
 
 const frequencyOptions: Array<{ value: ControlFrequency; label: string }> = [
-  { value: "WEEKLY", label: "Ukentlig" },
-  { value: "MONTHLY", label: "Månedlig" },
-  { value: "QUARTERLY", label: "Kvartalsvis" },
-  { value: "ANNUAL", label: "Årlig" },
-  { value: "BIENNIAL", label: "Annet hvert år" },
+  { value: "WEEKLY", label: "Weekly" },
+  { value: "MONTHLY", label: "Monthly" },
+  { value: "QUARTERLY", label: "Quarterly" },
+  { value: "ANNUAL", label: "Annual" },
+  { value: "BIENNIAL", label: "Biennial" },
 ];
 
 const statusOptions: Array<{ value: RiskControlStatus; label: string }> = [
-  { value: "ACTIVE", label: "Aktiv" },
-  { value: "NEEDS_IMPROVEMENT", label: "Trenger forbedring" },
-  { value: "RETIRED", label: "Avviklet" },
+  { value: "ACTIVE", label: "Active" },
+  { value: "NEEDS_IMPROVEMENT", label: "Needs improvement" },
+  { value: "RETIRED", label: "Retired" },
 ];
 
 const effectivenessOptions: Array<{ value: RiskControlEffectiveness; label: string }> = [
-  { value: "EFFECTIVE", label: "Effektiv" },
-  { value: "PARTIAL", label: "Delvis effektiv" },
-  { value: "INEFFECTIVE", label: "Ikke effektiv" },
-  { value: "NOT_TESTED", label: "Ikke testet" },
+  { value: "EFFECTIVE", label: "Effective" },
+  { value: "PARTIAL", label: "Partially effective" },
+  { value: "INEFFECTIVE", label: "Ineffective" },
+  { value: "NOT_TESTED", label: "Not tested" },
 ];
+
+const LEVEL_COLOURS = [
+  "",
+  "bg-green-100 text-green-800 border-green-300",
+  "bg-emerald-100 text-emerald-800 border-emerald-300",
+  "bg-yellow-100 text-yellow-800 border-yellow-300",
+  "bg-orange-100 text-orange-800 border-orange-300",
+  "bg-red-100 text-red-800 border-red-300",
+] as const;
 
 interface RiskControlFormProps {
   riskId: string;
@@ -92,16 +115,16 @@ export function RiskControlForm({ riskId, users, documents }: RiskControlFormPro
 
       if (result.success) {
         toast({
-          title: "✅ Kontroll opprettet",
-          description: "Kontrollen er lagt til i risikoregisteret",
+          title: "Control created",
+          description: "The control has been added to the risk register",
           className: "bg-green-50 border-green-200",
         });
         setOpen(false);
       } else {
         toast({
           variant: "destructive",
-          title: "Feil",
-          description: result.error || "Kunne ikke opprette kontroll",
+          title: "Error",
+          description: result.error || "Could not create control",
         });
       }
     });
@@ -112,44 +135,67 @@ export function RiskControlForm({ riskId, users, documents }: RiskControlFormPro
       <DialogTrigger asChild>
         <Button size="sm">
           <Plus className="mr-2 h-4 w-4" />
-          Ny kontroll
+          New control
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Legg til kontroll</DialogTitle>
+          <DialogTitle>Add control</DialogTitle>
           <DialogDescription>
-            ISO 31000: dokumenter eier, type, frekvens og effekt for viktige kontroller
+            SFAIRP hierarchy of controls per MHSWR 1999 Schedule 1. Document owner, type, frequency and effectiveness.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">Navn på kontroll *</Label>
-            <Input id="title" name="title" placeholder="F.eks. Daglig stillaskontroll" required disabled={isPending} />
+            <Label htmlFor="title">Control name *</Label>
+            <Input id="title" name="title" placeholder="e.g. Daily scaffold inspection" required disabled={isPending} />
+          </div>
+
+          {/* SFAIRP hierarchy selector — HSWA s.2, MHSWR reg.4 */}
+          <div className="space-y-2">
+            <Label htmlFor="controlType">
+              Control type * <span className="text-xs text-muted-foreground">(SFAIRP hierarchy)</span>
+            </Label>
+            <Select name="controlType" defaultValue="ELIMINATION" disabled={isPending}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select control type" />
+              </SelectTrigger>
+              <SelectContent>
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                  Hierarchy of controls (most → least effective)
+                </div>
+                {SFAIRP_HIERARCHY.map((h) => (
+                  <SelectItem key={h.value} value={h.value}>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex h-5 w-5 items-center justify-center rounded-full border text-xs font-bold ${LEVEL_COLOURS[h.level]}`}
+                      >
+                        {h.level}
+                      </span>
+                      <span>{h.label}</span>
+                      <span className="text-xs text-muted-foreground">— {h.description}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+                <div className="mt-1 border-t px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                  Legacy types
+                </div>
+                {LEGACY_CONTROL_TYPES.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="controlType">Kontrolltype *</Label>
-              <Select name="controlType" defaultValue="PREVENTIVE" disabled={isPending}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Velg type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {controlTypeOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ownerId">Eier</Label>
+              <Label htmlFor="ownerId">Owner</Label>
               <Select name="ownerId" disabled={isPending}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg ansvarlig (valgfritt)" />
+                  <SelectValue placeholder="Select responsible person (optional)" />
                 </SelectTrigger>
                 <SelectContent>
                   {users.map((user) => (
@@ -160,14 +206,11 @@ export function RiskControlForm({ riskId, users, documents }: RiskControlFormPro
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="frequency">Revisjonsfrekvens</Label>
+              <Label htmlFor="frequency">Review frequency</Label>
               <Select name="frequency" disabled={isPending}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg frekvens (valgfritt)" />
+                  <SelectValue placeholder="Select frequency (optional)" />
                 </SelectTrigger>
                 <SelectContent>
                   {frequencyOptions.map((option) => (
@@ -178,23 +221,30 @@ export function RiskControlForm({ riskId, users, documents }: RiskControlFormPro
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="monitoringMethod">Test-/overvåkingsmetode</Label>
+              <Label htmlFor="monitoringMethod">Monitoring / test method</Label>
               <Input
                 id="monitoringMethod"
                 name="monitoringMethod"
-                placeholder="F.eks. Visuell inspeksjon, loggkontroll"
+                placeholder="e.g. Visual inspection, log review"
                 disabled={isPending}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="nextTestDate">Next test date</Label>
+              <Input id="nextTestDate" name="nextTestDate" type="date" disabled={isPending} />
+            </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
               <Select name="status" defaultValue="ACTIVE" disabled={isPending}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg status" />
+                  <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
                   {statusOptions.map((option) => (
@@ -206,10 +256,10 @@ export function RiskControlForm({ riskId, users, documents }: RiskControlFormPro
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="effectiveness">Effekt</Label>
+              <Label htmlFor="effectiveness">Effectiveness</Label>
               <Select name="effectiveness" defaultValue="NOT_TESTED" disabled={isPending}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg vurdering" />
+                  <SelectValue placeholder="Select assessment" />
                 </SelectTrigger>
                 <SelectContent>
                   {effectivenessOptions.map((option) => (
@@ -221,26 +271,22 @@ export function RiskControlForm({ riskId, users, documents }: RiskControlFormPro
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="nextTestDate">Neste testdato</Label>
-              <Input id="nextTestDate" name="nextTestDate" type="date" disabled={isPending} />
+              <Label htmlFor="lastTestedAt">Last tested</Label>
+              <Input id="lastTestedAt" name="lastTestedAt" type="date" disabled={isPending} />
             </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="lastTestedAt">Sist testet</Label>
-              <Input id="lastTestedAt" name="lastTestedAt" type="date" disabled={isPending} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="evidenceDocumentId">Evidens (dokument)</Label>
+              <Label htmlFor="evidenceDocumentId">Evidence (document)</Label>
               {documents.length === 0 ? (
                 <div className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
-                  Ingen dokumenter tilgjengelig. Opprett dokumenter først.
+                  No documents available. Create documents first.
                 </div>
               ) : (
                 <Select name="evidenceDocumentId" disabled={isPending}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Velg dokument (valgfritt)" />
+                    <SelectValue placeholder="Select document (optional)" />
                   </SelectTrigger>
                   <SelectContent>
                     {documents.map((doc) => (
@@ -255,11 +301,11 @@ export function RiskControlForm({ riskId, users, documents }: RiskControlFormPro
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Beskrivelse</Label>
+            <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
               name="description"
-              placeholder="Hva gjør kontrollen, og hvordan utføres den?"
+              placeholder="What does this control do and how is it carried out?"
               rows={3}
               disabled={isPending}
             />
@@ -267,10 +313,10 @@ export function RiskControlForm({ riskId, users, documents }: RiskControlFormPro
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
-              Avbryt
+              Cancel
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? "Lagrer..." : "Lagre kontroll"}
+              {isPending ? "Saving..." : "Save control"}
             </Button>
           </div>
         </form>

@@ -11,6 +11,8 @@ import { RiskAssessmentComplianceCard } from "@/features/risks/components/risk-a
 import { getPermissions } from "@/lib/permissions";
 import { RiskAssessmentDeleteButton } from "@/features/risks/components/risk-assessment-delete-button";
 import { RiskAssessmentTitleEditor } from "@/features/risks/components/risk-assessment-title-editor";
+import { AiRiskGeneratorWrapper } from "@/features/risks/components/ai-risk-generator-wrapper";
+import { hasAiAddon } from "@/lib/ai-gate";
 import {
   loadRiskAssessmentDetail,
   loadRiskSession,
@@ -38,9 +40,10 @@ export default async function RiskAssessmentPage({
   const canDeleteRiskAssessments = permissions.canDeleteRisks;
   const canEditAssessmentTitle = permissions.canCreateRisks;
 
-  const [assessment, people] = await Promise.all([
+  const [assessment, people, aiEnabled] = await Promise.all([
     loadRiskAssessmentDetail(context.tenantId, id),
     loadTenantPeople(context.tenantId),
+    hasAiAddon(context.tenantId),
   ]);
 
   if (!assessment) {
@@ -64,7 +67,7 @@ export default async function RiskAssessmentPage({
             Back to risk assessments
           </Link>
         </Button>
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1">
             <RiskAssessmentTitleEditor
               assessmentId={assessment.id}
@@ -100,6 +103,12 @@ export default async function RiskAssessmentPage({
         }}
         users={userList}
       />
+
+      {aiEnabled && (
+        <AiRiskGeneratorWrapper
+          existingRisks={assessment.risks.map((r: { title: string }) => r.title)}
+        />
+      )}
 
       <RiskAssessmentItemForm
         riskAssessmentId={assessment.id}

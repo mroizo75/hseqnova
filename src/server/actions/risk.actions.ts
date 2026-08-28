@@ -177,6 +177,15 @@ export async function createRisk(input: any) {
       throw { code: "RISK_CREATE_FAILED", message: error?.message || "Could not create risk" };
     }
 
+    await getAdminDb().from("RiskHistory").insert({
+      id: createId(),
+      tenantId,
+      riskId: risk.id,
+      changeType: "CREATED",
+      newScore: score,
+      changedById: user.id,
+    });
+
     await insertAuditLog({
       tenantId,
       userId: user.id,
@@ -296,6 +305,42 @@ export async function updateRisk(input: any) {
     if (error || !risk) {
       throw { code: "RISK_UPDATE_FAILED", message: error?.message || "Could not update risk" };
     }
+
+    // --- Risk history tracking (MHSWR reg.4) ---
+    const scoreChanged = existingRisk.score !== score;
+    const trackedFields = [
+      "title", "context", "description", "existingControls", "location",
+      "area", "category", "status", "riskStatement", "responseStrategy",
+      "trend", "controlFrequency", "likelihood", "consequence",
+      "residualLikelihood", "residualConsequence",
+    ] as const;
+    const changedFieldsMap: Record<string, { old: unknown; new: unknown }> = {};
+    for (const field of trackedFields) {
+      const oldVal = existingRisk[field];
+      const newVal = (updateData as Record<string, unknown>)[field];
+      if (newVal !== undefined && String(newVal) !== String(oldVal ?? "")) {
+        changedFieldsMap[field] = { old: oldVal, new: newVal };
+      }
+    }
+
+    const changeType = scoreChanged
+      ? "SCORE_CHANGED"
+      : Object.keys(changedFieldsMap).length > 0
+        ? "UPDATED"
+        : "UPDATED";
+
+    await getAdminDb().from("RiskHistory").insert({
+      id: createId(),
+      tenantId,
+      riskId: validated.id,
+      changeType,
+      previousScore: scoreChanged ? existingRisk.score : null,
+      newScore: scoreChanged ? score : null,
+      changedFields: Object.keys(changedFieldsMap).length > 0
+        ? JSON.stringify(changedFieldsMap)
+        : null,
+      changedById: user.id,
+    });
 
     await insertAuditLog({
       tenantId,

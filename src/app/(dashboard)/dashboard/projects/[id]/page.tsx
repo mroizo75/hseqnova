@@ -1,6 +1,9 @@
 import { redirect, notFound } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { getAuthMembership } from "@/lib/auth-db";
+import type { Role, ProjectStatus } from "@prisma/client";
+import { getPermissions } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,8 +12,8 @@ import {
   Edit, FileText,
 } from "lucide-react";
 import Link from "next/link";
-import type { ProjectStatus } from "@prisma/client";
 import { ProjectTabs } from "@/features/projects/components/project-tabs";
+import { HsFileSection } from "@/features/projects/components/hs-file-section";
 import { getTranslations } from "next-intl/server";
 import { loadDutyHoldersForProject, loadProjectDetail } from "@/server/queries/projects.queries";
 import { CDM_DUTY_HOLDER_LABELS, type CdmDutyHolderRoleKey } from "@/features/projects/lib/cdm-duty-holders";
@@ -34,7 +37,10 @@ export default async function ProjectDetailPage({
 }) {
   const t = await getTranslations("dashboardProjectDetailPage");
   const session = await getServerSession(authOptions);
-  if (!session?.user?.tenantId) redirect("/login");
+  if (!session?.user?.id || !session?.user?.tenantId) redirect("/login");
+
+  const membership = await getAuthMembership(session.user.id, session.user.tenantId);
+  const permissions = membership ? getPermissions(membership.role as Role) : null;
 
   const { id } = await params;
   const [project, dutyHolders] = await Promise.all([
@@ -65,16 +71,16 @@ export default async function ProjectDetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <Button variant="ghost" size="icon" asChild className="mt-1">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3 min-w-0">
+          <Button variant="ghost" size="icon" asChild className="mt-1 shrink-0">
             <Link href="/dashboard/projects">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold">{project.name}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold">{project.name}</h1>
               <Badge className={`border ${sc.color}`}>{sc.label}</Badge>
               {project.code && (
                 <span className="font-mono text-sm text-muted-foreground">{project.code}</span>
@@ -117,7 +123,7 @@ export default async function ProjectDetailPage({
             </div>
           </div>
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex flex-wrap gap-2 shrink-0">
           <Button variant="outline" size="sm" asChild>
             <Link href={`/dashboard/projects/${project.id}/edit`}>
               <Edit className="mr-1 h-3.5 w-3.5" />
@@ -222,6 +228,13 @@ export default async function ProjectDetailPage({
         attachments={project.attachments}
         formSubmissions={project.formSubmissions as any}
       />
+
+      {permissions?.canReadConstructionCompliance ? (
+        <HsFileSection
+          projectId={project.id}
+          canManage={permissions.canManageConstructionCompliance}
+        />
+      ) : null}
     </div>
   );
 }

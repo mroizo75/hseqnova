@@ -1,23 +1,31 @@
 import type { Metadata } from "next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Mail, Phone, MapPin } from "lucide-react";
+import { Shield, Mail, ExternalLink } from "lucide-react";
+import {
+  getCanonicalUrl,
+  ROBOTS_CONFIG,
+  getOpenGraphDefaults,
+  getTwitterDefaults,
+} from "@/lib/seo-config";
+
+const title = "Privacy Policy | HSEQ Nova";
+const description =
+  "How HSEQ Nova collects, uses and protects personal data. UK GDPR and Data Protection Act 2018 compliant. Your rights, data retention, processors and how to contact us.";
 
 export const metadata: Metadata = {
-  title: "Personvernerklæring | GDPR | HMS Nova AS",
-  description:
-    "Les hvordan HMS Nova AS behandler personopplysninger i HMS Nova. GDPR-compliant personvernerklæring som forklarer dine rettigheter, hvordan vi samler inn og bruker data, og hvordan du kan kontakte oss.",
-  robots: {
-    index: true,
-    follow: true,
-  },
+  title,
+  description,
+  robots: ROBOTS_CONFIG,
   alternates: {
-    canonical: "https://hmsnova.no/personvern",
+    canonical: getCanonicalUrl("/personvern"),
   },
+  openGraph: getOpenGraphDefaults(title, description, "/personvern"),
+  twitter: getTwitterDefaults(title, description),
 };
 
 export default function PersonvernPage() {
-  const lastUpdated = "11. august 2026";
+  const lastUpdated = "28 August 2026";
 
   return (
     <div className="bg-gradient-to-b from-background to-muted/20">
@@ -25,75 +33,71 @@ export default function PersonvernPage() {
         <div className="text-center mb-12">
           <Badge variant="default" className="mb-6">
             <Shield className="h-3 w-3 mr-2" />
-            Personvern
+            Privacy
           </Badge>
           <h1 className="text-5xl md:text-6xl font-bold mb-6">
-            Personvernerklæring
+            Privacy Policy
           </h1>
           <p className="text-xl text-muted-foreground">
-            Vi tar ditt personvern på alvor. Her forklarer vi hvordan HMS Nova AS samler inn, 
-            bruker og beskytter dine personopplysninger i henhold til GDPR.
+            We take your privacy seriously. This policy explains how HSEQ Nova
+            collects, uses and protects your personal data in accordance with
+            the UK GDPR and the Data Protection Act 2018.
           </p>
           <p className="text-sm text-muted-foreground mt-4">
-            Sist oppdatert: {lastUpdated}
+            Last updated: {lastUpdated}
           </p>
         </div>
 
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>1. Dataansvarlig</CardTitle>
+              <CardTitle>1. Data Controller</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                <strong>HMS Nova AS</strong> er dataansvarlig for 
-                behandlingen av personopplysninger i HMS Nova og på hmsnova.no.
+                <strong>HSEQ Nova</strong> is the data controller for the
+                processing of personal data within the HSEQ Nova platform and on
+                hseqnova.co.uk.
               </p>
               <div className="bg-muted/50 p-4 rounded-lg space-y-2 text-sm">
-                <p><strong>HMS Nova AS</strong></p>
+                <p><strong>HSEQ Nova</strong></p>
+                <p>United Kingdom</p>
                 <p className="flex items-center gap-2">
                   <Mail className="h-4 w-4" />
-                  <a href="mailto:post@hmsnova.no" className="hover:text-primary">post@hmsnova.no</a>
+                  <a href="mailto:hello@hseqnova.co.uk" className="hover:text-primary">hello@hseqnova.co.uk</a>
                 </p>
-                <p className="flex items-center gap-2">
-                  <Phone className="h-4 w-4" />
-                  <a href="tel:+4799112916" className="hover:text-primary">+47 99 11 29 16</a>
-                </p>
-                <p>Org.nr. legges inn</p>
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>2. Hvilke personopplysninger samler vi inn?</CardTitle>
+              <CardTitle>2. What Personal Data We Collect</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <h4 className="font-semibold mb-2">2.1 Opplysninger du gir oss direkte</h4>
+                <h4 className="font-semibold mb-2">2.1 Data you provide directly</h4>
                 <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                  <li><strong>Kontaktinformasjon:</strong> Navn, e-postadresse, telefonnummer, adresse</li>
-                  <li><strong>Bedriftsinformasjon:</strong> Organisasjonsnummer, bedriftsnavn, faktureringsadresse</li>
-                  <li><strong>Brukerkonto:</strong> Brukernavn, passord (kryptert), profilbilde, rolle</li>
-                  <li><strong>HMS-data:</strong> Risikovurderinger, avviksmeldinger, opplæringshistorikk, dokumenter</li>
-                  <li><strong>Kurspåmelding:</strong> Deltakerinformasjon, sertifikater, kurshistorikk</li>
+                  <li><strong>Account information:</strong> Name, email address, job title, role</li>
+                  <li><strong>Company information:</strong> Company name, registered address, Companies House number, billing address</li>
+                  <li><strong>User account:</strong> Password (hashed), profile picture, assigned role</li>
+                  <li><strong>Health and safety data:</strong> Risk assessments, incident reports, training records, COSHH assessments, inspection findings, documents</li>
                 </ul>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">2.2 Opplysninger vi samler inn automatisk</h4>
+                <h4 className="font-semibold mb-2">2.2 Data we collect automatically</h4>
                 <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                  <li><strong>Loggdata:</strong> IP-adresse, nettlesertype, tidsstempler, sidevisninger</li>
-                  <li><strong>Cookies:</strong> Se vår <a href="/cookies" className="text-primary hover:underline">cookiepolicy</a></li>
-                  <li><strong>Bruksmønstre:</strong> Hvilke funksjoner som brukes, frekvens, feilmeldinger</li>
+                  <li><strong>Log data:</strong> IP address, browser type, timestamps, pages visited</li>
+                  <li><strong>Cookies:</strong> See our <a href="/cookies" className="text-primary hover:underline">Cookie Policy</a></li>
+                  <li><strong>Usage data:</strong> Features used, frequency of use, error reports</li>
                 </ul>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">2.3 Opplysninger fra tredjeparter</h4>
+                <h4 className="font-semibold mb-2">2.3 Data from third parties</h4>
                 <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                  <li><strong>Brønnøysundregistrene:</strong> Organisasjonsnummer, bedriftsnavn (for validering)</li>
-                  <li><strong>Betalingsleverandør:</strong> Fakturastatus (via Fiken)</li>
+                  <li><strong>Payment provider:</strong> Payment status and billing information (via Stripe)</li>
                 </ul>
               </div>
             </CardContent>
@@ -101,62 +105,68 @@ export default function PersonvernPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>3. Formål med behandlingen og rettslig grunnlag</CardTitle>
+              <CardTitle>3. Legal Basis for Processing</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                Vi behandler personopplysninger for følgende formål, basert på GDPR Artikkel 6:
+                We process personal data on the following legal bases under UK GDPR Article 6:
               </p>
 
               <div className="space-y-4">
                 <div className="border-l-4 border-primary pl-4">
-                  <h4 className="font-semibold">Oppfylle avtale (Art. 6.1.b)</h4>
+                  <h4 className="font-semibold">Contract performance (Art. 6(1)(b))</h4>
                   <p className="text-sm text-muted-foreground">
-                    Levere HMS Nova-tjenester, kurspåmelding, tilgang til systemet, 
-                    generere dokumenter og rapporter.
+                    Delivering HSEQ Nova services, managing your subscription,
+                    providing access to the platform, generating documents and reports.
                   </p>
                 </div>
 
                 <div className="border-l-4 border-primary pl-4">
-                  <h4 className="font-semibold">Lovpålagt behandling (Art. 6.1.c)</h4>
+                  <h4 className="font-semibold">Legal obligation (Art. 6(1)(c))</h4>
                   <p className="text-sm text-muted-foreground">
-                    Bokføring (bokføringsloven), fakturering (regnskapsloven), 
-                    oppbevare HMS-dokumentasjon (arbeidsmiljøloven).
+                    Retaining invoices and financial records (Finance Act / HMRC requirements),
+                    maintaining health and safety documentation as required by HSWA 1974
+                    and MHSWR 1999, retaining COSHH health records (COSHH Regulations 2002).
                   </p>
                 </div>
 
                 <div className="border-l-4 border-primary pl-4">
-                  <h4 className="font-semibold">Samtykke (Art. 6.1.a)</h4>
+                  <h4 className="font-semibold">Consent (Art. 6(1)(a))</h4>
                   <p className="text-sm text-muted-foreground">
-                    Nyhetsbrev, markedsføring, ikke-essensielle cookies (analyse og markedsføring).
+                    Marketing communications, newsletters, non-essential cookies
+                    (analytics and marketing). You may withdraw consent at any time.
                   </p>
                 </div>
 
                 <div className="border-l-4 border-primary pl-4">
-                  <h4 className="font-semibold">Berettiget interesse (Art. 6.1.f)</h4>
+                  <h4 className="font-semibold">Legitimate interest (Art. 6(1)(f))</h4>
                   <p className="text-sm text-muted-foreground">
-                    Forbedre tjenesten, analysere bruksmønstre, forebygge svindel og misbruk, 
-                    gi kundesupport. Generere anonymisert bransjestatistikk og benchmarks 
-                    (HMS Nova Safety Intelligence) — se punkt 3b nedenfor.
+                    Improving the service, analysing usage patterns, preventing fraud
+                    and misuse, providing customer support, generating anonymised
+                    industry statistics and benchmarks (see section 3b below).
                   </p>
                 </div>
 
                 <div className="border-l-4 border-orange-400 pl-4">
-                  <h4 className="font-semibold">3b. Anonymisert bransjestatistikk</h4>
+                  <h4 className="font-semibold">3b. Anonymised industry statistics</h4>
                   <p className="text-sm text-muted-foreground">
-                    HMS Nova aggregerer anonymiserte HMS-data pa tvers av kunder for a produsere 
-                    bransjestatistikk, trendanalyser og benchmarks. Dataene anonymiseres med 
-                    k-anonymity (minimum 5 bedrifter per gruppe), slik at ingen enkeltstaaende 
-                    bedrift eller person kan identifiseres. Nar data er tilstrekkelig anonymisert 
-                    utgjor det ikke lenger personopplysninger (GDPR fortale 26).
+                    HSEQ Nova aggregates anonymised health and safety data across
+                    customers to produce industry statistics, trend analyses and
+                    benchmarks. Data is anonymised using k-anonymity (minimum 5
+                    organisations per group) so that no individual company or person
+                    can be identified. Once data is sufficiently anonymised it no
+                    longer constitutes personal data (UK GDPR Recital 26).
                   </p>
                   <p className="text-sm text-muted-foreground mt-2">
-                    <strong>Formaal:</strong> Gi kunder verdifull innsikt i egen prestasjon mot bransjesnittet, 
-                    samt muliggjore forskning og forbedring av HMS-arbeid i Norge.
+                    <strong>Purpose:</strong> Providing customers with valuable
+                    insight into their performance relative to industry averages,
+                    and enabling research to improve health and safety outcomes
+                    across the UK.
                   </p>
                   <p className="text-sm text-muted-foreground mt-2">
-                    <strong>Reservasjon:</strong> Du kan reservere din bedrift mot deltakelse via 
-                    Innstillinger &gt; Statistikk i HMS Nova.
+                    <strong>Opt-out:</strong> You may opt your organisation out
+                    at any time via Settings &gt; Statistics in the HSEQ Nova
+                    dashboard.
                   </p>
                 </div>
               </div>
@@ -165,70 +175,78 @@ export default function PersonvernPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>4. Hvor lenge lagrer vi personopplysninger?</CardTitle>
+              <CardTitle>4. Data Retention</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <div className="flex justify-between items-start border-b pb-2">
-                  <span className="font-semibold">Brukerkonto (aktiv)</span>
-                  <span className="text-muted-foreground">Så lenge kontoen er aktiv</span>
+                  <span className="font-semibold">User account (active)</span>
+                  <span className="text-muted-foreground">While the account remains active</span>
                 </div>
                 <div className="flex justify-between items-start border-b pb-2">
-                  <span className="font-semibold">HMS-dokumentasjon</span>
-                  <span className="text-muted-foreground">Minimum 10 år (lovkrav)</span>
+                  <span className="font-semibold">H&S records</span>
+                  <span className="text-muted-foreground">Per statutory requirements (typically 3-40 years)</span>
                 </div>
                 <div className="flex justify-between items-start border-b pb-2">
-                  <span className="font-semibold">Fakturaer og regnskapsdata</span>
-                  <span className="text-muted-foreground">5 år (bokføringsloven)</span>
+                  <span className="font-semibold">COSHH health records</span>
+                  <span className="text-muted-foreground">40 years (COSHH Regulations 2002, reg. 11)</span>
                 </div>
                 <div className="flex justify-between items-start border-b pb-2">
-                  <span className="font-semibold">Kursbevis og sertifikater</span>
-                  <span className="text-muted-foreground">10 år</span>
+                  <span className="font-semibold">Accident book entries</span>
+                  <span className="text-muted-foreground">3 years (SS (Claims & Payments) Regs 1979)</span>
                 </div>
                 <div className="flex justify-between items-start border-b pb-2">
-                  <span className="font-semibold">Markedsføringssamtykke</span>
-                  <span className="text-muted-foreground">Til samtykke trekkes tilbake</span>
+                  <span className="font-semibold">Invoices and financial data</span>
+                  <span className="text-muted-foreground">6 years (HMRC requirements)</span>
+                </div>
+                <div className="flex justify-between items-start border-b pb-2">
+                  <span className="font-semibold">Marketing consent</span>
+                  <span className="text-muted-foreground">Until consent is withdrawn</span>
                 </div>
                 <div className="flex justify-between items-start">
-                  <span className="font-semibold">Analyse-cookies</span>
-                  <span className="text-muted-foreground">Maks 26 måneder</span>
+                  <span className="font-semibold">Analytics cookies</span>
+                  <span className="text-muted-foreground">Maximum 26 months</span>
                 </div>
               </div>
 
               <p className="text-sm text-muted-foreground mt-4">
-                Etter utløpet av lagringsperioden slettes eller anonymiseres dataene, 
-                med mindre annet er påkrevd av lov.
+                After the relevant retention period, data is deleted or
+                anonymised unless further retention is required by law.
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>5. Deling av personopplysninger</CardTitle>
+              <CardTitle>5. Sharing of Personal Data</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                Vi deler <strong>ikke</strong> dine personopplysninger med tredjeparter for 
-                markedsføringsformål. Vi deler kun data med:
+                We do <strong>not</strong> sell your personal data to third
+                parties. We share data only with the following:
               </p>
 
               <div className="space-y-3">
                 <div>
-                  <h4 className="font-semibold">Databehandlere (GDPR Art. 28)</h4>
+                  <h4 className="font-semibold">Data processors (UK GDPR Art. 28)</h4>
                   <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 mt-2">
-                    <li><strong>Cloudflare:</strong> Hosting og sikkerhet (EU/EØS)</li>
-                    <li><strong>Resend:</strong> E-postutsendelse (EU/EØS)</li>
-                    <li><strong>HMS Nova:</strong> BHT-tjenester (eget tilbud, under etablering)</li>
+                    <li><strong>Supabase:</strong> Database hosting (EU)</li>
+                    <li><strong>Resend:</strong> Transactional email delivery</li>
+                    <li><strong>Stripe:</strong> Payment processing</li>
                   </ul>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Alle databehandlere har signert databehandleravtale og følger GDPR.
+                    All processors operate under data processing agreements and
+                    comply with UK GDPR. Where data is transferred outside the
+                    UK, appropriate safeguards (UK adequacy decisions or UK
+                    International Data Transfer Agreements) are in place.
                   </p>
                 </div>
 
                 <div>
-                  <h4 className="font-semibold">Lovpålagt utlevering</h4>
+                  <h4 className="font-semibold">Legal disclosure</h4>
                   <p className="text-sm text-muted-foreground">
-                    Vi kan dele opplysninger hvis påkrevd av lov, rettskjennelse eller offentlig myndighet.
+                    We may disclose personal data where required by law, court
+                    order or regulatory authority.
                   </p>
                 </div>
               </div>
@@ -237,94 +255,116 @@ export default function PersonvernPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>6. Dine rettigheter etter GDPR</CardTitle>
+              <CardTitle>6. Your Rights Under the UK GDPR</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                Du har følgende rettigheter i henhold til GDPR:
+                You have the following rights in relation to your personal data:
               </p>
 
               <div className="space-y-3">
                 <div className="bg-muted/30 p-4 rounded-lg">
                   <h4 className="font-semibold flex items-center gap-2 mb-2">
                     <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs">1</span>
-                    Rett til innsyn (Art. 15)
+                    Right of access (Art. 15)
                   </h4>
                   <p className="text-sm text-muted-foreground">
-                    Du kan be om en kopi av alle personopplysninger vi har om deg.
+                    You may request a copy of all personal data we hold about you.
                   </p>
                 </div>
 
                 <div className="bg-muted/30 p-4 rounded-lg">
                   <h4 className="font-semibold flex items-center gap-2 mb-2">
                     <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs">2</span>
-                    Rett til retting (Art. 16)
+                    Right to rectification (Art. 16)
                   </h4>
                   <p className="text-sm text-muted-foreground">
-                    Du kan be om at uriktige eller ufullstendige opplysninger rettes.
+                    You may ask us to correct inaccurate or incomplete personal data.
                   </p>
                 </div>
 
                 <div className="bg-muted/30 p-4 rounded-lg">
                   <h4 className="font-semibold flex items-center gap-2 mb-2">
                     <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs">3</span>
-                    Rett til sletting (Art. 17)
+                    Right to erasure (Art. 17)
                   </h4>
                   <p className="text-sm text-muted-foreground">
-                    Du kan be om at personopplysninger slettes, med visse unntak (f.eks. lovpålagt lagring).
+                    You may request deletion of your personal data, subject to
+                    statutory retention requirements (e.g. COSHH health records,
+                    HMRC invoices).
                   </p>
                 </div>
 
                 <div className="bg-muted/30 p-4 rounded-lg">
                   <h4 className="font-semibold flex items-center gap-2 mb-2">
                     <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs">4</span>
-                    Rett til begrensning (Art. 18)
+                    Right to restrict processing (Art. 18)
                   </h4>
                   <p className="text-sm text-muted-foreground">
-                    Du kan be om at behandlingen av personopplysninger begrenses.
+                    You may ask us to restrict the processing of your personal data
+                    in certain circumstances.
                   </p>
                 </div>
 
                 <div className="bg-muted/30 p-4 rounded-lg">
                   <h4 className="font-semibold flex items-center gap-2 mb-2">
                     <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs">5</span>
-                    Rett til dataportabilitet (Art. 20)
+                    Right to data portability (Art. 20)
                   </h4>
                   <p className="text-sm text-muted-foreground">
-                    Du kan få utlevert personopplysninger i et strukturert, maskinlesbart format.
+                    You may receive your personal data in a structured,
+                    commonly used, machine-readable format.
                   </p>
                 </div>
 
                 <div className="bg-muted/30 p-4 rounded-lg">
                   <h4 className="font-semibold flex items-center gap-2 mb-2">
                     <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs">6</span>
-                    Rett til å protestere (Art. 21)
+                    Right to object (Art. 21)
                   </h4>
                   <p className="text-sm text-muted-foreground">
-                    Du kan protestere mot behandling basert på berettiget interesse eller markedsføring.
+                    You may object to processing based on legitimate interest or
+                    for direct marketing purposes.
                   </p>
                 </div>
 
                 <div className="bg-muted/30 p-4 rounded-lg">
                   <h4 className="font-semibold flex items-center gap-2 mb-2">
                     <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs">7</span>
-                    Rett til å trekke samtykke tilbake (Art. 7)
+                    Right to withdraw consent (Art. 7)
                   </h4>
                   <p className="text-sm text-muted-foreground">
-                    Hvis behandlingen er basert på samtykke, kan du når som helst trekke dette tilbake.
+                    Where processing is based on consent, you may withdraw that
+                    consent at any time without affecting the lawfulness of
+                    processing carried out before withdrawal.
                   </p>
                 </div>
               </div>
 
               <div className="mt-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
-                <h4 className="font-semibold mb-2">Slik utøver du dine rettigheter:</h4>
+                <h4 className="font-semibold mb-2">How to exercise your rights</h4>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Send en e-post til <a href="mailto:post@hmsnova.no" className="text-primary font-semibold hover:underline">post@hmsnova.no</a> med 
-                  emnet "GDPR-forespørsel". Vi svarer innen 30 dager.
+                  Send an email to{" "}
+                  <a href="mailto:hello@hseqnova.co.uk" className="text-primary font-semibold hover:underline">
+                    hello@hseqnova.co.uk
+                  </a>{" "}
+                  with the subject line &ldquo;Data Rights Request&rdquo;. We
+                  will respond within one calendar month.
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Du har også rett til å klage til <strong>Datatilsynet</strong> hvis du mener 
-                  behandlingen er i strid med GDPR.
+                  You also have the right to lodge a complaint with the{" "}
+                  <strong>Information Commissioner&rsquo;s Office (ICO)</strong>{" "}
+                  if you believe your data has been handled unlawfully.
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  <a
+                    href="https://ico.org.uk"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    ico.org.uk <ExternalLink className="h-3 w-3" />
+                  </a>
                 </p>
               </div>
             </CardContent>
@@ -332,33 +372,34 @@ export default function PersonvernPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>7. Sikkerhetstiltak</CardTitle>
+              <CardTitle>7. Security Measures</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                Vi tar sikkerhet på alvor og har implementert følgende tiltak:
+                We implement appropriate technical and organisational measures
+                to protect your personal data, including:
               </p>
 
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-start gap-2">
                   <Shield className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  <span><strong>Kryptering:</strong> SSL/TLS for all dataoverføring, krypterte passord (bcrypt)</span>
+                  <span><strong>Encryption:</strong> TLS for all data in transit; hashed passwords (bcrypt)</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Shield className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  <span><strong>Tilgangskontroll:</strong> Rollebasert tilgang (RBAC), multi-tenant isolasjon</span>
+                  <span><strong>Access control:</strong> Role-based access control (RBAC) and multi-tenant data isolation</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Shield className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  <span><strong>Logging:</strong> Alle kritiske handlinger logges med audit trail</span>
+                  <span><strong>Audit logging:</strong> All critical actions are recorded with a full audit trail</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Shield className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  <span><strong>Backup:</strong> Daglig sikkerhetskopi av all data</span>
+                  <span><strong>Backups:</strong> Daily backups of all data</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Shield className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  <span><strong>Sikkerhetsoppdateringer:</strong> Regelmessige oppdateringer av systemer</span>
+                  <span><strong>Patching:</strong> Regular security updates to all systems</span>
                 </li>
               </ul>
             </CardContent>
@@ -366,39 +407,34 @@ export default function PersonvernPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>8. Endringer i personvernerklæringen</CardTitle>
+              <CardTitle>8. Changes to This Policy</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">
-                Vi kan oppdatere denne personvernerklæringen fra tid til annen. 
-                Ved vesentlige endringer vil vi varsle deg via e-post eller melding i systemet. 
-                Vi oppfordrer deg til å sjekke denne siden regelmessig.
+                We may update this privacy policy from time to time. Where we
+                make material changes we will notify you by email or through a
+                notification in the platform. We encourage you to review this
+                page periodically.
               </p>
               <p className="text-sm text-muted-foreground mt-4">
-                Sist oppdatert: <strong>{lastUpdated}</strong>
+                Last updated: <strong>{lastUpdated}</strong>
               </p>
             </CardContent>
           </Card>
 
           <Card className="bg-primary/5 border-primary/20">
             <CardContent className="pt-6">
-              <h3 className="font-bold text-lg mb-4">Kontakt oss</h3>
+              <h3 className="font-bold text-lg mb-4">Contact Us</h3>
               <p className="text-muted-foreground mb-4">
-                Hvis du har spørsmål om hvordan vi behandler personopplysninger, 
-                eller ønsker å utøve dine rettigheter, ta kontakt:
+                If you have any questions about how we process personal data, or
+                wish to exercise your rights, please contact us:
               </p>
               <div className="space-y-2 text-sm">
                 <p className="flex items-center gap-2">
                   <Mail className="h-4 w-4 text-primary" />
-                  <a href="mailto:post@hmsnova.no" className="text-primary font-semibold hover:underline">post@hmsnova.no</a>
-                </p>
-                <p className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-primary" />
-                  <a href="tel:+4799112916" className="text-primary font-semibold hover:underline">+47 99 11 29 16</a>
-                </p>
-                <p className="flex items-start gap-2">
-                  <MapPin className="h-4 w-4 text-primary mt-0.5" />
-                  <span>HMS Nova AS<br/>Peckels Gate 12b, 3616 Kongsberg</span>
+                  <a href="mailto:hello@hseqnova.co.uk" className="text-primary font-semibold hover:underline">
+                    hello@hseqnova.co.uk
+                  </a>
                 </p>
               </div>
             </CardContent>
@@ -408,4 +444,3 @@ export default function PersonvernPage() {
     </div>
   );
 }
-

@@ -1,23 +1,31 @@
 import type { Metadata } from "next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Mail, Phone } from "lucide-react";
+import { FileText, Mail } from "lucide-react";
+import {
+  getCanonicalUrl,
+  ROBOTS_CONFIG,
+  getOpenGraphDefaults,
+  getTwitterDefaults,
+} from "@/lib/seo-config";
+
+const title = "Terms of Service | HSEQ Nova";
+const description =
+  "Terms of service for HSEQ Nova. Pricing, payment, cancellation, liability, intellectual property and governing law for the UK HSEQ software platform.";
 
 export const metadata: Metadata = {
-  title: "Bruksvilkår | Terms of Service | HMS Nova AS",
-  description:
-    "Les bruksvilkårene for HMS Nova. Informasjon om priser, betaling, oppsigelse, brukerens plikter, ansvarsbegrensning og dine rettigheter som kunde hos HMS Nova AS.",
-  robots: {
-    index: true,
-    follow: true,
-  },
+  title,
+  description,
+  robots: ROBOTS_CONFIG,
   alternates: {
-    canonical: "https://hmsnova.no/vilkar",
+    canonical: getCanonicalUrl("/vilkar"),
   },
+  openGraph: getOpenGraphDefaults(title, description, "/vilkar"),
+  twitter: getTwitterDefaults(title, description),
 };
 
 export default function VilkarPage() {
-  const lastUpdated = "11. august 2026";
+  const lastUpdated = "28 August 2026";
 
   return (
     <div className="bg-gradient-to-b from-background to-muted/20">
@@ -25,75 +33,83 @@ export default function VilkarPage() {
         <div className="text-center mb-12">
           <Badge variant="default" className="mb-6">
             <FileText className="h-3 w-3 mr-2" />
-            Bruksvilkår
+            Terms
           </Badge>
           <h1 className="text-5xl md:text-6xl font-bold mb-6">
-            Bruksvilkår
+            Terms of Service
           </h1>
           <p className="text-xl text-muted-foreground">
-            Vilkår for bruk av HMS Nova og tjenester fra HMS Nova AS
+            Terms and conditions for the use of HSEQ Nova
           </p>
           <p className="text-sm text-muted-foreground mt-4">
-            Sist oppdatert: {lastUpdated}
+            Last updated: {lastUpdated}
           </p>
         </div>
 
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>1. Avtaleparter og aksept</CardTitle>
+              <CardTitle>1. Parties and Acceptance</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                Disse bruksvilkårene ("Vilkårene") gjelder mellom <strong>HMS Nova AS</strong> (org.nr. kommer), 
-                ("Vi", "Oss", "Vår") og deg som bruker av HMS Nova ("Du", "Deg", "Din", "Kunden").
+                These terms of service (&ldquo;Terms&rdquo;) are between{" "}
+                <strong>HSEQ Nova</strong> (&ldquo;we&rdquo;, &ldquo;us&rdquo;,
+                &ldquo;our&rdquo;) and the subscribing company or individual
+                (&ldquo;you&rdquo;, &ldquo;your&rdquo;, &ldquo;the
+                Customer&rdquo;).
               </p>
               <p className="text-muted-foreground">
-                Ved å registrere deg, opprette en konto eller bruke HMS Nova, aksepterer du disse Vilkårene 
-                i sin helhet. Hvis du ikke aksepterer Vilkårene, må du ikke bruke tjenesten.
+                By registering for an account or using HSEQ Nova, you accept
+                these Terms in full. If you do not accept the Terms, you must
+                not use the service.
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>2. Tjenestebeskrivelse</CardTitle>
+              <CardTitle>2. Service Description</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                HMS Nova er en skybasert programvare (SaaS) for HMS-styring, dokumenthåndtering, 
-                risikovurdering, avvikshåndtering, opplæringssporing og andre HMS-relaterte funksjoner.
+                HSEQ Nova is a cloud-based software-as-a-service (SaaS)
+                platform for health, safety, environment and quality management,
+                including risk assessments, incident reporting, training records,
+                COSHH assessments, workplace inspections, document management
+                and related functions.
               </p>
-              
+
               <div>
-                <h4 className="font-semibold mb-2">2.1 Tjenesten inkluderer:</h4>
+                <h4 className="font-semibold mb-2">2.1 What is included</h4>
                 <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                  <li>Tilgang til HMS Nova-plattformen via nettleser</li>
-                  <li>Lagring av data i sikre skysystemer</li>
-                  <li>Automatiske oppdateringer og forbedringer</li>
-                  <li>Kundesupport via e-post og telefon</li>
-                  <li>Integrasjon med tredjepartstjenester (BHT, kursleverandører)</li>
+                  <li>Access to the HSEQ Nova platform via a web browser</li>
+                  <li>Secure cloud storage of your data</li>
+                  <li>Automatic updates and improvements</li>
+                  <li>Customer support via email</li>
+                  <li>Unlimited users per subscribing company</li>
                 </ul>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">2.2 Tjenesten inkluderer IKKE:</h4>
+                <h4 className="font-semibold mb-2">2.2 What is NOT included</h4>
                 <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                  <li>Juridisk eller HMS-faglig rådgivning (dette må søkes hos kvalifiserte konsulenter)</li>
-                  <li>Garanti for at systemet oppfyller alle spesifikke bransjekrav</li>
-                  <li>Garanti for ISO-sertifisering eller compliance med spesifikke standarder</li>
-                  <li>Tilpasset utvikling eller spesialfunksjoner uten særskilt avtale</li>
+                  <li>Legal advice or professional HSEQ consultancy — you must obtain these from suitably qualified advisers</li>
+                  <li>A guarantee that the platform meets every sector-specific regulatory requirement</li>
+                  <li>A guarantee of ISO certification or compliance with any particular standard</li>
+                  <li>Bespoke development or custom features unless separately agreed in writing</li>
                 </ul>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">2.3 Utvikling og forbedringer</h4>
+                <h4 className="font-semibold mb-2">2.3 Continuous development</h4>
                 <p className="text-sm text-muted-foreground">
-                  HMS Nova er under kontinuerlig utvikling. Vi jobber aktivt med å implementere støtte for 
-                  ISO 9001, ISO 45001, ISO 14001, ISO 27001, ISO 31000 og andre relevante standarder. 
-                  Funksjoner kan legges til, endres eller forbedres over tid. Beskrivelser på nettsiden 
-                  og i markedsføringsmateriell kan avvike fra den faktiske tjenesten, spesielt for 
-                  funksjoner som er under utvikling eller planlagt.
+                  HSEQ Nova is under continuous development. We actively work to
+                  support ISO 45001, ISO 14001, ISO 9001 and other relevant
+                  standards. Features may be added, changed or improved over
+                  time. Descriptions on the website and in marketing material
+                  may differ from the current state of the service, particularly
+                  for features under development.
                 </p>
               </div>
             </CardContent>
@@ -101,43 +117,49 @@ export default function VilkarPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>3. Priser og betaling</CardTitle>
+              <CardTitle>3. Pricing and Payment</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <h4 className="font-semibold mb-2">3.1 Abonnementspriser</h4>
+                <h4 className="font-semibold mb-2">3.1 Subscription pricing</h4>
                 <p className="text-sm text-muted-foreground mb-2">
-                  HMS Nova tilbys med følgende prismodell:
+                  HSEQ Nova is offered on the following pricing model:
                 </p>
                 <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                  <li><strong>12 mnd binding:</strong> 300 kr/mnd + mva (3 600 kr/år + mva)</li>
+                  <li><strong>Core plan:</strong> £29 per month per company, unlimited users</li>
+                  <li><strong>Add-ons:</strong> Optional industry packs and extras at additional cost</li>
                 </ul>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Alle planer inkluderer ubegrenset antall brukere.
+                  All prices are exclusive of UK VAT at the prevailing rate
+                  (currently 20%).
                 </p>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">3.2 Fakturering</h4>
+                <h4 className="font-semibold mb-2">3.2 Payment</h4>
                 <p className="text-sm text-muted-foreground">
-                  Faktura sendes ved aktivering av abonnement med 14 dagers betalingsfrist. 
-                  For årsabonnement faktureres årlig forskuddsvis. For månedsabonnement faktureres månedlig.
+                  Payment is processed via <strong>Stripe</strong>. We accept
+                  payment by debit/credit card or Bacs Direct Debit. Invoicing
+                  is available on request for qualifying customers.
                 </p>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">3.3 Forsinket betaling</h4>
+                <h4 className="font-semibold mb-2">3.3 Late payment</h4>
                 <p className="text-sm text-muted-foreground">
-                  Ved forsinket betaling beregnes forsinkelsesrente i henhold til lov om renter ved forsinket betaling. 
-                  Hvis faktura ikke betales innen fristen, kan tilgangen til HMS Nova stenges inntil betaling er mottatt.
+                  If payment is not received by the due date, we may charge
+                  interest at the rate prescribed by the Late Payment of
+                  Commercial Debts (Interest) Act 1998. Access to HSEQ Nova
+                  may be suspended until payment is received.
                 </p>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">3.4 Prisendringer</h4>
+                <h4 className="font-semibold mb-2">3.4 Price changes</h4>
                 <p className="text-sm text-muted-foreground">
-                  Vi forbeholder oss retten til å endre priser med 30 dagers skriftlig varsel. 
-                  Eksisterende kunder vil ikke påvirkes av prisøkninger før ved neste fornyelse.
+                  We reserve the right to change prices with 30 days&rsquo;
+                  written notice. Existing customers will not be affected by
+                  price increases until their next renewal.
                 </p>
               </div>
             </CardContent>
@@ -145,41 +167,51 @@ export default function VilkarPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>4. Oppsigelse og avtaletid</CardTitle>
+              <CardTitle>4. Subscription and Cancellation</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <h4 className="font-semibold mb-2">4.1 Løpende avtale</h4>
+                <h4 className="font-semibold mb-2">4.1 Subscription term</h4>
                 <p className="text-sm text-muted-foreground">
-                  Årsabonnement løper i 12 måneder og fornyes automatisk med mindre det sies opp senest 
-                  30 dager før utløp. Månedsabonnement løper måned for måned uten bindingstid.
+                  Subscriptions run on a monthly rolling basis and renew
+                  automatically. You may cancel at any time.
                 </p>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">4.2 Oppsigelse fra kunde</h4>
+                <h4 className="font-semibold mb-2">4.2 Cancellation by the Customer</h4>
                 <p className="text-sm text-muted-foreground">
-                  Du kan si opp abonnementet når som helst ved å sende e-post til{" "}
-                  <a href="mailto:post@hmsnova.no" className="text-primary hover:underline">post@hmsnova.no</a>. 
-                  Oppsigelsen trer i kraft ved utløpet av gjeldende faktureringsperiode. 
-                  Ingen refusjon for allerede betalt periode.
+                  You may cancel your subscription at any time by emailing{" "}
+                  <a href="mailto:hello@hseqnova.co.uk" className="text-primary hover:underline">
+                    hello@hseqnova.co.uk
+                  </a>{" "}
+                  or through your account settings. Cancellation takes effect at
+                  the end of the current billing period. No refunds are given
+                  for the remainder of a paid period.
                 </p>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">4.3 Oppsigelse fra HMS Nova AS</h4>
+                <h4 className="font-semibold mb-2">4.3 Cancellation by HSEQ Nova</h4>
                 <p className="text-sm text-muted-foreground">
-                  Vi kan si opp avtalen med 30 dagers varsel hvis du bryter Vilkårene, ikke betaler fakturaer, 
-                  eller hvis vi velger å avslutte tjenesten. Ved oppsigelse fra vår side vil du få refundert 
-                  forholdsmessig del av betalt abonnement.
+                  We may terminate the agreement with 30 days&rsquo; notice if
+                  you breach these Terms, fail to pay invoices, or if we
+                  discontinue the service. If we terminate, you will receive a
+                  pro-rata refund of any prepaid subscription fees.
                 </p>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">4.4 Data ved oppsigelse</h4>
+                <h4 className="font-semibold mb-2">4.4 Data after cancellation</h4>
                 <p className="text-sm text-muted-foreground">
-                  Ved oppsigelse har du 30 dager på å eksportere dine data. Etter dette slettes alle data i 
-                  henhold til vår personvernerklæring, med unntak av data vi er lovpålagt å beholde (f.eks. fakturaer).
+                  After cancellation you have <strong>30 days</strong> to export
+                  your data. After this period, all data is deleted in
+                  accordance with our{" "}
+                  <a href="/personvern" className="text-primary hover:underline">
+                    Privacy Policy
+                  </a>
+                  , except where statutory retention requirements apply (e.g.
+                  invoices, COSHH health records).
                 </p>
               </div>
             </CardContent>
@@ -187,45 +219,46 @@ export default function VilkarPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>5. Brukerens plikter og ansvar</CardTitle>
+              <CardTitle>5. Customer Responsibilities</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-muted-foreground">Som bruker forplikter du deg til å:</p>
+              <p className="text-muted-foreground">As a user you agree to:</p>
 
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-start gap-2">
                   <span className="font-semibold min-w-[20px]">•</span>
-                  <span>Oppgi korrekte opplysninger ved registrering</span>
+                  <span>Provide accurate information at registration</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="font-semibold min-w-[20px]">•</span>
-                  <span>Holde påloggingsinformasjon konfidensiell og ikke dele med uvedkommende</span>
+                  <span>Keep login credentials confidential and not share them with unauthorised persons</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="font-semibold min-w-[20px]">•</span>
-                  <span>Ikke misbruke tjenesten til ulovlig aktivitet, spam, virus eller skadelig kode</span>
+                  <span>Not use the service for unlawful activity, spam, viruses or malicious code</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="font-semibold min-w-[20px]">•</span>
-                  <span>Ikke forsøke å få uautorisert tilgang til andres data eller systemet</span>
+                  <span>Not attempt to gain unauthorised access to other users&rsquo; data or the system</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="font-semibold min-w-[20px]">•</span>
-                  <span>Ikke laste opp innhold som bryter norsk lov, opphavsrett eller andre rettigheter</span>
+                  <span>Not upload content that infringes copyright, intellectual property or any applicable law</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="font-semibold min-w-[20px]">•</span>
-                  <span>Ta egne sikkerhetskopier av kritiske data</span>
+                  <span>Maintain your own backups of critical data</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="font-semibold min-w-[20px]">•</span>
-                  <span>Bruke tjenesten i tråd med gjeldende lover og forskrifter</span>
+                  <span>Use the service in compliance with all applicable laws and regulations</span>
                 </li>
               </ul>
 
               <div className="mt-4 p-4 bg-destructive/5 border border-destructive/20 rounded-lg">
                 <p className="text-sm font-semibold text-destructive">
-                  Brudd på disse forpliktelsene kan føre til umiddelbar stenging av konto uten refusjon.
+                  Breach of these obligations may result in immediate suspension
+                  of your account without refund.
                 </p>
               </div>
             </CardContent>
@@ -233,38 +266,40 @@ export default function VilkarPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>6. Våre plikter og ansvar</CardTitle>
+              <CardTitle>6. Our Obligations</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <h4 className="font-semibold mb-2">6.1 Tilgjengelighet</h4>
+                <h4 className="font-semibold mb-2">6.1 Availability</h4>
                 <p className="text-sm text-muted-foreground">
-                  Vi skal tilstrebe at HMS Nova er tilgjengelig 99% av tiden (beregnet per måned), 
-                  unntatt planlagt vedlikehold som varsles minst 24 timer i forveien.
+                  We aim to maintain 99% uptime (calculated monthly), excluding
+                  scheduled maintenance notified at least 24 hours in advance.
                 </p>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">6.2 Sikkerhet</h4>
+                <h4 className="font-semibold mb-2">6.2 Security</h4>
                 <p className="text-sm text-muted-foreground">
-                  Vi implementerer rimelige tekniske og organisatoriske sikkerhetstiltak for å beskytte dine data, 
-                  men kan ikke garantere 100% sikkerhet mot alle trusler.
+                  We implement appropriate technical and organisational security
+                  measures to protect your data, but cannot guarantee absolute
+                  security against all threats.
                 </p>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">6.3 Backup</h4>
+                <h4 className="font-semibold mb-2">6.3 Backups</h4>
                 <p className="text-sm text-muted-foreground">
-                  Vi tar daglige sikkerhetskopier av alle data, men anbefaler at du også tar egne kopier av 
-                  kritiske dokumenter.
+                  We perform daily backups of all data. We nonetheless recommend
+                  that you maintain your own copies of critical documents.
                 </p>
               </div>
 
               <div>
                 <h4 className="font-semibold mb-2">6.4 Support</h4>
                 <p className="text-sm text-muted-foreground">
-                  Vi tilbyr kundesupport på norsk via e-post og telefon i normal arbeidstid (08:00-16:00, man-fre). 
-                  Vi skal svare på henvendelser innen 2 virkedager.
+                  We provide customer support in English via email during normal
+                  business hours (09:00–17:00, Monday to Friday, UK time). We
+                  aim to respond within 2 working days.
                 </p>
               </div>
             </CardContent>
@@ -272,70 +307,61 @@ export default function VilkarPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>7. Ansvarsbegrensning</CardTitle>
+              <CardTitle>7. Limitation of Liability</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <h4 className="font-semibold mb-2">7.1 "Som den er"-basis</h4>
+                <h4 className="font-semibold mb-2">7.1 &ldquo;As is&rdquo; basis</h4>
                 <p className="text-sm text-muted-foreground">
-                  HMS Nova leveres "som den er" uten garantier av noen art, verken uttrykkelige eller underforståtte. 
-                  Vi garanterer ikke at tjenesten er feilfri, avbruddsfri eller oppfyller alle dine spesifikke behov.
+                  HSEQ Nova is provided &ldquo;as is&rdquo; without warranties
+                  of any kind, whether express or implied, to the fullest extent
+                  permitted by law. We do not warrant that the service will be
+                  error-free, uninterrupted or meet all your specific
+                  requirements.
                 </p>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">7.2 Kontinuerlig utvikling og avvik</h4>
+                <h4 className="font-semibold mb-2">7.2 Continuous development</h4>
                 <p className="text-sm text-muted-foreground">
-                  HMS Nova er under kontinuerlig utvikling for å møte kravene i ISO-standarder (ISO 9001, ISO 45001, 
-                  ISO 14001, ISO 27001, ISO 31000 m.fl.), norsk lovgivning og beste praksis innen HMS. 
-                  På grunn av dette:
+                  Because HSEQ Nova is continuously developed to align with UK
+                  legislation and international standards:
                 </p>
                 <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground mt-2">
-                  <li>Funksjoner, tekst og grensesnitt kan avvike fra beskrivelser på nettsiden, i markedsføringsmateriell eller tidligere versjoner</li>
-                  <li>Funksjoner kan legges til, endres eller fjernes uten forvarsel for å forbedre tjenesten</li>
-                  <li>Ordlyd, terminologi og dokumentmaler kan oppdateres for å reflektere gjeldende standarder og lovkrav</li>
-                  <li>ISO-compliance og sertifiseringsstøtte er veiledende og erstatter ikke profesjonell revisjonsbistand</li>
+                  <li>Features, text and interface may differ from website or marketing descriptions</li>
+                  <li>Features may be added, changed or removed without notice to improve the service</li>
+                  <li>Terminology and document templates may be updated to reflect current law and standards</li>
+                  <li>ISO support is guidance-based and does not replace professional audit assistance</li>
                 </ul>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Markedsføringsmateriell og produktbeskrivelser er veiledende og kan avvike fra den faktiske 
-                  tjenesten. Vi tilstreber å holde informasjonen oppdatert, men kan ikke garantere at alle 
-                  beskrivelser til enhver tid er fullstendig korrekte.
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-2">7.3 Cap on liability</h4>
+                <p className="text-sm text-muted-foreground">
+                  Our total aggregate liability to you is limited to the amounts
+                  you have paid for the service in the 12 months preceding the
+                  claim. We are not liable for indirect, incidental or
+                  consequential losses, including loss of profit or loss of data,
+                  to the fullest extent permitted by law.
                 </p>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">7.3 ISO-standarder og compliance</h4>
-                <p className="text-sm text-muted-foreground">
-                  HMS Nova er utviklet med støtte for ISO-standarder som en veiledende funksjon. 
-                  Bruk av HMS Nova gir ingen garanti for sertifisering eller compliance med spesifikke standarder. 
-                  Ansvaret for å oppnå og opprettholde sertifiseringer ligger hos kunden. 
-                  Vi anbefaler at du søker profesjonell rådgivning for sertifiseringsprosesser.
-                </p>
+                <h4 className="font-semibold mb-2">7.4 Nothing in these Terms excludes liability for:</h4>
+                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                  <li>Death or personal injury caused by negligence</li>
+                  <li>Fraud or fraudulent misrepresentation</li>
+                  <li>Any other liability that cannot be excluded or limited by law</li>
+                </ul>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">7.4 Begrenset erstatning</h4>
+                <h4 className="font-semibold mb-2">7.5 Force majeure</h4>
                 <p className="text-sm text-muted-foreground">
-                  Vårt totale erstatningsansvar overfor deg er begrenset til det du har betalt for tjenesten 
-                  i de siste 12 månedene. Vi er ikke ansvarlige for indirekte tap, tapt fortjeneste, tap av data, 
-                  eller andre konsekvenstap.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-semibold mb-2">7.5 Tredjepartstjenester</h4>
-                <p className="text-sm text-muted-foreground">
-                  HMS Nova kan integreres med tredjepartstjenester (f.eks. eksterne kursleverandører). 
-                  BHT tilbys av HMS Nova (under etablering). Vi er ikke ansvarlige for tredjepartstjenesters funksjoner, tilgjengelighet eller kvalitet.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-semibold mb-2">7.6 Force majeure</h4>
-                <p className="text-sm text-muted-foreground">
-                  Vi er ikke ansvarlige for forsinkelser eller manglende oppfyllelse av våre forpliktelser 
-                  som skyldes forhold utenfor vår kontroll (naturkatastrofer, krig, streik, 
-                  myndighetspålegg, nettverkssvikt hos leverandører, osv.).
+                  We are not liable for delays or failures caused by
+                  circumstances beyond our reasonable control, including natural
+                  disasters, acts of war, strikes, government orders or
+                  third-party network outages.
                 </p>
               </div>
             </CardContent>
@@ -343,58 +369,60 @@ export default function VilkarPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>8. Immaterielle rettigheter</CardTitle>
+              <CardTitle>8. Intellectual Property</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <h4 className="font-semibold mb-2">8.1 Våre rettigheter</h4>
+                <h4 className="font-semibold mb-2">8.1 Our rights</h4>
                 <p className="text-sm text-muted-foreground">
-                  HMS Nova, inkludert programvare, design, tekst, grafikk, logo og annet innhold, 
-                  er beskyttet av opphavsrett og andre immaterielle rettigheter som eies av HMS Nova AS. 
-                  Du får kun en begrenset, ikke-eksklusiv, ikke-overførbar lisens til å bruke tjenesten.
+                  HSEQ Nova — including the software, design, text, graphics,
+                  logo and all other content — is protected by copyright and
+                  other intellectual property rights owned by HSEQ Nova. You
+                  receive a limited, non-exclusive, non-transferable licence to
+                  use the service for the duration of your subscription.
                 </p>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">8.2 Dine rettigheter</h4>
+                <h4 className="font-semibold mb-2">8.2 Your rights</h4>
                 <p className="text-sm text-muted-foreground">
-                  Du beholder full eiendomsrett til alle data, dokumenter og innhold du laster opp til HMS Nova. 
-                  Ved å bruke tjenesten gir du oss en begrenset lisens til å lagre, behandle og vise dette 
-                  innholdet som nødvendig for å levere tjenesten.
+                  You retain full ownership of all data, documents and content
+                  you upload to HSEQ Nova. By using the service you grant us a
+                  limited licence to store, process and display that content as
+                  necessary to deliver the service.
                 </p>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">8.3 Anonymisert bransjestatistikk</h4>
+                <h4 className="font-semibold mb-2">8.3 Anonymised industry statistics</h4>
                 <p className="text-sm text-muted-foreground">
-                  HMS Nova samler inn og aggregerer anonymiserte HMS-data pa tvers av alle kunder for a 
-                  generere bransjestatistikk, benchmarks og trendanalyser. Disse dataene brukes til:
+                  HSEQ Nova aggregates anonymised health and safety data across
+                  customers to generate industry statistics, benchmarks and
+                  trend analyses. These data are used to:
                 </p>
                 <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground mt-2">
-                  <li>A gi deg sammenligning mot bransjesnittet (benchmark)</li>
-                  <li>A forbedre tjenesten og identifisere bransjespesifikke risikoer</li>
-                  <li>A publisere anonymiserte bransjerapporter (HMS Nova Safety Intelligence)</li>
+                  <li>Provide you with benchmarking against industry averages</li>
+                  <li>Improve the service and identify sector-specific risks</li>
+                  <li>Publish anonymised industry reports</li>
                 </ul>
                 <p className="text-sm text-muted-foreground mt-2">
-                  <strong>Anonymisering:</strong> All data aggregeres med k-anonymity (minimum 5 bedrifter per 
-                  bransjegruppe). Ingen enkeltstaaende bedrift, person eller hendelse kan identifiseres i 
-                  rapportene. Bedriftsnavn, organisasjonsnummer og personopplysninger er aldri inkludert.
+                  <strong>Anonymisation:</strong> All data is aggregated with
+                  k-anonymity (minimum 5 organisations per industry group). No
+                  individual company, person or incident can be identified.
+                  Company names and personal data are never included.
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  <strong>Rettslig grunnlag:</strong> GDPR art. 6(1)(f) — berettiget interesse for anonymiserte, 
-                  aggregerte data som ikke utgjor personopplysninger.
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  <strong>Reservasjon:</strong> Du kan nar som helst reservere din bedrift mot deltakelse i 
-                  bransjestatistikken via Innstillinger &gt; Statistikk i HMS Nova-dashboardet.
+                  <strong>Opt-out:</strong> You may opt your organisation out at
+                  any time via Settings &gt; Statistics in the HSEQ Nova
+                  dashboard.
                 </p>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">8.4 Tilbakemelding</h4>
+                <h4 className="font-semibold mb-2">8.4 Feedback</h4>
                 <p className="text-sm text-muted-foreground">
-                  Hvis du gir oss tilbakemeldinger, forslag eller ideer til forbedring av HMS Nova, 
-                  kan vi fritt bruke disse uten forpliktelser overfor deg.
+                  If you provide feedback, suggestions or ideas for improvement,
+                  we may use them freely without obligation to you.
                 </p>
               </div>
             </CardContent>
@@ -402,45 +430,53 @@ export default function VilkarPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>9. Endringer i Vilkårene</CardTitle>
+              <CardTitle>9. Changes to These Terms</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                Vi kan endre disse Vilkårene fra tid til annen. Ved vesentlige endringer vil vi varsle 
-                deg via e-post eller melding i systemet minst 30 dager før endringene trer i kraft.
+                We may update these Terms from time to time. Where we make
+                material changes we will notify you by email or through a
+                notification in the platform at least 30 days before the changes
+                take effect.
               </p>
               <p className="text-muted-foreground">
-                Ved å fortsette å bruke HMS Nova etter at endringene trer i kraft, aksepterer du de nye Vilkårene. 
-                Hvis du ikke aksepterer endringene, må du si opp abonnementet.
+                By continuing to use HSEQ Nova after the changes take effect,
+                you accept the revised Terms. If you do not accept the changes,
+                you must cancel your subscription.
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>10. Tvister og lovvalg</CardTitle>
+              <CardTitle>10. Governing Law and Disputes</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <h4 className="font-semibold mb-2">10.1 Lovvalg</h4>
+                <h4 className="font-semibold mb-2">10.1 Governing law</h4>
                 <p className="text-sm text-muted-foreground">
-                  Disse Vilkårene skal tolkes og reguleres i henhold til norsk lov.
+                  These Terms are governed by and construed in accordance with
+                  the laws of England and Wales.
                 </p>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">10.2 Tvisteløsning</h4>
+                <h4 className="font-semibold mb-2">10.2 Dispute resolution</h4>
                 <p className="text-sm text-muted-foreground">
-                  Tvister skal søkes løst i minnelighet. Hvis dette ikke lykkes, kan tvisten bringes inn 
-                  for norske domstoler med Kongsberg som verneting.
+                  The parties shall attempt to resolve disputes amicably. If
+                  that is not possible, the dispute shall be submitted to the
+                  exclusive jurisdiction of the courts of England and Wales.
                 </p>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">10.3 Forbrukervern</h4>
+                <h4 className="font-semibold mb-2">10.3 Consumer rights</h4>
                 <p className="text-sm text-muted-foreground">
-                  Hvis du er forbruker (kjøper tjenesten til privat bruk), kan du klage til Forbrukerrådet 
-                  eller Forbrukertilsynet hvis du mener vi ikke overholder Vilkårene.
+                  If you are a consumer (i.e. you use the service for purposes
+                  outside your trade, business, craft or profession), nothing in
+                  these Terms affects your statutory rights under the Consumer
+                  Rights Act 2015 or any other mandatory consumer protection
+                  legislation.
                 </p>
               </div>
             </CardContent>
@@ -448,23 +484,20 @@ export default function VilkarPage() {
 
           <Card className="bg-primary/5 border-primary/20">
             <CardContent className="pt-6">
-              <h3 className="font-bold text-lg mb-4">Kontakt oss</h3>
+              <h3 className="font-bold text-lg mb-4">Contact Us</h3>
               <p className="text-muted-foreground mb-4">
-                Hvis du har spørsmål om Bruksvilkårene, ta kontakt:
+                If you have any questions about these Terms, please contact us:
               </p>
               <div className="space-y-2 text-sm">
                 <p className="flex items-center gap-2">
                   <Mail className="h-4 w-4 text-primary" />
-                  <a href="mailto:post@hmsnova.no" className="text-primary font-semibold hover:underline">post@hmsnova.no</a>
-                </p>
-                <p className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-primary" />
-                  <a href="tel:+4799112916" className="text-primary font-semibold hover:underline">+47 99 11 29 16</a>
+                  <a href="mailto:hello@hseqnova.co.uk" className="text-primary font-semibold hover:underline">
+                    hello@hseqnova.co.uk
+                  </a>
                 </p>
                 <p className="text-muted-foreground mt-4">
-                  <strong>HMS Nova AS</strong><br/>
-                  Org.nr. legges inn<br/>
-                  Peckels Gate 12b, 3616 Kongsberg
+                  <strong>HSEQ Nova</strong><br />
+                  United Kingdom
                 </p>
               </div>
             </CardContent>
@@ -474,4 +507,3 @@ export default function VilkarPage() {
     </div>
   );
 }
-

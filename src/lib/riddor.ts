@@ -13,6 +13,7 @@ export interface RiddorTriageInput {
   lostWorkdays?: number | null;
   overSevenDayInjury?: boolean;
   injuryType?: string | null;
+  description?: string | null;
   medicalAttentionRequired?: boolean;
   occurredAt: Date;
 }
@@ -24,14 +25,66 @@ export interface RiddorTriageResult {
   accidentBookEntry: boolean;
 }
 
+/**
+ * RIDDOR 2013 reg.4 — full list of specified injuries.
+ * @see https://www.legislation.gov.uk/uksi/2013/1471/regulation/4
+ */
 const SPECIFIED_INJURY_HINTS = [
   "fracture",
   "amputation",
+  "dislocation",
   "sight",
+  "eye",
+  "chemical burn",
+  "metal burn",
   "crush",
   "burn",
   "scalp",
+  "scalping",
   "unconscious",
+  "loss of consciousness",
+  "resuscitation",
+  "hypothermia",
+  "asphyxia",
+  "exposure to substance",
+  "absorbed through skin",
+];
+
+/**
+ * RIDDOR 2013 Schedule 2 — dangerous occurrences that are reportable.
+ * @see https://www.legislation.gov.uk/uksi/2013/1471/schedule/2
+ */
+const DANGEROUS_OCCURRENCE_HINTS = [
+  "collapse",
+  "scaffold",
+  "scaffolding",
+  "lifting machinery",
+  "crane",
+  "hoist",
+  "lift failure",
+  "explosion",
+  "electrical",
+  "electric shock",
+  "gas incident",
+  "pipeline",
+  "overhead line",
+  "breathing apparatus",
+  "diving",
+  "radiation",
+  "malfunction",
+  "pressure vessel",
+  "boiler",
+  "freight container",
+  "overhead",
+  "excavation",
+  "wall collapse",
+  "floor collapse",
+  "building collapse",
+  "structure collapse",
+  "biological agent",
+  "fire",
+  "substance release",
+  "chemical release",
 ];
 
 export function assessRiddor(input: RiddorTriageInput): RiddorTriageResult {
@@ -82,10 +135,25 @@ export function assessRiddor(input: RiddorTriageInput): RiddorTriageResult {
     };
   }
 
+  // RIDDOR 2013 Schedule 2 — dangerous occurrences are reportable
+  // when they match a listed category. Near misses without a listed
+  // category remain non-reportable but are kept in the accident book.
   if (input.type === "FARLIG_SITUASJON" || input.type === "NESTEN") {
+    const desc = [input.injuryType ?? "", input.description ?? ""].join(" ").toLowerCase();
+    const isListed = DANGEROUS_OCCURRENCE_HINTS.some((hint) => desc.includes(hint));
+    if (isListed) {
+      const dueAt = new Date(occurredAt);
+      dueAt.setDate(dueAt.getDate() + 10);
+      return {
+        reportable: true,
+        category: "dangerous_occurrence",
+        dueAt,
+        accidentBookEntry,
+      };
+    }
     return {
       reportable: false,
-      category: "dangerous_occurrence",
+      category: null,
       dueAt: null,
       accidentBookEntry,
     };

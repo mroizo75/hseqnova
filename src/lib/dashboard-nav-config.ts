@@ -13,6 +13,7 @@ export type NavPermission =
   | "actions"
   | "sja"
   | "chemicals"
+  | "assets"
   | "exposureRegister"
   | "constructionCompliance"
   | "hmsTavle"
@@ -21,7 +22,13 @@ export type NavPermission =
   | "managementReviews"
   | "settings"
   | "support"
-  | "hmsHandbok";
+  | "hmsHandbok"
+  | "whistleblowing"
+  | "goals"
+  | "hseqCockpit"
+  | "permits"
+  | "fireRisk"
+  | "contractors";
 
 export interface DashboardNavItemConfig {
   href: string;
@@ -45,8 +52,6 @@ export const UK_EXCLUDED_NAV_HREFS = new Set([
   "/dashboard/meetings",
   "/dashboard/time-registration",
   "/dashboard/medarbeidersamtale",
-  "/dashboard/whistleblowing",
-  "/dashboard/goals",
   "/dashboard/hms-cockpit",
   "/dashboard/benchmark",
   "/dashboard/transport",
@@ -71,14 +76,22 @@ export const DASHBOARD_NAV_CONFIG: DashboardNavItemConfig[] = [
   { href: "/dashboard/training", label: "nav.training", permission: "training", defaultSimple: true },
   { href: "/dashboard/actions", label: "nav.actions", permission: "actions", defaultSimple: true },
   { href: "/dashboard/sja", label: "nav.sja", permission: "sja", defaultSimple: true },
+  { href: "/dashboard/permits", label: "nav.permits", permission: "permits", defaultSimple: true },
   { href: "/dashboard/chemicals", label: "nav.chemicals", permission: "chemicals", defaultSimple: true },
+  { href: "/dashboard/coshh-assessments", label: "nav.coshhAssessments", permission: "chemicals", defaultSimple: true },
+  { href: "/dashboard/assets", label: "nav.assets", permission: "assets", defaultSimple: true },
   { href: "/dashboard/exposure-register", label: "nav.exposureRegister", permission: "exposureRegister", defaultSimple: true },
   { href: "/dashboard/projects", label: "nav.projects", permission: "constructionCompliance", defaultSimple: true },
   { href: "/dashboard/construction-compliance", label: "nav.constructionCompliance", permission: "constructionCompliance", defaultSimple: true },
+  { href: "/dashboard/contractors", label: "nav.contractors", permission: "contractors", defaultSimple: true },
   { href: "/dashboard/hms-tavle", label: "nav.hmsTavle", permission: "hmsTavle", defaultSimple: true },
+  { href: "/dashboard/hseq-cockpit", label: "nav.hseqCockpit", permission: "hseqCockpit", defaultSimple: true },
+  { href: "/dashboard/fire-risk", label: "nav.fireRisk", permission: "fireRisk", defaultSimple: true },
   { href: "/dashboard/environment", label: "nav.environment", permission: "environment", defaultSimple: true },
   { href: "/dashboard/audits", label: "nav.audits", permission: "audits", defaultSimple: true },
   { href: "/dashboard/management-reviews", label: "nav.managementReviews", permission: "managementReviews", defaultSimple: true },
+  { href: "/dashboard/goals", label: "nav.goals", permission: "goals", defaultSimple: true },
+  { href: "/dashboard/whistleblowing", label: "nav.whistleblowing", permission: "whistleblowing", defaultSimple: true },
   { href: "/dashboard/organisasjonskart", label: "nav.orgChart", permission: "settings", defaultSimple: true },
   { href: "/dashboard/users", label: "nav.users", permission: "settings", defaultSimple: true },
   { href: "/dashboard/support", label: "nav.support", permission: "support", defaultSimple: true },

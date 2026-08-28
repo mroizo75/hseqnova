@@ -30,6 +30,9 @@ import {
   getUkIncidentHandlingChecks,
   isAccidentBookType,
 } from "@/lib/incident-uk-handling";
+import { RiddorReportButton } from "@/features/incidents/components/riddor-report-button";
+import { AiIncidentAnalysis } from "@/features/incidents/components/ai-incident-analysis";
+import { hasAiAddon } from "@/lib/ai-gate";
 
 export default async function IncidentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const t = await getTranslations("dashboardIncidentDetailPage");
@@ -69,10 +72,11 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
     }
   })();
 
-  const [{ users: tenantUsers, projects: tenantProjects }, enabledModules] =
+  const [{ users: tenantUsers, projects: tenantProjects }, enabledModules, aiEnabled] =
     await Promise.all([
       loadTenantDirectory(tenantId),
       loadEnabledModuleKeys(tenantId),
+      hasAiAddon(tenantId),
     ]);
   const showProjectFields =
     tenantHasProjectsAddon(enabledModules) ||
@@ -111,7 +115,7 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
   return (
     <div className="space-y-6">
       <div>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
           <Button variant="ghost" asChild>
             <Link href="/dashboard/incidents">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -125,10 +129,10 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
             />
           </div>
         </div>
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold">{incident.title}</h1>
-            <div className="flex items-center gap-3 mt-2">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">{incident.title}</h1>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
               {incident.avviksnummer && (
                 <Badge variant="outline" className="font-mono">
                   {incident.avviksnummer}
@@ -321,7 +325,7 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                   const isImage = attachment.mime.startsWith("image/");
                   const isPdf = attachment.mime === "application/pdf";
                   return (
-                    <div key={attachment.id} className="flex items-center gap-4 rounded-lg border bg-background p-3">
+                    <div key={attachment.id} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 rounded-lg border bg-background p-3">
                       {isImage ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -357,6 +361,18 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
         </CardContent>
       </Card>
 
+      <AiIncidentAnalysis
+        incidentId={incident.id}
+        title={incident.title}
+        description={incident.description}
+        type={incident.type}
+        injuryDetails={
+          [incident.injuryType, incident.injuryDescription].filter(Boolean).join(" — ") || undefined
+        }
+        location={incident.location ?? undefined}
+        aiEnabled={aiEnabled}
+      />
+
       {showAccidentBook && (
         <Card>
           <CardHeader>
@@ -387,6 +403,14 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                     {t("riddor.reference")}: {incident.riddorReference}
                   </p>
                 )}
+                <div className="mt-4">
+                  <RiddorReportButton
+                    incidentId={incident.id}
+                    riddorCategory={incident.riddorCategory}
+                    riddorDueAt={incident.riddorDueAt}
+                    riddorReportedAt={incident.riddorReportedAt}
+                  />
+                </div>
               </>
             ) : null}
           </CardContent>
@@ -475,7 +499,7 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
       {/* HSG245: identify and implement risk control measures */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>{t("sections.measures.title")}</CardTitle>
               <CardDescription>

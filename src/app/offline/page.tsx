@@ -1,7 +1,7 @@
 import { WifiOff } from "lucide-react";
 
 export const metadata = {
-  title: "Offline – HMS Nova",
+  title: "Offline — HSEQ Nova",
 };
 
 export default function OfflinePage() {
@@ -11,14 +11,14 @@ export default function OfflinePage() {
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
           <WifiOff className="h-8 w-8 text-amber-600" />
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">Du er offline</h1>
+        <h1 className="text-2xl font-bold text-gray-900">You are offline</h1>
         <p className="text-muted-foreground">
-          Denne siden kunne ikke lastes fordi du mangler internettilkobling.
-          Registreringer du allerede har lagret lokalt vil bli sendt automatisk
-          når du er tilbake online.
+          This page could not be loaded because you have no internet connection.
+          Any records you have already saved locally will be sent automatically
+          when you are back online.
         </p>
         <p className="text-sm text-muted-foreground">
-          Prøv å laste siden på nytt når du har nettverkstilgang.
+          Try reloading the page when you have network access.
         </p>
       </div>
     </div>

@@ -1,17 +1,25 @@
 import type { Metadata } from "next";
 import { CookiesContent } from "./cookies-content";
+import {
+  getCanonicalUrl,
+  ROBOTS_CONFIG,
+  getOpenGraphDefaults,
+  getTwitterDefaults,
+} from "@/lib/seo-config";
+
+const title = "Cookie Policy | HSEQ Nova";
+const description =
+  "How HSEQ Nova uses cookies. PECR-compliant overview of essential, functional, analytics and marketing cookies. Manage your cookie preferences.";
 
 export const metadata: Metadata = {
-  title: "Cookie-policy | Informasjonskapsler | HMS Nova AS",
-  description:
-    "Les hvordan HMS Nova bruker cookies (informasjonskapsler). GDPR-compliant oversikt over strengt nødvendige, funksjonelle, analyse- og markedsførings-cookies. Administrer dine cookie-preferanser.",
-  robots: {
-    index: true,
-    follow: true,
-  },
+  title,
+  description,
+  robots: ROBOTS_CONFIG,
   alternates: {
-    canonical: "https://hmsnova.no/cookies",
+    canonical: getCanonicalUrl("/cookies"),
   },
+  openGraph: getOpenGraphDefaults(title, description, "/cookies"),
+  twitter: getTwitterDefaults(title, description),
 };
 
 export default function CookiesPage() {

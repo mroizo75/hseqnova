@@ -50,7 +50,7 @@ export const SECONDARY_KEYWORDS = [
   "SafetyCulture alternative",
 ] as const;
 
-// Strukturerte data for søkemotorer
+// Organisation structured data
 export const ORGANIZATION_SCHEMA = {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -97,100 +97,91 @@ export const ORGANIZATION_SCHEMA = {
   },
 } as const;
 
-// Software Product Schema for HMS Nova systemet
 export const SOFTWARE_PRODUCT_SCHEMA = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "HMS Nova",
+  name: "HSEQ Nova",
   applicationCategory: "BusinessApplication",
-  operatingSystem: "Web, iOS, Android",
+  operatingSystem: "Web",
   offers: {
     "@type": "AggregateOffer",
-    priceCurrency: "NOK",
-    lowPrice: "300",
-    highPrice: "300",
+    priceCurrency: "GBP",
+    lowPrice: "29",
+    highPrice: "152",
     priceSpecification: {
       "@type": "UnitPriceSpecification",
-      price: "300",
-      priceCurrency: "NOK",
+      price: "29",
+      priceCurrency: "GBP",
       unitText: "MONTH",
+      valueAddedTaxIncluded: false,
     },
   },
   featureList: [
-    "Digital signatur",
-    "Risikovurdering 5x5 matrise",
-    "Hendelsesrapportering",
-    "5 Whys analyse",
-    "Automatiske påminnelser",
-    "Mobilapp (offline)",
-    "ISO 9001 compliance",
-    "Dokumenthåndtering",
-    "Kompetansematrise",
-    "Stoffkartotek",
-    "Revisjoner og audits",
-    "Mål og KPI-oppfølging",
+    "Living health and safety policy",
+    "Digital accident book",
+    "RIDDOR triage",
+    "Risk assessments",
+    "Workplace inspections",
+    "Fire drills",
+    "Training records",
+    "Organisation chart",
+    "RAMS add-on",
+    "COSHH add-on",
+    "CDM 2015 add-on",
+    "Digital safety board add-on",
   ],
-  description: "HMS Nova bygger trygghet. Norges mest moderne HMS-system med full ISO 9001 compliance, digital signatur og mobilapp.",
+  description: SITE_CONFIG.description,
   screenshot: `${SITE_CONFIG.url}/opengraph-image`,
 } as const;
 
-// FAQ Schema for bedre synlighet i søk
 export const FAQ_SCHEMA = {
   "@context": "https://schema.org",
   "@type": "FAQPage",
   mainEntity: [
     {
       "@type": "Question",
-      name: "Hva er HMS Nova?",
+      name: "What is HSEQ Nova?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "HMS Nova er Norges mest moderne HMS-system. Vi bygger trygghet gjennom digitalisering av HMS-arbeid. Med HMS Nova får bedrifter et komplett verktøy for risikovurdering, hendelsesrapportering, dokumenthåndtering og ISO 9001 compliance.",
+        text: "HSEQ Nova is health and safety software for UK employers. It keeps the written policy, digital accident book, RIDDOR triage, risk assessments, workplace inspections, training and fire drills in one system — built around HSWA, MHSWR, RIDDOR, COSHH and CDM.",
       },
     },
     {
       "@type": "Question",
-      name: "Hva koster HMS Nova?",
+      name: "How much does HSEQ Nova cost?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "HMS Nova koster 300 kr/mnd (3 600 kr/år) med 12 måneders abonnement. Ubegrenset antall brukere inkludert. Ingen oppstartskostnader, alt inkludert.",
+        text: "Core is £29 per month excluding VAT, billed per company with unlimited users. RAMS, COSHH, CDM 2015, the digital safety board, audits and environment are optional add-ons. Every subscription includes a UK VAT invoice at 20%.",
       },
     },
     {
       "@type": "Question",
-      name: "Er HMS Nova godkjent av Arbeidstilsynet?",
+      name: "Does HSEQ Nova replace a competent person?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "HMS Nova følger alle krav i Arbeidsmiljøloven, Internkontrollforskriften og ISO 9001:2015. Systemet er bygget for å sikre full compliance med norsk lov og internasjonale standarder.",
+        text: "No. HSEQ Nova is the system your competent person and managers use. It does not replace the legal duty to appoint competent help under MHSWR regulation 7, and it is not health and safety consultancy.",
       },
     },
     {
       "@type": "Question",
-      name: "Tilbyr HMS Nova bedriftshelsetjeneste?",
+      name: "Does HSEQ Nova include a digital accident book?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "HMS Nova etablerer seg som godkjent bedriftshelsetjeneste (BHT) og vil tilby minimum lovkrav, tilleggstjenester og et bredt kursutbud inkludert Diisocyanater. HMS-system og BHT vil være under ett tak.",
+        text: "Yes. You log injuries and near misses in a digital accident book. If the event is reportable under RIDDOR 2013, the system flags the correct deadline — without delay for deaths, 10 days for specified injuries, 15 days for over-seven-day injuries.",
       },
     },
     {
       "@type": "Question",
-      name: "Fungerer HMS Nova på mobil og offline?",
+      name: "Can I add RAMS, COSHH or CDM later?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Ja! HMS Nova har full mobilstøtte og fungerer offline. Perfekt for byggeplasser, verksteder og feltarbeid. Synkronisering skjer automatisk når du er tilbake online.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "Hvordan skiller HMS Nova seg fra Grønn Jobb, Avonova og Kuba?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "HMS Nova er 100% digitalt og moderne. Vi har digital signatur inkludert (ikke ekstrakostnad), 12 måneders abonnement (300 kr/mnd), mobilapp med offline-støtte, og betydelig lavere priser. Vår visjon er enkel: HMS Nova bygger trygghet - ikke byråkrati.",
+        text: "Yes. Core HSEQ is always on. RAMS, COSHH, CDM 2015, the digital safety board, audits and environment are add-ons you switch on when the work asks for them.",
       },
     },
   ],
 } as const;
 
-// BreadcrumbList for bedre navigasjon i søkeresultater
+// BreadcrumbList for search-result navigation
 export const getBreadcrumbSchema = (items: Array<{ name: string; url: string }>) => ({
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
@@ -202,7 +193,7 @@ export const getBreadcrumbSchema = (items: Array<{ name: string; url: string }>)
   })),
 });
 
-// Page-spesifikke metadata templates
+// Page metadata templates
 export const PAGE_METADATA = {
   home: {
     title: "Health and Safety Software for UK Employers | HSEQ Nova",
@@ -213,47 +204,47 @@ export const PAGE_METADATA = {
   priser: {
     title: "Pricing — HSEQ Nova | Per company, unlimited users",
     description: "Core HSEQ for every company. Industry packs and extras as add-ons. VAT invoices, Bacs Direct Debit or card via Stripe.",
-    keywords: "hms system pris, hms programvare kostnad, billig hms system, hms system alle bedrifter, beste hms system pris",
+    keywords: "health and safety software pricing UK, HSEQ software cost, per company pricing, unlimited users",
   },
-  kurs: {
-    title: "HMS-kurs - Lovpålagte Kurs & Førstehjelp | HMS Nova",
-    description: "20% rabatt på HMS-kurs for medlemmer. Verneombud, førstehjelp og diisocyanater. Fysisk, digitalt eller hybrid. Bestill kurs hos HMS Nova i dag.",
-    keywords: "hms kurs, verneombud kurs, førstehjelp kurs, hms opplæring, lovpålagt hms kurs",
+  riddor: {
+    title: "Digital Accident Book and RIDDOR Reporting | HSEQ Nova",
+    description: "Record workplace accidents in a digital accident book. RIDDOR deaths, specified injuries, over-seven-day injuries and dangerous occurrences get the correct reporting deadline.",
+    keywords: "digital accident book, RIDDOR reporting software, RIDDOR 2013, accident book software UK, workplace injury reporting",
   },
-  bht: {
-    title: "Bedriftshelsetjeneste (BHT) - HMS Nova blir BHT-organ | Minimum krav + kurs",
-    description: "HMS Nova etablerer seg som godkjent BHT · Minimum lovkrav + tilleggstjenester + Diisocyanater og HMS-kurs · Ett sted for HMS og BHT · Registrer interesse →",
-    keywords: "bedriftshelsetjeneste, BHT, godkjent bedriftshelsetjeneste, arbeidstilsynet bht, diisocyanater kurs, AMO-kurs",
+  rams: {
+    title: "RAMS Software — Risk Assessments and Method Statements | HSEQ Nova",
+    description: "Risk assessments and method statements for UK construction. RAMS linked to CDM duty holders, the construction phase plan and F10.",
+    keywords: "RAMS software UK, risk assessment method statement, construction RAMS, CDM 2015 RAMS",
   },
-  komplettPakke: {
-    title: "Komplett HMS-pakke - BHT + HMS Nova fra 6 900 kr/år | HMS Nova",
-    description: "Lovpålagt BHT + HMS Nova. START 6 900 kr/år (1-5 ansatte), PRO 14 900 kr/år (6-20), PREMIUM fra 29 900 kr/år (20+). Tilleggstjenester til fast pris. Ring salg eller venteliste.",
-    keywords: "komplett hms pakke, bht pakke, hms oppsett, implementering hms, hms nova pakke, bht pris",
+  coshh: {
+    title: "COSHH Assessment Software — Hazardous Substances | HSEQ Nova",
+    description: "COSHH 2002 assessments, safety data sheets and health records kept for 40 years. Hazardous substance management for UK employers.",
+    keywords: "COSHH assessment software, COSHH 2002, hazardous substances software, health surveillance records, SDS management",
   },
-  handbook: {
-    title: "HMS-håndbok - Digital & Oppdatert | HMS Nova",
-    description: "Ferdig HMS-håndbok tilpasset din bedrift. Alltid oppdatert med lovkrav, digital signatur og versjonskontroll. Spar uker med arbeid. Prøv gratis.",
-    keywords: "hms håndbok, digital hms håndbok, hms dokumentasjon, arbeidsmiljøhåndbok",
+  safetyBoard: {
+    title: "Digital Site Safety Board for UK Construction | HSEQ Nova",
+    description: "A digital safety board for UK sites: first aider, fire marshal, principal contractor, RAMS, F10, CPP and visitor induction.",
+    keywords: "digital safety board, construction site board, CDM 2015 site information, site induction board",
   },
-  risikovurdering: {
-    title: "Risikovurdering - 5x5 Matrise & Analyse | HMS Nova",
-    description: "Profesjonell risikovurdering med 5x5 matrise (ISO 9001). Enkelt å bruke med automatisk oppfølging. Bestå revisjoner med glans. Prøv gratis i 14 dager.",
-    keywords: "risikovurdering, risikoanalyse, 5x5 matrise, risikostyring, hms risikovurdering",
+  policy: {
+    title: "Living Health and Safety Policy Software | HSEQ Nova",
+    description: "A living H&S policy with statement of intent, organisation and arrangements that link to live modules. Written for HSWA s.2(3).",
+    keywords: "health and safety policy software, HSWA s.2(3), written safety policy, living policy document",
   },
-  vernerunde: {
-    title: "Vernerunde-guide - Digital Vernerunde på Mobil | HMS Nova",
-    description: "Digital vernerunde på mobil som fungerer offline. Automatisk rapportering, perfekt for byggeplasser. Spar timer hver uke. Prøv gratis.",
-    keywords: "vernerunde, digital vernerunde, vernerunde mal, sikkerhetsinspeksjon, bygningsvernerunde",
+  software: {
+    title: "Health and Safety Software for UK Employers | HSEQ Nova",
+    description: "HSEQ software built for HSWA, MHSWR, RIDDOR, COSHH and CDM 2015. Core features for every company, industry add-ons when the work needs them.",
+    keywords: "health and safety software UK, HSEQ software, workplace safety management, CHAS evidence, Constructionline, SSIP",
   },
-  lover: {
-    title: "HMS Lover & Regler - Arbeidsmiljøloven & ISO 9001 | HMS Nova",
-    description: "Komplett oversikt over HMS-lover i Norge. Arbeidsmiljøloven, internkontrollforskriften og ISO 9001. Oppdatert 2026. Les mer om dine plikter.",
-    keywords: "arbeidsmiljøloven, internkontrollforskriften, iso 9001, hms lovverk, arbeidstilsynet regler",
+  about: {
+    title: "About HSEQ Nova | Health and Safety Software for the UK",
+    description: "HSEQ Nova is purpose-built for UK health and safety law. One system for the accident book, RIDDOR, your written policy, inspections and training.",
+    keywords: "about HSEQ Nova, UK health and safety software company, HSEQ platform",
   },
-  iso: {
-    title: "ISO 9001 Sjekkliste - Gratis Last Ned | HMS Nova",
-    description: "Gratis ISO 9001 sjekkliste for full compliance med kvalitetsstyringsstandarden. HMS Nova har innebygd ISO 9001-støtte. Last ned nå.",
-    keywords: "iso 9001 sjekkliste, iso 9001 compliance, kvalitetsstyring, iso sertifisering",
+  contact: {
+    title: "Contact HSEQ Nova | Get in Touch",
+    description: "Get in touch with HSEQ Nova. Email hello@hseqnova.co.uk for questions about health and safety software, pricing or support.",
+    keywords: "contact HSEQ Nova, health and safety software support, HSEQ enquiry",
   },
 } as const;
 
@@ -276,7 +267,7 @@ export const getTwitterDefaults = (title: string, description: string) => ({
   card: "summary_large_image" as const,
   title,
   description,
-  creator: "@hmsnova",
+  creator: "@hseqnova",
 });
 
 // Robots meta tags

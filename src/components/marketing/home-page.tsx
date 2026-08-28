@@ -89,16 +89,16 @@ const FEATURES = [
     href: "/riddor",
     title: "Accident book and RIDDOR",
     text: "Record injuries and near misses on a phone. Reportable events get the right HSE clock without a separate spreadsheet.",
-    image: "/images/hero-accident-book.jpg",
-    alt: "Tablet showing a digital accident book beside high-visibility kit",
+    image: "/images/hero-riddor.jpg",
+    alt: "Site manager logging an incident on a tablet at a construction site",
     hook: "Accident book; RIDDOR 2013",
   },
   {
     href: "/health-and-safety-policy",
     title: "Living health and safety policy",
     text: "Written for five or more employees: statement, organisation and arrangements that point at live work, not last year's PDF.",
-    image: "/images/hero-policy.jpg",
-    alt: "Director reviewing a living health and safety policy on a laptop",
+    image: "/images/hero-hs-policy.jpg",
+    alt: "Employer reviewing a health and safety policy on a laptop",
     hook: "HSWA s.2(3)",
   },
   {
@@ -109,6 +109,25 @@ const FEATURES = [
     alt: "Construction workers at a site entrance with a digital safety board",
     hook: "CDM 2015 site information",
     addon: true,
+  },
+] as const;
+
+const ADDON_FEATURES = [
+  {
+    href: "/rams",
+    title: "RAMS",
+    text: "Task-level risk assessments and method statements linked to live projects.",
+    hook: "MHSWR 1999; CDM 2015",
+    image: "/images/hero-rams.jpg",
+    alt: "Two construction workers reviewing a risk assessment on site",
+  },
+  {
+    href: "/coshh",
+    title: "COSHH assessments",
+    text: "Hazardous substance assessments, safety data sheets and health records kept for 40 years.",
+    hook: "COSHH 2002",
+    image: "/images/hero-coshh.jpg",
+    alt: "Worker handling hazardous substances with safety data sheets",
   },
 ] as const;
 
@@ -167,6 +186,7 @@ export function HomePage() {
       <BenefitsSection />
       <HowItWorks />
       <FeaturesSection />
+      <AddonFeaturesSection />
       <PricingSection />
       <AudienceSection />
       <FaqSection />
@@ -441,6 +461,69 @@ function FeaturesSection() {
           ))}
         </div>
       </div>
+    </section>
+  );
+}
+
+function AddonFeaturesSection() {
+  return (
+    <section className="container mx-auto px-4 py-20 lg:py-24">
+      <div className="mb-12 max-w-2xl">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">
+          Industry add-ons
+        </p>
+        <h2 className="mt-3 font-display text-3xl font-medium tracking-tight md:text-4xl">
+          Add a module when the work asks for it
+        </h2>
+        <p className="mt-4 text-[hsl(var(--home-ink)/0.72)]">
+          Not every company needs RAMS or COSHH. Switch an add-on on when a contract, a
+          substance or a site brings the duty into scope.
+        </p>
+      </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        {ADDON_FEATURES.map((feature) => (
+          <Link
+            key={feature.href}
+            href={feature.href}
+            className="group overflow-hidden border border-[hsl(var(--home-rule))] bg-white shadow-sm transition-shadow hover:shadow-md"
+          >
+            <div className="relative aspect-[2/1] overflow-hidden">
+              <Image
+                src={feature.image}
+                alt={feature.alt}
+                fill
+                className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
+              <span className="absolute left-3 top-3 bg-[hsl(var(--home-ink))] px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
+                Add-on
+              </span>
+            </div>
+            <div className="p-6">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-800">
+                {feature.hook}
+              </p>
+              <h3 className="mt-2 text-lg font-semibold group-hover:text-emerald-800">
+                {feature.title}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-[hsl(var(--home-ink)/0.7)]">
+                {feature.text}
+              </p>
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-emerald-800">
+                Learn more
+                <ArrowRight className="h-3.5 w-3.5" />
+              </span>
+            </div>
+          </Link>
+        ))}
+      </div>
+      <p className="mt-8 text-center text-sm text-[hsl(var(--home-ink)/0.6)]">
+        See all packs and pricing on the{" "}
+        <Link href="/pricing" className="underline underline-offset-2 hover:text-emerald-800">
+          pricing page
+        </Link>
+        .
+      </p>
     </section>
   );
 }

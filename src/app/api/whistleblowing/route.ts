@@ -68,38 +68,65 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid reporting channel" }, { status: 403 });
     }
 
-    const count = await prisma.whistleblowing.count({
-      where: { tenantId: tenant.id },
-    });
-    const year = new Date().getFullYear();
-    const caseNumber = `WB-${year}-${String(count + 1).padStart(3, "0")}`;
-
     const accessCode = nanoid(16).toUpperCase();
+    const year = new Date().getFullYear();
+    const prefix = `WB-${year}-`;
 
-    const report = await prisma.whistleblowing.create({
-      data: {
+    // Atomically find next number: query highest existing case number for this tenant+year
+    const latest = await prisma.whistleblowing.findFirst({
+      where: {
         tenantId: tenant.id,
-        caseNumber,
-        accessCode,
-        category: validatedData.category,
-        title: validatedData.title,
-        description: validatedData.description,
-        occurredAt: validatedData.occurredAt ? new Date(validatedData.occurredAt) : null,
-        location: validatedData.location || null,
-        involvedPersons: validatedData.involvedPersons || null,
-        witnesses: validatedData.witnesses || null,
-        reporterName: validatedData.reporterName || null,
-        reporterEmail: validatedData.reporterEmail || null,
-        reporterPhone: validatedData.reporterPhone || null,
-        isAnonymous: validatedData.isAnonymous,
+        caseNumber: { startsWith: prefix },
       },
+      orderBy: { caseNumber: "desc" },
+      select: { caseNumber: true },
     });
+
+    const nextSeq = latest
+      ? parseInt(latest.caseNumber.replace(prefix, ""), 10) + 1
+      : 1;
+
+    // Retry loop handles the rare case of concurrent inserts
+    let report;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const seq = nextSeq + attempt;
+      const caseNumber = `${prefix}${String(seq).padStart(3, "0")}`;
+      try {
+        report = await prisma.whistleblowing.create({
+          data: {
+            tenantId: tenant.id,
+            caseNumber,
+            accessCode,
+            category: validatedData.category,
+            title: validatedData.title,
+            description: validatedData.description,
+            occurredAt: validatedData.occurredAt ? new Date(validatedData.occurredAt) : null,
+            location: validatedData.location || null,
+            involvedPersons: validatedData.involvedPersons || null,
+            witnesses: validatedData.witnesses || null,
+            reporterName: validatedData.reporterName || null,
+            reporterEmail: validatedData.reporterEmail || null,
+            reporterPhone: validatedData.reporterPhone || null,
+            isAnonymous: validatedData.isAnonymous,
+          },
+        });
+        break;
+      } catch (e: any) {
+        // P2002 = unique constraint violation — retry with next number
+        if (e?.code === "P2002" && attempt < 4) continue;
+        throw e;
+      }
+    }
+
+    if (!report) {
+      return NextResponse.json({ error: "Could not generate unique case number" }, { status: 500 });
+    }
 
     await prisma.whistleblowMessage.create({
       data: {
         whistleblowingId: report.id,
         sender: "SYSTEM",
-        message: `Report received with case number ${caseNumber}. Use your access code to follow up.`,
+        message: `Report received with case number ${report.caseNumber}. Use your access code to follow up.`,
       },
     });
 
@@ -109,20 +136,20 @@ export async function POST(req: NextRequest) {
       "whistleblowing",
       report.id,
       "CREATE",
-      { caseNumber, category: report.category },
+      { caseNumber: report.caseNumber, category: report.category },
     );
 
     await notifyUsersByRole(tenant.id, "HMS", {
       type: "WHISTLEBLOWING",
       title: "New whistleblowing report received",
-      message: `${report.category}: ${report.title} — Case: ${caseNumber}`,
+      message: `${report.category}: ${report.title} — Case: ${report.caseNumber}`,
       link: `/dashboard/whistleblowing/${report.id}`,
     });
 
     await notifyUsersByRole(tenant.id, "LEDER", {
       type: "WHISTLEBLOWING",
       title: "New whistleblowing report received",
-      message: `${report.category}: ${report.title} — Case: ${caseNumber}`,
+      message: `${report.category}: ${report.title} — Case: ${report.caseNumber}`,
       link: `/dashboard/whistleblowing/${report.id}`,
     });
 

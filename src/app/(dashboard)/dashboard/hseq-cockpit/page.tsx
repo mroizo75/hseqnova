@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -14,8 +14,11 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  Download,
+  ShieldCheck,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +45,24 @@ interface CockpitData {
     overdueMeasures: number;
     expiredTraining: number;
   } | null;
+}
+
+interface ComplianceCheckResult {
+  key: string;
+  label: string;
+  legalRef: string;
+  maxPoints: number;
+  earnedPoints: number;
+  status: "pass" | "attention" | "fail";
+  detail: string;
+}
+
+interface ComplianceScoreData {
+  totalScore: number;
+  maxScore: number;
+  percentage: number;
+  checks: ComplianceCheckResult[];
+  calculatedAt: string;
 }
 
 function StatCard({
@@ -108,6 +129,8 @@ function ScoreGauge({ score, trend }: { score: number; trend: string }) {
 export default function HseqCockpitPage() {
   const [data, setData] = useState<CockpitData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [complianceScore, setComplianceScore] = useState<ComplianceScoreData | null>(null);
+  const [downloadingReport, setDownloadingReport] = useState(false);
 
   useEffect(() => {
     fetch("/api/hseq-cockpit/overview")
@@ -115,13 +138,40 @@ export default function HseqCockpitPage() {
       .then(setData)
       .catch(() => setData(null))
       .finally(() => setLoading(false));
+
+    fetch("/api/compliance-score")
+      .then((res) => res.json())
+      .then(setComplianceScore)
+      .catch(() => setComplianceScore(null));
+  }, []);
+
+  const handleDownloadBoardReport = useCallback(async () => {
+    setDownloadingReport(true);
+    try {
+      const now = new Date();
+      const quarter = Math.ceil((now.getMonth() + 1) / 3);
+      const year = now.getFullYear();
+      const res = await fetch(`/api/board-report/pdf?quarter=${quarter}&year=${year}`);
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `board-report-Q${quarter}-${year}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloadingReport(false);
+    }
   }, []);
 
   if (loading) {
     return (
-      <div className="space-y-6 p-6">
-        <h1 className="text-2xl font-bold">HSEQ Overview</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="space-y-6">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">HSEQ Overview</h1>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardContent className="p-4">
@@ -136,8 +186,8 @@ export default function HseqCockpitPage() {
 
   if (!data) {
     return (
-      <div className="p-6">
-        <h1 className="text-2xl font-bold">HSEQ Overview</h1>
+      <div>
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">HSEQ Overview</h1>
         <p className="text-muted-foreground mt-2">Failed to load dashboard data.</p>
       </div>
     );
@@ -149,24 +199,58 @@ export default function HseqCockpitPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">HSEQ Overview</h1>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">HSEQ Overview</h1>
           <p className="text-muted-foreground text-sm">
             Company-wide health, safety, environment and quality status
           </p>
         </div>
-        {data.hmsScore && (
-          <Card className="px-4 py-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                Compliance score
-              </span>
-              <ScoreGauge score={data.hmsScore.overallScore} trend={data.hmsScore.trend} />
-            </div>
-          </Card>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {complianceScore && (
+            <Card className="px-3 py-2 sm:px-4">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0" />
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                  Compliance
+                </span>
+                <span
+                  className={cn(
+                    "text-xl sm:text-2xl font-bold",
+                    complianceScore.percentage >= 70
+                      ? "text-emerald-600"
+                      : complianceScore.percentage >= 40
+                        ? "text-amber-600"
+                        : "text-red-600",
+                  )}
+                >
+                  {complianceScore.percentage}%
+                </span>
+              </div>
+            </Card>
+          )}
+          {data.hmsScore && (
+            <Card className="px-3 py-2 sm:px-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                  HSEQ score
+                </span>
+                <ScoreGauge score={data.hmsScore.overallScore} trend={data.hmsScore.trend} />
+              </div>
+            </Card>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadBoardReport}
+            disabled={downloadingReport}
+            className="bg-transparent"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            {downloadingReport ? "Generating…" : "Board Report"}
+          </Button>
+        </div>
       </div>
 
       {/* Key metrics */}
@@ -208,7 +292,52 @@ export default function HseqCockpitPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Compliance Score Breakdown */}
+      {complianceScore && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-600" />
+              Compliance Score Breakdown
+              <span className="ml-auto text-sm font-normal text-muted-foreground">
+                {complianceScore.totalScore} / {complianceScore.maxScore} points
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {complianceScore.checks.map((check) => (
+                <div
+                  key={check.key}
+                  className={cn(
+                    "rounded-md border px-3 py-2 text-xs",
+                    check.status === "pass" && "border-emerald-200 bg-emerald-50/50",
+                    check.status === "attention" && "border-amber-200 bg-amber-50/50",
+                    check.status === "fail" && "border-red-200 bg-red-50/50",
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="font-medium truncate">{check.label}</span>
+                    <span
+                      className={cn(
+                        "shrink-0 font-bold",
+                        check.status === "pass" && "text-emerald-700",
+                        check.status === "attention" && "text-amber-700",
+                        check.status === "fail" && "text-red-700",
+                      )}
+                    >
+                      {check.earnedPoints}/{check.maxPoints}
+                    </span>
+                  </div>
+                  <p className="text-muted-foreground mt-0.5 truncate">{check.legalRef}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Upcoming actions */}
         <Card>
           <CardHeader className="pb-3">

@@ -13,6 +13,7 @@ import {
   ROBOTS_CONFIG,
 } from "@/lib/seo-config";
 import { MultipleStructuredData } from "@/components/seo/structured-data";
+import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -47,7 +48,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: `${SITE_CONFIG.name} - ${SITE_CONFIG.tagline}`,
     description: SITE_CONFIG.description,
-    creator: "@hmsnova",
+    creator: "@hseqnova",
   },
   appleWebApp: {
     capable: true,
@@ -87,6 +88,7 @@ export default async function RootLayout({
         <MultipleStructuredData dataArray={[ORGANIZATION_SCHEMA]} />
       </head>
       <body className="min-h-dvh overflow-x-hidden">
+        <ServiceWorkerRegister />
         <Providers locale={locale} messages={messages} session={session} nowISO={nowISO}>
           <AITracker />
           {children}

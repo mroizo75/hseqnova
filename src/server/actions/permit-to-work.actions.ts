@@ -14,6 +14,14 @@ export async function listPermitsToWork() {
   });
 }
 
+export async function getPermitToWork(id: string) {
+  await requireTenantModule("permitToWork");
+  const { tenantId } = await getRequiredTenantContext();
+  return prisma.permitToWork.findFirst({
+    where: { id, tenantId },
+  });
+}
+
 export async function createPermitToWork(input: {
   projectId?: string;
   type: string;
@@ -40,5 +48,18 @@ export async function createPermitToWork(input: {
       isolations: input.isolations,
       status: PermitToWorkStatus.DRAFT,
     },
+  });
+}
+
+export async function updatePermitStatus(id: string, status: PermitToWorkStatus) {
+  await requireTenantModule("permitToWork");
+  const { tenantId } = await getRequiredTenantContext();
+  const permit = await prisma.permitToWork.findFirst({ where: { id, tenantId } });
+  if (!permit) {
+    throw { code: "NOT_FOUND", message: "Permit not found" };
+  }
+  return prisma.permitToWork.update({
+    where: { id },
+    data: { status },
   });
 }
