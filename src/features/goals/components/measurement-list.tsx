@@ -78,7 +78,7 @@ export function MeasurementList({ measurements, unit }: MeasurementListProps) {
                   </div>
 
                   <p className="text-sm text-muted-foreground">
-                    {new Date(measurement.measurementDate).toLocaleDateString("nb-NO", {
+                    {new Date(measurement.measurementDate).toLocaleDateString("en-GB", {
                       day: "numeric",
                       month: "long",
                       year: "numeric",

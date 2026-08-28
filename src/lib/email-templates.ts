@@ -1,14 +1,13 @@
 /**
- * Email Templates for HMS Nova
+ * Email Templates for HSEQ Nova
  * 
  * Professional HTML email templates with inline styles for maximum compatibility.
- * Uses HMS Nova brand colors: Primary (Teal) and Accent (Green)
+ * Uses HSEQ Nova brand colours: Primary (Teal) and Accent (Green)
  */
 
 import fs from 'fs';
 import path from 'path';
 
-// Helper function to get logo as base64
 function getLogoBase64(): string {
   try {
     const logoPath = path.join(process.cwd(), 'public', 'logo-nova.png');
@@ -17,7 +16,6 @@ function getLogoBase64(): string {
     return `data:image/png;base64,${base64Logo}`;
   } catch (error) {
     console.error('Failed to load logo:', error);
-    // Fallback: HMS Nova text logo
     return '';
   }
 }
@@ -27,13 +25,13 @@ interface DocumentDeliveryEmailProps {
   email: string;
   documentId: string;
   downloadLinks: {
-    register?: string;   // HMS-00: Dokumentregister
-    handbook?: string;   // HMS-01: HMS-håndbok
-    risk?: string;       // HMS-02: Risikovurdering
-    training?: string;   // HMS-03: Opplæringsplan
-    vernerunde?: string; // HMS-04: Vernerunde / Sjekkliste
-    amu?: string;        // HMS-05: AMU møteprotokoll
-    zip?: string;        // Komplett pakke (ZIP)
+    register?: string;   // HSEQ-00: Document register
+    handbook?: string;   // HSEQ-01: Health & safety policy
+    risk?: string;       // HSEQ-02: Risk assessment
+    training?: string;   // HSEQ-03: Training plan
+    vernerunde?: string; // HSEQ-04: Workplace inspection checklist
+    amu?: string;        // HSEQ-05: H&S committee minutes
+    zip?: string;        // Complete package (ZIP)
   };
 }
 
@@ -43,17 +41,17 @@ export function getDocumentDeliveryEmail({
   documentId,
   downloadLinks,
 }: DocumentDeliveryEmailProps): { subject: string; html: string } {
-  const dashboardUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://hmsnova.no";
-  const supportEmail = process.env.SUPPORT_EMAIL ?? "post@hmsnova.no";
+  const dashboardUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://hseqnova.co.uk";
+  const supportEmail = process.env.SUPPORT_EMAIL ?? "support@hseqnova.co.uk";
   const logoBase64 = getLogoBase64();
 
   const html = `
 <!DOCTYPE html>
-<html lang="no">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Din HMS-pakke er klar!</title>
+  <title>Your HSEQ document pack is ready!</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
@@ -64,9 +62,9 @@ export function getDocumentDeliveryEmail({
           <!-- Header -->
           <tr>
             <td style="background: linear-gradient(135deg, #2d9c92 0%, #3db88a 100%); padding: 40px 40px 30px; text-align: center;">
-              <img src="${logoBase64}" alt="HMS Nova" style="max-width: 180px; height: auto; margin-bottom: 20px;" />
+              <img src="${logoBase64}" alt="HSEQ Nova" style="max-width: 180px; height: auto; margin-bottom: 20px;" />
               <h1 style="color: #ffffff; font-size: 28px; margin: 0; font-weight: 600; letter-spacing: -0.5px;">
-                Din HMS-pakke er klar! 📦
+                Your HSEQ document pack is ready!
               </h1>
             </td>
           </tr>
@@ -75,16 +73,16 @@ export function getDocumentDeliveryEmail({
           <tr>
             <td style="padding: 40px;">
               <p style="color: #1a1a1a; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                Hei!
+                Hello!
               </p>
               
               <p style="color: #1a1a1a; font-size: 16px; line-height: 1.6; margin: 0 0 30px;">
-                Takk for at du brukte HMS Nova sin HMS-dokumentgenerator. Vi har laget en skreddersydd HMS-pakke for <strong>${companyName}</strong>.
+                Thank you for using the HSEQ Nova document generator. We have prepared a tailored HSEQ document pack for <strong>${companyName}</strong>.
               </p>
               
               <!-- Download Buttons -->
               <h3 style="color: #1a1a1a; font-size: 18px; margin: 0 0 15px; font-weight: 600;">
-                Last ned dokumentene dine:
+                Download your documents:
               </h3>
               
               ${downloadLinks.zip ? `
@@ -92,7 +90,7 @@ export function getDocumentDeliveryEmail({
                 <tr>
                   <td align="center">
                     <a href="${downloadLinks.zip}" style="display: inline-block; background-color: #2d9c92; color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 6px; font-weight: 600; font-size: 16px; margin-bottom: 10px;">
-                      📦 Last ned hele pakken (ZIP)
+                      Download complete pack (ZIP)
                     </a>
                   </td>
                 </tr>
@@ -100,7 +98,7 @@ export function getDocumentDeliveryEmail({
               ` : ""}
               
               <p style="color: #666; font-size: 14px; margin: 0 0 20px; text-align: center;">
-                Eller last ned enkeltdokumenter:
+                Or download individual documents:
               </p>
               
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px;">
@@ -108,7 +106,7 @@ export function getDocumentDeliveryEmail({
                 <tr>
                   <td style="padding: 8px;">
                     <a href="${downloadLinks.register}" style="display: block; background-color: #f9fafb; color: #1a1a1a; text-decoration: none; padding: 12px 16px; border-radius: 6px; border: 1px solid #e5e7eb; font-size: 14px;">
-                      📑 HMS-00: Dokumentregister (.docx)
+                      HSEQ-00: Document register (.docx)
                     </a>
                   </td>
                 </tr>
@@ -117,7 +115,7 @@ export function getDocumentDeliveryEmail({
                 <tr>
                   <td style="padding: 8px;">
                     <a href="${downloadLinks.handbook}" style="display: block; background-color: #f9fafb; color: #1a1a1a; text-decoration: none; padding: 12px 16px; border-radius: 6px; border: 1px solid #e5e7eb; font-size: 14px;">
-                      📘 HMS-01: HMS-håndbok (.docx)
+                      HSEQ-01: Health &amp; safety policy (.docx)
                     </a>
                   </td>
                 </tr>
@@ -126,7 +124,7 @@ export function getDocumentDeliveryEmail({
                 <tr>
                   <td style="padding: 8px;">
                     <a href="${downloadLinks.risk}" style="display: block; background-color: #f9fafb; color: #1a1a1a; text-decoration: none; padding: 12px 16px; border-radius: 6px; border: 1px solid #e5e7eb; font-size: 14px;">
-                      ⚠️ HMS-02: Risikovurdering (.docx)
+                      HSEQ-02: Risk assessment (.docx)
                     </a>
                   </td>
                 </tr>
@@ -135,7 +133,7 @@ export function getDocumentDeliveryEmail({
                 <tr>
                   <td style="padding: 8px;">
                     <a href="${downloadLinks.training}" style="display: block; background-color: #f9fafb; color: #1a1a1a; text-decoration: none; padding: 12px 16px; border-radius: 6px; border: 1px solid #e5e7eb; font-size: 14px;">
-                      🎓 HMS-03: Opplæringsplan (.docx)
+                      HSEQ-03: Training plan (.docx)
                     </a>
                   </td>
                 </tr>
@@ -144,7 +142,7 @@ export function getDocumentDeliveryEmail({
                 <tr>
                   <td style="padding: 8px;">
                     <a href="${downloadLinks.vernerunde}" style="display: block; background-color: #f9fafb; color: #1a1a1a; text-decoration: none; padding: 12px 16px; border-radius: 6px; border: 1px solid #e5e7eb; font-size: 14px;">
-                      🔍 HMS-04: Vernerunde-sjekkliste (.docx)
+                      HSEQ-04: Workplace inspection checklist (.docx)
                     </a>
                   </td>
                 </tr>
@@ -153,7 +151,7 @@ export function getDocumentDeliveryEmail({
                 <tr>
                   <td style="padding: 8px;">
                     <a href="${downloadLinks.amu}" style="display: block; background-color: #f9fafb; color: #1a1a1a; text-decoration: none; padding: 12px 16px; border-radius: 6px; border: 1px solid #e5e7eb; font-size: 14px;">
-                      📋 HMS-05: AMU-møteprotokoll (.docx)
+                      HSEQ-05: H&amp;S committee minutes (.docx)
                     </a>
                   </td>
                 </tr>
@@ -162,12 +160,12 @@ export function getDocumentDeliveryEmail({
               
               <!-- DOCX Info -->
               <p style="color: #3db88a; font-size: 13px; margin: 0 0 20px; padding: 12px; background-color: #f0fdf4; border-radius: 4px; text-align: center; border: 1px solid #d1fae5;">
-                ✅ <strong>Alle dokumenter er editerbare Word-filer (.docx)</strong> - åpne i Microsoft Word, Google Docs eller LibreOffice og tilpass etter dine behov!
+                <strong>All documents are editable Word files (.docx)</strong> — open in Microsoft Word, Google Docs, or LibreOffice and customise to your needs!
               </p>
               
               <!-- Expiration Warning -->
               <p style="color: #dc2626; font-size: 13px; margin: 0 0 30px; padding: 12px; background-color: #fef2f2; border-radius: 4px; text-align: center; border: 1px solid #fee2e2;">
-                ⚠️ Viktig: Nedlastingslenkene er gyldige i <strong>7 dager</strong>. Last ned dokumentene nå!
+                Important: Download links are valid for <strong>7 days</strong>. Please download your documents now!
               </p>
               
               <!-- Info Box -->
@@ -175,18 +173,18 @@ export function getDocumentDeliveryEmail({
                 <tr>
                   <td style="padding: 20px;">
                     <h3 style="color: #1a1a1a; font-size: 16px; margin: 0 0 10px; font-weight: 600;">
-                      💡 Klar for mer?
+                      Ready for more?
                     </h3>
                     <p style="color: #666; font-size: 14px; margin: 0 0 15px; line-height: 1.6;">
-                      Dette er bare starten! Med HMS Nova får du et komplett, levende HMS-system med:
+                      This is just the beginning! With HSEQ Nova you get a complete, living HSEQ system including:
                     </p>
                     <ul style="color: #666; font-size: 14px; margin: 0; padding-left: 20px; line-height: 1.8;">
-                      <li>Digital signatur (BankID)</li>
-                      <li>Automatiske påminnelser</li>
-                      <li>Hendelsesrapportering med 5-Whys</li>
-                      <li>Opplæringsmodul med kompetansematrise</li>
-                      <li>Mobilapp for vernerunder</li>
-                      <li>ISO 9001 compliance på autopilot</li>
+                      <li>Digital signatures</li>
+                      <li>Automatic reminders</li>
+                      <li>Incident reporting with 5-Whys analysis</li>
+                      <li>Training module with competence matrix</li>
+                      <li>Mobile app for workplace inspections</li>
+                      <li>ISO 9001 compliance on autopilot</li>
                     </ul>
                   </td>
                 </tr>
@@ -197,16 +195,15 @@ export function getDocumentDeliveryEmail({
                 <tr>
                   <td align="center">
                     <a href="${dashboardUrl}/registrer-bedrift" style="display: inline-block; background-color: #3db88a; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: 600; font-size: 16px;">
-                      Registrer bedrift - prøv gratis i 14 dager
+                      Register your organisation — 14-day free trial
                     </a>
                   </td>
                 </tr>
               </table>
               
               <p style="color: #666; font-size: 14px; text-align: center; margin: 30px 0 0;">
-                Har du spørsmål? Ta kontakt med oss på<br/>
-                📧 <a href="mailto:${supportEmail}" style="color: #2d9c92; text-decoration: none;">${supportEmail}</a> eller
-                📞 <a href="tel:+4799112916" style="color: #2d9c92; text-decoration: none;">+47 99 11 29 16</a>
+                Have a question? Get in touch with us at<br/>
+                <a href="mailto:${supportEmail}" style="color: #2d9c92; text-decoration: none;">${supportEmail}</a>
               </p>
             </td>
           </tr>
@@ -215,13 +212,13 @@ export function getDocumentDeliveryEmail({
           <tr>
             <td style="background-color: #f9fafb; padding: 30px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
               <p style="color: #9ca3af; font-size: 12px; margin: 0 0 10px; line-height: 1.5;">
-                HMS Nova - Norges mest intuitive HMS-system<br/>
-                ISO 9001 compliance på autopilot
+                HSEQ Nova — The UK's most intuitive HSEQ system<br/>
+                ISO 9001 compliance on autopilot
               </p>
               <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                <a href="${dashboardUrl}" style="color: #2d9c92; text-decoration: none; margin: 0 8px;">hmsnova.no</a> |
-                <a href="${dashboardUrl}/priser" style="color: #2d9c92; text-decoration: none; margin: 0 8px;">Priser</a> |
-                <a href="${dashboardUrl}/hva-er-hms-nova" style="color: #2d9c92; text-decoration: none; margin: 0 8px;">Om oss</a>
+                <a href="${dashboardUrl}" style="color: #2d9c92; text-decoration: none; margin: 0 8px;">hseqnova.co.uk</a> |
+                <a href="${dashboardUrl}/priser" style="color: #2d9c92; text-decoration: none; margin: 0 8px;">Pricing</a> |
+                <a href="${dashboardUrl}/hva-er-hms-nova" style="color: #2d9c92; text-decoration: none; margin: 0 8px;">About us</a>
               </p>
             </td>
           </tr>
@@ -234,7 +231,7 @@ export function getDocumentDeliveryEmail({
   `;
   
   return {
-    subject: `Din HMS-pakke er klar! 📦`,
+    subject: `Your HSEQ document pack is ready!`,
     html,
   };
 }
@@ -257,16 +254,16 @@ export function getCustomerWelcomeEmail({
   yearlyPrice,
 }: CustomerWelcomeEmailProps): string {
   const logoBase64 = getLogoBase64();
-  const dashboardUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://hmsnova.no";
-  const supportEmail = process.env.SUPPORT_EMAIL ?? "post@hmsnova.no";
+  const dashboardUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://hseqnova.co.uk";
+  const supportEmail = process.env.SUPPORT_EMAIL ?? "support@hseqnova.co.uk";
 
   return `
 <!DOCTYPE html>
-<html lang="no">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Velkommen til HMS Nova</title>
+  <title>Welcome to HSEQ Nova</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
@@ -278,9 +275,9 @@ export function getCustomerWelcomeEmail({
           <!-- Header with Logo -->
           <tr>
             <td style="background: linear-gradient(135deg, #2d9c92 0%, #3db88a 100%); padding: 40px 40px 30px; text-align: center;">
-              <img src="${logoBase64}" alt="HMS Nova" style="max-width: 180px; height: auto; margin-bottom: 20px;" />
+              <img src="${logoBase64}" alt="HSEQ Nova" style="max-width: 180px; height: auto; margin-bottom: 20px;" />
               <h1 style="color: #ffffff; font-size: 28px; margin: 0; font-weight: 600; letter-spacing: -0.5px;">
-                Velkommen til HMS Nova! 🎉
+                Welcome to HSEQ Nova!
               </h1>
             </td>
           </tr>
@@ -289,11 +286,11 @@ export function getCustomerWelcomeEmail({
           <tr>
             <td style="padding: 40px;">
               <p style="color: #1a1a1a; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                Hei <strong>${contactPerson}</strong>,
+                Hello <strong>${contactPerson}</strong>,
               </p>
               
               <p style="color: #1a1a1a; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                Takk for at du valgte HMS Nova! Vi har mottatt din registrering og jobber med å sette opp din konto.
+                Thank you for choosing HSEQ Nova! We have received your registration and are setting up your account.
               </p>
               
               <!-- Info Box -->
@@ -301,24 +298,24 @@ export function getCustomerWelcomeEmail({
                 <tr>
                   <td style="padding: 20px;">
                     <h3 style="color: #1a1a1a; font-size: 16px; margin: 0 0 15px; font-weight: 600;">
-                      📋 Din registrering
+                      Your registration
                     </h3>
                     <table cellpadding="0" cellspacing="0" style="width: 100%; font-size: 14px;">
                       <tr>
-                        <td style="color: #666; padding: 4px 0; width: 40%;">Bedrift:</td>
+                        <td style="color: #666; padding: 4px 0; width: 40%;">Organisation:</td>
                         <td style="color: #1a1a1a; padding: 4px 0; font-weight: 500;">${companyName}</td>
                       </tr>
                       <tr>
-                        <td style="color: #666; padding: 4px 0;">Org.nr:</td>
+                        <td style="color: #666; padding: 4px 0;">Company number:</td>
                         <td style="color: #1a1a1a; padding: 4px 0; font-weight: 500;">${orgNumber}</td>
                       </tr>
                       <tr>
-                        <td style="color: #666; padding: 4px 0;">Antall ansatte:</td>
+                        <td style="color: #666; padding: 4px 0;">Number of employees:</td>
                         <td style="color: #1a1a1a; padding: 4px 0; font-weight: 500;">${employeeCount}</td>
                       </tr>
                       <tr>
-                        <td style="color: #666; padding: 4px 0;">Pris per år:</td>
-                        <td style="color: #1a1a1a; padding: 4px 0; font-weight: 500;">${yearlyPrice.toLocaleString('nb-NO')} kr (eks. mva)</td>
+                        <td style="color: #666; padding: 4px 0;">Annual price:</td>
+                        <td style="color: #1a1a1a; padding: 4px 0; font-weight: 500;">\u00A3${yearlyPrice.toLocaleString('en-GB')} (excl. VAT)</td>
                       </tr>
                     </table>
                   </td>
@@ -327,7 +324,7 @@ export function getCustomerWelcomeEmail({
               
               <!-- Next Steps -->
               <h3 style="color: #1a1a1a; font-size: 18px; margin: 30px 0 15px; font-weight: 600;">
-                Hva skjer nå?
+                What happens next?
               </h3>
               
               <table cellpadding="0" cellspacing="0" style="width: 100%; margin-bottom: 20px;">
@@ -336,9 +333,9 @@ export function getCustomerWelcomeEmail({
                     <div style="background-color: #2d9c92; color: #ffffff; width: 24px; height: 24px; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 600;">1</div>
                   </td>
                   <td style="padding-bottom: 15px;">
-                    <strong style="color: #1a1a1a; font-size: 15px;">Vi setter opp din konto</strong>
+                    <strong style="color: #1a1a1a; font-size: 15px;">We set up your account</strong>
                     <p style="color: #666; font-size: 14px; margin: 5px 0 0; line-height: 1.5;">
-                      Vi konfigurerer systemet med ferdig HMS-håndbok og alle nødvendige moduler.
+                      We configure the system with a ready-made health &amp; safety policy and all the modules you need.
                     </p>
                   </td>
                 </tr>
@@ -347,9 +344,9 @@ export function getCustomerWelcomeEmail({
                     <div style="background-color: #2d9c92; color: #ffffff; width: 24px; height: 24px; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 600;">2</div>
                   </td>
                   <td style="padding-bottom: 15px;">
-                    <strong style="color: #1a1a1a; font-size: 15px;">Du mottar innloggingsinformasjon</strong>
+                    <strong style="color: #1a1a1a; font-size: 15px;">You receive your login details</strong>
                     <p style="color: #666; font-size: 14px; margin: 5px 0 0; line-height: 1.5;">
-                      Innen 24 timer sender vi deg en lenke for å sette passord og logge inn.
+                      Within 24 hours we will send you a link to set your password and sign in.
                     </p>
                   </td>
                 </tr>
@@ -358,20 +355,20 @@ export function getCustomerWelcomeEmail({
                     <div style="background-color: #2d9c92; color: #ffffff; width: 24px; height: 24px; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 600;">3</div>
                   </td>
                   <td style="padding-bottom: 15px;">
-                    <strong style="color: #1a1a1a; font-size: 15px;">Personlig onboarding-samtale</strong>
+                    <strong style="color: #1a1a1a; font-size: 15px;">Personal onboarding call</strong>
                     <p style="color: #666; font-size: 14px; margin: 5px 0 0; line-height: 1.5;">
-                      Vi tar kontakt for en kort gjennomgang av systemet (15-30 min).
+                      We will get in touch for a brief walkthrough of the system (15–30 min).
                     </p>
                   </td>
                 </tr>
                 <tr>
                   <td style="vertical-align: top; padding-right: 15px;">
-                    <div style="background-color: #3db88a; color: #ffffff; width: 24px; height: 24px; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 600;">✓</div>
+                    <div style="background-color: #3db88a; color: #ffffff; width: 24px; height: 24px; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 600;">&#10003;</div>
                   </td>
                   <td>
-                    <strong style="color: #1a1a1a; font-size: 15px;">Du er i gang!</strong>
+                    <strong style="color: #1a1a1a; font-size: 15px;">You're all set!</strong>
                     <p style="color: #666; font-size: 14px; margin: 5px 0 0; line-height: 1.5;">
-                      14 dagers gratis prøveperiode starter når du logger inn første gang.
+                      Your 14-day free trial begins when you first sign in.
                     </p>
                   </td>
                 </tr>
@@ -382,7 +379,7 @@ export function getCustomerWelcomeEmail({
                 <tr>
                   <td align="center">
                     <a href="${dashboardUrl}/registrer-bedrift" style="display: inline-block; background-color: #2d9c92; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: 600; font-size: 16px;">
-                      Registrer bedrift mens du venter
+                      Register your organisation while you wait
                     </a>
                   </td>
                 </tr>
@@ -393,19 +390,18 @@ export function getCustomerWelcomeEmail({
                 <tr>
                   <td>
                     <p style="color: #1a1a1a; font-size: 14px; margin: 0 0 10px; font-weight: 600;">
-                      Har du spørsmål i mellomtiden?
+                      Have a question in the meantime?
                     </p>
                     <p style="color: #666; font-size: 14px; margin: 0; line-height: 1.6;">
-                      📧 <a href="mailto:${supportEmail}" style="color: #2d9c92; text-decoration: none;">${supportEmail}</a><br/>
-                      📞 <a href="tel:+4799112916" style="color: #2d9c92; text-decoration: none;">+47 99 11 29 16</a>
+                      <a href="mailto:${supportEmail}" style="color: #2d9c92; text-decoration: none;">${supportEmail}</a>
                     </p>
                   </td>
                 </tr>
               </table>
               
               <p style="color: #1a1a1a; font-size: 16px; line-height: 1.6; margin: 30px 0 0;">
-                Med vennlig hilsen,<br/>
-                <strong>HMS Nova-teamet</strong>
+                Kind regards,<br/>
+                <strong>The HSEQ Nova Team</strong>
               </p>
             </td>
           </tr>
@@ -414,13 +410,13 @@ export function getCustomerWelcomeEmail({
           <tr>
             <td style="background-color: #f9fafb; padding: 30px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
               <p style="color: #9ca3af; font-size: 12px; margin: 0 0 10px; line-height: 1.5;">
-                HMS Nova - Norges mest intuitive HMS-system<br/>
-                ISO 9001 compliance på autopilot
+                HSEQ Nova — The UK's most intuitive HSEQ system<br/>
+                ISO 9001 compliance on autopilot
               </p>
               <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                <a href="${dashboardUrl}" style="color: #2d9c92; text-decoration: none; margin: 0 8px;">Besøk hmsnova.no</a> |
-                <a href="${dashboardUrl}/priser" style="color: #2d9c92; text-decoration: none; margin: 0 8px;">Se priser</a> |
-                <a href="${dashboardUrl}/hva-er-hms-nova" style="color: #2d9c92; text-decoration: none; margin: 0 8px;">Om oss</a>
+                <a href="${dashboardUrl}" style="color: #2d9c92; text-decoration: none; margin: 0 8px;">Visit hseqnova.co.uk</a> |
+                <a href="${dashboardUrl}/priser" style="color: #2d9c92; text-decoration: none; margin: 0 8px;">Pricing</a> |
+                <a href="${dashboardUrl}/hva-er-hms-nova" style="color: #2d9c92; text-decoration: none; margin: 0 8px;">About us</a>
               </p>
             </td>
           </tr>
@@ -471,15 +467,15 @@ export function getAdminNotificationEmail({
   tenantId,
 }: AdminNotificationEmailProps): string {
   const logoBase64 = getLogoBase64();
-  const adminUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://hmsnova.no"}/admin/tenants`;
+  const adminUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://hseqnova.co.uk"}/admin/tenants`;
   
   return `
 <!DOCTYPE html>
-<html lang="no">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ny registrering - ${companyName}</title>
+  <title>New registration — ${companyName}</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
@@ -490,9 +486,9 @@ export function getAdminNotificationEmail({
           <!-- Header -->
           <tr>
             <td style="background-color: #1a1a1a; padding: 30px 40px; text-align: center;">
-              <img src="${logoBase64}" alt="HMS Nova" style="max-width: 150px; height: auto; margin-bottom: 15px;" />
+              <img src="${logoBase64}" alt="HSEQ Nova" style="max-width: 150px; height: auto; margin-bottom: 15px;" />
               <h1 style="color: #ffffff; font-size: 24px; margin: 0; font-weight: 600;">
-                🎯 Ny bedriftsregistrering
+                New organisation registration
               </h1>
             </td>
           </tr>
@@ -501,57 +497,57 @@ export function getAdminNotificationEmail({
           <tr>
             <td style="padding: 40px;">
               
-              <!-- Bedriftsinformasjon -->
+              <!-- Organisation details -->
               <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f0fdf4; border-left: 4px solid #3db88a; border-radius: 4px; margin-bottom: 30px;">
                 <tr>
                   <td style="padding: 20px;">
                     <h3 style="color: #1a1a1a; font-size: 16px; margin: 0 0 15px; font-weight: 600;">
-                      🏢 Bedriftsinformasjon
+                      Organisation details
                     </h3>
                     <table cellpadding="0" cellspacing="0" style="width: 100%; font-size: 14px;">
                       <tr>
-                        <td style="color: #666; padding: 4px 0; width: 40%;">Bedriftsnavn:</td>
+                        <td style="color: #666; padding: 4px 0; width: 40%;">Organisation name:</td>
                         <td style="color: #1a1a1a; padding: 4px 0; font-weight: 600;">${companyName}</td>
                       </tr>
                       <tr>
-                        <td style="color: #666; padding: 4px 0;">Org.nr:</td>
+                        <td style="color: #666; padding: 4px 0;">Company number:</td>
                         <td style="color: #1a1a1a; padding: 4px 0; font-weight: 500;">${orgNumber}</td>
                       </tr>
                       <tr>
-                        <td style="color: #666; padding: 4px 0;">Antall ansatte:</td>
+                        <td style="color: #666; padding: 4px 0;">Number of employees:</td>
                         <td style="color: #1a1a1a; padding: 4px 0; font-weight: 500;">${employeeCount}</td>
                       </tr>
                       <tr>
-                        <td style="color: #666; padding: 4px 0;">Bransje:</td>
+                        <td style="color: #666; padding: 4px 0;">Industry:</td>
                         <td style="color: #1a1a1a; padding: 4px 0; font-weight: 500;">${industry}</td>
                       </tr>
                       <tr>
-                        <td style="color: #666; padding: 4px 0;">Prisklasse:</td>
-                        <td style="color: #1a1a1a; padding: 4px 0; font-weight: 600;">${pricingTier} (${yearlyPrice.toLocaleString('nb-NO')} kr/år)</td>
+                        <td style="color: #666; padding: 4px 0;">Pricing tier:</td>
+                        <td style="color: #1a1a1a; padding: 4px 0; font-weight: 600;">${pricingTier} (\u00A3${yearlyPrice.toLocaleString('en-GB')}/yr)</td>
                       </tr>
                     </table>
                   </td>
                 </tr>
               </table>
               
-              <!-- Kontaktperson -->
+              <!-- Contact person -->
               <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #eff6ff; border-left: 4px solid #2d9c92; border-radius: 4px; margin-bottom: 30px;">
                 <tr>
                   <td style="padding: 20px;">
                     <h3 style="color: #1a1a1a; font-size: 16px; margin: 0 0 15px; font-weight: 600;">
-                      👤 Kontaktperson
+                      Contact person
                     </h3>
                     <table cellpadding="0" cellspacing="0" style="width: 100%; font-size: 14px;">
                       <tr>
-                        <td style="color: #666; padding: 4px 0; width: 40%;">Navn:</td>
+                        <td style="color: #666; padding: 4px 0; width: 40%;">Name:</td>
                         <td style="color: #1a1a1a; padding: 4px 0; font-weight: 600;">${contactPerson}</td>
                       </tr>
                       <tr>
-                        <td style="color: #666; padding: 4px 0;">E-post:</td>
+                        <td style="color: #666; padding: 4px 0;">Email:</td>
                         <td style="color: #1a1a1a; padding: 4px 0;"><a href="mailto:${contactEmail}" style="color: #2d9c92; text-decoration: none;">${contactEmail}</a></td>
                       </tr>
                       <tr>
-                        <td style="color: #666; padding: 4px 0;">Telefon:</td>
+                        <td style="color: #666; padding: 4px 0;">Phone:</td>
                         <td style="color: #1a1a1a; padding: 4px 0;"><a href="tel:${contactPhone}" style="color: #2d9c92; text-decoration: none;">${contactPhone}</a></td>
                       </tr>
                     </table>
@@ -559,35 +555,35 @@ export function getAdminNotificationEmail({
                 </tr>
               </table>
               
-              <!-- Fakturainfo -->
+              <!-- Billing details -->
               <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px; margin-bottom: 30px;">
                 <tr>
                   <td style="padding: 20px;">
                     <h3 style="color: #1a1a1a; font-size: 16px; margin: 0 0 15px; font-weight: 600;">
-                      💳 Fakturainfo
+                      Billing details
                     </h3>
                     <table cellpadding="0" cellspacing="0" style="width: 100%; font-size: 14px;">
                       <tr>
-                        <td style="color: #666; padding: 4px 0; width: 40%;">EHF-faktura:</td>
-                        <td style="color: #1a1a1a; padding: 4px 0; font-weight: 500;">${useEHF ? "✅ Ja" : "❌ Nei"}</td>
+                        <td style="color: #666; padding: 4px 0; width: 40%;">E-invoicing:</td>
+                        <td style="color: #1a1a1a; padding: 4px 0; font-weight: 500;">${useEHF ? "Yes" : "No"}</td>
                       </tr>
                       ${invoiceEmail ? `
                       <tr>
-                        <td style="color: #666; padding: 4px 0;">Faktura e-post:</td>
+                        <td style="color: #666; padding: 4px 0;">Invoice email:</td>
                         <td style="color: #1a1a1a; padding: 4px 0;"><a href="mailto:${invoiceEmail}" style="color: #2d9c92; text-decoration: none;">${invoiceEmail}</a></td>
                       </tr>
                       ` : ""}
                       ${!useEHF && address ? `
                       <tr>
-                        <td style="color: #666; padding: 4px 0;">Adresse:</td>
+                        <td style="color: #666; padding: 4px 0;">Address:</td>
                         <td style="color: #1a1a1a; padding: 4px 0;">${address}</td>
                       </tr>
                       <tr>
-                        <td style="color: #666; padding: 4px 0;">Postnummer:</td>
+                        <td style="color: #666; padding: 4px 0;">Postcode:</td>
                         <td style="color: #1a1a1a; padding: 4px 0;">${postalCode}</td>
                       </tr>
                       <tr>
-                        <td style="color: #666; padding: 4px 0;">Poststed:</td>
+                        <td style="color: #666; padding: 4px 0;">City:</td>
                         <td style="color: #1a1a1a; padding: 4px 0;">${city}</td>
                       </tr>
                       ` : ""}
@@ -597,12 +593,12 @@ export function getAdminNotificationEmail({
               </table>
               
               ${notes ? `
-              <!-- Kommentar -->
+              <!-- Customer note -->
               <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border-radius: 4px; margin-bottom: 30px;">
                 <tr>
                   <td style="padding: 20px;">
                     <h3 style="color: #1a1a1a; font-size: 16px; margin: 0 0 10px; font-weight: 600;">
-                      💬 Kommentar fra kunde
+                      Customer note
                     </h3>
                     <p style="color: #666; font-size: 14px; margin: 0; line-height: 1.6; font-style: italic;">
                       "${notes}"
@@ -617,7 +613,7 @@ export function getAdminNotificationEmail({
                 <tr>
                   <td align="center">
                     <a href="${adminUrl}" style="display: inline-block; background-color: #2d9c92; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: 600; font-size: 16px;">
-                      Gå til Admin-panel
+                      Go to Admin panel
                     </a>
                   </td>
                 </tr>
@@ -633,7 +629,7 @@ export function getAdminNotificationEmail({
           <tr>
             <td style="background-color: #1a1a1a; padding: 20px; text-align: center;">
               <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                HMS Nova Admin Notification
+                HSEQ Nova Admin Notification
               </p>
             </td>
           </tr>

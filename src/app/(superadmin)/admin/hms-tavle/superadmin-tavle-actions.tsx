@@ -89,7 +89,7 @@ export function SuperadminTavleActions({ subscription }: Props) {
       );
       const json = await res.json();
       if (!res.ok) throw new Error(json.message ?? "Feil");
-      toast.success(json.data?.message ?? "Oppgradert til HMS Nova!");
+      toast.success(json.data?.message ?? "Upgraded to HSEQ Nova!");
       setUpgradeOpen(false);
       router.refresh();
     } catch (err: any) {
@@ -123,7 +123,7 @@ export function SuperadminTavleActions({ subscription }: Props) {
                 onClick={() => setUpgradeOpen(true)}
               >
                 <Rocket className="h-4 w-4 mr-2" />
-                Oppgrader til HMS Nova
+                Upgrade to HSEQ Nova
               </DropdownMenuItem>
             </>
           )}
@@ -147,7 +147,7 @@ export function SuperadminTavleActions({ subscription }: Props) {
           <div className="space-y-3 py-2">
             <p className="text-sm text-muted-foreground">
               Nåværende utløpsdato:{" "}
-              {new Date(subscription.endsAt).toLocaleDateString("nb-NO")}
+              {new Date(subscription.endsAt).toLocaleDateString("en-GB")}
             </p>
             <div className="space-y-1.5">
               <Label>Antall måneder å forlenge</Label>
@@ -164,7 +164,7 @@ export function SuperadminTavleActions({ subscription }: Props) {
               {(() => {
                 const d = new Date(subscription.endsAt);
                 d.setMonth(d.getMonth() + renewMonths);
-                return d.toLocaleDateString("nb-NO");
+                return d.toLocaleDateString("en-GB");
               })()}
             </p>
           </div>
@@ -177,16 +177,16 @@ export function SuperadminTavleActions({ subscription }: Props) {
         </DialogContent>
       </Dialog>
 
-      {/* ── Oppgrader til HMS Nova-dialog ── */}
+      {/* ── Upgrade to HSEQ Nova dialog ── */}
       <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Rocket className="h-5 w-5 text-blue-600" />
-              Oppgrader til HMS Nova
+              Upgrade to HSEQ Nova
             </DialogTitle>
             <DialogDescription>
-              Kunden får umiddelbart tilgang til full HMS Nova. Tavlen konverteres til add-on.
+              The customer gets immediate access to full HSEQ Nova. The board converts to an add-on.
             </DialogDescription>
           </DialogHeader>
 
@@ -194,8 +194,8 @@ export function SuperadminTavleActions({ subscription }: Props) {
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
               <p className="text-sm font-semibold text-blue-900">Hva som skjer:</p>
               {[
-                { from: "Standalone tavle", to: "HMS Nova Starter + Tavle Add-on" },
-                { from: "isTavleOnly: true", to: "isTavleOnly: false (full tilgang)" },
+                { from: "Standalone board", to: "HSEQ Nova Starter + Board Add-on" },
+                { from: "isTavleOnly: true", to: "isTavleOnly: false (full access)" },
                 { from: `Plan: ${subscription.plan}`, to: "Plan: ADDON (kr 290/mnd)" },
               ].map((row) => (
                 <div key={row.from} className="flex items-center gap-2 text-sm">
@@ -221,8 +221,8 @@ export function SuperadminTavleActions({ subscription }: Props) {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Etter oppgradering kan kunden koble tavlen til et HMS Nova-prosjekt for å aktivere
-              live-data (SHA-plan, avvik, mannskapsliste).
+              After upgrading, the customer can link the board to an HSEQ Nova project to activate
+              live data (CDM plan, incidents, crew list).
             </p>
           </div>
 

@@ -4,7 +4,7 @@ import { addDays, addMonths, subDays, startOfDay, endOfDay, differenceInDays } f
 import { NotificationType, Role } from "@prisma/client";
 
 /**
- * HMS Nova Scheduled Alerts System
+ * HSEQ Nova Scheduled Alerts System
  * 
  * Denne tjenesten kjører automatisk og sjekker alle elementer som trenger oppfølging:
  * - Avvik som ikke er behandlet
@@ -71,7 +71,6 @@ export async function runScheduledAlerts(): Promise<TenantAlertSummary[]> {
       checkInspectionFindings(tenant.id),
       checkConstructionDailyRosterControl(tenant.id),
       checkRoutineReviews(tenant.id),
-      checkEmployeeReviewsDue(tenant.id),
     ];
 
     const checkResults = await Promise.all(checks);
@@ -131,30 +130,30 @@ async function checkRoutineReviews(tenantId: string): Promise<AlertResult> {
     }
 
     const reviewDateText = routine.nextReviewAt
-      ? new Date(routine.nextReviewAt).toLocaleDateString("nb-NO")
-      : "snarest";
+      ? new Date(routine.nextReviewAt).toLocaleDateString("en-GB")
+      : "as soon as possible";
 
     if (routine.responsibleId) {
       await createNotification({
         tenantId,
         userId: routine.responsibleId,
         type: "ROUTINE_REVIEW_DUE",
-        title: "Rutine krever revisjon",
-        message: `Rutinen "${routine.title}" skal revideres innen ${reviewDateText}.`,
+        title: "Procedure requires review",
+        message: `The procedure "${routine.title}" must be reviewed by ${reviewDateText}.`,
         link: `/dashboard/procedures/${routine.id}`,
       });
     }
 
     await notifyUsersByRole(tenantId, "LEDER", {
       type: "ROUTINE_REVIEW_DUE",
-      title: "Lederoppfolging: rutine til revisjon",
-      message: `Rutinen "${routine.title}" trenger oppfolging innen ${reviewDateText}.`,
+      title: "Manager follow-up: procedure review due",
+      message: `The procedure "${routine.title}" needs follow-up by ${reviewDateText}.`,
       link: `/dashboard/procedures/${routine.id}`,
     });
     await notifyUsersByRole(tenantId, "HMS", {
       type: "ROUTINE_REVIEW_DUE",
-      title: "HMS-oppfolging: rutine til revisjon",
-      message: `Rutinen "${routine.title}" trenger oppfolging innen ${reviewDateText}.`,
+      title: "HSE follow-up: procedure review due",
+      message: `The procedure "${routine.title}" needs follow-up by ${reviewDateText}.`,
       link: `/dashboard/procedures/${routine.id}`,
     });
     notifications += 1;
@@ -238,7 +237,7 @@ async function checkConstructionDailyRosterControl(tenantId: string): Promise<Al
         tenantId,
         type: "SYSTEM_ALERT",
         link: `/dashboard/projects/${project.id}/construction-compliance`,
-        title: "⚠️ Daglig kontroll mangler (bygg/anlegg)",
+        title: "⚠️ Daily check missing (construction)",
         createdAt: {
           gt: todayStart,
         },
@@ -252,8 +251,8 @@ async function checkConstructionDailyRosterControl(tenantId: string): Promise<Al
 
     await notifyUsersByRole(tenantId, notifyRole, {
       type: "SYSTEM_ALERT",
-      title: "⚠️ Daglig kontroll mangler (bygg/anlegg)",
-      message: `Prosjekt "${project.name}" har aktive personer i oversiktslisten, men ingen daglig kontroll er registrert i dag.`,
+      title: "⚠️ Daily check missing (construction)",
+      message: `Project "${project.name}" has active persons on the roster but no daily check has been recorded today.`,
       link: `/dashboard/projects/${project.id}/construction-compliance`,
     });
     notifications += 1;
@@ -299,8 +298,8 @@ async function checkOverdueIncidents(tenantId: string): Promise<AlertResult> {
         tenantId,
         userId: incident.responsibleId,
         type: "INCIDENT_OVERDUE",
-        title: "⚠️ Avvik trenger oppfølging",
-        message: `Avviket "${incident.title}" har ikke blitt behandlet på over 7 dager. Vennligst følg opp.`,
+        title: "⚠️ Incident needs follow-up",
+        message: `The incident "${incident.title}" has not been addressed for over 7 days. Please follow up.`,
         link: `/dashboard/incidents/${incident.id}`,
       });
       notifications++;
@@ -342,8 +341,8 @@ async function checkOverdueMeasures(tenantId: string): Promise<AlertResult> {
         tenantId,
         userId: measure.responsibleId,
         type: "MEASURE_OVERDUE",
-        title: "🚨 Tiltak forfalt!",
-        message: `Tiltaket "${measure.title}" er ${daysOverdue} dager forbi fristen. Vennligst fullfør eller oppdater status.`,
+        title: "🚨 Action overdue!",
+        message: `The action "${measure.title}" is ${daysOverdue} days past the deadline. Please complete or update the status.`,
         link: `/dashboard/actions`,
       });
       notifications++;
@@ -385,8 +384,8 @@ async function checkUpcomingMeasures(tenantId: string): Promise<AlertResult> {
         tenantId,
         userId: measure.responsibleId,
         type: "MEASURE_DUE_SOON",
-        title: "⏰ Tiltak forfaller snart",
-        message: `Tiltaket "${measure.title}" forfaller om ${daysUntil} dag${daysUntil !== 1 ? "er" : ""}.`,
+        title: "⏰ Action due soon",
+        message: `The action "${measure.title}" is due in ${daysUntil} day${daysUntil !== 1 ? "s" : ""}.`,
         link: `/dashboard/actions`,
       });
       notifications++;
@@ -440,8 +439,8 @@ async function checkExpiringTraining(tenantId: string): Promise<AlertResult> {
         tenantId,
         userId,
         type: "TRAINING_DUE",
-        title: "📚 Opplæring utløper snart",
-        message: `Følgende opplæring/sertifisering utløper innen 30 dager: ${titles}`,
+        title: "📚 Training expiring soon",
+        message: `The following training/certification expires within 30 days: ${titles}`,
         link: `/dashboard/training`,
       });
       notifications++;
@@ -467,8 +466,8 @@ async function checkExpiredTraining(tenantId: string): Promise<AlertResult> {
   if (expiredTraining.length > 0) {
     await notifyUsersByRole(tenantId, "HMS", {
       type: "TRAINING_EXPIRED",
-      title: "🚨 Utløpt obligatorisk opplæring",
-      message: `${expiredTraining.length} ansatte har utløpt obligatorisk opplæring/sertifisering som må fornyes.`,
+      title: "🚨 Expired mandatory training",
+      message: `${expiredTraining.length} employees have expired mandatory training/certification that must be renewed.`,
       link: `/dashboard/training`,
     });
     notifications++;
@@ -513,8 +512,8 @@ async function checkUpcomingInspections(tenantId: string): Promise<AlertResult> 
         tenantId,
         userId: inspection.conductedBy,
         type: "INSPECTION_REMINDER",
-        title: "🔍 Vernerunde planlagt",
-        message: `Vernerunden "${inspection.title}" er planlagt om ${daysUntil} dag${daysUntil !== 1 ? "er" : ""}.`,
+        title: "🔍 Workplace inspection scheduled",
+        message: `The workplace inspection "${inspection.title}" is scheduled in ${daysUntil} day${daysUntil !== 1 ? "s" : ""}.`,
         link: `/dashboard/inspections/${inspection.id}`,
       });
       notifications++;
@@ -549,8 +548,8 @@ async function checkOverdueInspections(tenantId: string): Promise<AlertResult> {
     if (!recentNotification) {
       await notifyUsersByRole(tenantId, "HMS", {
         type: "INSPECTION_OVERDUE",
-        title: "⚠️ Vernerunder ikke gjennomført",
-        message: `${overdueInspections.length} vernerunde(r) er ikke gjennomført som planlagt.`,
+        title: "⚠️ Workplace inspections not completed",
+        message: `${overdueInspections.length} workplace inspection(s) have not been completed as planned.`,
         link: `/dashboard/inspections`,
       });
       notifications++;
@@ -593,8 +592,8 @@ async function checkInspectionFindings(tenantId: string): Promise<AlertResult> {
           tenantId,
           userId: finding.responsibleId,
           type: "INSPECTION_FINDING",
-          title: "🔴 Vernerunde-funn forfalt",
-          message: `Funnet "${finding.title}" fra vernerunden har forfalt frist.`,
+          title: "🔴 Inspection finding overdue",
+          message: `The finding "${finding.title}" from the workplace inspection has a past-due deadline.`,
           link: `/dashboard/inspections/${finding.inspectionId}`,
         });
         notifications++;
@@ -637,8 +636,8 @@ async function checkDocumentReviews(tenantId: string): Promise<AlertResult> {
     if (!recentNotification) {
       await notifyUsersByRole(tenantId, "HMS", {
         type: "DOCUMENT_REVIEW_DUE",
-        title: "📄 Dokumenter trenger revisjon",
-        message: `${documentsNeedingReview.length} dokument(er) trenger revisjon innen 30 dager.`,
+        title: "📄 Documents need review",
+        message: `${documentsNeedingReview.length} document(s) need review within 30 days.`,
         link: `/dashboard/documents`,
       });
       notifications++;
@@ -683,8 +682,8 @@ async function checkChemicalReviews(tenantId: string): Promise<AlertResult> {
     if (!recentNotification) {
       await notifyUsersByRole(tenantId, "HMS", {
         type: "CHEMICAL_EXPIRED",
-        title: "🧪 Kjemikalier trenger revisjon!",
-        message: `${expired.length} kjemikalie(r) har forfalt revisjonsdato og trenger oppdatering.`,
+        title: "🧪 Chemicals need review!",
+        message: `${expired.length} chemical(s) have a past-due review date and need updating.`,
         link: `/dashboard/chemicals`,
       });
       notifications++;
@@ -703,8 +702,8 @@ async function checkChemicalReviews(tenantId: string): Promise<AlertResult> {
     if (!recentNotification) {
       await notifyUsersByRole(tenantId, "HMS", {
         type: "CHEMICAL_SDS_REVIEW",
-        title: "📋 SDS-revisjon nærmer seg",
-        message: `${upcoming.length} kjemikalie(r) trenger SDS-revisjon innen 30 dager.`,
+        title: "📋 SDS review approaching",
+        message: `${upcoming.length} chemical(s) need SDS review within 30 days.`,
         link: `/dashboard/chemicals`,
       });
       notifications++;
@@ -748,8 +747,8 @@ async function checkRiskReviews(tenantId: string): Promise<AlertResult> {
     if (!recentNotification) {
       await notifyUsersByRole(tenantId, "HMS", {
         type: "RISK_HIGH_SCORE",
-        title: "🔴 Høyrisikoer trenger gjennomgang",
-        message: `${highRisks.length} høyrisiko(er) trenger gjennomgang.`,
+        title: "🔴 High risks need review",
+        message: `${highRisks.length} high risk(s) need review.`,
         link: `/dashboard/risks`,
       });
       notifications++;
@@ -768,8 +767,8 @@ async function checkRiskReviews(tenantId: string): Promise<AlertResult> {
     if (!recentNotification) {
       await notifyUsersByRole(tenantId, "HMS", {
         type: "RISK_REVIEW_DUE",
-        title: "⚠️ Risikoer trenger gjennomgang",
-        message: `${risksNeedingReview.length} risiko(er) trenger gjennomgang innen 30 dager.`,
+        title: "⚠️ Risks need review",
+        message: `${risksNeedingReview.length} risk(s) need review within 30 days.`,
         link: `/dashboard/risks`,
       });
       notifications++;
@@ -807,8 +806,8 @@ async function checkGoalsAtRisk(tenantId: string): Promise<AlertResult> {
     if (!recentNotification) {
       await notifyUsersByRole(tenantId, "ADMIN", {
         type: "GOAL_AT_RISK",
-        title: "🎯 Mål i fare",
-        message: `${goalsAtRisk.length} mål er markert som \"i fare\" og trenger oppfølging.`,
+        title: "🎯 Objectives at risk",
+        message: `${goalsAtRisk.length} objective(s) are marked as "at risk" and need follow-up.`,
         link: `/dashboard/goals`,
       });
       notifications++;
@@ -865,8 +864,8 @@ async function checkUpcomingMeetings(tenantId: string): Promise<AlertResult> {
           tenantId,
           userId: participant.userId,
           type: "MEETING_REMINDER",
-          title: `📅 ${meeting.type}-møte om ${daysUntil} dag${daysUntil !== 1 ? "er" : ""}`,
-          message: `Du er invitert til "${meeting.title}" ${meeting.location ? `på ${meeting.location}` : ""}.`,
+          title: `📅 ${meeting.type} meeting in ${daysUntil} day${daysUntil !== 1 ? "s" : ""}`,
+          message: `You are invited to "${meeting.title}" ${meeting.location ? `at ${meeting.location}` : ""}.`,
           link: `/dashboard/meetings/${meeting.id}`,
         });
         notifications++;
@@ -915,8 +914,8 @@ async function checkUpcomingAudits(tenantId: string): Promise<AlertResult> {
           tenantId,
           userId: audit.leadAuditorId,
           type: "AUDIT_REMINDER",
-          title: "📋 Revisjon planlagt",
-          message: `Revisjonen "${audit.title}" er planlagt om ${daysUntil} dag${daysUntil !== 1 ? "er" : ""}.`,
+          title: "📋 Audit scheduled",
+          message: `The audit "${audit.title}" is scheduled in ${daysUntil} day${daysUntil !== 1 ? "s" : ""}.`,
           link: `/dashboard/audits/${audit.id}`,
         });
         notifications++;
@@ -959,8 +958,8 @@ async function checkOpenAuditFindings(tenantId: string): Promise<AlertResult> {
           tenantId,
           userId: finding.responsibleId,
           type: "AUDIT_FINDING_OPEN",
-          title: "🔴 Revisjonsfunn forfalt",
-          message: `Revisjonsfunnet "${finding.description?.substring(0, 50)}..." har forfalt frist.`,
+          title: "🔴 Audit finding overdue",
+          message: `The audit finding "${finding.description?.substring(0, 50)}..." has a past-due deadline.`,
           link: `/dashboard/audits/${finding.auditId}`,
         });
         notifications++;
@@ -1047,8 +1046,8 @@ async function checkManagementReviewDue(tenantId: string): Promise<AlertResult> 
     if (!recentNotification) {
       await notifyUsersByRole(tenantId, "ADMIN", {
         type: "MGMT_REVIEW_DUE",
-        title: "📊 Tid for ledelsens gjennomgang",
-        message: `Det er over ${daysSinceLastReview} dager siden siste ledelsens gjennomgang. Det anbefales å planlegge en ny.`,
+        title: "📊 Time for management review",
+        message: `It has been over ${daysSinceLastReview} days since the last management review. It is recommended to schedule a new one.`,
         link: `/dashboard/management-reviews`,
       });
       notifications++;
@@ -1069,8 +1068,8 @@ async function checkManagementReviewDue(tenantId: string): Promise<AlertResult> 
     if (!recentNotification) {
       await notifyUsersByRole(tenantId, "ADMIN", {
         type: "MGMT_REVIEW_SCHEDULED",
-        title: "📊 Ledelsens gjennomgang nærmer seg",
-        message: `"${review.title}" er planlagt til ${new Date(review.reviewDate).toLocaleDateString("nb-NO")}.`,
+        title: "📊 Management review approaching",
+        message: `"${review.title}" is scheduled for ${new Date(review.reviewDate).toLocaleDateString("en-GB")}.`,
         link: `/dashboard/management-reviews/${review.id}`,
       });
       notifications++;
@@ -1091,6 +1090,7 @@ async function checkManagementReviewDue(tenantId: string): Promise<AlertResult> 
 export async function getTaskSummaryForUser(userId: string, tenantId: string) {
   const now = new Date();
   const in7Days = addDays(now, 7);
+  const in14Days = addDays(now, 14);
   const in30Days = addDays(now, 30);
 
   const [
@@ -1195,187 +1195,5 @@ export async function getTaskSummaryForUser(userId: string, tenantId: string) {
   };
 }
 
-const in14Days = addDays(new Date(), 14);
 
-// ─── Medarbeidersamtale – varsel ─────────────────────────────────────────────
-/**
- * Sjekker alle ansatte i tenanten:
- *   1. Varsler leder/HMS hvis en ansatt ikke har hatt samtale siste 12 måneder
- *   2. Varsler ansatt hvis planlagt samtale er om ≤ 14 dager
- *   3. Varsler ansatt og leder om samtaler som venter på signering
- *
- * Hjemmel: AML § 4-2 – medarbeidersamtale anbefales minimum en gang per år
- */
-async function checkEmployeeReviewsDue(tenantId: string): Promise<AlertResult> {
-  const now = new Date();
-  const twelveMonthsAgo = addDays(now, -365);
-  const in14DaysDate = addDays(now, 14);
-  let notifications = 0;
-
-  // ── 1. Ansatte uten samtale siste 12 måneder ──────────────────────────────
-  const tenantUsers = await prisma.userTenant.findMany({
-    where: { tenantId },
-    select: { userId: true, role: true },
-  });
-
-  for (const ut of tenantUsers) {
-    // Kun sjekk ansatte (ikke admin/superadmin)
-    if (ut.role === "ADMIN") continue;
-
-    const lastReview = await prisma.employeeReview.findFirst({
-      where: {
-        tenantId,
-        employeeId: ut.userId,
-        status: { in: ["GJENNOMFORT", "SIGNERT"] },
-        completedDate: { gte: twelveMonthsAgo },
-      },
-      select: { id: true },
-    });
-
-    if (!lastReview) {
-      // Sjekk om vi allerede har varslet nylig (siste 30 dager)
-      const recentAlert = await prisma.notification.findFirst({
-        where: {
-          tenantId,
-          type: "EMPLOYEE_REVIEW_DUE",
-          userId: ut.userId,
-          createdAt: { gt: addDays(now, -30) },
-        },
-        select: { id: true },
-      });
-      if (recentAlert) continue;
-
-      // Varsle ansatten selv
-      await createNotification({
-        tenantId,
-        userId: ut.userId,
-        type: "EMPLOYEE_REVIEW_DUE",
-        title: "Medarbeidersamtale forfall",
-        message:
-          "Du har ikke hatt medarbeidersamtale med din leder siste 12 måneder. Ta kontakt med lederen din for å planlegge en samtale (AML § 4-2).",
-        link: "/ansatt/medarbeidersamtale",
-      });
-      notifications++;
-
-      // Varsle HMS-rollen
-      await notifyUsersByRole(tenantId, "HMS", {
-        type: "EMPLOYEE_REVIEW_DUE",
-        title: "Medarbeidersamtale ikke gjennomført",
-        message: `En ansatt har ikke hatt medarbeidersamtale på over 12 måneder. Følg opp i oversikten.`,
-        link: "/dashboard/medarbeidersamtale",
-      });
-      notifications++;
-    }
-  }
-
-  // ── 2. Planlagte samtaler som nærmer seg (≤ 14 dager) ────────────────────
-  const upcoming = await prisma.employeeReview.findMany({
-    where: {
-      tenantId,
-      status: { in: ["PLANLAGT", "FORBEREDT"] },
-      scheduledDate: {
-        gte: now,
-        lte: in14DaysDate,
-      },
-    },
-    select: {
-      id: true,
-      scheduledDate: true,
-      employeeId: true,
-      reviewerId: true,
-    },
-  });
-
-  for (const review of upcoming) {
-    const recentAlert = await prisma.notification.findFirst({
-      where: {
-        tenantId,
-        type: "EMPLOYEE_REVIEW_UPCOMING",
-        link: { contains: review.id },
-        createdAt: { gt: addDays(now, -7) },
-      },
-      select: { id: true },
-    });
-    if (recentAlert) continue;
-
-    const dateText = new Date(review.scheduledDate).toLocaleDateString("nb-NO");
-
-    await createNotification({
-      tenantId,
-      userId: review.employeeId,
-      type: "EMPLOYEE_REVIEW_UPCOMING",
-      title: "Medarbeidersamtale nærmer seg",
-      message: `Du har medarbeidersamtale planlagt ${dateText}. Husk å fylle inn din forberedelse i forkant.`,
-      link: `/ansatt/medarbeidersamtale/${review.id}`,
-    });
-    await createNotification({
-      tenantId,
-      userId: review.reviewerId,
-      type: "EMPLOYEE_REVIEW_UPCOMING",
-      title: "Medarbeidersamtale nærmer seg",
-      message: `Du har planlagt en medarbeidersamtale ${dateText}. Gjennomgå forberedelsen til den ansatte i forkant.`,
-      link: `/dashboard/medarbeidersamtale/${review.id}`,
-    });
-    notifications += 2;
-  }
-
-  // ── 3. Samtaler som venter på signering ───────────────────────────────────
-  const pendingSign = await prisma.employeeReview.findMany({
-    where: {
-      tenantId,
-      status: "GJENNOMFORT",
-      OR: [{ signertAvAnsatt: false }, { signertAvLeder: false }],
-      completedDate: { lte: addDays(now, -3) }, // Venter mer enn 3 dager
-    },
-    select: {
-      id: true,
-      employeeId: true,
-      reviewerId: true,
-      signertAvAnsatt: true,
-      signertAvLeder: true,
-    },
-  });
-
-  for (const review of pendingSign) {
-    const recentAlert = await prisma.notification.findFirst({
-      where: {
-        tenantId,
-        type: "EMPLOYEE_REVIEW_SIGN",
-        link: { contains: review.id },
-        createdAt: { gt: addDays(now, -7) },
-      },
-      select: { id: true },
-    });
-    if (recentAlert) continue;
-
-    if (!review.signertAvAnsatt) {
-      await createNotification({
-        tenantId,
-        userId: review.employeeId,
-        type: "EMPLOYEE_REVIEW_SIGN",
-        title: "Medarbeidersamtale venter på din signatur",
-        message: "Samtalen er gjennomført. Gå inn og bekreft at du har mottatt referatet.",
-        link: `/ansatt/medarbeidersamtale/${review.id}`,
-      });
-      notifications++;
-    }
-    if (!review.signertAvLeder) {
-      await createNotification({
-        tenantId,
-        userId: review.reviewerId,
-        type: "EMPLOYEE_REVIEW_SIGN",
-        title: "Medarbeidersamtale venter på din signatur",
-        message: "Samtalen er gjennomført. Gå inn og signer referatet.",
-        link: `/dashboard/medarbeidersamtale/${review.id}`,
-      });
-      notifications++;
-    }
-  }
-
-  return {
-    type: "employee_reviews_due",
-    count: upcoming.length + pendingSign.length,
-    notifications,
-  };
-}
 

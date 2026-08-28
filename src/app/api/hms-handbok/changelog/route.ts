@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { getPermissions } from "@/lib/permissions";
 import { generateBrandedPdf, type PdfSection } from "@/lib/pdf-brand";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 import type { Role } from "@prisma/client";
 
 /**
@@ -56,7 +56,7 @@ export async function GET() {
 
   function fmtDate(d: Date | string | null | undefined) {
     if (!d) return "–";
-    return format(new Date(d), "d. MMM yyyy", { locale: nb });
+    return format(new Date(d), "d. MMM yyyy", { locale: enGB });
   }
 
   const sections: PdfSection[] = [];

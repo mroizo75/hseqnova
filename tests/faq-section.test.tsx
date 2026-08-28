@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { FAQSection } from "../src/components/faq-section";
 
 const sampleFaqs = [
-  { question: "Hva er HMS Nova?", answer: "Et moderne HMS-system." },
+  { question: "What is HSEQ Nova?", answer: "A modern health and safety management system." },
 ];
 
 test("FAQSection rendrer schema når enableSchema er true", () => {

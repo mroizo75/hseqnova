@@ -17,7 +17,7 @@ function UnsubscribeContent() {
   useEffect(() => {
     if (!id) {
       setStatus("error");
-      setMessage("Ugyldig avmeldingslenke. Kontakt oss hvis du fortsatt ønsker å melde deg av.");
+      setMessage("Invalid unsubscribe link. Contact us if you still wish to unsubscribe.");
       return;
     }
 
@@ -33,15 +33,15 @@ function UnsubscribeContent() {
       });
 
       if (!res.ok) {
-        throw new Error("Kunne ikke melde av nyhetsbrev");
+        throw new Error("Could not unsubscribe from newsletter");
       }
 
       setStatus("success");
-      setMessage("Du er nå meldt av nyhetsbrevet fra HMS Nova.");
+      setMessage("You have been unsubscribed from the HSEQ Nova newsletter.");
     } catch (error) {
       console.error("Unsubscribe error:", error);
       setStatus("error");
-      setMessage("Noe gikk galt. Kontakt oss på post@hmsnova.no hvis du fortsatt ønsker å melde deg av.");
+      setMessage("Something went wrong. Contact us at support@hseqnova.co.uk if you still wish to unsubscribe.");
     }
   };
 
@@ -55,9 +55,9 @@ function UnsubscribeContent() {
                 <div className="flex justify-center mb-4">
                   <Loader2 className="h-12 w-12 text-primary animate-spin" />
                 </div>
-                <CardTitle>Melder av...</CardTitle>
+                <CardTitle>Unsubscribing...</CardTitle>
                 <CardDescription>
-                  Vennligst vent mens vi behandler din forespørsel
+                  Please wait while we process your request
                 </CardDescription>
               </>
             )}
@@ -68,7 +68,7 @@ function UnsubscribeContent() {
                     <CheckCircle2 className="h-8 w-8 text-green-600" />
                   </div>
                 </div>
-                <CardTitle>Du er nå avmeldt!</CardTitle>
+                <CardTitle>You have been unsubscribed!</CardTitle>
                 <CardDescription>
                   {message}
                 </CardDescription>
@@ -81,7 +81,7 @@ function UnsubscribeContent() {
                     <AlertCircle className="h-8 w-8 text-red-600" />
                   </div>
                 </div>
-                <CardTitle>Noe gikk galt</CardTitle>
+                <CardTitle>Something went wrong</CardTitle>
                 <CardDescription>
                   {message}
                 </CardDescription>
@@ -92,18 +92,18 @@ function UnsubscribeContent() {
             {status === "success" && (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Du vil ikke lenger motta nyhetsbrev fra oss. Vi håper å se deg igjen!
+                  You will no longer receive newsletters from us. We hope to see you again!
                 </p>
                 <div className="flex flex-col gap-3">
                   <Link href="/">
                     <Button variant="outline" className="w-full">
                       <Mail className="mr-2 h-4 w-4" />
-                      Besøk bloggen vår
+                      Visit our blog
                     </Button>
                   </Link>
                   <Link href="/">
                     <Button className="w-full">
-                      Tilbake til forsiden
+                      Back to homepage
                     </Button>
                   </Link>
                 </div>
@@ -112,15 +112,15 @@ function UnsubscribeContent() {
             {status === "error" && (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Kontakt oss på{" "}
-                  <a href="mailto:post@hmsnova.no" className="underline">
-                    post@hmsnova.no
+                  Contact us at{" "}
+                  <a href="mailto:support@hseqnova.co.uk" className="underline">
+                    support@hseqnova.co.uk
                   </a>{" "}
-                  så hjelper vi deg.
+                  and we will help you.
                 </p>
                 <Link href="/">
                   <Button className="w-full">
-                    Tilbake til forsiden
+                    Back to homepage
                   </Button>
                 </Link>
               </>

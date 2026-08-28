@@ -17,7 +17,7 @@ import type { GjesteserviceConfig, GuestPriority, GuestType } from "./gjesteserv
 import { getGuestDictionary, GUEST_TYPE_EMOJI, type GuestLocale } from "./guest-i18n";
 
 const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://hmsnova.no";
+  process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://hseqnova.com";
 
 /** Roller som håndterer gjestmeldinger i dashboard */
 const GUEST_HANDLER_ROLES = ["ADMIN", "HMS", "LEDER"] as const;
@@ -97,7 +97,7 @@ export async function notifyNewGuestSubmission(input: NewSubmissionInput): Promi
     ...input.config.notifyEmails.map((to) =>
       sendEmail({
         to,
-        subject: `HMS Nova: ${title}`,
+        subject: `HSEQ Nova: ${title}`,
         html: emailShell(
           title,
           `
@@ -121,7 +121,7 @@ export async function notifyNewGuestSubmission(input: NewSubmissionInput): Promi
           if (!normalized) return Promise.resolve({ success: false });
           return sendSms({
             to: normalized,
-            message: `HMS Nova: KRITISK gjestmelding (${typeLabel}) på ${input.tavleName}${stedsinfo}. Behandle i dashboard nå.`,
+            message: `HSEQ Nova: CRITICAL guest message (${typeLabel}) at ${input.tavleName}${stedsinfo}. Handle in dashboard now.`,
           });
         })
       : []),

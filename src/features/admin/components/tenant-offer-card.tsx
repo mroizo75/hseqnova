@@ -185,7 +185,7 @@ export function TenantOfferCard({ tenant }: TenantOfferCardProps) {
             <p className="text-sm">
               Årspris:{" "}
               <span className="font-semibold">
-                {latestOffer.yearlyPrice.toLocaleString("nb-NO")} kr/år
+                {latestOffer.yearlyPrice.toLocaleString("en-GB")} kr/år
               </span>{" "}
               • Binding: {latestOffer.bindingMonths} mnd • Oppsigelse:{" "}
               {latestOffer.noticeMonths} mnd
@@ -193,7 +193,7 @@ export function TenantOfferCard({ tenant }: TenantOfferCardProps) {
             {latestOffer.sentAt && (
               <p className="text-xs text-muted-foreground">
                 Sendt:{" "}
-                {new Date(latestOffer.sentAt).toLocaleDateString("nb-NO", {
+                {new Date(latestOffer.sentAt).toLocaleDateString("en-GB", {
                   day: "2-digit",
                   month: "short",
                   year: "numeric",
@@ -206,7 +206,7 @@ export function TenantOfferCard({ tenant }: TenantOfferCardProps) {
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3 text-green-600" />
                 Akseptert:{" "}
-                {new Date(latestOffer.acceptedAt).toLocaleDateString("nb-NO", {
+                {new Date(latestOffer.acceptedAt).toLocaleDateString("en-GB", {
                   day: "2-digit",
                   month: "short",
                   year: "numeric",

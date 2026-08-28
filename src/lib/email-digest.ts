@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { addDays, subDays, startOfDay, endOfDay, format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 
 /**
- * HMS Nova Email Digest Service
+ * HSEQ Nova Email Digest Service
  * 
  * Sender daglige og ukentlige sammendrag til brukere basert på deres preferanser.
  */
@@ -289,8 +289,8 @@ function hasContentToReport(data: DigestData): boolean {
 
 async function sendDigestEmail(data: DigestData, type: "DAILY" | "WEEKLY") {
   const subject = type === "DAILY" 
-    ? `HMS Nova - Daglig sammendrag for ${data.tenantName}`
-    : `HMS Nova - Ukentlig sammendrag for ${data.tenantName}`;
+    ? `HSEQ Nova — Daily digest for ${data.tenantName}`
+    : `HSEQ Nova — Weekly digest for ${data.tenantName}`;
 
   const html = generateDigestHtml(data, type);
 
@@ -302,7 +302,7 @@ async function sendDigestEmail(data: DigestData, type: "DAILY" | "WEEKLY") {
 }
 
 function generateDigestHtml(data: DigestData, type: "DAILY" | "WEEKLY"): string {
-  const today = format(new Date(), "EEEE d. MMMM yyyy", { locale: nb });
+  const today = format(new Date(), "EEEE d. MMMM yyyy", { locale: enGB });
   const periodText = type === "DAILY" ? "de neste 7 dagene" : "de neste 14 dagene";
 
   let html = `
@@ -378,7 +378,7 @@ function generateDigestHtml(data: DigestData, type: "DAILY" | "WEEKLY"): string 
       html += `
         <div class="item">
           <div class="item-title">${measure.title}</div>
-          <div class="item-date">Frist: ${format(new Date(measure.dueAt), "d. MMMM yyyy", { locale: nb })}</div>
+          <div class="item-date">Frist: ${format(new Date(measure.dueAt), "d. MMMM yyyy", { locale: enGB })}</div>
         </div>
       `;
     }
@@ -397,7 +397,7 @@ function generateDigestHtml(data: DigestData, type: "DAILY" | "WEEKLY"): string 
       html += `
         <div class="item">
           <div class="item-title">${meeting.title} <span class="badge badge-blue">${meeting.type}</span></div>
-          <div class="item-date">${format(new Date(meeting.scheduledDate), "EEEE d. MMMM 'kl.' HH:mm", { locale: nb })}</div>
+          <div class="item-date">${format(new Date(meeting.scheduledDate), "EEEE d. MMMM 'kl.' HH:mm", { locale: enGB })}</div>
         </div>
       `;
     }
@@ -416,7 +416,7 @@ function generateDigestHtml(data: DigestData, type: "DAILY" | "WEEKLY"): string 
       html += `
         <div class="item">
           <div class="item-title">${inspection.title}</div>
-          <div class="item-date">${format(new Date(inspection.scheduledDate), "d. MMMM yyyy", { locale: nb })}</div>
+          <div class="item-date">${format(new Date(inspection.scheduledDate), "d. MMMM yyyy", { locale: enGB })}</div>
         </div>
       `;
     }
@@ -435,7 +435,7 @@ function generateDigestHtml(data: DigestData, type: "DAILY" | "WEEKLY"): string 
       html += `
         <div class="item">
           <div class="item-title">${audit.title}</div>
-          <div class="item-date">${format(new Date(audit.scheduledDate), "d. MMMM yyyy", { locale: nb })}</div>
+          <div class="item-date">${format(new Date(audit.scheduledDate), "d. MMMM yyyy", { locale: enGB })}</div>
         </div>
       `;
     }
@@ -454,7 +454,7 @@ function generateDigestHtml(data: DigestData, type: "DAILY" | "WEEKLY"): string 
       html += `
         <div class="item">
           <div class="item-title">${training.title}</div>
-          <div class="item-date">Utløper: ${format(new Date(training.validUntil), "d. MMMM yyyy", { locale: nb })}</div>
+          <div class="item-date">Utløper: ${format(new Date(training.validUntil), "d. MMMM yyyy", { locale: enGB })}</div>
         </div>
       `;
     }
@@ -487,19 +487,19 @@ function generateDigestHtml(data: DigestData, type: "DAILY" | "WEEKLY"): string 
     html += `
       <div class="section">
         <div class="section-title">🔔 Uleste varsler</div>
-        <div class="info">Du har <strong>${data.unreadNotifications}</strong> uleste varsler i HMS Nova</div>
+        <div class="info">Du har <strong>${data.unreadNotifications}</strong> uleste varsler i HSEQ Nova</div>
       </div>
     `;
   }
 
   html += `
-        <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://www.hmsnova.no"}/dashboard" class="cta">
-          Gå til HMS Nova →
+        <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://www.hseqnova.com"}/dashboard" class="cta">
+          Go to HSEQ Nova →
         </a>
       </div>
       <div class="footer">
-        <p>Dette er en automatisk generert e-post fra HMS Nova.</p>
-        <p>Du kan endre varslingsinnstillingene dine i <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://www.hmsnova.no"}/dashboard/settings">innstillinger</a>.</p>
+        <p>This is an automated email from HSEQ Nova.</p>
+        <p>You can change your notification preferences in <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://www.hseqnova.com"}/dashboard/settings">settings</a>.</p>
       </div>
     </body>
     </html>

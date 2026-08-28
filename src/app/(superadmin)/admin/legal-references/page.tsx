@@ -26,13 +26,13 @@ import { useToast } from "@/hooks/use-toast";
 import { SUPPORTED_INDUSTRIES } from "@/lib/pricing";
 
 const INDUSTRY_OPTIONS = [
-  { value: "all", label: "Alle bransjer" },
+  { value: "all", label: "All industries" },
   ...SUPPORTED_INDUSTRIES.map((i) => ({ value: i.value, label: i.label })),
 ];
 
 function industriesToLabel(industries: unknown): string {
   if (!industries || !Array.isArray(industries)) return "-";
-  if (industries.includes("all")) return "Alle bransjer";
+  if (industries.includes("all")) return "All industries";
   return industries
     .map(
       (v) =>
@@ -59,7 +59,7 @@ export default function AdminLegalReferencesPage() {
     if (result.success && result.data) {
       setRefs(result.data);
     } else {
-      toast({ variant: "destructive", title: "Feil", description: result.error });
+      toast({ variant: "destructive", title: "Error", description: result.error });
     }
     setLoading(false);
   }
@@ -105,102 +105,102 @@ export default function AdminLegalReferencesPage() {
       : await createLegalReference(formData);
 
     if (result.success) {
-      toast({ title: "Lagret", description: "Referansen er lagret" });
+      toast({ title: "Saved", description: "Reference saved" });
       setDialogOpen(false);
       loadRefs();
     } else {
-      toast({ variant: "destructive", title: "Feil", description: result.error });
+      toast({ variant: "destructive", title: "Error", description: result.error });
     }
     setSubmitting(false);
   }
 
   async function handleDelete(id: string, title: string) {
-    if (!confirm(`Slett «${title}»?`)) return;
+    if (!confirm(`Delete '${title}'?`)) return;
     const result = await deleteLegalReference(id);
     if (result.success) {
-      toast({ title: "Slettet", description: "Referansen er fjernet" });
+      toast({ title: "Deleted", description: "Reference removed" });
       loadRefs();
     } else {
-      toast({ variant: "destructive", title: "Feil", description: result.error });
+      toast({ variant: "destructive", title: "Error", description: result.error });
     }
   }
 
   const editingRef = editingId ? refs.find((r) => r.id === editingId) : null;
 
   if (loading) {
-    return <div className="p-8">Laster...</div>;
+    return <div className="p-8">Loading...</div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Juridisk register</h1>
+          <h1 className="text-3xl font-bold">Legal register</h1>
           <p className="text-muted-foreground">
-            Administrer lover og forskrifter per bransje. Vises for kunder basert på deres bransje.
+            Manage legislation and regulations by industry. Displayed to clients based on their industry.
           </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openNew}>
               <Plus className="mr-2 h-4 w-4" />
-              Ny referanse
+              New reference
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingId ? "Rediger referanse" : "Ny juridisk referanse"}</DialogTitle>
+              <DialogTitle>{editingId ? "Edit reference" : "New legal reference"}</DialogTitle>
             </DialogHeader>
             <form key={editingId ?? "new"} onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="title">Tittel *</Label>
+                <Label htmlFor="title">Title *</Label>
                 <Input
                   id="title"
                   name="title"
                   required
                   defaultValue={editingRef?.title}
-                  placeholder="f.eks. Arbeidsmiljøloven"
+                  placeholder="e.g. Health and Safety at Work Act 1974"
                   disabled={submitting}
                 />
               </div>
               <div>
-                <Label htmlFor="paragraphRef">Paragrafreferanse</Label>
+                <Label htmlFor="paragraphRef">Section reference</Label>
                 <Input
                   id="paragraphRef"
                   name="paragraphRef"
                   defaultValue={editingRef?.paragraphRef ?? ""}
-                  placeholder="f.eks. § 3-2 eller Kapittel 10"
+                  placeholder="e.g. s.2(3) or Part 3"
                   disabled={submitting}
                 />
               </div>
               <div>
-                <Label htmlFor="description">Beskrivelse *</Label>
+                <Label htmlFor="description">Description *</Label>
                 <Textarea
                   id="description"
                   name="description"
                   required
                   defaultValue={editingRef?.description}
-                  placeholder="Kort beskrivelse av hva som gjelder"
+                  placeholder="Brief description of what applies"
                   rows={3}
                   disabled={submitting}
                 />
               </div>
               <div>
-                <Label htmlFor="sourceUrl">Kilde-URL (Lovdata m.m.) *</Label>
+                <Label htmlFor="sourceUrl">Source URL (legislation.gov.uk etc.) *</Label>
                 <Input
                   id="sourceUrl"
                   name="sourceUrl"
                   type="url"
                   required
                   defaultValue={editingRef?.sourceUrl}
-                  placeholder="https://lovdata.no/..."
+                  placeholder="https://legislation.gov.uk/..."
                   disabled={submitting}
                 />
               </div>
               <div>
-                <Label>Bransjer *</Label>
+                <Label>Industries *</Label>
                 <p className="text-xs text-muted-foreground mb-2">
-                  Velg «Alle bransjer» eller spesifikke bransjer som referansen gjelder for.
+                  Select &apos;All industries&apos; or specific industries the reference applies to.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {INDUSTRY_OPTIONS.map((opt) => (
@@ -216,7 +216,7 @@ export default function AdminLegalReferencesPage() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="sortOrder">Rekkefølge</Label>
+                <Label htmlFor="sortOrder">Sort order</Label>
                 <Input
                   id="sortOrder"
                   name="sortOrder"
@@ -227,10 +227,10 @@ export default function AdminLegalReferencesPage() {
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>
-                  Avbryt
+                  Cancel
                 </Button>
                 <Button type="submit" disabled={submitting}>
-                  {submitting ? "Lagrer..." : "Lagre"}
+                  {submitting ? "Saving..." : "Save"}
                 </Button>
               </div>
             </form>
@@ -240,27 +240,27 @@ export default function AdminLegalReferencesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Referanser ({refs.length})</CardTitle>
+          <CardTitle>References ({refs.length})</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Kunder ser bare referanser som gjelder for deres bransje.
+            Clients only see references relevant to their industry.
           </p>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Tittel</TableHead>
-                <TableHead>Paragraf</TableHead>
-                <TableHead>Bransjer</TableHead>
-                <TableHead>Rekkefølge</TableHead>
-                <TableHead className="text-right">Handlinger</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Section</TableHead>
+                <TableHead>Industries</TableHead>
+                <TableHead>Sort order</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {refs.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    Ingen referanser. Legg til lover og forskrifter med tilhørende bransjer.
+                    No references. Add legislation and regulations with associated industries.
                   </TableCell>
                 </TableRow>
               ) : (

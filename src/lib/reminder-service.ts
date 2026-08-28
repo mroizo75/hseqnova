@@ -168,7 +168,7 @@ export async function sendPendingReminders() {
           where: { id: reminder.id },
           data: {
             status: "FAILED",
-            error: "Bruker ikke funnet",
+            error: "User not found",
           },
         });
         failed++;
@@ -186,7 +186,7 @@ export async function sendPendingReminders() {
           where: { id: reminder.id },
           data: {
             status: "FAILED",
-            error: "Hendelse ikke funnet",
+            error: "Event not found",
           },
         });
         failed++;
@@ -323,19 +323,19 @@ async function sendReminderEmail(
   switch (reminderType) {
     case "MEETING_UPCOMING":
       subject = `Påminnelse: ${entityDetails.title}`;
-      message = `Du har et møte planlagt: ${entityDetails.title}\n\nTidspunkt: ${new Date(entityDetails.scheduledDate).toLocaleString("nb-NO")}\nSted: ${entityDetails.location || "Se møtedetaljer"}`;
+      message = `Du har et møte planlagt: ${entityDetails.title}\n\nTidspunkt: ${new Date(entityDetails.scheduledDate).toLocaleString("en-GB")}\nSted: ${entityDetails.location || "Se møtedetaljer"}`;
       break;
     case "INSPECTION_UPCOMING":
       subject = `Påminnelse: ${entityDetails.title}`;
-      message = `Du har en vernerunde/inspeksjon planlagt: ${entityDetails.title}\n\nTidspunkt: ${new Date(entityDetails.scheduledDate).toLocaleString("nb-NO")}\nSted: ${entityDetails.location || "Se detaljer"}`;
+      message = `Du har en vernerunde/inspeksjon planlagt: ${entityDetails.title}\n\nTidspunkt: ${new Date(entityDetails.scheduledDate).toLocaleString("en-GB")}\nSted: ${entityDetails.location || "Se detaljer"}`;
       break;
     case "AUDIT_UPCOMING":
       subject = `Påminnelse: Revisjon - ${entityDetails.title}`;
-      message = `Du har en revisjon planlagt: ${entityDetails.title}\n\nTidspunkt: ${new Date(entityDetails.scheduledDate).toLocaleString("nb-NO")}\nOmråde: ${entityDetails.area}`;
+      message = `Du har en revisjon planlagt: ${entityDetails.title}\n\nTidspunkt: ${new Date(entityDetails.scheduledDate).toLocaleString("en-GB")}\nOmråde: ${entityDetails.area}`;
       break;
     case "MEASURE_DUE_SOON":
       subject = `Påminnelse: Tiltak forfaller snart`;
-      message = `Du har et tiltak som forfaller snart: ${entityDetails.title}\n\nFrist: ${new Date(entityDetails.dueAt).toLocaleString("nb-NO")}`;
+      message = `Du har et tiltak som forfaller snart: ${entityDetails.title}\n\nFrist: ${new Date(entityDetails.dueAt).toLocaleString("en-GB")}`;
       break;
   }
 
@@ -360,16 +360,16 @@ async function sendReminderSms(
 
   switch (reminderType) {
     case "MEETING_UPCOMING":
-      message = `HMS Nova: Møte i morgen - ${entityDetails.title}`;
+      message = `HSEQ Nova: Meeting tomorrow - ${entityDetails.title}`;
       break;
     case "INSPECTION_UPCOMING":
-      message = `HMS Nova: Vernerunde i morgen - ${entityDetails.title}`;
+      message = `HSEQ Nova: Inspection tomorrow - ${entityDetails.title}`;
       break;
     case "AUDIT_UPCOMING":
-      message = `HMS Nova: Revisjon i morgen - ${entityDetails.title}`;
+      message = `HSEQ Nova: Audit tomorrow - ${entityDetails.title}`;
       break;
     case "MEASURE_DUE_SOON":
-      message = `HMS Nova: Tiltak forfaller snart - ${entityDetails.title}`;
+      message = `HSEQ Nova: Action due soon - ${entityDetails.title}`;
       break;
   }
 

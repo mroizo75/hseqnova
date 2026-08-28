@@ -1,6 +1,6 @@
 /**
- * Felles team- og forfatterdata for HMS Nova.
- * Brukes av /team og /forfatter/[slug].
+ * Shared team and author data for HSEQ Nova.
+ * Used by /team and /author/[slug].
  */
 
 export interface TeamMemberContact {
@@ -14,7 +14,7 @@ export interface TeamMember {
   name: string;
   title: string;
   image: string;
-  /** CSS object-position for å vise ansikt (f.eks. "top", "50% 25%") */
+  /** CSS object-position to show face (e.g. "top", "50% 25%") */
   imagePosition?: string;
   bio: string;
   longBio: string;
@@ -30,118 +30,118 @@ export const TEAM_MEMBERS: Record<string, TeamMember> = {
   "kenneth-kristiansen": {
     slug: "kenneth-kristiansen",
     name: "Kenneth Kristiansen",
-    title: "HMS-ekspert og gründer",
+    title: "HSEQ expert and founder",
     image: "/team/kenneth-kristiansen.png",
     imagePosition: "50% 20%",
-    bio: "Kenneth er gründer av HMS Nova og brenner for å gjøre HMS-arbeid enkelt og tilgjengelig. Med erfaring fra både privat og offentlig sektor, kombinerer han praktisk kunnskap med moderne teknologi for å bygge trygghet i norske bedrifter.",
+    bio: "Kenneth is the founder of HSEQ Nova and is passionate about making health and safety management simple and accessible. With experience from both private and public sectors, he combines practical knowledge with modern technology to build safer workplaces.",
     longBio: `
-Kenneth startet HMS Nova med en visjon: HMS-arbeid skal være enkelt, ikke byråkratisk.
+Kenneth started HSEQ Nova with a vision: health and safety management should be simple, not bureaucratic.
 
-Gjennom erfaring med komplekse HMS-systemer og frustrerte bedriftseiere, så han behovet for en moderne, brukervennlig løsning. HMS Nova bygger trygghet - ikke byråkrati.
+Through experience with complex HSEQ systems and frustrated business owners, he saw the need for a modern, user-friendly solution. HSEQ Nova builds safety — not bureaucracy.
 
-I dag jobber Kenneth med å utvikle HMS Nova videre og hjelper bedrifter med digitalisering av HMS-arbeid.
+Today Kenneth works on developing HSEQ Nova further and helps organisations with digitisation of their health and safety management.
     `,
     credentials: [
-      "Gründer av HMS Nova",
-      "Godkjent kursleverandør (HMS Nova AS)",
-      "Erfaring med HMS og kvalitetsstyring",
-      "Spesialist på digitalisering av HMS",
-      "Utvikler av moderne HMS-løsninger"
+      "Founder of HSEQ Nova",
+      "Approved training provider (HSEQ Nova Ltd)",
+      "Experience with HSEQ and quality management",
+      "Specialist in digitisation of health and safety",
+      "Developer of modern HSEQ solutions"
     ],
     expertise: [
-      "HMS-systemer",
-      "ISO 9001 sertifisering",
-      "Risikovurdering",
-      "Arbeidsmiljø",
-      "Internkontroll",
-      "Digitalisering",
-      "Ledelsessystemer"
+      "HSEQ systems",
+      "ISO 9001 certification",
+      "Risk assessment",
+      "Working environment",
+      "Internal controls",
+      "Digitisation",
+      "Management systems"
     ],
     contact: {
       email: "kenneth@kksas.no",
       phone: "+47 99 11 29 16",
       linkedin: ""
     },
-    teamLabel: "gründer og utvikler",
+    teamLabel: "founder and developer",
     articlesWritten: 5,
     companiesHelped: 50,
   },
   "kai-arne-odegard": {
     slug: "kai-arne-odegard",
     name: "Kai Arne Ødegård",
-    title: "Salgssjef",
+    title: "Sales Director",
     image: "/team/kai-arne.png",
     imagePosition: "50% 10%",
-    bio: "Kai Arne er salgssjef i HMS Nova og har over 40 års erfaring innen salg og ledelse. Han har drevet flere egne firmaer og hjelper norske bedrifter med å finne HMS-løsninger som passer deres behov.",
+    bio: "Kai Arne is Sales Director at HSEQ Nova with over 40 years of experience in sales and management. He has run several of his own companies and helps UK businesses find health and safety solutions that fit their needs.",
     longBio: `
-Kai Arne bringer over 40 års erfaring fra salg og virksomhetsledelse inn i HMS Nova. Gjennom å ha drevet flere egne selskaper kjenner han utfordringene bedriftseiere møter – og verdien av løsninger som faktisk fungerer i praksis.
+Kai Arne brings over 40 years of experience from sales and business management into HSEQ Nova. Having run several of his own companies, he understands the challenges business owners face — and the value of solutions that actually work in practice.
 
-Som salgssjef i HMS Nova jobber han tett med bedrifter som ønsker mer informasjon, tilpasning eller innføring av HMS Nova. Han brenner for å matche riktig løsning med riktig kunde, slik at HMS-arbeid blir en styrke – ikke en byrde.
+As Sales Director at HSEQ Nova, he works closely with organisations that want more information, customisation or onboarding of HSEQ Nova. He is passionate about matching the right solution with the right customer, so that health and safety work becomes a strength — not a burden.
 
-I dag er Kai Arne et naturlig første kontaktpunkt for bedrifter som vurderer HMS Nova og ønsker en uforpliktende samtale om behov og muligheter.
+Today Kai Arne is a natural first point of contact for businesses considering HSEQ Nova and wanting an informal conversation about their needs and options.
     `,
     credentials: [
-      "Salgssjef i HMS Nova",
-      "40+ års erfaring innen salg og ledelse",
-      "Erfaring med oppstart og drift av flere virksomheter",
-      "Spesialist på kundedialog og behovsanalyse",
-      "Første kontaktpunkt for salg og informasjon om HMS Nova"
+      "Sales Director at HSEQ Nova",
+      "40+ years of experience in sales and management",
+      "Experience starting and running multiple businesses",
+      "Specialist in client relations and needs analysis",
+      "First point of contact for sales and product information"
     ],
     expertise: [
-      "Salg og kundedialog",
-      "HMS Nova og produktinformasjon",
-      "Behovsanalyse",
-      "Virksomhetsledelse",
-      "B2B-salg",
-      "Oppstart og drift av selskaper"
+      "Sales and client relations",
+      "HSEQ Nova product information",
+      "Needs analysis",
+      "Business management",
+      "B2B sales",
+      "Start-up and business operations"
     ],
     contact: {
       email: "kai@kksas.no",
       phone: "+47 91 54 08 24",
       linkedin: ""
     },
-    teamLabel: "salgssjef",
+    teamLabel: "sales director",
     articlesWritten: 0,
     companiesHelped: 0,
   },
   "tommy-kristiansen": {
     slug: "tommy-kristiansen",
     name: "Tommy Kristiansen",
-    title: "HMS Leder",
+    title: "HSE Manager",
     image: "/team/tommy-kristiansen.png",
     imagePosition: "50% 5%",
-    bio: "Tommy er HMS leder i HMS Nova med bakgrunn fra HMS-kurs og HMS-ledelse, brannvern og lang erfaring som faglærer, adjunkt og verkstedleder. Han bidrar med pedagogikk, ledelse og praktisk HMS-kompetanse til teamet.",
+    bio: "Tommy is HSE Manager at HSEQ Nova with a background in health and safety courses and HSE management, fire safety and extensive experience as a vocational teacher, lecturer and workshop manager. He contributes pedagogy, leadership and practical HSEQ competence to the team.",
     longBio: `
-Tommy har utdannelse og kurs i HMS og HMS-ledelse (ABL), brannvern (Falken) og bred erfaring fra skole og næringsliv. Som faglærer og adjunkt ved Hedmark fylkeskommune har han jobbet med opplæring og sikkerhetskultur over mange år.
+Tommy has qualifications and training in HSEQ and HSE management (ABL), fire safety (Falken) and broad experience from education and industry. As a vocational teacher and lecturer he has worked with training and safety culture for many years.
 
-Gjennom stillinger som verkstedleder og daglig leder kjenner han krav og praksis fra arbeidslivet. Den kombinasjonen av pedagogikk, ledelse og HMS gjør ham til en naturlig HMS leder i HMS Nova – med fokus på at opplæring og rutiner skal fungere i virkeligheten.
+Through positions as workshop manager and managing director he knows the requirements and practices of working life. The combination of pedagogy, leadership and HSEQ makes him a natural HSE Manager at HSEQ Nova — with a focus on ensuring that training and procedures work in reality.
 
-Tommy er også aktiv i frivillig arbeid som kursinstruktør i Norges Bilsportforbund og trener i Furnes Håndball.
+Tommy is also active in voluntary work as a course instructor for motorsport and as a handball coach.
     `,
     credentials: [
-      "HMS Leder i HMS Nova",
-      "HMS og HMS-ledelse (ABL, 2007)",
-      "Brannvern (Falken, 2007)",
-      "Adjunkt og faglærer – Hedmark fylkeskommune",
-      "Erfaring som verkstedleder og daglig leder",
-      "Administrasjon og ledelse (Høyskolen i Buskerud)",
-      "Spesialpedagogikk (Høyskolen i Oslo)",
-      "Kursinstruktør Norges Bilsportforbund"
+      "HSE Manager at HSEQ Nova",
+      "HSEQ and HSE Management qualification (ABL, 2007)",
+      "Fire Safety (Falken, 2007)",
+      "Lecturer and vocational teacher",
+      "Experience as workshop manager and managing director",
+      "Administration and Management (university level)",
+      "Special Needs Education (university level)",
+      "Motorsport course instructor"
     ],
     expertise: [
-      "HMS og HMS-ledelse",
-      "Brannvern",
-      "Opplæring og pedagogikk",
-      "Ledelse og verksted",
-      "Arbeidsmiljø",
-      "Sikkerhetskultur"
+      "HSEQ and HSE management",
+      "Fire safety",
+      "Training and pedagogy",
+      "Leadership and workshop management",
+      "Working environment",
+      "Safety culture"
     ],
     contact: {
       email: "tommy.h.kristiansen@gmail.com",
       phone: "+47 93 66 08 18",
       linkedin: ""
     },
-    teamLabel: "HMS leder",
+    teamLabel: "HSE manager",
     articlesWritten: 0,
     companiesHelped: 0,
   },

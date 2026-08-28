@@ -23,13 +23,12 @@ import type {
   Risk,
   RiskCategory,
 } from "@prisma/client";
-import { Slider } from "@/components/ui/slider";
+import { Lightbulb } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Lightbulb } from "lucide-react";
 import {
   CONSEQUENCE_SCALE,
   LIKELIHOOD_SCALE,
@@ -55,18 +54,12 @@ const statusOptions = [
   { value: "CLOSED", labelKey: "status.CLOSED" },
 ];
 
-const categoryOptions: Array<{ value: RiskCategory; labelKey: string }> = [
-  { value: "OPERATIONAL", labelKey: "categories.OPERATIONAL" },
+const UK_CATEGORY_OPTIONS: Array<{ value: RiskCategory; labelKey: string }> = [
   { value: "SAFETY", labelKey: "categories.SAFETY" },
   { value: "HEALTH", labelKey: "categories.HEALTH" },
-  { value: "ENVIRONMENTAL", labelKey: "categories.ENVIRONMENTAL" },
-  { value: "INFORMATION_SECURITY", labelKey: "categories.INFORMATION_SECURITY" },
-  { value: "LEGAL", labelKey: "categories.LEGAL" },
-  { value: "STRATEGIC", labelKey: "categories.STRATEGIC" },
-  { value: "PSYCHOSOCIAL", labelKey: "categories.PSYCHOSOCIAL" },
   { value: "ERGONOMIC", labelKey: "categories.ERGONOMIC" },
-  { value: "ORGANISATIONAL", labelKey: "categories.ORGANISATIONAL" },
-  { value: "PHYSICAL", labelKey: "categories.PHYSICAL" },
+  { value: "PSYCHOSOCIAL", labelKey: "categories.PSYCHOSOCIAL" },
+  { value: "ENVIRONMENTAL", labelKey: "categories.ENVIRONMENTAL" },
 ];
 
 const frequencyOptions: Array<{ value: ControlFrequency; labelKey: string }> = [
@@ -117,7 +110,7 @@ export function RiskForm({
   const [likelihood, setLikelihood] = useState(risk?.likelihood || 3);
   const [consequence, setConsequence] = useState(risk?.consequence || 3);
   const [ownerId, setOwnerId] = useState(risk?.ownerId || userId);
-  const [category, setCategory] = useState<RiskCategory>(risk?.category || "OPERATIONAL");
+  const [category, setCategory] = useState<RiskCategory>(risk?.category || "SAFETY");
   const [controlFrequency, setControlFrequency] = useState<ControlFrequency>(
     risk?.controlFrequency || "ANNUAL"
   );
@@ -138,6 +131,24 @@ export function RiskForm({
       setNextReviewDate(formatDateInput(updated));
     }
   }, [controlFrequency, nextReviewTouched]);
+
+  const categoryOptions = useMemo(() => {
+    if (
+      risk?.category &&
+      !UK_CATEGORY_OPTIONS.some((option) => option.value === risk.category)
+    ) {
+      return [
+        ...UK_CATEGORY_OPTIONS,
+        { value: risk.category, labelKey: `categories.${risk.category}` },
+      ];
+    }
+    return UK_CATEGORY_OPTIONS;
+  }, [risk?.category]);
+
+  const ownerChoices = useMemo(() => {
+    if (!ownerId || owners.some((owner) => owner.id === ownerId)) return owners;
+    return [{ id: ownerId, name: "Person responsible", email: null }, ...owners];
+  }, [ownerId, owners]);
 
   const { score, level, color, bgColor } = calculateRiskScore(likelihood, consequence);
 
@@ -161,12 +172,12 @@ export function RiskForm({
       status: (formData.get("status") as string) || "OPEN",
       category,
       location: formData.get("location") as string,
-      area: formData.get("area") as string,
+      area: risk?.area ?? null,
       description: formData.get("description") as string,
       existingControls: formData.get("existingControls") as string,
       controlFrequency,
       nextReviewDate: nextReviewDate || undefined,
-      riskStatement: formData.get("riskStatement") as string,
+      riskStatement: risk?.riskStatement ?? null,
       residualLikelihood,
       residualConsequence,
       kpiId: risk?.kpiId ?? undefined,
@@ -264,7 +275,7 @@ export function RiskForm({
                   <SelectValue placeholder={t("fields.owner.placeholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {owners.map((owner) => (
+                  {ownerChoices.map((owner) => (
                     <SelectItem key={owner.id} value={owner.id}>
                       {owner.name || owner.email}
                     </SelectItem>
@@ -289,27 +300,15 @@ export function RiskForm({
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="location">{t("fields.location.label")}</Label>
-              <Input
-                id="location"
-                name="location"
-                placeholder={t("fields.location.placeholder")}
-                defaultValue={risk?.location ?? ""}
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="area">{t("fields.area.label")}</Label>
-              <Input
-                id="area"
-                name="area"
-                placeholder={t("fields.area.placeholder")}
-                defaultValue={risk?.area ?? ""}
-                disabled={loading}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="location">{t("fields.location.label")}</Label>
+            <Input
+              id="location"
+              name="location"
+              placeholder={t("fields.location.placeholder")}
+              defaultValue={risk?.location ?? ""}
+              disabled={loading}
+            />
           </div>
         </CardContent>
       </Card>
@@ -335,17 +334,6 @@ export function RiskForm({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="riskStatement">{t("fields.riskStatement.label")}</Label>
-            <Textarea
-              id="riskStatement"
-              name="riskStatement"
-              placeholder={t("fields.riskStatement.placeholder")}
-              defaultValue={risk?.riskStatement ?? ""}
-              disabled={loading}
-              rows={3}
-            />
-          </div>
-          <div className="space-y-2">
             <Label htmlFor="existingControls">{t("fields.existingControls.label")}</Label>
             <Textarea
               id="existingControls"
@@ -353,7 +341,7 @@ export function RiskForm({
               placeholder={t("fields.existingControls.placeholder")}
               defaultValue={risk?.existingControls ?? ""}
               disabled={loading}
-              rows={2}
+              rows={3}
             />
           </div>
           <div className="space-y-2">
@@ -480,37 +468,49 @@ export function RiskForm({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
-            <div>
+            <div className="space-y-2">
               <Label>{t("sections.residual.likelihoodLabel")}</Label>
-              <Slider
-                min={1}
-                max={5}
-                step={1}
-                value={[residualLikelihood ?? 3]}
-                onValueChange={([value]) => setResidualLikelihood(value)}
+              <Select
+                value={residualLikelihood ? String(residualLikelihood) : "unset"}
+                onValueChange={(value) =>
+                  setResidualLikelihood(value === "unset" ? null : Number(value))
+                }
                 disabled={loading}
-              />
-              <p className="text-sm text-muted-foreground mt-1">
-                {residualLikelihood
-                  ? `${residualLikelihood}. ${LIKELIHOOD_SCALE[residualLikelihood]}`
-                  : t("sections.residual.selectValue")}
-              </p>
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("sections.residual.selectValue")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unset">{t("sections.residual.selectValue")}</SelectItem>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n}. {LIKELIHOOD_SCALE[n]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>{t("sections.residual.consequenceLabel")}</Label>
-              <Slider
-                min={1}
-                max={5}
-                step={1}
-                value={[residualConsequence ?? 3]}
-                onValueChange={([value]) => setResidualConsequence(value)}
+              <Select
+                value={residualConsequence ? String(residualConsequence) : "unset"}
+                onValueChange={(value) =>
+                  setResidualConsequence(value === "unset" ? null : Number(value))
+                }
                 disabled={loading}
-              />
-              <p className="text-sm text-muted-foreground mt-1">
-                {residualConsequence
-                  ? `${residualConsequence}. ${CONSEQUENCE_SCALE[residualConsequence]}`
-                  : t("sections.residual.selectValue")}
-              </p>
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("sections.residual.selectValue")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unset">{t("sections.residual.selectValue")}</SelectItem>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n}. {CONSEQUENCE_SCALE[n]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           {residualScore && (

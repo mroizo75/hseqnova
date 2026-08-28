@@ -118,7 +118,7 @@ export const PLAN_LIMITS: Record<HmsTavlePlan, TavlePlanLimits> = {
     hasKioskMode: true,
     hasAiInsight: true,
     hasLovkravSjekkliste: true,
-    hasLiveHmsNovaData: true, // Full HMS Nova-integrasjon
+    hasLiveHmsNovaData: true, // Full HSEQ Nova integration
     hasGuestSlaEscalation: true,
     hasBulkRoomQr: true,
   },
@@ -143,5 +143,5 @@ export const PLAN_LABELS: Record<HmsTavlePlan, string> = {
   ENKEL: "Enkel",
   STANDARD: "Standard",
   AVANSERT: "Avansert",
-  ADDON: "HMS Nova Add-on",
+  ADDON: "HSEQ Nova Add-on",
 };

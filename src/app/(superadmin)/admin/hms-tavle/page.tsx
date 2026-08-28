@@ -76,7 +76,7 @@ export default async function SuperadminHmsTavlePage() {
           { label: "Aktive", value: stats.active },
           { label: "Utløper snart", value: stats.expiringSoon },
           { label: "Utløpt", value: stats.expired },
-          { label: "MRR (kr/mnd)", value: `${stats.monthlyRevenue.toLocaleString("nb-NO")}` },
+          { label: "MRR (kr/mnd)", value: `${stats.monthlyRevenue.toLocaleString("en-GB")}` },
         ].map(({ label, value }) => (
           <Card key={label}>
             <CardContent className="p-3">
@@ -131,7 +131,7 @@ export default async function SuperadminHmsTavlePage() {
                     <TableCell>
                       <div>
                         <p className={`text-sm ${isExpiringSoon ? "text-orange-600 font-medium" : ""}`}>
-                          {new Date(sub.endsAt).toLocaleDateString("nb-NO")}
+                          {new Date(sub.endsAt).toLocaleDateString("en-GB")}
                         </p>
                         {isExpiringSoon && (
                           <p className="text-xs text-orange-600">{days} dager igjen</p>

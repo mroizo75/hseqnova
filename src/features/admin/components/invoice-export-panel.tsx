@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { format, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, subWeeks } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 import { Download, FileSpreadsheet, CalendarRange, Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -71,7 +71,7 @@ function getPresetRange(preset: PeriodPreset): { from: string; to: string; label
     case "this_week": {
       const s = startOfWeek(now, { weekStartsOn: 1 });
       const e = endOfWeek(now, { weekStartsOn: 1 });
-      const weekNum = format(now, "'W'ww", { locale: nb });
+      const weekNum = format(now, "'W'ww", { locale: enGB });
       return {
         from: format(s, "yyyy-MM-dd"),
         to: format(e, "yyyy-MM-dd"),
@@ -82,7 +82,7 @@ function getPresetRange(preset: PeriodPreset): { from: string; to: string; label
       const prev = subWeeks(now, 1);
       const s = startOfWeek(prev, { weekStartsOn: 1 });
       const e = endOfWeek(prev, { weekStartsOn: 1 });
-      const weekNum = format(prev, "'W'ww", { locale: nb });
+      const weekNum = format(prev, "'W'ww", { locale: enGB });
       return {
         from: format(s, "yyyy-MM-dd"),
         to: format(e, "yyyy-MM-dd"),

@@ -29,7 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 type Lang = "nb" | "en" | "pl" | "de";
 
 const LANGS: { code: Lang; label: string; flag: string }[] = [
-  { code: "nb", label: "Norsk", flag: "🇳🇴" },
+  { code: "en", label: "English", flag: "🇬🇧" },
   { code: "en", label: "English", flag: "🇬🇧" },
   { code: "pl", label: "Polski", flag: "🇵🇱" },
   { code: "de", label: "Deutsch", flag: "🇩🇪" },
@@ -211,7 +211,7 @@ export function SesongOnboardingClient({
   hmsContactPhone,
   evacuationPoint,
 }: SesongOnboardingClientProps) {
-  const [lang, setLang] = useState<Lang>("nb");
+  const [lang, setLang] = useState<Lang>("en");
   const [step, setStep] = useState(0); // 0 = language select, 1-5 = screens, 6 = done
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -249,7 +249,7 @@ export function SesongOnboardingClient({
           {tenantLogoUrl ? (
             <img src={tenantLogoUrl} alt={tenantNavn} className="h-12 w-auto bg-white rounded-lg px-3 py-1" />
           ) : (
-            <div className="text-2xl font-black text-green-400">HMS Nova</div>
+            <div className="text-2xl font-black text-green-400">HSEQ Nova</div>
           )}
           <h1 className="text-xl font-bold">{tenantNavn}</h1>
           <p className="text-slate-400 text-sm max-w-xs">Velg ditt språk / Select your language / Wybierz język / Sprache wählen</p>

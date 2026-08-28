@@ -17,17 +17,17 @@ export async function POST(request: NextRequest) {
     const ip = getClientIp(request);
     const identifier = `forgot-password:${ip}`;
 
-    // Rate limit: 3 forsøk per 60 sekunder (FAIL CLOSED for sikkerhet)
+    // Rate limit: 3 attempts per 60 seconds (FAIL CLOSED for security)
     const { success } = await checkRateLimit(identifier, strictRateLimiter, { failClosed: true });
     if (!success) {
       return createErrorResponse(
         ErrorCodes.RATE_LIMIT_EXCEEDED,
-        "For mange forespørsler. Prøv igjen om 1 minutt.",
+        "Too many requests. Please try again in 1 minute.",
         429
       );
     }
 
-    // Valider input
+    // Validate input
     const validation = await validateRequestBody(request, forgotPasswordSchema);
     if (!validation.success) {
       return (validation as any).response;
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     const { email } = (validation as any).data;
 
-    // Finn bruker
+    // Find user
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase().trim() },
       select: {
@@ -45,17 +45,17 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // SIKKERHET: Ikke avslør om bruker eksisterer eller ikke
-    // Returner alltid success for å unngå bruker-enumerasjon
+    // SECURITY: Do not reveal whether a user exists
+    // Always return success to prevent user enumeration
     if (!user) {
       console.log(`[Forgot Password] User not found: ${email}`);
       return NextResponse.json({
         success: true,
-        message: "Hvis e-posten finnes i systemet, har vi sendt en reset-link.",
+        message: "If this email address exists in our system, we have sent a reset link.",
       });
     }
 
-    // Opprett reset token
+    // Create reset token
     const userAgent = request.headers.get("user-agent") || undefined;
     const result = await createPasswordResetToken(user.id, ip, userAgent);
 
@@ -77,33 +77,33 @@ export async function POST(request: NextRequest) {
 
     try {
       await resend.emails.send({
-        from: process.env.RESEND_FROM_EMAIL ?? "HMS Nova <noreply@hmsnova.no>",
+        from: process.env.RESEND_FROM_EMAIL ?? "HSEQ Nova <noreply@hseqnova.co.uk>",
         to: user.email,
-        subject: "Tilbakestill passord - HMS Nova",
+        subject: "Reset password - HSEQ Nova",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Tilbakestill passord</h2>
-            <p>Hei ${user.name || ""},</p>
-            <p>Vi mottok en forespørsel om å tilbakestille passordet for din HMS Nova-konto.</p>
-            <p>Klikk på lenken nedenfor for å tilbakestille passordet ditt:</p>
+            <h2>Reset password</h2>
+            <p>Dear ${user.name || ""},</p>
+            <p>We received a request to reset the password for your HSEQ Nova account.</p>
+            <p>Click the link below to reset your password:</p>
             <p>
               <a href="${resetUrl}" style="display: inline-block; padding: 12px 24px; background-color: #22c55e; color: white; text-decoration: none; border-radius: 6px; margin: 16px 0;">
-                Tilbakestill passord
+                Reset password
               </a>
             </p>
-            <p>Eller kopier og lim inn denne lenken i nettleseren din:</p>
+            <p>Or copy and paste this link into your browser:</p>
             <p style="word-break: break-all; color: #666; font-size: 14px;">${resetUrl}</p>
-            <p><strong>Denne lenken utløper om ${expiresInMinutes} minutter.</strong></p>
+            <p><strong>This link expires in ${expiresInMinutes} minutes.</strong></p>
             <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;">
             <p style="color: #666; font-size: 12px;">
-              Hvis du ikke ba om å tilbakestille passordet ditt, kan du ignorere denne e-posten.
-              Kontoen din forblir sikker.
+              If you did not request a password reset, you can ignore this email.
+              Your account remains secure.
             </p>
             <p style="color: #666; font-size: 12px;">
-              Dette er en automatisk e-post. Ikke svar på denne meldingen.
+              This is an automated email. Please do not reply to this message.
             </p>
             <p style="color: #666; font-size: 12px;">
-              Forespørsel fra IP: ${ip}
+              Request from IP: ${ip}
             </p>
           </div>
         `,
@@ -112,17 +112,17 @@ export async function POST(request: NextRequest) {
       console.log(`[Forgot Password] Reset email sent to: ${user.email}`);
     } catch (emailError) {
       console.error("[Forgot Password] Failed to send email:", emailError);
-      // Ikke avsløre email-feil til bruker
+      // Do not reveal email errors to the user
     }
 
     return NextResponse.json({
       success: true,
-      message: "Hvis e-posten finnes i systemet, har vi sendt en reset-link.",
+      message: "If this email address exists in our system, we have sent a reset link.",
     });
   } catch (error) {
     console.error("[Forgot Password] Error:", error);
     return NextResponse.json(
-      { error: "En feil oppstod. Prøv igjen senere." },
+      { error: "An error occurred. Please try again later." },
       { status: 500 }
     );
   }

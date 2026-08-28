@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Clock, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 
 interface Alert {
   id: string;
@@ -71,7 +71,7 @@ export function CriticalAlerts({ alerts }: CriticalAlertsProps) {
                     </p>
                     {alert.date && (
                       <p className="text-xs text-muted-foreground">
-                        {format(alert.date, "d. MMM yyyy", { locale: nb })}
+                        {format(alert.date, "d. MMM yyyy", { locale: enGB })}
                       </p>
                     )}
                   </div>

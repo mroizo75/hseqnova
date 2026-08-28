@@ -252,7 +252,7 @@ export function TavleRegistreringClient({ initialPlan }: { initialPlan?: HmsTavl
                   <span className="text-sm text-gray-600">Totalt</span>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-blue-700">
-                      kr {calcTotal(selectedPlan, duration).toLocaleString("nb-NO")}
+                      kr {calcTotal(selectedPlan, duration).toLocaleString("en-GB")}
                     </p>
                     {getDiscount(duration) > 0 && (
                       <Badge variant="secondary" className="text-xs">
@@ -422,7 +422,7 @@ export function TavleRegistreringClient({ initialPlan }: { initialPlan?: HmsTavl
                 <div className="border-t pt-2 flex justify-between font-bold text-base">
                   <span>Totalbeløp</span>
                   <span className="text-blue-700">
-                    kr {calcTotal(selectedPlan, duration).toLocaleString("nb-NO")}
+                    kr {calcTotal(selectedPlan, duration).toLocaleString("en-GB")}
                   </span>
                 </div>
               </div>
@@ -574,8 +574,8 @@ export function TavleRegistreringClient({ initialPlan }: { initialPlan?: HmsTavl
 
           <p className="text-center text-sm text-gray-600">
             Spørsmål?{" "}
-            <a href="mailto:post@hmsnova.no" className="text-blue-600 underline">
-              post@hmsnova.no
+            <a href="mailto:support@hseqnova.com" className="text-blue-600 underline">
+              support@hseqnova.com
             </a>
           </p>
         </div>

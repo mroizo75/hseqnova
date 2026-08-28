@@ -66,10 +66,10 @@ async function main() {
     const superAdminPassword = await bcrypt.hash("superadmin123", 10);
 
     const superAdmin = await prisma.user.upsert({
-      where: { email: "superadmin@hmsnova.com" },
+      where: { email: "superadmin@hseqnova.com" },
       update: {},
       create: {
-        email: "superadmin@hmsnova.com",
+        email: "superadmin@hseqnova.com",
         name: "Superadmin",
         password: superAdminPassword,
         isSuperAdmin: true,
@@ -82,10 +82,10 @@ async function main() {
     const supportPassword = await bcrypt.hash("support123", 10);
 
     const supportUser = await prisma.user.upsert({
-      where: { email: "support@hmsnova.com" },
+      where: { email: "support@hseqnova.com" },
       update: {},
       create: {
-        email: "support@hmsnova.com",
+        email: "support@hseqnova.com",
         name: "Support Team",
         password: supportPassword,
         isSupport: true,
@@ -677,7 +677,7 @@ async function main() {
       dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
       status: "SENT",
       period: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`,
-      description: "HMS Nova Professional - Månedlig abonnement",
+      description: "HSEQ Nova Professional - Monthly subscription",
     },
   });
 
@@ -1271,7 +1271,7 @@ async function main() {
       title: "Grunnleggende HMS-kurs",
       description: "Innføring i HMS-rutiner og sikkerhetsprosedyrer",
       courseKey: "hms-grunnkurs",
-      provider: "HMS Nova AS",
+      provider: "HSEQ Nova Ltd",
       completedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
       validUntil: new Date(Date.now() + 335 * 24 * 60 * 60 * 1000),
       isRequired: true,
@@ -1285,7 +1285,7 @@ async function main() {
       title: "Arbeid i høyden",
       description: "Sertifisering for arbeid på stillas og lift",
       courseKey: "hoyde-sertifikat",
-      provider: "HMS Nova AS",
+      provider: "HSEQ Nova Ltd",
       validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       isRequired: true,
     },
@@ -1803,8 +1803,8 @@ async function main() {
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("\n📝 Test pålogginger:");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("🛡️  Superadmin:     superadmin@hmsnova.com / superadmin123");
-  console.log("🎧 Support:        support@hmsnova.com / support123");
+  console.log("🛡️  Superadmin:     superadmin@hseqnova.com / superadmin123");
+  console.log("🎧 Support:        support@hseqnova.com / support123");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("👤 Admin:          admin@test.no / admin123");
   console.log("⚡ HMS-ansvarlig:  hms@test.no / hms123");
@@ -1815,7 +1815,7 @@ async function main() {
   console.log("📋 Revisor:        revisor@test.no / revisor123");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("\n🔗 Varslingssiden for Test Bedrift AS:");
-  console.log("   https://hmsnova.com/varsling/test-bedrift");
+  console.log("   https://hseqnova.com/varsling/test-bedrift");
   console.log("   Tilgangskode for sporing: ABC123DEF456GHIJ");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 

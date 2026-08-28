@@ -150,7 +150,7 @@ export default async function GoalDetailPage({ params }: { params: Promise<{ id:
                 <div>
                   <p className="text-sm text-muted-foreground">Frist</p>
                   <p className="font-medium">
-                    {new Date(goal.deadline).toLocaleDateString("nb-NO")}
+                    {new Date(goal.deadline).toLocaleDateString("en-GB")}
                   </p>
                 </div>
               )}
@@ -160,7 +160,7 @@ export default async function GoalDetailPage({ params }: { params: Promise<{ id:
               <div>
                 <p className="text-sm text-muted-foreground">Startdato</p>
                 <p className="font-medium">
-                  {new Date(goal.startDate).toLocaleDateString("nb-NO")}
+                  {new Date(goal.startDate).toLocaleDateString("en-GB")}
                 </p>
               </div>
             )}

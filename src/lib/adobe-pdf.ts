@@ -113,7 +113,7 @@ export async function generateWellbeingReportPDF(
  * Forbered data for Adobe template
  */
 function prepareReportData(reportData: any, tenantName: string) {
-  const currentDate = new Date().toLocaleDateString("nb-NO", {
+  const currentDate = new Date().toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "long",
     year: "numeric",
@@ -297,7 +297,7 @@ async function streamToBuffer(readStream: any): Promise<Buffer> {
 
 /**
  * Genererer en én-side PDF brukt som vannmerke for gratis-prøvepakker.
- * Tekst: "Kun visning – HMS Nova gratis prøve" så innholdet ikke kan brukes som ferdig system uten å betale.
+ * Text: "View only – HSEQ Nova free trial" so the content cannot be used as a finished system without paying.
  */
 const A4_MM = { width: 210, height: 297 };
 
@@ -310,7 +310,7 @@ export async function generateWatermarkPdfBuffer(): Promise<Buffer> {
   doc.setTextColor(180, 180, 180);
   doc.setFont("helvetica", "bold");
   doc.text("Kun visning", w / 2, h / 2 - 8, { align: "center" });
-  doc.text("HMS Nova gratis prøve", w / 2, h / 2 + 8, { align: "center" });
+  doc.text("HSEQ Nova free trial", w / 2, h / 2 + 8, { align: "center" });
   doc.setFontSize(12);
   doc.setFont("helvetica", "normal");
   doc.text("Oppgrader for utskriftsklare dokumenter", w / 2, h / 2 + 24, { align: "center" });

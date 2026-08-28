@@ -114,7 +114,7 @@ export function TavleRomQr({ tavleUrl, plan, tenantName, logoUrl }: Props) {
         <CardContent className="text-sm text-muted-foreground space-y-2">
           <p>
             Generer én QR per rom eller bord, med utskriftsvennlig ark klart for laminering. Krever
-            Avansert-plan eller HMS Nova Add-on.
+            Advanced plan or HSEQ Nova Add-on.
           </p>
           <p className="text-xs">
             Du kan fortsatt bruke den felles «Meld fra»-QR-koden over på alle planer med

@@ -31,7 +31,7 @@ interface PageProps {
 }
 
 export const metadata = {
-  title: "Registreringsdetaljer | HMS Nova Admin",
+  title: "Registration Details | HSEQ Nova Admin",
 };
 
 async function RegistrationDetails({ id }: { id: string }) {
@@ -219,7 +219,7 @@ async function RegistrationDetails({ id }: { id: string }) {
                       Årspris
                     </label>
                     <p className="font-medium mt-1 text-primary">
-                      {registration.subscription.price.toLocaleString("nb-NO")} kr
+                      {registration.subscription.price.toLocaleString("en-GB")} kr
                     </p>
                   </div>
 
@@ -243,7 +243,7 @@ async function RegistrationDetails({ id }: { id: string }) {
                       </label>
                     </div>
                     <p className="font-medium mt-1">
-                      {new Date(registration.trialEndsAt).toLocaleDateString("nb-NO", {
+                      {new Date(registration.trialEndsAt).toLocaleDateString("en-GB", {
                         day: "2-digit",
                         month: "long",
                         year: "numeric",
@@ -318,7 +318,7 @@ async function RegistrationDetails({ id }: { id: string }) {
                 <div>
                   <p className="text-sm font-medium">Registrert</p>
                   <p className="text-xs text-muted-foreground">
-                    {new Date(registration.createdAt).toLocaleDateString("nb-NO", {
+                    {new Date(registration.createdAt).toLocaleDateString("en-GB", {
                       day: "2-digit",
                       month: "long",
                       year: "numeric",
@@ -335,7 +335,7 @@ async function RegistrationDetails({ id }: { id: string }) {
                   <div>
                     <p className="text-sm font-medium">Aktivert</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(registration.onboardingCompletedAt).toLocaleDateString("nb-NO", {
+                      {new Date(registration.onboardingCompletedAt).toLocaleDateString("en-GB", {
                         day: "2-digit",
                         month: "long",
                         year: "numeric",

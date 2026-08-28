@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { loadActiveProjects, loadRiskSession } from "@/server/queries/risks.queries";
+import { IndustryRiskStarter } from "@/features/risks/components/industry-risk-starter";
+import { getAdminDb } from "@/lib/supabase/admin";
 
 export default async function NewRiskAssessmentPage() {
   const session = await getServerSession(authOptions);
@@ -20,7 +22,15 @@ export default async function NewRiskAssessmentPage() {
   }
 
   const currentYear = new Date().getFullYear();
-  const projects = await loadActiveProjects(context.tenantId);
+  const [projects, tenant] = await Promise.all([
+    loadActiveProjects(context.tenantId),
+    getAdminDb()
+      .from("Tenant")
+      .select("industry")
+      .eq("id", context.tenantId)
+      .maybeSingle()
+      .then((result) => result.data),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -33,8 +43,19 @@ export default async function NewRiskAssessmentPage() {
         </Button>
         <h1 className="text-3xl font-bold">New risk assessment</h1>
         <p className="text-muted-foreground">
-          Create a suitable and sufficient risk assessment (MHSWR 1999). Then add the individual
-          risk items.
+          Start from typical hazards for your type of work, then review so the assessment is
+          suitable and sufficient (MHSWR 1999).
+        </p>
+      </div>
+
+      <IndustryRiskStarter initialIndustry={(tenant?.industry as string | null) ?? null} />
+
+      <div className="relative py-2">
+        <div className="absolute inset-0 flex items-center" aria-hidden>
+          <div className="w-full border-t" />
+        </div>
+        <p className="relative mx-auto w-fit bg-background px-3 text-sm text-muted-foreground">
+          Or start from a blank document
         </p>
       </div>
 

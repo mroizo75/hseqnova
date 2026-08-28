@@ -275,7 +275,7 @@ export function GjesteservicePane({
                     </span>
                   </div>
                   <span className="text-xs text-muted-foreground shrink-0">
-                    {new Date(row.createdAt).toLocaleString("nb-NO", {
+                    {new Date(row.createdAt).toLocaleString("en-GB", {
                       day: "2-digit",
                       month: "2-digit",
                       hour: "2-digit",

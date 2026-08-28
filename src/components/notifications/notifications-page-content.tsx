@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Bell, Check, CheckCheck, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -94,7 +94,7 @@ export function NotificationsPageContent() {
                       <p className="mt-1 text-xs text-muted-foreground">
                         {formatDistanceToNow(new Date(notification.createdAt), {
                           addSuffix: true,
-                          locale: nb,
+                          locale: enGB,
                         })}
                       </p>
                     </div>

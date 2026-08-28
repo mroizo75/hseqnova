@@ -64,7 +64,7 @@ export function HseStatisticsTable({ data }: HseStatisticsTableProps) {
             {data.map((row) => (
               <TableCell key={row.year} className="text-center">
                 {row.manHours > 0
-                  ? row.manHours.toLocaleString("nb-NO")
+                  ? row.manHours.toLocaleString("en-GB")
                   : <span className="text-muted-foreground">—</span>}
               </TableCell>
             ))}

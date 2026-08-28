@@ -1,19 +1,10 @@
 import { getServerSession } from "next-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Building2,
-  ShieldCheck,
-  AlertTriangle,
-  CheckCircle2,
-} from "lucide-react";
-
+import { Building2, Users, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { getAggregatedHmsStats } from "@/server/actions/admin-hms-stats.actions";
-import { HmsStatsTable } from "@/features/admin/components/hms-stats-table";
-import { HmsTrendChart } from "@/features/admin/components/hms-trend-chart";
-import { NhoExportButton } from "@/features/admin/components/nho-export-button";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 export default async function SuperAdminDashboard() {
   const session = await getServerSession(authOptions);
@@ -23,90 +14,100 @@ export default async function SuperAdminDashboard() {
         select: { isSuperAdmin: true },
       })
     : null;
-  const isSuperAdmin = currentUser?.isSuperAdmin ?? false;
 
-  const data = await getAggregatedHmsStats();
-  if (!data) redirect("/login");
+  if (!currentUser?.isSuperAdmin) {
+    redirect("/login");
+  }
 
-  const { kpi, rows, trends } = data;
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const [activeTenants, totalUsers, incidentsThisMonth, openActions] =
+    await Promise.all([
+      prisma.tenant.count({
+        where: {
+          status: { in: ["ACTIVE", "TRIAL"] },
+          deletedAt: null,
+        },
+      }),
+      prisma.user.count(),
+      prisma.incident.count({
+        where: { createdAt: { gte: thirtyDaysAgo } },
+      }),
+      prisma.measure.count({
+        where: { status: { in: ["PENDING", "IN_PROGRESS", "OVERDUE"] } },
+      }),
+    ]);
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">HMS-oversikt</h1>
-          <p className="text-muted-foreground">
-            Aggregert HMS-statistikk og compliance for alle bedrifter
-          </p>
-        </div>
-        {isSuperAdmin && <NhoExportButton />}
+      <div>
+        <h1 className="text-3xl font-bold">HSEQ overview</h1>
+        <p className="text-muted-foreground">
+          Aggregated statistics across all organisations
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Aktive bedrifter
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Active organisations</CardTitle>
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{kpi.activeTenants}</div>
-            <p className="text-xs text-muted-foreground">
-              Aktive og i prøveperiode
-            </p>
+            <div className="text-2xl font-bold">{activeTenants}</div>
+            <p className="text-xs text-muted-foreground">Active and trial</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Gj.snittlig compliance
-            </CardTitle>
-            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total users</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{kpi.avgCompliance}%</div>
-            <p className="text-xs text-muted-foreground">
-              Basert på aktivitetsdata
-            </p>
+            <div className="text-2xl font-bold">{totalUsers}</div>
+            <p className="text-xs text-muted-foreground">Across all tenants</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Avvik denne mnd
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Incidents this month</CardTitle>
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{kpi.incidentsThisMonth}</div>
-            <p className="text-xs text-muted-foreground">
-              Nye registrerte siste 30 dager
-            </p>
+            <div className="text-2xl font-bold">{incidentsThisMonth}</div>
+            <p className="text-xs text-muted-foreground">Last 30 days</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Tiltak fullført
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Open actions</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{kpi.measuresCompletedRate}%</div>
-            <p className="text-xs text-muted-foreground">
-              Andel fullførte tiltak
-            </p>
+            <div className="text-2xl font-bold">{openActions}</div>
+            <p className="text-xs text-muted-foreground">Open or in progress</p>
           </CardContent>
         </Card>
       </div>
 
-      <HmsStatsTable rows={rows} />
-
-      <HmsTrendChart data={trends} />
+      <div className="flex gap-4">
+        <Link
+          href="/admin/tenants"
+          className="text-sm font-medium text-primary hover:underline"
+        >
+          Manage organisations →
+        </Link>
+        <Link
+          href="/admin/registrations"
+          className="text-sm font-medium text-primary hover:underline"
+        >
+          View registrations →
+        </Link>
+      </div>
     </div>
   );
 }

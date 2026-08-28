@@ -13,7 +13,7 @@ import { z } from "zod";
 
 const bodySchema = z.object({
   name: z.string().min(2, "Navn er påkrevd"),
-  lang: z.enum(["nb", "en", "pl", "de"]).default("nb"),
+  lang: z.enum(["nb", "en", "pl", "de"]).default("en"),
 });
 
 export async function POST(

@@ -1,17 +1,25 @@
 import Link from "next/link";
 import {
-  AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  ChevronDown,
   CircleDashed,
   ShieldAlert,
+  AlertTriangle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { HmsTrendChart } from "@/features/dashboard/components/hms-trend-chart";
 import { RecentIncidentsCard } from "@/features/dashboard/components/recent-incidents-card";
 import { cn } from "@/lib/utils";
-import type { HseqDutyLevel, HseqDutyStatus, HseqStatusReport } from "@/lib/hseq-status";
+import {
+  buildControlJourney,
+  dutyGain,
+  type ControlPhase,
+  type HseqDutyLevel,
+  type HseqDutyStatus,
+  type HseqStatusReport,
+} from "@/lib/hseq-status";
 
 interface HseqStatusDashboardProps {
   userName: string;
@@ -28,52 +36,45 @@ interface HseqStatusDashboardProps {
 }
 
 const LEVEL_LABEL: Record<HseqDutyLevel, string> = {
-  on_track: "On track",
-  attention: "Needs attention",
-  critical: "Critical",
+  on_track: "In place",
+  attention: "Keep going",
+  critical: "Do this first",
   gap: "Not started",
 };
 
-const OVERALL_COPY: Record<
-  HseqStatusReport["overallLevel"],
-  { title: string; lede: string }
-> = {
-  healthy: {
-    title: "On track",
-    lede: "Live records show the HSEQ duties for this company are in order.",
-  },
-  attention: {
-    title: "Needs attention",
-    lede: "Some duties are missing, overdue or still open. Work the list below.",
-  },
-  critical: {
-    title: "Action required",
-    lede: "At least one legal duty is overdue. Deal with the critical items first.",
-  },
-};
+function greetingName(userName: string): string {
+  const trimmed = userName.trim();
+  if (!trimmed) return "there";
+  const local = trimmed.includes("@") ? trimmed.split("@")[0] : trimmed;
+  return local.split(/\s+/)[0] ?? "there";
+}
 
-function levelTone(level: HseqDutyLevel | HseqStatusReport["overallLevel"]) {
-  if (level === "critical") {
+function heroCopy(
+  name: string,
+  report: HseqStatusReport,
+  mode: "wizard" | "steady",
+): { title: string; lede: string } {
+  if (report.overallLevel === "critical") {
     return {
-      text: "text-red-700 dark:text-red-400",
-      bg: "bg-red-50 dark:bg-red-950/40",
-      bar: "bg-red-600",
-      border: "border-red-200 dark:border-red-900",
+      title: `${name}, this comes first`,
+      lede: "A legal deadline has passed. Deal with it, then you are back on the path.",
     };
   }
-  if (level === "attention" || level === "gap") {
+  if (mode === "wizard") {
     return {
-      text: "text-amber-800 dark:text-amber-400",
-      bg: "bg-amber-50 dark:bg-amber-950/30",
-      bar: "bg-amber-500",
-      border: "border-amber-200 dark:border-amber-900",
+      title: `${name}, get control one step at a time`,
+      lede: "Each step puts a legal duty on file. You do not have to finish the list today.",
+    };
+  }
+  if (report.overallLevel === "healthy") {
+    return {
+      title: `${name}, you have this under control`,
+      lede: "Live records show the HSEQ duties for this company are in order.",
     };
   }
   return {
-    text: "text-primary",
-    bg: "bg-primary/5",
-    bar: "bg-primary",
-    border: "border-primary/20",
+    title: `${name}, the foundation is in place`,
+    lede: "Keep it running. One follow-up at a time is enough.",
   };
 }
 
@@ -107,160 +108,156 @@ export function HseqStatusDashboard({
   weeklyTrendData,
   recentIncidents,
 }: HseqStatusDashboardProps) {
-  const overall = OVERALL_COPY[report.overallLevel];
-  const tone = levelTone(report.overallLevel);
+  const name = greetingName(userName);
+  const journey = buildControlJourney(report);
+  const hero = heroCopy(name, report, journey.mode);
   const duties = sortDuties(report.duties);
-  const actionDuties = duties.filter((duty) => duty.level !== "on_track");
+  const inPlaceCount = journey.inPlace.length;
+  const totalCount = report.duties.length;
+  const nextStep = journey.nextStep;
+  const showPath = journey.mode === "wizard" || report.overallLevel !== "healthy";
 
   return (
     <div className="space-y-8">
-      <div>
+      <header>
         <p className="text-sm text-muted-foreground">{asOf}</p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight">Welcome, {userName}</h1>
-        <p className="mt-1 text-muted-foreground">
-          HSEQ position for this company — only the modules you have.
-        </p>
-      </div>
+        <h1 className="mt-1 max-w-2xl text-3xl font-bold tracking-tight text-balance">
+          {hero.title}
+        </h1>
+        <p className="mt-2 max-w-xl text-muted-foreground">{hero.lede}</p>
+      </header>
 
-      <section
-        aria-labelledby="hseq-position-heading"
-        className={cn("overflow-hidden rounded-xl border", tone.border, tone.bg)}
-      >
-        <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,16rem)_1fr] lg:items-end">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              HSEQ position
-            </p>
-            <p
-              id="hseq-position-heading"
-              className={cn(
-                "mt-3 text-7xl font-semibold tabular-nums leading-none tracking-tight",
-                tone.text,
-              )}
-            >
-              {report.score}
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">of 100</p>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <h2 className={cn("text-2xl font-semibold tracking-tight", tone.text)}>
-                {overall.title}
+      {nextStep && report.overallLevel !== "healthy" ? (
+        <section
+          aria-labelledby="hseq-next-heading"
+          className={cn(
+            "overflow-hidden rounded-xl border shadow-sm",
+            nextStep.duty.level === "critical"
+              ? "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/40"
+              : "bg-card",
+          )}
+        >
+          <div className="grid lg:grid-cols-[minmax(0,1fr)_16rem]">
+            <div className="p-6 sm:p-8">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                {nextStep.duty.level === "critical"
+                  ? "Do this first"
+                  : journey.mode === "wizard"
+                    ? "Next step"
+                    : "Keep going"}
+              </p>
+              <h2
+                id="hseq-next-heading"
+                className="mt-3 max-w-xl text-2xl font-semibold tracking-tight text-balance"
+              >
+                {nextStep.action}
               </h2>
-              <p className="mt-1 max-w-xl text-sm text-muted-foreground">{overall.lede}</p>
-            </div>
-            <div
-              className="h-1.5 overflow-hidden rounded-full bg-background/80"
-              role="meter"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={report.score}
-              aria-label="HSEQ position score"
-            >
-              <div
-                className={cn("h-full rounded-full transition-[width] duration-500", tone.bar)}
-                style={{ width: `${report.score}%` }}
-              />
-            </div>
-            <dl className="grid grid-cols-3 gap-4 text-sm">
-              <div>
-                <dt className="text-muted-foreground">Critical</dt>
-                <dd className="mt-0.5 text-lg font-semibold tabular-nums">{report.criticalCount}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Need action</dt>
-                <dd className="mt-0.5 text-lg font-semibold tabular-nums">{report.attentionCount}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">On track</dt>
-                <dd className="mt-0.5 text-lg font-semibold tabular-nums">{report.onTrackCount}</dd>
-              </div>
-            </dl>
-          </div>
-        </div>
-      </section>
-
-      {actionDuties.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <AlertTriangle className="h-4 w-4" />
-              Follow up now
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-2 sm:grid-cols-2">
-            {actionDuties.map((duty) => {
-              const dutyTone = levelTone(duty.level);
-              return (
-                <Link
-                  key={duty.key}
-                  href={duty.href}
-                  className="flex items-start justify-between gap-3 rounded-md border p-3 transition-colors hover:bg-muted/40"
-                >
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium">{duty.title}</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">{duty.headline}</span>
-                  </span>
-                  <Badge
-                    variant="outline"
-                    className={cn("shrink-0 bg-transparent", dutyTone.text, dutyTone.border)}
-                  >
-                    {LEVEL_LABEL[duty.level]}
-                  </Badge>
+              <p className="mt-2 max-w-xl text-sm text-muted-foreground">{nextStep.why}</p>
+              <Button asChild size="lg" className="mt-6">
+                <Link href={nextStep.duty.href}>
+                  Start this step
+                  <ArrowRight className="h-4 w-4" aria-hidden />
                 </Link>
-              );
-            })}
-          </CardContent>
-        </Card>
+              </Button>
+              {journey.critical.length > 1 ? (
+                <ul className="mt-6 space-y-2 border-t pt-4">
+                  {journey.critical.slice(1).map((duty) => (
+                    <li key={duty.key}>
+                      <Link
+                        href={duty.href}
+                        className="flex min-h-11 items-center justify-between gap-3 text-sm font-medium text-red-900 hover:underline dark:text-red-200"
+                      >
+                        <span>
+                          {duty.title}
+                          <span className="ml-2 font-normal text-muted-foreground">
+                            {duty.headline}
+                          </span>
+                        </span>
+                        <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+            <div className="flex flex-col justify-between border-t bg-primary/[0.04] p-6 sm:p-8 lg:border-l lg:border-t-0">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  In place
+                </p>
+                <p className="mt-3 text-5xl font-semibold tabular-nums tracking-tight text-primary">
+                  {inPlaceCount}
+                  <span className="ml-1 text-lg font-medium text-muted-foreground">
+                    of {totalCount}
+                  </span>
+                </p>
+              </div>
+              <p className="mt-6 text-sm text-muted-foreground">
+                {journey.mode === "wizard"
+                  ? "Finish the foundation and you have what HSE asks to see first."
+                  : "Duties already covered stay here. Only the next follow-up is in front of you."}
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section
+          aria-labelledby="hseq-position-heading"
+          className="rounded-xl border bg-primary/5 p-6 sm:p-8"
+        >
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            HSEQ position
+          </p>
+          <p
+            id="hseq-position-heading"
+            className="mt-3 text-6xl font-semibold tabular-nums leading-none tracking-tight text-primary"
+          >
+            {report.score}
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {inPlaceCount} of {totalCount} duties in place.
+          </p>
+        </section>
       )}
 
-      <section aria-labelledby="hseq-duties-heading" className="space-y-3">
-        <div className="flex items-end justify-between gap-4">
+      {showPath && journey.phases.length > 0 ? (
+        <section aria-labelledby="hseq-path-heading" className="space-y-3">
           <div>
-            <h2 id="hseq-duties-heading" className="text-lg font-semibold tracking-tight">
-              Duty register
+            <h2 id="hseq-path-heading" className="text-lg font-semibold tracking-tight">
+              The path to control
             </h2>
             <p className="text-sm text-muted-foreground">
-              Each row is a live duty. Add-ons appear only when the company has that module.
+              Suggested order. Everything in the menu stays available.
             </p>
           </div>
-        </div>
+          <ol className="grid list-none gap-3 p-0 sm:grid-cols-3">
+            {journey.phases.map((phase, index) => (
+              <PhaseCard key={phase.id} phase={phase} step={index + 1} />
+            ))}
+          </ol>
+        </section>
+      ) : null}
 
-        <div className="overflow-hidden rounded-xl border">
-          <ul className="divide-y">
-            {duties.map((duty) => {
-              const dutyTone = levelTone(duty.level);
-              return (
-                <li key={duty.key}>
-                  <Link
-                    href={duty.href}
-                    className="group flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:gap-6 sm:px-5"
-                  >
-                    <span
-                      className={cn("hidden h-10 w-1 rounded-full sm:block", dutyTone.bar)}
-                      aria-hidden
-                    />
-                    <span className={cn("flex items-center gap-2 text-sm font-medium sm:w-56", dutyTone.text)}>
-                      <DutyIcon level={duty.level} />
-                      {duty.title}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium">{duty.headline}</span>
-                      <span className="mt-0.5 block text-sm text-muted-foreground">{duty.detail}</span>
-                    </span>
-                    <span className="flex items-center justify-between gap-3 sm:w-52 sm:justify-end">
-                      <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                        {duty.legalRef}
-                      </span>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
+      {journey.inPlace.length > 0 && report.overallLevel !== "healthy" ? (
+        <section aria-labelledby="hseq-inplace-heading" className="space-y-3">
+          <h2 id="hseq-inplace-heading" className="text-lg font-semibold tracking-tight">
+            What you already have
+          </h2>
+          <ul className="flex flex-wrap gap-2">
+            {journey.inPlace.map((duty) => (
+              <li key={duty.key}>
+                <Link
+                  href={duty.href}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-sm text-primary hover:bg-primary/10"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                  {dutyGain(duty.key)}
+                </Link>
+              </li>
+            ))}
           </ul>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       {weeklyTrendData.length > 0 || recentIncidents.length > 0 ? (
         <div className="grid gap-6 lg:grid-cols-2">
@@ -270,6 +267,112 @@ export function HseqStatusDashboard({
           ) : null}
         </div>
       ) : null}
+
+      <details className="group rounded-xl border">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-sm font-medium sm:px-5 [&::-webkit-details-marker]:hidden">
+          <span>
+            All duties
+            <span className="ml-2 font-normal text-muted-foreground">
+              Legal register · {totalCount} {totalCount === 1 ? "item" : "items"}
+            </span>
+          </span>
+          <ChevronDown
+            className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+            aria-hidden
+          />
+        </summary>
+        <ul className="divide-y border-t">
+          {duties.map((duty) => (
+            <li key={duty.key}>
+              <Link
+                href={duty.href}
+                className="group/row flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:gap-6 sm:px-5"
+              >
+                <span
+                  className={cn(
+                    "flex items-center gap-2 text-sm font-medium sm:w-56",
+                    duty.level === "on_track" ? "text-primary" : "text-foreground",
+                  )}
+                >
+                  <DutyIcon level={duty.level} />
+                  {duty.title}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium">
+                    {duty.level === "on_track" ? dutyGain(duty.key) : duty.headline}
+                  </span>
+                  <span className="mt-0.5 block text-sm text-muted-foreground">{duty.detail}</span>
+                </span>
+                <span className="flex items-center justify-between gap-3 sm:w-52 sm:justify-end">
+                  <Badge variant="outline" className="bg-transparent font-normal">
+                    {LEVEL_LABEL[duty.level]}
+                  </Badge>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover/row:translate-x-0.5" />
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </details>
     </div>
+  );
+}
+
+function PhaseCard({ phase, step }: { phase: ControlPhase; step: number }) {
+  const isCurrent = phase.status === "current";
+  const isComplete = phase.status === "complete";
+  const href = phase.nextDuty?.href ?? phase.duties[0]?.href;
+
+  const inner = (
+    <>
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className={cn(
+            "flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold",
+            isComplete && "bg-primary text-primary-foreground",
+            isCurrent && "bg-primary/15 text-primary",
+            phase.status === "upcoming" && "bg-muted text-muted-foreground",
+          )}
+        >
+          {isComplete ? <CheckCircle2 className="h-4 w-4" aria-hidden /> : step}
+        </span>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {phase.completeCount}/{phase.totalCount}
+        </span>
+      </div>
+      <h3 className="mt-4 text-base font-semibold tracking-tight">{phase.title}</h3>
+      <p className="mt-1 text-sm text-muted-foreground">{phase.gain}</p>
+      <p className="mt-3 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+        {isComplete ? "In place" : isCurrent ? "This step" : "Up next"}
+      </p>
+    </>
+  );
+
+  const className = cn(
+    "block h-full rounded-xl border p-5 text-left transition-colors",
+    isCurrent && "border-primary/40 bg-primary/[0.04]",
+    isComplete && "border-primary/20 bg-primary/[0.03]",
+    phase.status === "upcoming" && "bg-card",
+    href && "hover:bg-muted/40",
+  );
+
+  if (!href) {
+    return (
+      <li className={className} aria-current={isCurrent ? "step" : undefined}>
+        {inner}
+      </li>
+    );
+  }
+
+  return (
+    <li>
+      <Link
+        href={href}
+        className={className}
+        aria-current={isCurrent ? "step" : undefined}
+      >
+        {inner}
+      </Link>
+    </li>
   );
 }

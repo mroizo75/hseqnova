@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Calendar, Clock, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { differenceInDays, format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 
 interface Deadline {
   id: string;
@@ -134,7 +134,7 @@ export function UpcomingDeadlines({ deadlines }: UpcomingDeadlinesProps) {
                     )}
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      {format(new Date(deadline.dueDate), "d. MMMM yyyy", { locale: nb })}
+                      {format(new Date(deadline.dueDate), "d. MMMM yyyy", { locale: enGB })}
                     </p>
                   </div>
                   <div>{getUrgencyBadge(daysUntil)}</div>

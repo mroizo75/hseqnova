@@ -101,12 +101,12 @@ async function sendSDSSuggestionsEmail(
 
     await sendEmail({
       to: user.email,
-      subject: `HMS Nova: ${suggestions.length} foreslåtte SDS-oppdateringer funnet`,
+      subject: `HSEQ Nova: ${suggestions.length} suggested SDS updates found`,
       html: `
         <h2>📧 Nye SDS-er funnet i innboks</h2>
         <p>Hei ${user.name || "der"},</p>
 
-        <p>HMS Nova har automatisk overvåket din innboks og funnet <strong>${suggestions.length} potensielle SDS-oppdateringer</strong>:</p>
+        <p>HSEQ Nova has automatically monitored your inbox and found <strong>${suggestions.length} potential SDS updates</strong>:</p>
 
         <table style="width:100%;border-collapse:collapse;margin:20px 0;">
           <thead>
@@ -135,20 +135,20 @@ async function sendSDSSuggestionsEmail(
 
         <p><strong>Hva skjer nå?</strong></p>
         <ul>
-          <li>Gå til HMS Nova og godkjenn/avvis forslagene</li>
+          <li>Go to HSEQ Nova and approve/reject the suggestions</li>
           <li>Godkjente SDS-er blir automatisk parsert med AI</li>
           <li>Alle felter oppdateres automatisk</li>
         </ul>
 
         <p>
-          <a href="https://hmsnova.no/dashboard/chemicals?filter=suggested-updates" 
+          <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://hseqnova.com"}/dashboard/chemicals?filter=suggested-updates" 
              style="display:inline-block;padding:12px 24px;background:#0066CC;color:white;text-decoration:none;border-radius:6px;margin-top:16px;">
             Se foreslåtte oppdateringer
           </a>
         </p>
 
         <p style="color:#666;font-size:14px;margin-top:24px;">
-          Dette er en automatisk varsling fra HMS Nova sitt e-post overvåkingssystem.
+          This is an automatic alert from HSEQ Nova's email monitoring system.
           Du kan skru av dette i innstillinger.
         </p>
       `,
@@ -302,7 +302,7 @@ async function sendAutoUpdateNotification(chemical: any, tenantId: string) {
       userId: user.id,
       type: "CHEMICAL_SDS_REVIEW",
       title: `✅ SDS automatisk oppdatert: ${chemical.productName}`,
-      message: `HMS Nova har automatisk hentet og oppdatert sikkerhetsdatablad fra ${chemical.supplier}.`,
+      message: `HSEQ Nova automatically fetched and updated the safety data sheet from ${chemical.supplier}.`,
       link: `/dashboard/chemicals/${chemical.id}`,
     });
   }

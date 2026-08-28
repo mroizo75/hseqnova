@@ -135,14 +135,14 @@ async function sendCriticalReclassificationAlert(reclass: any) {
           </ol>
 
           <p>
-            <a href="https://hmsnova.no/dashboard/chemicals/${chemical.id}" 
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://hseqnova.com"}/dashboard/chemicals/${chemical.id}" 
                style="display:inline-block;padding:12px 24px;background:#dc2626;color:white;text-decoration:none;border-radius:6px;">
-              Se kjemikalie i HMS Nova
+              View chemical in HSEQ Nova
             </a>
           </p>
 
           <p style="color:#666;font-size:14px;">
-            Dette er en automatisk varsling fra HMS Nova sitt ECHA-overvåkingssystem.
+            This is an automatic alert from HSEQ Nova's ECHA monitoring system.
           </p>
         `,
       });
@@ -197,7 +197,7 @@ export async function checkAgingSDS() {
 
         await sendEmail({
           to: user.email,
-          subject: `HMS Nova: ${agingChemicals.length} kjemikalier bør sjekkes for oppdateringer`,
+          subject: `HSEQ Nova: ${agingChemicals.length} chemicals should be checked for updates`,
           html: `
             <h2>Ukentlig stoffkartotek-rapport</h2>
             <p>Hei ${user.name || "der"},</p>
@@ -240,9 +240,9 @@ export async function checkAgingSDS() {
             </table>
 
             <p>
-              <a href="https://hmsnova.no/dashboard/chemicals?filter=aging" 
+              <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://hseqnova.com"}/dashboard/chemicals?filter=aging" 
                  style="display:inline-block;padding:12px 24px;background:#0066CC;color:white;text-decoration:none;border-radius:6px;margin-top:16px;">
-                Se alle i HMS Nova
+                View all in HSEQ Nova
               </a>
             </p>
           `,
@@ -322,12 +322,12 @@ export async function sendSupplierUpdateRequests() {
             <h3>Foreslått handling:</h3>
             <ol>
               <li>Kontakt ${chemical.supplier || "leverandøren"} og be om bekreftelse på at SDS er gjeldende</li>
-              <li>Hvis ny versjon finnes, last ned og oppdater i HMS Nova</li>
-              <li>Hvis SDS er uendret, marker som sjekket i HMS Nova</li>
+              <li>If a new version is available, download and update in HSEQ Nova</li>
+              <li>If the SDS is unchanged, mark as checked in HSEQ Nova</li>
             </ol>
 
             <p>
-              <a href="https://hmsnova.no/dashboard/chemicals/${chemical.id}" 
+              <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://hseqnova.com"}/dashboard/chemicals/${chemical.id}" 
                  style="display:inline-block;padding:12px 24px;background:#0066CC;color:white;text-decoration:none;border-radius:6px;">
                 Gå til kjemikalie
               </a>

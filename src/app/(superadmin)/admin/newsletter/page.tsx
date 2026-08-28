@@ -15,7 +15,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, Loader2, Users, Send, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 
 interface BlogPost {
@@ -49,7 +49,6 @@ export default function AdminNewsletterPage() {
     try {
       setIsLoading(true);
       
-      // Fetch published posts
       const postsRes = await fetch("/api/admin/blog");
       if (postsRes.ok) {
         const allPosts = await postsRes.json();
@@ -57,7 +56,6 @@ export default function AdminNewsletterPage() {
         setPosts(publishedPosts);
       }
 
-      // Fetch newsletter stats
       const statsRes = await fetch("/api/admin/newsletter/send");
       if (statsRes.ok) {
         const statsData = await statsRes.json();
@@ -81,14 +79,14 @@ export default function AdminNewsletterPage() {
   const handleSendNewsletter = async () => {
     if (selectedPosts.length === 0) {
       toast({
-        title: "Ingen artikler valgt",
-        description: "Velg minst én artikkel å sende",
+        title: "No articles selected",
+        description: "Select at least one article to send",
         variant: "destructive",
       });
       return;
     }
 
-    if (!confirm(`Send nyhetsbrev med ${selectedPosts.length} artikkel(er) til ${stats?.totalSubscribers || 0} abonnenter?`)) {
+    if (!confirm(`Send newsletter with ${selectedPosts.length} article(s) to ${stats?.totalSubscribers || 0} subscribers?`)) {
       return;
     }
 
@@ -108,17 +106,17 @@ export default function AdminNewsletterPage() {
       const result = await res.json();
 
       toast({
-        title: "Nyhetsbrev sendt!",
-        description: `${result.successCount} e-poster sendt til abonnenter`,
+        title: "Newsletter sent!",
+        description: `${result.successCount} emails sent to subscribers`,
       });
 
       setSelectedPosts([]);
-      fetchData(); // Refresh stats
+      fetchData();
     } catch (error) {
       console.error("Error sending newsletter:", error);
       toast({
-        title: "Feil!",
-        description: "Kunne ikke sende nyhetsbrev",
+        title: "Error!",
+        description: "Could not send newsletter",
         variant: "destructive",
       });
     } finally {
@@ -130,7 +128,7 @@ export default function AdminNewsletterPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-4 text-lg">Laster...</p>
+        <p className="ml-4 text-lg">Loading...</p>
       </div>
     );
   }
@@ -139,9 +137,9 @@ export default function AdminNewsletterPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold">Nyhetsbrev</h1>
+          <h1 className="text-3xl font-bold">Newsletter</h1>
           <p className="text-muted-foreground mt-2">
-            Send blogg-artikler til alle som har meldt seg på nyhetsbrev
+            Send blog articles to all newsletter subscribers
           </p>
         </div>
         <Button
@@ -154,7 +152,7 @@ export default function AdminNewsletterPage() {
           ) : (
             <Send className="mr-2 h-4 w-4" />
           )}
-          Send nyhetsbrev ({selectedPosts.length})
+          Send newsletter ({selectedPosts.length})
         </Button>
       </div>
 
@@ -162,45 +160,45 @@ export default function AdminNewsletterPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Totalt abonnenter</CardTitle>
+            <CardTitle className="text-sm font-medium">Total subscribers</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalSubscribers || 0}</div>
             <p className="text-xs text-muted-foreground">
-              Aktive nyhetsbrev-abonnenter
+              Active newsletter subscribers
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Siste utsendelse</CardTitle>
+            <CardTitle className="text-sm font-medium">Last sent</CardTitle>
             <Mail className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {stats?.lastSentAt
-                ? format(new Date(stats.lastSentAt), "dd.MM.yyyy", { locale: nb })
-                : "Aldri"}
+                ? format(new Date(stats.lastSentAt), "dd/MM/yyyy", { locale: enGB })
+                : "Never"}
             </div>
             <p className="text-xs text-muted-foreground">
               {stats?.lastSentAt
-                ? format(new Date(stats.lastSentAt), "HH:mm", { locale: nb })
-                : "Ingen nyhetsbrev sendt ennå"}
+                ? format(new Date(stats.lastSentAt), "HH:mm", { locale: enGB })
+                : "No newsletters sent yet"}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Valgte artikler</CardTitle>
+            <CardTitle className="text-sm font-medium">Selected articles</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{selectedPosts.length}</div>
             <p className="text-xs text-muted-foreground">
-              Artikler i neste utsendelse
+              Articles in next dispatch
             </p>
           </CardContent>
         </Card>
@@ -209,18 +207,18 @@ export default function AdminNewsletterPage() {
       {/* Posts Selection */}
       <Card>
         <CardHeader>
-          <CardTitle>Velg artikler å sende</CardTitle>
+          <CardTitle>Select articles to send</CardTitle>
           <CardDescription>
-            Velg én eller flere publiserte artikler som skal sendes i nyhetsbrevet
+            Select one or more published articles to include in the newsletter
           </CardDescription>
         </CardHeader>
         <CardContent>
           {posts.length === 0 ? (
             <div className="text-center py-12">
               <Mail className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Ingen publiserte artikler</h3>
+              <h3 className="text-lg font-semibold mb-2">No published articles</h3>
               <p className="text-muted-foreground">
-                Publiser noen artikler før du sender nyhetsbrev
+                Publish some articles before sending a newsletter
               </p>
             </div>
           ) : (
@@ -239,9 +237,9 @@ export default function AdminNewsletterPage() {
                       }}
                     />
                   </TableHead>
-                  <TableHead>Tittel</TableHead>
-                  <TableHead>Sammendrag</TableHead>
-                  <TableHead>Publisert</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Summary</TableHead>
+                  <TableHead>Published</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -257,7 +255,7 @@ export default function AdminNewsletterPage() {
                       {post.title}
                       {post.coverImage && (
                         <Badge variant="secondary" className="ml-2">
-                          Bilde
+                          Image
                         </Badge>
                       )}
                     </TableCell>
@@ -266,8 +264,8 @@ export default function AdminNewsletterPage() {
                     </TableCell>
                     <TableCell>
                       {post.publishedAt
-                        ? format(new Date(post.publishedAt), "dd.MM.yyyy", { locale: nb })
-                        : "Ikke publisert"}
+                        ? format(new Date(post.publishedAt), "dd/MM/yyyy", { locale: enGB })
+                        : "Not published"}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -281,21 +279,21 @@ export default function AdminNewsletterPage() {
       {selectedPosts.length > 0 && (
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle>Forhåndsvisning</CardTitle>
+            <CardTitle>Preview</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <p className="text-sm">
-                <strong>Mottakere:</strong> {stats?.totalSubscribers || 0} abonnenter
+                <strong>Recipients:</strong> {stats?.totalSubscribers || 0} subscribers
               </p>
               <p className="text-sm">
-                <strong>Emne:</strong> HMS Nova: {posts.find((p) => p.id === selectedPosts[0])?.title}
+                <strong>Subject:</strong> HSEQ Nova: {posts.find((p) => p.id === selectedPosts[0])?.title}
               </p>
               <p className="text-sm">
-                <strong>Artikler:</strong> {selectedPosts.length} stk
+                <strong>Articles:</strong> {selectedPosts.length}
               </p>
               <p className="text-xs text-muted-foreground mt-4">
-                💡 Tips: Nyhetsbrevet vil inneholde sammendrag av artiklene med link til full artikkel på nettsiden
+                Tip: The newsletter will contain article summaries with links to the full articles on the website.
               </p>
             </div>
           </CardContent>
@@ -304,4 +302,3 @@ export default function AdminNewsletterPage() {
     </div>
   );
 }
-

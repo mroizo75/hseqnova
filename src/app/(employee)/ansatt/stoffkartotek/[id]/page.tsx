@@ -17,7 +17,7 @@ export default async function AnsattChemicalDetailPage({ params }: { params: Pro
   const session = await getServerSession(authOptions);
   const t = await getTranslations("employeeChemicalDetailPage");
   const locale = await getLocale();
-  const dateLocale = locale === "en" ? "en-US" : "nb-NO";
+  const dateLocale = "en-GB";
 
   if (!session?.user?.tenantId) {
     redirect("/login");

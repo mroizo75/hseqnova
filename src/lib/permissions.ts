@@ -1,5 +1,5 @@
 /**
- * Sentralisert tilgangskontroll for HMS Nova 2.0
+ * Centralised access control for HSEQ Nova 2.0
  * 
  * Dette definerer hva hver rolle kan gjøre i systemet
  */

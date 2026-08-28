@@ -1,11 +1,10 @@
 /**
  * Additional SEO Schemas for specific pages
- * Ekstra strukturerte data for priser, kurs, BHT, etc.
+ * Extra structured data for pricing, courses, occupational health, etc.
  */
 
 import { SITE_CONFIG } from "./seo-config";
 
-// Pricing Schema for HMS Nova – én pakke 12 mnd binding
 export const PRICING_SCHEMA = {
   "@context": "https://schema.org",
   "@type": "ItemList",
@@ -15,14 +14,14 @@ export const PRICING_SCHEMA = {
     {
       "@type": "Offer",
       position: 1,
-      name: "12 mnd binding",
-      description: "HMS Nova – full tilgang, 12 måneders abonnement",
+      name: "Annual subscription",
+      description: "HSEQ Nova – full access, 12-month subscription",
       price: "Ask",
       priceCurrency: "GBP",
       priceSpecification: {
         "@type": "UnitPriceSpecification",
-        price: "300",
-        priceCurrency: "NOK",
+        price: "249",
+        priceCurrency: "GBP",
         unitText: "MONTH",
       },
       seller: {
@@ -31,28 +30,27 @@ export const PRICING_SCHEMA = {
       },
       itemOffered: {
         "@type": "Service",
-        name: "HMS Nova - 12 mnd binding",
-        description: "Komplett HMS-system med ubegrenset brukere. 3 600 kr/år.",
+        name: "HSEQ Nova - Annual subscription",
+        description: "Complete HSEQ management system with unlimited users. £2,988/year.",
       },
     },
   ],
 } as const;
 
-// Course Schema for HMS-kurs
 export const COURSE_SCHEMA = {
   "@context": "https://schema.org",
   "@type": "ItemList",
-  name: "HMS-kurs og Førstehjelp",
-  description: "20% rabatt på alle HMS-kurs for HMS Nova-medlemmer",
+  name: "HSEQ courses and First Aid",
+  description: "20% discount on all HSEQ courses for HSEQ Nova members",
   itemListElement: [
     {
       "@type": "Course",
       position: 1,
-      name: "Verneombudkurs",
-      description: "Lovpålagt 40-timers verneombudkurs",
+      name: "Safety Representative Course",
+      description: "Statutory safety representative training course",
       provider: {
         "@type": "Organization",
-        name: "HMS Nova AS",
+        name: "HSEQ Nova",
       },
       hasCourseInstance: {
         "@type": "CourseInstance",
@@ -63,11 +61,11 @@ export const COURSE_SCHEMA = {
     {
       "@type": "Course",
       position: 2,
-      name: "Førstehjelp for voksne",
-      description: "Grunnleggende førstehjelp med sertifikat",
+      name: "First Aid for Adults",
+      description: "Essential first aid course with certificate",
       provider: {
         "@type": "Organization",
-        name: "HMS Nova AS",
+        name: "HSEQ Nova",
       },
       hasCourseInstance: {
         "@type": "CourseInstance",
@@ -78,11 +76,11 @@ export const COURSE_SCHEMA = {
     {
       "@type": "Course",
       position: 3,
-      name: "Førstehjelp for barn",
-      description: "Førstehjelp spesielt tilpasset barn",
+      name: "Paediatric First Aid",
+      description: "First aid specifically adapted for children",
       provider: {
         "@type": "Organization",
-        name: "HMS Nova AS",
+        name: "HSEQ Nova",
       },
       hasCourseInstance: {
         "@type": "CourseInstance",
@@ -93,71 +91,67 @@ export const COURSE_SCHEMA = {
   ],
 } as const;
 
-// BHT Service Schema
 export const BHT_SERVICE_SCHEMA = {
   "@context": "https://schema.org",
   "@type": "Service",
-  name: "Bedriftshelsetjeneste (BHT)",
-  description: "HMS Nova etablerer seg som godkjent bedriftshelsetjeneste. Minimum lovkrav, tilleggstjenester og bredt kursutbud inkludert Diisocyanater.",
+  name: "Occupational Health Service",
+  description: "HSEQ Nova provides occupational health services. Minimum statutory requirements, additional services and a broad range of courses including Diisocyanates.",
   provider: {
     "@type": "Organization",
     name: SITE_CONFIG.name,
   },
-  serviceType: "Bedriftshelsetjeneste",
+  serviceType: "Occupational Health",
   areaServed: {
     "@type": "Country",
     name: "United Kingdom",
   },
   offers: {
     "@type": "Offer",
-    description: "Grunnpakke BHT og tilleggstjenester. Kontakt for tilbud.",
+    description: "Core occupational health package and additional services. Contact for a quote.",
   },
 } as const;
 
-// How-To Schema for Gratis HMS-pakke
 export const GRATIS_HMS_HOWTO_SCHEMA = {
   "@context": "https://schema.org",
   "@type": "HowTo",
-  name: "Slik får du gratis HMS-pakke",
-  description: "Få komplett HMS-håndbok og dokumenter gratis på 5 minutter",
+  name: "How to get a free HSEQ starter pack",
+  description: "Get a complete health and safety policy and documents free in 5 minutes",
   totalTime: "PT5M",
   step: [
     {
       "@type": "HowToStep",
       position: 1,
-      name: "Oppgi bedriftsinformasjon",
-      text: "Fyll inn grunnleggende informasjon om din bedrift",
+      name: "Enter company information",
+      text: "Fill in basic information about your organisation",
     },
     {
       "@type": "HowToStep",
       position: 2,
-      name: "Velg bransje",
-      text: "Velg din bransje for bransjespesifikke dokumenter",
+      name: "Select industry",
+      text: "Select your industry for sector-specific documents",
     },
     {
       "@type": "HowToStep",
       position: 3,
-      name: "Last ned pakken",
-      text: "Last ned komplett HMS-pakke med håndbok, risikovurdering og maler",
+      name: "Download the pack",
+      text: "Download a complete HSEQ pack with policy, risk assessment and templates",
     },
   ],
 } as const;
 
-// Review Schema — bør oppdateres med ekte kundeanmeldelser når de er tilgjengelige
 export const REVIEW_SCHEMA = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "HMS Nova",
+  name: "HSEQ Nova",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   offers: {
     "@type": "Offer",
-    price: "300",
-    priceCurrency: "NOK",
+    price: "249",
+    priceCurrency: "GBP",
   },
 } as const;
 
-// LocalBusiness schema — hovedkontor Sylling (flyttes til Lierbyen senere)
 export const LOCAL_BUSINESS_SCHEMA = {
   "@context": "https://schema.org",
   "@type": "LocalBusiness",
@@ -169,66 +163,29 @@ export const LOCAL_BUSINESS_SCHEMA = {
   email: SITE_CONFIG.contactEmail,
   address: {
     "@type": "PostalAddress",
-    streetAddress: "Baneveien 290",
-    addressLocality: "Sylling",
-    postalCode: "3410",
-    addressRegion: "Lier",
-    addressCountry: "NO",
+    streetAddress: "71-75 Shelton Street",
+    addressLocality: "London",
+    postalCode: "WC2H 9JQ",
+    addressRegion: "Greater London",
+    addressCountry: "GB",
   },
   geo: {
     "@type": "GeoCoordinates",
-    latitude: 59.7744,
-    longitude: 10.2603,
+    latitude: 51.5154,
+    longitude: -0.1255,
   },
   openingHoursSpecification: {
     "@type": "OpeningHoursSpecification",
     dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-    opens: "08:00",
-    closes: "16:00",
+    opens: "09:00",
+    closes: "17:00",
   },
   sameAs: [
     SITE_CONFIG.socialMedia.linkedin,
     SITE_CONFIG.socialMedia.facebook,
   ],
-  location: [
-    {
-      "@type": "Place",
-      name: "HMS Nova - Lier/Sylling",
-      address: {
-        "@type": "PostalAddress",
-        streetAddress: "Baneveien 290",
-        addressLocality: "Sylling",
-        postalCode: "3410",
-        addressRegion: "Lier",
-        addressCountry: "NO",
-      },
-      geo: {
-        "@type": "GeoCoordinates",
-        latitude: 59.7744,
-        longitude: 10.2603,
-      },
-    },
-    {
-      "@type": "Place",
-      name: "HMS Nova - Ringsaker",
-      address: {
-        "@type": "PostalAddress",
-        streetAddress: "Næringsparkvegen 50",
-        addressLocality: "Ingeberg",
-        postalCode: "2323",
-        addressRegion: "Ringsaker",
-        addressCountry: "NO",
-      },
-      geo: {
-        "@type": "GeoCoordinates",
-        latitude: 60.8206,
-        longitude: 10.9946,
-      },
-    },
-  ],
 } as const;
 
-// WebSite schema
 export const WEBSITE_SCHEMA = {
   "@context": "https://schema.org",
   "@type": "WebSite",
@@ -240,6 +197,5 @@ export const WEBSITE_SCHEMA = {
     name: SITE_CONFIG.name,
     url: SITE_CONFIG.url,
   },
-  inLanguage: "nb",
+  inLanguage: "en-GB",
 } as const;
-

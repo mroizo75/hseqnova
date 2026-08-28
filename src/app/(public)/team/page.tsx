@@ -7,11 +7,11 @@ import { ArrowRight, Users } from "lucide-react";
 import { getAllTeamMembers } from "@/lib/team";
 
 export const metadata: Metadata = {
-  title: "Vårt team | HMS Nova",
-  description: "Møt teamet bak HMS Nova – HMS-eksperter, salg og HMS leder som hjelper norske bedrifter med trygghet og kvalitet.",
+  title: "Our Team | HSEQ Nova",
+  description: "Meet the team behind HSEQ Nova – HSEQ experts, sales and health & safety leaders helping UK businesses with safety and quality.",
   openGraph: {
-    title: "Vårt team | HMS Nova",
-    description: "Møt teamet bak HMS Nova – HMS-eksperter, salg og HMS leder.",
+    title: "Our Team | HSEQ Nova",
+    description: "Meet the team behind HSEQ Nova – HSEQ experts, sales and health & safety leaders.",
   },
 };
 
@@ -22,9 +22,9 @@ export default function TeamPage() {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       <section className="container mx-auto px-4 py-20">
         <div className="max-w-4xl mx-auto mb-16 text-center">
-          <h1 className="text-4xl font-bold mb-4">Vårt team</h1>
+          <h1 className="text-4xl font-bold mb-4">Our Team</h1>
           <p className="text-xl text-muted-foreground">
-            Vi som jobber med HMS Nova – fra produkt og salg til HMS-ledelse og opplæring.
+            The people behind HSEQ Nova – from product and sales to health & safety leadership and training.
           </p>
         </div>
 
@@ -57,7 +57,7 @@ export default function TeamPage() {
                   href={`/forfatter/${member.slug}`}
                   className="inline-flex items-center gap-2 text-primary font-medium text-sm hover:underline"
                 >
-                  Se profil
+                  View profile
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </CardContent>
@@ -69,15 +69,15 @@ export default function TeamPage() {
           <Card className="bg-primary/5 border-primary/20">
             <CardContent className="p-8">
               <Users className="h-12 w-12 text-primary mx-auto mb-4" />
-              <h2 className="text-xl font-bold mb-2">Trenger dere HMS-hjelp?</h2>
+              <h2 className="text-xl font-bold mb-2">Need health & safety support?</h2>
               <p className="text-muted-foreground mb-6">
-                Ta kontakt med teamet for en uforpliktende samtale om HMS Nova, kurs eller bedriftshelsetjeneste.
+                Get in touch with our team for a no-obligation chat about HSEQ Nova, training or occupational health.
               </p>
               <Link
-                href="/registrer-bedrift"
+                href="/register"
                 className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
-                Kom i gang gratis
+                Get started free
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </CardContent>

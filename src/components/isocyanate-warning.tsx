@@ -1,12 +1,11 @@
 "use client";
 
-import { AlertTriangle, GraduationCap, Mail, Phone } from "lucide-react";
+import { AlertTriangle, GraduationCap, Mail } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { RingMegDialog } from "@/components/ring-meg-dialog";
 
-const SUPPORT_EMAIL = "post@hmsnova.no";
+const SUPPORT_EMAIL = "support@hseqnova.com";
 const COURSE_EMAIL_SUBJECT = "Diisocyanate training — enquiry";
 
 interface IsocyanateWarningProps {
@@ -44,14 +43,6 @@ export function IsocyanateWarning({ details }: IsocyanateWarningProps) {
                 Contact HSEQ Nova about training
               </a>
             </Button>
-            <RingMegDialog
-              trigger={
-                <Button size="sm" variant="outline">
-                  <Phone className="mr-2 h-4 w-4" />
-                  Request a call about training
-                </Button>
-              }
-            />
             <Link href="/dashboard/training" target="_blank">
               <Button size="sm" variant="outline">
                 Check employee training

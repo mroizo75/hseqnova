@@ -7,19 +7,31 @@ import {
   RiskTrend,
 } from "@prisma/client";
 
+/** Prisma cuid, createId() (c + hex) and UUID user ids from auth. */
+export const recordIdSchema = z
+  .string()
+  .min(8, "Invalid id")
+  .max(36, "Invalid id")
+  .regex(/^[A-Za-z0-9_-]+$/, "Invalid id");
+
+const optionalRecordId = z.preprocess(
+  (value) => (value === "" || value === undefined ? null : value),
+  recordIdSchema.nullable().optional(),
+);
+
 /**
- * Schema for creating a new risk assessment
- * Likelihood (1-5) x Consequence (1-5) = Risk Score (1-25)
+ * Workplace risk item (MHSWR 1999 / HSE INDG163).
+ * Likelihood (1-5) × severity (1-5) = score (1-25). The matrix is practice, not a legal duty.
  */
 export const createRiskSchema = z.object({
-  tenantId: z.string().cuid(),
-  title: z.string().min(3, "Tittel må være minst 3 tegn"),
-  context: z.string().min(10, "Beskrivelse må være minst 10 tegn"),
+  tenantId: recordIdSchema,
+  title: z.string().min(3, "Hazard must be at least 3 characters"),
+  context: z.string().min(10, "Say who might be harmed and how"),
   likelihood: z.number().int().min(1).max(5),
   consequence: z.number().int().min(1).max(5),
-  ownerId: z.string().cuid(),
+  ownerId: recordIdSchema,
   status: z.nativeEnum(RiskStatus).default("OPEN"),
-  category: z.nativeEnum(RiskCategory).default("OPERATIONAL"),
+  category: z.nativeEnum(RiskCategory).default("SAFETY"),
   location: z.string().max(120).optional().nullable(),
   area: z.string().max(120).optional().nullable(),
   description: z.string().max(2000).optional().nullable(),
@@ -29,25 +41,25 @@ export const createRiskSchema = z.object({
   residualLikelihood: z.number().int().min(1).max(5).optional().nullable(),
   residualConsequence: z.number().int().min(1).max(5).optional().nullable(),
   nextReviewDate: z.date().optional().nullable(),
-  kpiId: z.string().cuid().optional().nullable(),
-  inspectionTemplateId: z.string().cuid().optional().nullable(),
+  kpiId: optionalRecordId,
+  inspectionTemplateId: optionalRecordId,
   linkedProcess: z.string().max(200).optional().nullable(),
   riskAppetite: z.string().max(500).optional().nullable(),
   riskTolerance: z.string().max(500).optional().nullable(),
   responseStrategy: z.nativeEnum(RiskResponseStrategy).default("REDUCE"),
   trend: z.nativeEnum(RiskTrend).default("STABLE"),
   reviewedAt: z.date().optional().nullable(),
-  riskAssessmentId: z.string().cuid().optional().nullable(),
+  riskAssessmentId: optionalRecordId,
   assessmentDate: z.date().optional().nullable(),
 });
 
 export const updateRiskSchema = z.object({
-  id: z.string().cuid(),
+  id: recordIdSchema,
   title: z.string().min(3).optional(),
   context: z.string().min(10).optional(),
   likelihood: z.number().int().min(1).max(5).optional(),
   consequence: z.number().int().min(1).max(5).optional(),
-  ownerId: z.string().cuid().optional(),
+  ownerId: recordIdSchema.optional(),
   status: z.nativeEnum(RiskStatus).optional(),
   category: z.nativeEnum(RiskCategory).optional(),
   location: z.string().max(120).optional().nullable(),
@@ -59,22 +71,22 @@ export const updateRiskSchema = z.object({
   residualLikelihood: z.number().int().min(1).max(5).optional().nullable(),
   residualConsequence: z.number().int().min(1).max(5).optional().nullable(),
   nextReviewDate: z.date().optional().nullable(),
-  kpiId: z.string().cuid().optional().nullable(),
-  inspectionTemplateId: z.string().cuid().optional().nullable(),
+  kpiId: optionalRecordId,
+  inspectionTemplateId: optionalRecordId,
   linkedProcess: z.string().max(200).optional().nullable(),
   riskAppetite: z.string().max(500).optional().nullable(),
   riskTolerance: z.string().max(500).optional().nullable(),
   responseStrategy: z.nativeEnum(RiskResponseStrategy).optional(),
   trend: z.nativeEnum(RiskTrend).optional(),
   reviewedAt: z.date().optional().nullable(),
-  riskAssessmentId: z.string().cuid().optional().nullable(),
+  riskAssessmentId: optionalRecordId,
   assessmentDate: z.date().optional().nullable(),
 });
 
 /** Create a documented risk assessment (MHSWR 1999). */
 export const createRiskAssessmentSchema = z.object({
-  tenantId: z.string().cuid(),
-  projectId: z.string().cuid().optional().nullable(),
+  tenantId: recordIdSchema,
+  projectId: optionalRecordId,
   title: z.string().min(3, "Title must be at least 3 characters"),
   assessmentYear: z.number().int().min(2000).max(2100),
   // SRSCWR 1977 / HSCER 1996: consult employees and safety representatives
@@ -83,12 +95,12 @@ export const createRiskAssessmentSchema = z.object({
 
 // MHSWR 1999 review; ISO 45001 6.1 / 9.3 management review of the assessment
 export const updateRiskAssessmentSchema = z.object({
-  id: z.string().cuid(),
+  id: recordIdSchema,
   title: z.string().trim().min(3, "Title must be at least 3 characters").max(200).optional(),
   participants: z.string().optional(),
-  approvedById: z.string().cuid().optional().nullable(),
+  approvedById: optionalRecordId,
   approvedAt: z.coerce.date().optional().nullable(),
-  reviewedById: z.string().cuid().optional().nullable(),
+  reviewedById: optionalRecordId,
   reviewedAt: z.coerce.date().optional().nullable(),
 });
 

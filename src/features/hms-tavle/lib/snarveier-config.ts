@@ -6,7 +6,7 @@
  *  - label: vises på knappen
  *  - icon: Lucide-ikonnavn
  *  - color: Tailwind bg-farge for knappen
- *  - hmsFunksjon: intern HMS Nova-sti (brukes automatisk for ADDON-plan)
+ *  - hmsFunksjon: internal HSEQ Nova path (used automatically for ADDON plan)
  *  - lovRef: valgfri paragraf-referanse som vises under knappen
  */
 
@@ -16,7 +16,7 @@ export interface SnarveiDefinisjon {
   icon: string;
   color: string;        // Tailwind bg-klasse
   textColor: string;    // Tailwind text-klasse
-  hmsFunksjon: string;  // relativ sti i HMS Nova: /dashboard/...
+  hmsFunksjon: string;  // relative path in HSEQ Nova: /dashboard/...
   lovRef?: string;
 }
 
@@ -132,7 +132,7 @@ export const ALLE_SNARVEIER: SnarveiDefinisjon[] = [
 export interface SnarveiConfig {
   id: string;
   isVisible: boolean;
-  externalUrl?: string;   // Overstyrer HMS Nova-lenke for standalone/egne systemer
+  externalUrl?: string;   // Overrides HSEQ Nova link for standalone/own systems
   customLabel?: string;   // Valgfritt egendefinert navn
 }
 

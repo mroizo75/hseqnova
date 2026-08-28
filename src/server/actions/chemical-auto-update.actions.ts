@@ -350,7 +350,7 @@ async function sendWeeklyReport(
       userId: user.id,
       type: "CHEMICAL_SDS_REVIEW",
       title: `📊 Ukentlig SDS-rapport: ${updated} oppdateringer`,
-      message: `HMS Nova har sjekket ${checked} kjemikalier og oppdatert ${updated} sikkerhetsdatablad automatisk.`,
+      message: `HSEQ Nova checked ${checked} chemicals and automatically updated ${updated} safety data sheets.`,
       link: `/dashboard/chemicals`,
     });
   }

@@ -16,9 +16,9 @@ export function EmailSettingsForm() {
 
   const currentSettings = {
     resendApiKey: process.env.RESEND_API_KEY || "re_***************",
-    fromEmail: "noreply@hmsnova.com",
-    fromName: "HMS Nova",
-    replyToEmail: "support@hmsnova.com",
+    fromEmail: "noreply@hseqnova.com",
+    fromName: "HSEQ Nova",
+    replyToEmail: "support@hseqnova.com",
   };
 
   const isConfigured = !!process.env.RESEND_API_KEY;

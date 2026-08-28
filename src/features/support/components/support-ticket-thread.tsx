@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 import { Loader2, Send } from "lucide-react";
 import type {
   SupportSenderType,
@@ -206,12 +206,12 @@ export function SupportTicketThread({
                   <div className="mb-1 flex items-center gap-2 text-[11px] opacity-80">
                     <span className="font-medium">
                       {msg.sender.name || msg.sender.email}
-                      {isSupport ? " · HMS Nova" : ""}
+                      {isSupport ? " · HSEQ Nova" : ""}
                     </span>
                     {msg.isInternal && <Badge variant="outline">Intern</Badge>}
                     <span>
                       {format(new Date(msg.createdAt), "dd.MM.yyyy HH:mm", {
-                        locale: nb,
+                        locale: enGB,
                       })}
                     </span>
                   </div>

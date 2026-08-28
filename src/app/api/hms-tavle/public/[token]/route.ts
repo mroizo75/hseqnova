@@ -62,7 +62,7 @@ export async function GET(
     const harTillitspanel = tavle.sections.some((s) => s.type === "GJESTESERVICE_STATUS");
     const guestStats = harTillitspanel ? await getGuestServiceStats(tavle.id) : null;
 
-    // Live HMS Nova-data er forbeholdt planer med full integrasjon
+    // Live HSEQ Nova data is reserved for plans with full integration
     const liveData =
       getPlanLimits(subscription.plan).hasLiveHmsNovaData
         ? await getTavleLiveData({

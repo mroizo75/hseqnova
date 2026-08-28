@@ -39,10 +39,10 @@ export default function ForgotPasswordPage() {
       if (response.ok) {
         setSuccess(true);
       } else {
-        setError(data.error || "Noe gikk galt. Prøv igjen.");
+        setError(data.error || "Something went wrong. Please try again.");
       }
     } catch (err) {
-      setError("Kunne ikke sende forespørsel. Sjekk internettforbindelsen.");
+      setError("Could not send request. Check your internet connection.");
     } finally {
       setLoading(false);
     }
@@ -56,28 +56,27 @@ export default function ForgotPasswordPage() {
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
               <CheckCircle2 className="h-6 w-6 text-green-600" />
             </div>
-            <CardTitle className="text-2xl font-bold">Sjekk e-posten din</CardTitle>
+            <CardTitle className="text-2xl font-bold">Check your email</CardTitle>
             <CardDescription>
-              Hvis e-postadressen er registrert i systemet, har vi sendt deg en
-              lenke for å tilbakestille passordet.
+              If the email address is registered, we have sent you a link to reset your password.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-lg bg-muted p-4 text-sm">
-              <p className="mb-2 font-medium">Neste steg:</p>
+              <p className="mb-2 font-medium">Next steps:</p>
               <ul className="list-inside list-disc space-y-1 text-muted-foreground">
-                <li>Sjekk innboksen din</li>
-                <li>Klikk på lenken i e-posten</li>
-                <li>Opprett et nytt passord</li>
+                <li>Check your inbox</li>
+                <li>Click the link in the email</li>
+                <li>Create a new password</li>
               </ul>
             </div>
             <p className="text-center text-sm text-muted-foreground">
-              Lenken utløper om 1 time av sikkerhetsgrunner.
+              The link expires in 1 hour for security reasons.
             </p>
             <Link href="/login">
               <Button variant="outline" className="w-full">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Tilbake til pålogging
+                Back to login
               </Button>
             </Link>
           </CardContent>
@@ -90,22 +89,21 @@ export default function ForgotPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-secondary p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Glemt passord?</CardTitle>
+          <CardTitle className="text-2xl font-bold">Forgot password?</CardTitle>
           <CardDescription>
-            Oppgi e-postadressen din, så sender vi deg en lenke for å
-            tilbakestille passordet.
+            Enter your email address and we&apos;ll send you a link to reset your password.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">E-postadresse</Label>
+              <Label htmlFor="email">Email address</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="din@epost.no"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -122,7 +120,7 @@ export default function ForgotPasswordPage() {
             )}
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Sender..." : "Send tilbakestillingslenke"}
+              {loading ? "Sending..." : "Send reset link"}
             </Button>
 
             <div className="text-center">
@@ -131,17 +129,17 @@ export default function ForgotPasswordPage() {
                 className="text-sm text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="mr-1 inline h-3 w-3" />
-                Tilbake til pålogging
+                Back to login
               </Link>
             </div>
           </form>
 
           <div className="mt-6 rounded-lg bg-muted p-4 text-sm">
-            <p className="mb-2 font-medium">Sikkerhetstips:</p>
+            <p className="mb-2 font-medium">Security tips:</p>
             <ul className="list-inside list-disc space-y-1 text-muted-foreground">
-              <li>Lenken utløper etter 1 time</li>
-              <li>Hver lenke kan bare brukes én gang</li>
-              <li>Hvis du ikke ba om dette, ignorer e-posten</li>
+              <li>The link expires after 1 hour</li>
+              <li>Each link can only be used once</li>
+              <li>If you did not request this, ignore the email</li>
             </ul>
           </div>
         </CardContent>

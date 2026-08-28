@@ -17,6 +17,8 @@ import {
   loadRiskSession,
   loadRisksForList,
 } from "@/server/queries/risks.queries";
+import { IndustryRiskStarter } from "@/features/risks/components/industry-risk-starter";
+import { getAdminDb } from "@/lib/supabase/admin";
 
 export default async function RisksPage() {
   const t = await getTranslations("dashboardRisksPage");
@@ -38,6 +40,14 @@ export default async function RisksPage() {
     loadRiskAssessmentsForList(context.tenantId),
     loadRisksForList(context.tenantId),
   ]);
+
+  const { data: tenant } = await getAdminDb()
+    .from("Tenant")
+    .select("industry")
+    .eq("id", context.tenantId)
+    .maybeSingle();
+
+  const showStarter = risks.length === 0 && permissions.canCreateRisks;
 
   const getActiveScore = (risk: (typeof risks)[number]) => risk.residualScore ?? risk.score;
   const risksImprovedCount = risks.filter(
@@ -66,115 +76,131 @@ export default async function RisksPage() {
           </div>
           <PageHelpDialog content={helpContent.risks} />
         </div>
-        <Button asChild>
-          <Link href="/dashboard/risks/new">
-            <Plus className="mr-2 h-4 w-4" />
-            {t("actions.newRisk")}
-          </Link>
-        </Button>
+        {showStarter ? null : (
+          <Button asChild>
+            <Link href="/dashboard/risks/new">
+              <Plus className="mr-2 h-4 w-4" />
+              {t("actions.newRisk")}
+            </Link>
+          </Button>
+        )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("stats.totalRiskPoints.title")}</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">{t("stats.totalRiskPoints.description")}</p>
-          </CardContent>
-        </Card>
+      {showStarter ? (
+        <div className="space-y-4">
+          <IndustryRiskStarter initialIndustry={(tenant?.industry as string | null) ?? null} />
+          <p className="text-center text-sm text-muted-foreground">
+            Prefer a blank document?{" "}
+            <Link href="/dashboard/risks/new" className="font-medium text-primary hover:underline">
+              Start from scratch
+            </Link>
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{t("stats.totalRiskPoints.title")}</CardTitle>
+                <Shield className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.total}</div>
+                <p className="text-xs text-muted-foreground">{t("stats.totalRiskPoints.description")}</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("stats.criticalHigh.title")}</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {stats.critical + stats.high}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t("stats.criticalHigh.description", { critical: stats.critical, high: stats.high })}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{t("stats.criticalHigh.title")}</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  {stats.critical + stats.high}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t("stats.criticalHigh.description", { critical: stats.critical, high: stats.high })}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{t("stats.open.title")}</CardTitle>
+                <Clock className="h-4 w-4 text-orange-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.open}</div>
+                <p className="text-xs text-muted-foreground">{t("stats.open.description")}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{t("stats.improved.title")}</CardTitle>
+                <CheckCircle className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{risksImprovedCount}</div>
+                <p className="text-xs text-muted-foreground">{t("stats.improved.description")}</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {riskAssessments.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  {t("annualAssessments.title")}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {t("annualAssessments.description")}
+                </p>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {riskAssessments.map((a) => (
+                    <li key={a.id}>
+                      <div className="flex items-center gap-2 rounded-md border p-3 hover:bg-muted/50">
+                        <Link
+                          href={`/dashboard/risks/assessment/${a.id}`}
+                          className="flex min-w-0 flex-1 items-center justify-between gap-3"
+                        >
+                          <span className="font-medium truncate">{a.title}</span>
+                          <span className="text-muted-foreground text-sm whitespace-nowrap">
+                            {t("annualAssessments.riskPoints", { count: a._count.risks })}
+                          </span>
+                        </Link>
+                        {canDeleteRiskAssessments && (
+                          <RiskAssessmentDeleteButton
+                            assessmentId={a.id}
+                            assessmentTitle={a.title}
+                          />
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            <RiskMatrix risks={risks} viewMode="initial" />
+            <RiskMatrix risks={risks} viewMode="residual" />
+          </div>
+
+          <div>
+            <h2 className="text-xl font-semibold mb-1">{t("registry.title")}</h2>
+            <p className="mb-4 text-sm text-muted-foreground">
+              {t("registry.description")}
             </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("stats.open.title")}</CardTitle>
-            <Clock className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.open}</div>
-            <p className="text-xs text-muted-foreground">{t("stats.open.description")}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("stats.improved.title")}</CardTitle>
-            <CheckCircle className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{risksImprovedCount}</div>
-            <p className="text-xs text-muted-foreground">{t("stats.improved.description")}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {riskAssessments.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              {t("annualAssessments.title")}
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {t("annualAssessments.description")}
-            </p>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {riskAssessments.map((a) => (
-                <li key={a.id}>
-                  <div className="flex items-center gap-2 rounded-md border p-3 hover:bg-muted/50">
-                    <Link
-                      href={`/dashboard/risks/assessment/${a.id}`}
-                      className="flex min-w-0 flex-1 items-center justify-between gap-3"
-                    >
-                      <span className="font-medium truncate">{a.title}</span>
-                      <span className="text-muted-foreground text-sm whitespace-nowrap">
-                        {t("annualAssessments.riskPoints", { count: a._count.risks })}
-                      </span>
-                    </Link>
-                    {canDeleteRiskAssessments && (
-                      <RiskAssessmentDeleteButton
-                        assessmentId={a.id}
-                        assessmentTitle={a.title}
-                      />
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+            <RiskList risks={risks} />
+          </div>
+        </>
       )}
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <RiskMatrix risks={risks} viewMode="initial" />
-        <RiskMatrix risks={risks} viewMode="residual" />
-      </div>
-
-      <div>
-        <h2 className="text-xl font-semibold mb-1">{t("registry.title")}</h2>
-        <p className="mb-4 text-sm text-muted-foreground">
-          {t("registry.description")}
-        </p>
-        <RiskList risks={risks} />
-      </div>
     </div>
   );
 }

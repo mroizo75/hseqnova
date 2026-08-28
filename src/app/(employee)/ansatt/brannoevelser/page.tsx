@@ -14,7 +14,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 import {
   FIRE_DRILL_TYPE_LABELS,
   type FireDrillStatus,
@@ -131,7 +131,7 @@ export default async function AnsattBrannoevelserPage() {
                           <div className="flex items-center gap-2">
                             <Calendar className="h-3.5 w-3.5 shrink-0" />
                             <span>
-                              {format(new Date(drill.plannedDate), "EEEE d. MMMM yyyy", { locale: nb })}
+                              {format(new Date(drill.plannedDate), "EEEE d. MMMM yyyy", { locale: enGB })}
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -187,7 +187,7 @@ export default async function AnsattBrannoevelserPage() {
                           <div className="flex items-center gap-2">
                             <Calendar className="h-3.5 w-3.5 shrink-0" />
                             <span>
-                              {format(new Date(drill.plannedDate), "d. MMMM yyyy", { locale: nb })}
+                              {format(new Date(drill.plannedDate), "d. MMMM yyyy", { locale: enGB })}
                             </span>
                           </div>
                           <div className="flex items-center gap-2">

@@ -51,7 +51,7 @@ export default async function DashboardLayout({
     isTavleOnly = Boolean(tenant?.isTavleOnly);
   }
 
-  // isTavleOnly-kunder: minimal layout uten full HMS Nova-meny
+  // isTavleOnly customers: minimal layout without full HSEQ Nova menu
   if (isTavleOnly) {
     return (
       <div className="flex min-h-dvh flex-col overflow-hidden bg-gray-50 lg:flex-row">

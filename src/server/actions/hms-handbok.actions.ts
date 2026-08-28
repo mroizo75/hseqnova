@@ -482,41 +482,10 @@ export async function getHandbookData(tenantId: string): Promise<{
 }
 
 async function getAnnualPlanProgress(
-  tenantId: string,
+  _tenantId: string,
 ): Promise<AnnualPlanProgress | null> {
-  try {
-    const { ANNUAL_HMS_PLAN_STEPS, getCategoryLabel } = await import(
-      "@/lib/annual-hms-plan-steps"
-    );
-    const currentYear = new Date().getFullYear();
-
-    const completionsRes = await getAdminDb()
-      .from("HmsAnnualPlanCompletion")
-      .select("stepKey, completedAt")
-      .eq("tenantId", tenantId)
-      .eq("year", currentYear);
-
-    const completions = completionsRes.data ?? [];
-
-    const completedMap = new Map(
-      completions.map((c) => [c.stepKey, c.completedAt]),
-    );
-
-    return {
-      year: currentYear,
-      totalSteps: ANNUAL_HMS_PLAN_STEPS.length,
-      completedSteps: completions.length,
-      steps: ANNUAL_HMS_PLAN_STEPS.map((step) => ({
-        key: step.key,
-        title: step.title,
-        category: getCategoryLabel(step.category),
-        completed: completedMap.has(step.key),
-        completedAt: completedMap.get(step.key)?.toISOString() ?? null,
-      })),
-    };
-  } catch {
-    return null;
-  }
+  // Annual H&S plan module removed from UK product
+  return null;
 }
 
 // ── Versjonskontroll ────────────────────────────────────────────────────────

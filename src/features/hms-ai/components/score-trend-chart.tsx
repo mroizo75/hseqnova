@@ -21,7 +21,7 @@ interface ScoreTrendChartProps {
 
 export function ScoreTrendChart({ data }: ScoreTrendChartProps) {
   const chartData = data.map((entry) => ({
-    dato: new Date(entry.scoreDate).toLocaleDateString("nb-NO", {
+    dato: new Date(entry.scoreDate).toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "short",
     }),

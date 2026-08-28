@@ -71,7 +71,7 @@ function checklistBlock(
 
 const commonTemplates: FormTemplateLibraryEntry[] = [
   {
-    title: "HMS-vernemøte (kort referat)",
+    title: "H&S committee meeting (brief minutes)",
     description:
       "Kort dokumentasjon av vernerunde eller HMS-møte. Internkontroll og medvirkning (AML kap. 7, IK-HMS).",
     category: "MEETING",
@@ -89,7 +89,7 @@ const commonTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Opplæringsbekreftelse",
+    title: "Training confirmation",
     description:
       "Enkel bekreftelse på gjennomført opplæring eller instruks. Dokumentasjonskrav ved risikoarbeid (AML § 3-2).",
     category: "TRAINING",
@@ -104,7 +104,7 @@ const commonTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Psykososial kartlegging (kort)",
+    title: "Psychosocial assessment (short)",
     description:
       "Lavterskel tilbakemelding om arbeidsmiljø og trivsel. Støtter systematisk HMS (AML § 4-3, ISO 45003).",
     category: "WELLBEING",
@@ -126,7 +126,7 @@ const commonTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Kundeklage (kort)",
+    title: "Customer complaint (short)",
     description:
       "Registrering av kundeklage for oppfølging og forbedring (ISO 10002, kundefokus i internkontroll).",
     category: "COMPLAINT",
@@ -141,7 +141,7 @@ const commonTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Elektrisk sikkerhet og el-kontroll (generell)",
+    title: "Electrical safety inspection (general)",
     description:
       "Periodisk sjekk av stikkontakter, kabler, jordfeilvarsel og orden. Nyttig ved tilsyn og spørsmål om elektro i blant annet helsevesen, handel, kontor og service (lavspenningsforskriften og internkontroll).",
     category: "CHECKLIST",
@@ -170,7 +170,7 @@ const commonTemplates: FormTemplateLibraryEntry[] = [
 
 const constructionTemplates: FormTemplateLibraryEntry[] = [
   {
-    title: "SJA før risikoarbeid (bygg)",
+    title: "RAMS before high-risk work (construction)",
     description:
       "Kort sikker jobb-analyse før arbeid med fall, løft, maskin eller trafikk på anlegg (byggherreforskriften, AML).",
     category: "CHECKLIST",
@@ -192,7 +192,7 @@ const constructionTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Stillas og fallsikring (byggplass)",
+    title: "Scaffolding and fall protection (site)",
     description: "Kontroll før eller under bruk av stillas og fallsikring på anlegg.",
     category: "CHECKLIST",
     industryScope: ["construction"],
@@ -210,7 +210,7 @@ const constructionTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Gravearbeid og undergrunn",
+    title: "Excavation and underground work",
     description: "Sjekk før graving med fare for kabler, grøfter og stabilitet.",
     category: "CHECKLIST",
     industryScope: ["construction"],
@@ -228,7 +228,7 @@ const constructionTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Midlertidig strøm og elektro (anlegg)",
+    title: "Temporary power and electrics (site)",
     description: "Kontroll av midlertidige el-anlegg og bruk på byggeplass.",
     category: "CHECKLIST",
     industryScope: ["construction"],
@@ -249,7 +249,7 @@ const constructionTemplates: FormTemplateLibraryEntry[] = [
 
 const healthcareTemplates: FormTemplateLibraryEntry[] = [
   {
-    title: "Nålestikk og blodeksponering",
+    title: "Sharps injury and blood exposure",
     description:
       "Hendelsesnotat ved stuck, skjæresår eller eksponering for biologisk materiale. Oppfølging og dokumentasjon.",
     category: "INCIDENT",
@@ -264,7 +264,7 @@ const healthcareTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Smittevernrunde (pasientnær)",
+    title: "Infection control round (patient-facing)",
     description: "Kontroll av smittevernrutiner, håndhygiene og vernutstyr.",
     category: "CHECKLIST",
     industryScope: ["healthcare"],
@@ -282,7 +282,7 @@ const healthcareTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Vold og trussel (hendelsesnotat)",
+    title: "Violence and threat (incident note)",
     description: "Dokumentasjon av trusler eller vold i arbeidssituasjon for risikovurdering og tiltak (AML § 4-3).",
     category: "INCIDENT",
     industryScope: ["healthcare"],
@@ -295,7 +295,7 @@ const healthcareTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Medikamenthåndtering (kontroll)",
+    title: "Medication management (control)",
     description: "Kontroll av oppbevaring, merking og rutiner for legemidler.",
     category: "CHECKLIST",
     industryScope: ["healthcare"],
@@ -315,7 +315,7 @@ const healthcareTemplates: FormTemplateLibraryEntry[] = [
 
 const manufacturingTemplates: FormTemplateLibraryEntry[] = [
   {
-    title: "LOTO før vedlikehold",
+    title: "LOTO before maintenance",
     description: "Låsing og merking før arbeid på maskin eller anlegg (maskinsikkerhet, stans av energi).",
     category: "CHECKLIST",
     industryScope: ["manufacturing"],
@@ -330,7 +330,7 @@ const manufacturingTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Maskinstopp og nødstopp",
+    title: "Machine stop and emergency stop",
     description: "Sjekk etter aktivering av nødstopp eller uventet stopp.",
     category: "CHECKLIST",
     industryScope: ["manufacturing"],
@@ -347,7 +347,7 @@ const manufacturingTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Kjemikaliespill (produksjon)",
+    title: "Chemical spill (production)",
     description: "Akutt håndtering av søl av farlig kjemikalie i produksjon eller lager.",
     category: "CHECKLIST",
     industryScope: ["manufacturing"],
@@ -362,7 +362,7 @@ const manufacturingTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Truck og kjøretøy (lager/produksjon)",
+    title: "Forklift and vehicles (warehouse/production)",
     description: "Daglig eller periodisk kontroll før bruk av truck i produksjon eller lager.",
     category: "CHECKLIST",
     industryScope: ["manufacturing"],
@@ -381,7 +381,7 @@ const manufacturingTemplates: FormTemplateLibraryEntry[] = [
 
 const retailTemplates: FormTemplateLibraryEntry[] = [
   {
-    title: "Butikkåpning sikkerhet",
+    title: "Store opening safety",
     description: "Sjekkliste ved åpning av butikk – sikkerhet, brann og orden.",
     category: "CHECKLIST",
     industryScope: ["retail"],
@@ -398,7 +398,7 @@ const retailTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Kasse og ranberedskap",
+    title: "Till and robbery preparedness",
     description: "Kort gjennomgang av rutiner ved kasse og trusler om ran.",
     category: "CHECKLIST",
     industryScope: ["retail"],
@@ -412,7 +412,7 @@ const retailTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Varemottak og trucksoner",
+    title: "Goods receiving and forklift zones",
     description: "Sikkerhet ved mottak, truck og kryssende trafikk i butikk/lager.",
     category: "CHECKLIST",
     industryScope: ["retail"],
@@ -429,7 +429,7 @@ const retailTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Renhold og kjemikalier (butikk)",
+    title: "Cleaning and chemicals (retail)",
     description: "Kontroll av renholdsmidler og sikker bruk i salgslokale.",
     category: "CHECKLIST",
     industryScope: ["retail"],
@@ -448,7 +448,7 @@ const retailTemplates: FormTemplateLibraryEntry[] = [
 
 const transportTemplates: FormTemplateLibraryEntry[] = [
   {
-    title: "Kjøretøykontroll før kjøring",
+    title: "Vehicle check before driving",
     description: "Før-kjøring sjekk for varebil, lastebil eller terminalkjøretøy.",
     category: "CHECKLIST",
     industryScope: ["transport"],
@@ -467,7 +467,7 @@ const transportTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Godssikring og lasting",
+    title: "Load securing",
     description: "Kontroll av lastsikring før transport (vekt, surring, tyngdepunkt).",
     category: "CHECKLIST",
     industryScope: ["transport"],
@@ -483,7 +483,7 @@ const transportTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Kjøre- og hviletid (selvvurdering)",
+    title: "Driving and rest hours (self-assessment)",
     description:
       "Kort egenkontroll av uthviling og plan før kjøring (kjøre- og hviletidsregler, arbeidstid).",
     category: "CHECKLIST",
@@ -496,7 +496,7 @@ const transportTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Terminal og lager (gående og truck)",
+    title: "Terminal and warehouse (pedestrian and forklift)",
     description: "Sikkerhet for gående i terminal og kryssende trucktrafikk.",
     category: "CHECKLIST",
     industryScope: ["transport"],
@@ -515,7 +515,7 @@ const transportTemplates: FormTemplateLibraryEntry[] = [
 
 const hospitalityTemplates: FormTemplateLibraryEntry[] = [
   {
-    title: "Kjøkken sikkerhet (daglig)",
+    title: "Kitchen safety (daily)",
     description: "HMS-sjekk på kjøkken – sliping, varme, orden og personlig vern.",
     category: "CHECKLIST",
     industryScope: ["hospitality"],
@@ -532,7 +532,7 @@ const hospitalityTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Rengjøringsmidler (hotell/restaurant)",
+    title: "Cleaning products (hotel/restaurant)",
     description: "Sikker bruk og lagring av kjemikalier i renhold og kjøkken.",
     category: "CHECKLIST",
     industryScope: ["hospitality"],
@@ -547,7 +547,7 @@ const hospitalityTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Brann og ventilasjon kjøkken",
+    title: "Fire and kitchen ventilation",
     description: "Kontroll av ventilasjon, fettfilter og brannforebygging på kjøkken.",
     category: "CHECKLIST",
     industryScope: ["hospitality"],
@@ -562,7 +562,7 @@ const hospitalityTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Servering alkohol (avvik)",
+    title: "Alcohol service (incident)",
     description: "Notat ved avvik fra alkoholloven eller interne rutiner (aldersgrense, synlig beruset).",
     category: "CUSTOM",
     industryScope: ["hospitality"],
@@ -577,7 +577,7 @@ const hospitalityTemplates: FormTemplateLibraryEntry[] = [
 
 const educationTemplates: FormTemplateLibraryEntry[] = [
   {
-    title: "Utflukt og ekskursjon (risiko før avreise)",
+    title: "Trip and excursion (pre-departure risk assessment)",
     description: "Sjekk før aktivitet utenfor skole/barnehage – ansvar, transport og førstehjelp.",
     category: "CHECKLIST",
     industryScope: ["education"],
@@ -596,7 +596,7 @@ const educationTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Elevhendelse (kort notat)",
+    title: "Student incident (short note)",
     description: "Kort registrering av ulykke eller skade på elev for intern oppfølging.",
     category: "INCIDENT",
     industryScope: ["education"],
@@ -608,7 +608,7 @@ const educationTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Arbeidsmiljø i klasserom",
+    title: "Classroom working environment",
     description: "Kontroll av lys, støy, luft og orden i undervisningsrom.",
     category: "CHECKLIST",
     industryScope: ["education"],
@@ -628,7 +628,7 @@ const educationTemplates: FormTemplateLibraryEntry[] = [
 
 const technologyTemplates: FormTemplateLibraryEntry[] = [
   {
-    title: "Kontor og hjemmekontor (ergonomi)",
+    title: "Office and home working (ergonomics)",
     description: "Kort kartlegging av skjermarbeid for å forebygge belastningsplager (AML, ergonomi).",
     category: "CHECKLIST",
     industryScope: ["technology"],
@@ -642,7 +642,7 @@ const technologyTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Tilgangsrevisjon (IT)",
+    title: "Access review (IT)",
     description: "Periodisk kontroll av brukertilganger og kritiske systemer.",
     category: "CHECKLIST",
     industryScope: ["technology"],
@@ -660,7 +660,7 @@ const technologyTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "IT-sikkerhetshendelse eller databrann",
+    title: "IT security incident or data breach",
     description: "Kort registrering ved mistanke om brudd, virus eller tap av utstyr (beredskap).",
     category: "BCM",
     industryScope: ["technology"],
@@ -675,7 +675,7 @@ const technologyTemplates: FormTemplateLibraryEntry[] = [
 
 const agricultureTemplates: FormTemplateLibraryEntry[] = [
   {
-    title: "Traktor og kjøretøy (daglig kontroll)",
+    title: "Tractor and vehicle (daily check)",
     description: "Sjekk før kjøring med traktor eller jordbruksmaskin.",
     category: "CHECKLIST",
     industryScope: ["agriculture"],
@@ -690,7 +690,7 @@ const agricultureTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Gjødsellager og gassfare",
+    title: "Fertiliser storage and gas hazard",
     description: "Kontroll av ventilasjon og adkomst ved gjødselkum eller lagring.",
     category: "CHECKLIST",
     industryScope: ["agriculture"],
@@ -704,7 +704,7 @@ const agricultureTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Dyrehåndtering sikkerhet",
+    title: "Animal handling safety",
     description: "Kontroll av håndtering av storfe, sau eller annet husdyr.",
     category: "CHECKLIST",
     industryScope: ["agriculture"],
@@ -717,7 +717,7 @@ const agricultureTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Plantevern og sprøyting",
+    title: "Crop protection and spraying",
     description: "Sjekk før eller etter bruk av plantevernmidler (PPE, vær, nabo).",
     category: "CHECKLIST",
     industryScope: ["agriculture"],
@@ -737,7 +737,7 @@ const agricultureTemplates: FormTemplateLibraryEntry[] = [
 
 const otherTemplates: FormTemplateLibraryEntry[] = [
   {
-    title: "Vernerunde liten virksomhet",
+    title: "Workplace inspection (small business)",
     description: "Enkel HMS-runde for små kontor- eller tjenestevirksomheter uten egen bransjemal.",
     category: "CHECKLIST",
     industryScope: ["other"],
@@ -754,7 +754,7 @@ const otherTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Innleid arbeidskraft (HMS-avklaring)",
+    title: "Agency workers (H&S induction)",
     description: "Kort avklaring av HMS-ansvar og orientering ved innleie (AML, internkontroll).",
     category: "CUSTOM",
     industryScope: ["other"],
@@ -766,7 +766,7 @@ const otherTemplates: FormTemplateLibraryEntry[] = [
     ],
   },
   {
-    title: "Beredskap og nødnummer (kontroll)",
+    title: "Emergency preparedness and contacts (check)",
     description: "At nødprosedyrer og kontaktliste er oppdatert.",
     category: "BCM",
     industryScope: ["other"],

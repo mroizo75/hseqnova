@@ -617,3 +617,228 @@ export function evaluateHseqStatus(input: HseqStatusInput): HseqStatusReport {
     criticalCount: duties.filter((duty) => duty.level === "critical").length,
   };
 }
+
+export type ControlPhaseId = "foundation" | "operations" | "specialist";
+export type ControlPhaseStatus = "complete" | "current" | "upcoming";
+export type ControlJourneyMode = "wizard" | "steady";
+
+export interface ControlPhase {
+  id: ControlPhaseId;
+  title: string;
+  gain: string;
+  duties: HseqDutyStatus[];
+  completeCount: number;
+  totalCount: number;
+  nextDuty: HseqDutyStatus | null;
+  status: ControlPhaseStatus;
+}
+
+export interface ControlNextStep {
+  duty: HseqDutyStatus;
+  action: string;
+  why: string;
+}
+
+export interface ControlJourney {
+  mode: ControlJourneyMode;
+  phases: ControlPhase[];
+  nextStep: ControlNextStep | null;
+  inPlace: HseqDutyStatus[];
+  critical: HseqDutyStatus[];
+}
+
+const PHASE_DEFS: ReadonlyArray<{
+  id: ControlPhaseId;
+  title: string;
+  gain: string;
+  keys: readonly HseqDutyKey[];
+}> = [
+  {
+    id: "foundation",
+    title: "Foundation",
+    gain: "A written policy and risk assessments — what HSE asks to see first.",
+    keys: ["policy", "risks", "documents"],
+  },
+  {
+    id: "operations",
+    title: "Day to day",
+    gain: "The accident book, inspections, drills and training are running.",
+    keys: ["incidents", "actions", "inspections", "fireDrills", "training"],
+  },
+  {
+    id: "specialist",
+    title: "Extra duties",
+    gain: "Specialist records for the work this company actually does.",
+    keys: [
+      "sja",
+      "chemicals",
+      "exposureRegister",
+      "constructionCompliance",
+      "audits",
+      "environment",
+    ],
+  },
+];
+
+const DUTY_GAIN: Record<HseqDutyKey, string> = {
+  policy: "Written policy covered",
+  risks: "Risk assessments on file",
+  incidents: "Accident book under control",
+  actions: "Actions on time",
+  inspections: "Inspections running",
+  fireDrills: "Fire drills this year",
+  training: "Competence current",
+  documents: "Arrangements written down",
+  sja: "RAMS on file",
+  chemicals: "COSHH register live",
+  exposureRegister: "Health records kept",
+  constructionCompliance: "CDM duties recorded",
+  audits: "Internal audit running",
+  environment: "Aspects identified",
+};
+
+const DUTY_ACTION: Record<HseqDutyKey, Partial<Record<HseqDutyLevel, string>>> = {
+  policy: {
+    gap: "Publish a written health and safety policy",
+    attention: "Review the health and safety policy",
+  },
+  risks: {
+    gap: "Record the first risk assessment",
+    attention: "Review overdue risk assessments",
+    critical: "Reduce or control the critical risks",
+  },
+  incidents: {
+    gap: "Open the accident book",
+    attention: "Follow up open accident book entries",
+    critical: "Report overdue RIDDOR to HSE",
+  },
+  actions: {
+    attention: "Close overdue actions",
+    critical: "Close overdue actions",
+  },
+  inspections: {
+    gap: "Record the first workplace inspection",
+    attention: "Complete overdue workplace inspections",
+  },
+  fireDrills: {
+    gap: "Record a fire drill",
+    attention: "Record this year's fire drill",
+  },
+  training: {
+    attention: "Renew expired training",
+    critical: "Renew expired training",
+  },
+  documents: {
+    gap: "Add the first controlled document",
+  },
+  sja: {
+    gap: "Write the first RAMS",
+  },
+  chemicals: {
+    gap: "Start the COSHH register",
+    attention: "Bring COSHH assessments up to date",
+  },
+  exposureRegister: {
+    attention: "Start COSHH health records",
+  },
+  constructionCompliance: {
+    gap: "Add a construction project",
+    attention: "Add a construction phase plan",
+  },
+  audits: {
+    attention: "Schedule or complete an internal audit",
+  },
+  environment: {
+    gap: "Record environmental aspects",
+  },
+};
+
+const DUTY_WHY: Record<HseqDutyKey, string> = {
+  policy: "Then the HSWA s.2(3) duty is covered — statement, organisation and arrangements.",
+  risks: "Then you have a suitable and sufficient assessment on file (MHSWR 1999).",
+  incidents: "Then the accident book and RIDDOR reporting are under control.",
+  actions: "Then corrective actions are on time.",
+  inspections: "Then workplace inspections show the arrangements are working.",
+  fireDrills: "Then the responsible person has a recorded drill this year.",
+  training: "Then competence records are current (HSWA s.2(2)(c)).",
+  documents: "Then the arrangements are written down and versioned.",
+  sja: "Then task-specific method statements sit with the assessment.",
+  chemicals: "Then substances hazardous to health are assessed before use.",
+  exposureRegister: "Then COSHH health records are kept for 40 years.",
+  constructionCompliance: "Then CDM duty holders and the construction phase plan are on file.",
+  audits: "Then the management system is being checked.",
+  environment: "Then significant environmental aspects are identified.",
+};
+
+export function dutyGain(key: HseqDutyKey): string {
+  return DUTY_GAIN[key];
+}
+
+function dutyAction(duty: HseqDutyStatus): string {
+  return DUTY_ACTION[duty.key][duty.level] ?? duty.headline;
+}
+
+function isIncomplete(duty: HseqDutyStatus): boolean {
+  return duty.level !== "on_track";
+}
+
+function firstIncomplete(duties: HseqDutyStatus[]): HseqDutyStatus | null {
+  return duties.find(isIncomplete) ?? null;
+}
+
+export function buildControlJourney(report: HseqStatusReport): ControlJourney {
+  const byKey = new Map(report.duties.map((duty) => [duty.key, duty]));
+  const critical = report.duties.filter((duty) => duty.level === "critical");
+  const inPlace = report.duties.filter((duty) => duty.level === "on_track");
+
+  const rawPhases = PHASE_DEFS.map((definition) => {
+    const duties = definition.keys
+      .map((key) => byKey.get(key))
+      .filter((duty): duty is HseqDutyStatus => duty !== undefined);
+    return { definition, duties };
+  }).filter((phase) => phase.duties.length > 0);
+
+  const foundationGaps = rawPhases
+    .find((phase) => phase.definition.id === "foundation")
+    ?.duties.some((duty) => duty.level === "gap");
+  const mode: ControlJourneyMode = foundationGaps ? "wizard" : "steady";
+
+  let currentAssigned = false;
+  const phases: ControlPhase[] = rawPhases.map(({ definition, duties }) => {
+    const completeCount = duties.filter((duty) => duty.level === "on_track").length;
+    const complete = completeCount === duties.length;
+    let status: ControlPhaseStatus;
+    if (complete) {
+      status = "complete";
+    } else if (!currentAssigned) {
+      status = "current";
+      currentAssigned = true;
+    } else {
+      status = "upcoming";
+    }
+    return {
+      id: definition.id,
+      title: definition.title,
+      gain: definition.gain,
+      duties,
+      completeCount,
+      totalCount: duties.length,
+      nextDuty: firstIncomplete(duties),
+      status,
+    };
+  });
+
+  const currentPhase = phases.find((phase) => phase.status === "current");
+  const nextDuty =
+    critical[0] ?? currentPhase?.nextDuty ?? firstIncomplete(report.duties);
+
+  const nextStep: ControlNextStep | null = nextDuty
+    ? {
+        duty: nextDuty,
+        action: dutyAction(nextDuty),
+        why: DUTY_WHY[nextDuty.key],
+      }
+    : null;
+
+  return { mode, phases, nextStep, inPlace, critical };
+}

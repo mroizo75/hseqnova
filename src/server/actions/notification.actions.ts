@@ -22,7 +22,7 @@ interface CreateNotificationInput {
   link?: string;
 }
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://hmsnova.no";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://hseqnova.com";
 
 function escapeHtml(value: string): string {
   return value
@@ -49,13 +49,13 @@ async function sendImmediateNotificationEmail(input: {
 
   await sendEmail({
     to: input.to,
-    subject: `HMS Nova: ${safeTitle}`,
+    subject: `HSEQ Nova: ${safeTitle}`,
     html: `
       <h2>${safeTitle}</h2>
       <p>${safeMessage}</p>
       <p>
         <a href="${fullLink}" style="display:inline-block;padding:10px 18px;background:#0f172a;color:#ffffff;text-decoration:none;border-radius:6px;">
-          Åpne varsling
+          View notification
         </a>
       </p>
     `,
@@ -82,7 +82,7 @@ export async function createNotification(input: CreateNotificationInput) {
     });
 
     if (!userTenant) {
-      return { success: false, error: "Brukeren er ikke medlem i valgt tenant" };
+      return { success: false, error: "User is not a member of the selected organisation" };
     }
 
     if (!isNotificationTypeEnabledForUser(input.type, userTenant)) {
@@ -100,7 +100,7 @@ export async function createNotification(input: CreateNotificationInput) {
       },
     });
 
-    // Publiser til Redis pub/sub for real-time oppdatering
+    // Publish to Redis pub/sub for real-time updates
     await publishNotification(input.userId, notification, input.tenantId);
 
     try {
@@ -130,7 +130,7 @@ export async function createNotification(input: CreateNotificationInput) {
       }
     }
 
-    // SMS for kritiske varseltyper — respekterer notifyBySms-preferansen
+    // SMS for critical notification types — respects notifyBySms preference
     if (shouldSendImmediateSmsForType(input.type, userTenant)) {
       const rawPhone = (userTenant as any).phone ?? userTenant.user.phone ?? null;
       const phone = formatPhoneNumber(rawPhone);
@@ -214,7 +214,7 @@ export async function markAsRead(notificationId: string) {
     });
 
     if (!notification) {
-      return { success: false, error: "Varsling ikke funnet" };
+      return { success: false, error: "Notification not found" };
     }
 
     await prisma.notification.update({
@@ -274,7 +274,7 @@ export async function deleteNotification(notificationId: string) {
     });
 
     if (!notification) {
-      return { success: false, error: "Varsling ikke funnet" };
+      return { success: false, error: "Notification not found" };
     }
 
     await prisma.notification.delete({
@@ -288,7 +288,7 @@ export async function deleteNotification(notificationId: string) {
   }
 }
 
-// Helper-funksjon for å sende varsling til spesifikke roller
+// Send notification to users with specific roles
 export async function notifyUsersByRole(
   tenantId: string,
   role: Role | string,

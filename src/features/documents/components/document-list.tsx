@@ -48,7 +48,7 @@ const formatDate = (value: string | Date | null | undefined, locale: string) => 
   if (!value) return null;
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleDateString(locale === "en" ? "en-GB" : "nb-NO");
+  return date.toLocaleDateString("en-GB");
 };
 
 export function DocumentList({ documents, tenantId, currentUserId }: DocumentListProps) {

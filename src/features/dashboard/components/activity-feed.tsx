@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 
 interface ActivityItem {
   id: string;
@@ -216,10 +216,10 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
                       {mounted
                         ? formatDistanceToNow(new Date(activity.timestamp), {
                             addSuffix: true,
-                            locale: nb,
+                            locale: enGB,
                           })
                         : format(new Date(activity.timestamp), "d. MMM yyyy HH:mm", {
-                            locale: nb,
+                            locale: enGB,
                           })}
                     </p>
                   </div>

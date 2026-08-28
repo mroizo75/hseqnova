@@ -3,132 +3,131 @@ import { FAQItem } from '@/components/faq-section';
 export const faqDatabase = {
   general: [
     {
-      question: 'Hva er HMS Nova?',
+      question: 'What is HSEQ Nova?',
       answer:
-        'HMS Nova er et moderne, skybasert HMS-system (Helse, Miljø og Sikkerhet) laget spesielt for norske bedrifter. Vi hjelper bedrifter med å følge alle HMS-lovkrav, oppnå ISO 9001 sertifisering, og spare tid på HMS-administrasjon. Systemet inkluderer risikovurderinger, hendelsesrapportering, vernerunder, opplæring, og mye mer.',
+        'HSEQ Nova is a modern, cloud-based health and safety management system designed specifically for UK businesses. We help organisations comply with all health and safety legislation, achieve ISO 9001 certification, and save time on HSEQ administration. The system includes risk assessments, incident reporting, workplace inspections, training management, and much more.',
     },
     {
-      question: 'Hva koster HMS Nova?',
+      question: 'What does HSEQ Nova cost?',
       answer:
-        'HMS Nova koster <strong>300 kr/mnd</strong> (3 600 kr/år) med 12 måneders abonnement. Prisen inkluderer ALT: ubegrenset antall brukere, alle funksjoner, digital signatur, mobilapp, og norsk support. Ingen skjulte kostnader eller oppsettsgebyr.',
+        'HSEQ Nova costs <strong>£249/month</strong> (£2,988/year) with a 12-month subscription. The price includes EVERYTHING: unlimited users, all features, digital signatures, mobile app, and UK-based support. No hidden costs or setup fees.',
     },
     {
-      question: 'Støtter HMS Nova ISO 9001?',
+      question: 'Does HSEQ Nova support ISO 9001?',
       answer:
-        'Ja, HMS Nova er <strong>utviklet etter ISO 9001:2015 standarder</strong>. Systemet støtter alle sentrale krav inkludert: dokumenthåndtering med versjonskontroll, risikovurderinger, korrigerende tiltak, internrevisjoner, ledelsens gjennomgang, og kontinuerlig forbedring. Vi har strukturene på plass for å forenkle sertifiseringsprosessen.',
+        'Yes, HSEQ Nova is <strong>developed to ISO 9001:2015 standards</strong>. The system supports all key requirements including: document management with version control, risk assessments, corrective actions, internal audits, management reviews, and continual improvement. We have the structures in place to simplify the certification process.',
     },
     {
-      question: 'Hvor lang tid tar det å komme i gang?',
+      question: 'How long does it take to get started?',
       answer:
-        'Du kommer i gang ved å registrere bedriften og få 14 dagers gratis prøveperiode. Oppsett og import av dokumenter tar typisk 30-60 minutter. Totalt: <strong>1-2 timer</strong> til du er operasjonell. Alternativt kan vi gjøre alt for deg med implementeringspakke fra 6.900 kr.',
+        'You can get started by registering your company and receiving a 14-day free trial. Setup and document import typically takes 30-60 minutes. Total: <strong>1-2 hours</strong> until you are operational. Alternatively, we can do everything for you with an implementation package from £5,500.',
     },
     {
-      question: 'Kan jeg teste HMS Nova gratis?',
+      question: 'Can I try HSEQ Nova for free?',
       answer:
-        'Ja! Vi tilbyr <strong>14 dagers gratis prøveperiode</strong> med full tilgang til alle funksjoner. Ingen kredittkort nødvendig. Du kan invitere hele teamet og teste systemet i reelle situasjoner. Hvis du ikke er fornøyd, sier du bare fra - ingen spørsmål stilt.',
+        'Yes! We offer a <strong>14-day free trial</strong> with full access to all features. No credit card required. You can invite your entire team and test the system in real situations. If you are not satisfied, simply let us know - no questions asked.',
     },
   ],
 
   comparison: [
     {
-      question: 'HMS Nova vs andre HMS Systemer: Hvilken er best?',
+      question: 'HSEQ Nova vs other H&S systems: Which is best?',
       answer:
-        '<strong>HMS Nova</strong> er utviklet i tråd med prinsippene i ISO 9001 og setter standarden for moderne HMS-styring. Systemet er utviklet <strong>internt i Norge</strong> og videreutvikles kontinuerlig i samarbeid med våre kunder – slik at løsningen til enhver tid gjenspeiler behovene i virkeligheten. Med <strong>digital signatur, 7 tydelig definerte roller</strong> og en intuitiv, moderne løsning, får du et system som kombinerer kvalitet, sikkerhet og brukervennlighet på en måte som eldre løsninger ikke kan matche.',
+        '<strong>HSEQ Nova</strong> is developed in line with ISO 9001 principles and sets the standard for modern health and safety management. The system is developed <strong>in-house in the UK</strong> and continuously improved in collaboration with our clients – ensuring the solution always reflects real-world needs. With <strong>digital signatures, 7 clearly defined roles</strong> and an intuitive, modern interface, you get a system that combines quality, safety and usability in a way that older solutions cannot match.',
     },
     {
-      question: 'Hvorfor velge HMS Nova fremfor Excel?',
+      question: 'Why choose HSEQ Nova over spreadsheets?',
       answer:
-        'Excel mangler: 1) Automatiske påminnelser, 2) Versjonskontroll, 3) Digital signatur, 4) Mobilapp, 5) Samarbeidsfunksjoner, 6) ISO 9001 compliance. HMS Nova gir deg alt dette + <strong>spar 10-15 timer/måned</strong> på administrasjon. Arbeidstilsynet aksepterer heller ikke alltid Excel som dokumentasjon.',
+        'Spreadsheets lack: 1) Automatic reminders, 2) Version control, 3) Digital signatures, 4) Mobile app, 5) Collaboration features, 6) ISO 9001 compliance. HSEQ Nova gives you all this + <strong>saves 10-15 hours/month</strong> on administration. The HSE does not always accept spreadsheets as adequate documentation during inspections.',
     },
     {
-      question: 'Er HMS Nova bedre enn Avonova?',
+      question: 'How does HSEQ Nova compare to enterprise solutions?',
       answer:
-        'HMS Nova er bedre for <strong>alle bedriftsstørrelser</strong> som vil ha moderne teknologi til rimelig pris. Avonova er bedre for store konsern som trenger omfattende BHT-tjenester og enterprise-support. HMS Nova: 300 kr/mnd (3 600 kr/år). Avonova: 15.000+ kr/år.',
+        'HSEQ Nova is better for <strong>all business sizes</strong> that want modern technology at an affordable price. Enterprise solutions suit large corporations needing extensive occupational health services and enterprise-level support. HSEQ Nova: £249/month (£2,988/year). Enterprise solutions: £12,000+/year.',
     },
   ],
 
   technical: [
     {
-      question: 'Fungerer HMS Nova på mobil?',
+      question: 'Does HSEQ Nova work on mobile?',
       answer:
-        'Ja! HMS Nova er <strong>fullstendig mobiloptimalisert</strong> og fungerer perfekt på mobil og nettbrett. Du kan: rapportere hendelser, laste opp bilder, gjennomføre vernerunder, se dokumenter, og motta varsler. Offline-modus (PWA) kan komme Q1 2026, og dedikert mobilapp for iOS/Android kan komme Q2 2026.',
+        'Yes! HSEQ Nova is <strong>fully mobile-optimised</strong> and works perfectly on phones and tablets. You can: report incidents, upload photos, conduct workplace inspections, view documents, and receive notifications. Offline mode (PWA) planned for Q1 2026, and dedicated mobile app for iOS/Android planned for Q2 2026.',
     },
     {
-      question: 'Er HMS Nova GDPR-compliant?',
+      question: 'Is HSEQ Nova GDPR-compliant?',
       answer:
-        'Ja, HMS Nova er <strong>fullt GDPR-compliant</strong>. Data lagres på norske servere, vi har databehandleravtale, alle data er kryptert, og du har full kontroll over dine data. Vi gjennomfører årlige sikkerhetsrevisjoner og følger alle personvernkrav.',
+        'Yes, HSEQ Nova is <strong>fully GDPR-compliant</strong>. Data is stored on UK/EU servers, we have data processing agreements in place, all data is encrypted, and you have full control over your data. We conduct annual security audits and comply with all data protection requirements under UK GDPR and the DPA 2018.',
     },
     {
-      question: 'Kan HMS Nova integreres med andre systemer?',
+      question: 'Can HSEQ Nova integrate with other systems?',
       answer:
-        'Ja, HMS Nova har <strong>API for integrasjoner</strong>. Vi integrerer med: regnskapssystemer (Tripletex, Fiken, Visma), HR-systemer (Factorial, Personio), og prosjektstyring (Monday, Asana). Kontakt oss for spesifikke integrasjonsbehov.',
+        'Yes, HSEQ Nova has an <strong>API for integrations</strong>. We integrate with: accounting systems (Xero, Sage, QuickBooks), HR systems (BambooHR, Personio), and project management (Monday, Asana). Contact us for specific integration requirements.',
     },
   ],
 
   implementation: [
     {
-      question: 'Hva koster implementeringshjelp?',
+      question: 'What does implementation support cost?',
       answer:
-        '<strong>40% billigere enn tradisjonelle HMS-konsulenter:</strong><br><br>• <strong>Mikro (0-20 ansatte):</strong> 6.900 kr<br>• <strong>Små (21-50 ansatte):</strong> 9.900 kr<br>• <strong>Medium (51+ ansatte):</strong> 14.900 kr<br><br><strong>Inkludert:</strong> Oppsett av HMS Nova, import av eksisterende HMS-dokumenter, bransjespesifikke maler, digital organisasjonskart, og 2 timers live opplæring for ditt team.',
+        '<strong>40% cheaper than traditional H&S consultants:</strong><br><br>• <strong>Micro (0-20 employees):</strong> £5,500<br>• <strong>Small (21-50 employees):</strong> £7,900<br>• <strong>Medium (51+ employees):</strong> £11,900<br><br><strong>Included:</strong> HSEQ Nova setup, import of existing H&S documents, industry-specific templates, digital organisation chart, and 2 hours of live training for your team.',
     },
     {
-      question: 'Hjelper dere med migrering fra gammelt system?',
+      question: 'Do you help with migration from an old system?',
       answer:
-        'Ja! Migrering fra eksisterende HMS-system er inkludert i våre implementeringspakker (fra 6.900 kr). Vi hjelper med å: 1) Eksportere data fra gammelt system, 2) Importere til HMS Nova, 3) Verifisere at alt er korrekt, 4) Opplære teamet. Prosessen tar vanligvis 2-4 timer.',
+        'Yes! Migration from your existing H&S system is included in our implementation packages (from £5,500). We help with: 1) Exporting data from your old system, 2) Importing to HSEQ Nova, 3) Verifying everything is correct, 4) Training your team. The process typically takes 2-4 hours.',
     },
     {
-      question: 'Trenger vi opplæring?',
+      question: 'Do we need training?',
       answer:
-        'HMS Nova er designet for å være intuitivt og de fleste lærer systemet på 1-2 timer. Vi tilbyr: 1) Dokumentasjon og guider, 2) Support via e-post og telefon, 3) Valgfri implementeringshjelp (se priser under). Du kan registrere bedriften og komme i gang med 14 dagers gratis prøveperiode.',
+        'HSEQ Nova is designed to be intuitive and most people learn the system in 1-2 hours. We offer: 1) Documentation and guides, 2) Support via email and phone, 3) Optional implementation support (see prices above). You can register your company and get started with a 14-day free trial.',
     },
     {
-      question: 'Er implementering og opplæring inkludert?',
+      question: 'Is implementation and training included?',
       answer:
-        '<strong>Nei, men du har to alternativer:</strong><br><br><strong>1) Gjør det selv:</strong> Registrer bedriften og bruk 14 dagers gratis prøveperiode til å sette opp HMS Nova med egne dokumenter og maler.<br><br><strong>2) Vi gjør det for deg:</strong> Implementeringstjenester fra <strong>6.900 kr</strong> (0-20 ansatte) til 14.900 kr (51+ ansatte). 40% billigere enn tradisjonelle HMS-konsulenter. Inkluderer: komplett oppsett av systemet, import av eksisterende dokumenter, og 2 timers opplæring for teamet.',
+        '<strong>No, but you have two options:</strong><br><br><strong>1) Do it yourself:</strong> Register your company and use the 14-day free trial to set up HSEQ Nova with your own documents and templates.<br><br><strong>2) We do it for you:</strong> Implementation services from <strong>£5,500</strong> (0-20 employees) to £11,900 (51+ employees). 40% cheaper than traditional H&S consultants. Includes: complete system setup, import of existing documents, and 2 hours of training for the team.',
     },
     {
-      question: 'Hva skjer hvis vi vil slutte?',
+      question: 'What happens if we want to cancel?',
       answer:
-        '<strong>Ingen binding!</strong> Du kan si opp når som helst med 1 måneds varsel. Vi eksporterer alle dine data (PDF og Excel) slik at du beholder alt. Ingen skjulte gebyrer eller straff for oppsigelse. Vi vil selvsagt gjerne vite hvorfor, så vi kan bli bedre.',
+        '<strong>No lock-in!</strong> You can cancel at any time with 1 month notice. We export all your data (PDF and Excel) so you keep everything. No hidden fees or cancellation penalties. We would of course like to know why, so we can improve.',
     },
   ],
 
   industry: [
     {
-      question: 'Passer HMS Nova for byggebransjen?',
+      question: 'Is HSEQ Nova suitable for construction?',
       answer:
-        'Ja! HMS Nova er utviklet med fokus på bygg. Vi har: SHA-plan maler, fallsikring-sjekklister, stillasinspeksjon, maskinkontroll, mobiloptimalisert design, bildeopptak, og underentreprenør-håndtering. Offline-modus planlagt Q1 2026, dedikert mobilapp Q2 2026.',
+        'Yes! HSEQ Nova is developed with a focus on construction. We have: CDM plan templates, fall protection checklists, scaffolding inspection forms, plant/equipment checks, mobile-optimised design, photo capture, and subcontractor management. Offline mode planned Q1 2026, dedicated mobile app Q2 2026.',
     },
     {
-      question: 'Kan HMS Nova brukes i helsesektoren?',
+      question: 'Can HSEQ Nova be used in healthcare?',
       answer:
-        'Ja! HMS Nova passer utmerket for helse. Vi har: biologisk eksponering-modul, vold og trusler-rapportering, ergonomi-sjekklister, stikkskade-rapportering, smittevern-maler, og full GDPR-compliance (kritisk i helsesektoren).',
+        'Yes! HSEQ Nova is excellent for healthcare. We have: biological exposure module, violence and aggression reporting, ergonomics checklists, sharps injury reporting, infection control templates, and full GDPR compliance (critical in healthcare).',
     },
     {
-      question: 'Fungerer HMS Nova for transport?',
+      question: 'Does HSEQ Nova work for transport?',
       answer:
-        'Ja! HMS Nova er tilpasset transport. Vi har: kjøretøysikkerhet-sjekklister, sjåføropplæring-sporing, farlig gods-dokumentasjon (ADR), arbeidsulykker i transport, og mobiloptimalisert design (sjåfører kan rapportere fra mobilen).',
+        'Yes! HSEQ Nova is tailored for transport. We have: vehicle safety checklists, driver training tracking, dangerous goods documentation (ADR), workplace accidents in transport, and mobile-optimised design (drivers can report from their phone).',
     },
   ],
 };
 
-// Funksjon for å hente relevante FAQs basert på side
 export function getFAQsForPage(pageType: string): FAQItem[] {
   switch (pageType) {
     case 'home':
       return [...faqDatabase.general, ...faqDatabase.comparison.slice(0, 2)];
     case 'pricing':
       return [
-        faqDatabase.general[1], // Hva koster
-        faqDatabase.comparison[1], // vs Excel
-        faqDatabase.implementation[2], // Oppsigelse
-        faqDatabase.general[4], // Gratis test
+        faqDatabase.general[1],
+        faqDatabase.comparison[1],
+        faqDatabase.implementation[4],
+        faqDatabase.general[4],
       ];
     case 'comparison':
       return faqDatabase.comparison;
-    case 'industry-bygg':
+    case 'industry-construction':
       return [faqDatabase.industry[0], ...faqDatabase.general.slice(0, 3)];
-    case 'industry-helse':
+    case 'industry-healthcare':
       return [faqDatabase.industry[1], ...faqDatabase.general.slice(0, 3)];
     case 'industry-transport':
       return [faqDatabase.industry[2], ...faqDatabase.general.slice(0, 3)];
@@ -141,12 +140,10 @@ export function getFAQsForPage(pageType: string): FAQItem[] {
   }
 }
 
-// Hent FAQs basert på kategori
 export function getFAQsByCategory(category: keyof typeof faqDatabase): FAQItem[] {
   return faqDatabase[category] || [];
 }
 
-// Hent alle FAQs (for dedikert FAQ-side)
 export function getAllFAQs(): FAQItem[] {
   return [
     ...faqDatabase.general,
@@ -156,4 +153,3 @@ export function getAllFAQs(): FAQItem[] {
     ...faqDatabase.industry,
   ];
 }
-

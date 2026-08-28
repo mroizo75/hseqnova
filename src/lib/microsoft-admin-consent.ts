@@ -3,7 +3,7 @@
  *
  * Mange bedrifter har slått på "user consent" begrensninger i sin egen Entra-tenant.
  * Da får den første ansatte som prøver SSO feilen AADSTS65001, og en global
- * administrator må godkjenne HMS Nova én gang for hele bedriften.
+ * administrator must approve HSEQ Nova once for the entire organisation.
  *
  * Protokoll: https://learn.microsoft.com/en-us/entra/identity-platform/v2-admin-consent
  */

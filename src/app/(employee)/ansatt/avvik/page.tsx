@@ -262,7 +262,7 @@ export default async function AnsattAvvik() {
                           <p>
                             {t("list.reportedAt", {
                               date: new Date(incident.occurredAt).toLocaleDateString(
-                                locale === "en" ? "en-US" : "nb-NO",
+                                "en-GB",
                                 {
                               day: "numeric",
                               month: "short",

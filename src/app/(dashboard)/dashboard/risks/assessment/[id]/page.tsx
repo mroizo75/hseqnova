@@ -12,7 +12,9 @@ import { getPermissions } from "@/lib/permissions";
 import { RiskAssessmentDeleteButton } from "@/features/risks/components/risk-assessment-delete-button";
 import { RiskAssessmentTitleEditor } from "@/features/risks/components/risk-assessment-title-editor";
 import { AiRiskGeneratorWrapper } from "@/features/risks/components/ai-risk-generator-wrapper";
+import { IndustryRiskStarter } from "@/features/risks/components/industry-risk-starter";
 import { hasAiAddon } from "@/lib/ai-gate";
+import { getAdminDb } from "@/lib/supabase/admin";
 import {
   loadRiskAssessmentDetail,
   loadRiskSession,
@@ -40,10 +42,16 @@ export default async function RiskAssessmentPage({
   const canDeleteRiskAssessments = permissions.canDeleteRisks;
   const canEditAssessmentTitle = permissions.canCreateRisks;
 
-  const [assessment, people, aiEnabled] = await Promise.all([
+  const [assessment, people, aiEnabled, tenant] = await Promise.all([
     loadRiskAssessmentDetail(context.tenantId, id),
     loadTenantPeople(context.tenantId),
     hasAiAddon(context.tenantId),
+    getAdminDb()
+      .from("Tenant")
+      .select("industry")
+      .eq("id", context.tenantId)
+      .maybeSingle()
+      .then((result) => result.data),
   ]);
 
   if (!assessment) {
@@ -103,6 +111,13 @@ export default async function RiskAssessmentPage({
         }}
         users={userList}
       />
+
+      {canEditAssessmentTitle && assessment.risks.length === 0 ? (
+        <IndustryRiskStarter
+          initialIndustry={(tenant?.industry as string | null) ?? null}
+          assessmentId={assessment.id}
+        />
+      ) : null}
 
       {aiEnabled && (
         <AiRiskGeneratorWrapper

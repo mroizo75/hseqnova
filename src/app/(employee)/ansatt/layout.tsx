@@ -72,7 +72,7 @@ export default async function EmployeeLayout({
               <div className="flex items-center gap-3">
                 <Image
                   src="/logo-nova.png"
-                  alt="HMS Nova"
+                  alt="HSEQ Nova"
                   width={155}
                   height={100}
                   className="h-16 w-auto"
@@ -90,13 +90,13 @@ export default async function EmployeeLayout({
                 <Link
                   href="/ansatt/profil"
                   className="h-10 w-10 rounded-full overflow-hidden bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-semibold hover:opacity-90 transition-opacity shadow-md"
-                  title="Min profil"
+                  title="My profile"
                 >
                   {user?.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={`/api/files/${user.image}`}
-                      alt="Profilbilde"
+                      alt="Profile photo"
                       className="h-full w-full object-cover"
                     />
                   ) : (

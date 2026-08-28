@@ -202,7 +202,7 @@ function FixedSidebar({
   const kontaktCfg = getSectionConfig(tavle, "KONTAKTINFO");
   const contacts: any[] = kontaktCfg.contacts ?? tavle.manualContacts ?? [];
 
-  // SHA-plan: fra SHA_PLAN-seksjonens config (standalone), eller HMS Nova (addon)
+  // CDM plan: from SHA_PLAN section config (standalone), or HSEQ Nova (addon)
   const shaCfg = getSectionConfig(tavle, "SHA_PLAN");
   const shaPlan = tavle.project?.constructionShaPlan;
   const shaStatusAddon = isAddon ? shaPlan?.status : null;
@@ -763,7 +763,7 @@ function MannskapslisteSection({ title, checkins, tavle, appUrl, publicToken }: 
 function AvvikSection({ title, config, isAddon, live }: {
   title: string | null; config: any; isAddon: boolean; live: TavleKpiData | null;
 }) {
-  // Add-on-tavler viser tall direkte fra HMS Nova, standalone viser manuelle tall.
+  // Add-on boards show figures directly from HSEQ Nova, standalone shows manual figures.
   const kilde = isAddon && live
     ? {
         openCount: live.openIncidents,

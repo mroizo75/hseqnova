@@ -154,8 +154,8 @@ async function notifySupportInbox(input: {
   ticketId: string;
   preview: string;
 }) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://hmsnova.no";
-  const supportInbox = process.env.SUPPORT_EMAIL ?? "post@hmsnova.no";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://hseqnova.com";
+  const supportInbox = process.env.SUPPORT_EMAIL ?? "support@hseqnova.com";
   const staff = await prisma.user.findMany({
     where: {
       OR: [{ isSupport: true }, { isSuperAdmin: true }],
@@ -179,7 +179,7 @@ async function notifySupportInbox(input: {
     ...recipients.map((to) =>
       sendEmail({
         to,
-        subject: `HMS Nova support: ${input.ticketNumber} – ${input.subject}`,
+        subject: `HSEQ Nova support: ${input.ticketNumber} – ${input.subject}`,
         html,
       })
     ),

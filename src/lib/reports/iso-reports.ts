@@ -3,7 +3,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import ExcelJS from "exceljs";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 
 type ReportFormat = "pdf" | "excel";
 type IsoReportType = "environment" | "risk";
@@ -20,7 +20,7 @@ const excelFilename = (prefix: string) =>
   `${prefix}-${format(new Date(), "yyyyMMdd-HHmm")}.xlsx`;
 
 const formatDate = (date?: Date | null) =>
-  date ? format(new Date(date), "d. MMM yyyy", { locale: nb }) : "—";
+  date ? format(new Date(date), "d. MMM yyyy", { locale: enGB }) : "—";
 
 export async function generateIsoReport(
   tenantId: string,
@@ -64,7 +64,7 @@ async function generateEnvironmentPdf(tenantId: string): Promise<ReportResult> {
   const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(18);
-  pdf.text(`Miljørapport - ${tenant?.name || "HMS Nova"}`, 40, 40);
+  pdf.text(`Miljørapport - ${tenant?.name || "HSEQ Nova"}`, 40, 40);
   pdf.setFontSize(12);
   pdf.setFont("helvetica", "normal");
   pdf.text(`Generert: ${formatDate(new Date())}`, 40, 60);

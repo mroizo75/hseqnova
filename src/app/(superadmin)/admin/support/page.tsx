@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 import { Headphones, MessageSquare } from "lucide-react";
 
 import { listAdminSupportTickets } from "@/server/actions/support.actions";
@@ -20,7 +20,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Support-inbox | HMS Nova Admin",
+  title: "Support Inbox | HSEQ Nova Admin",
 };
 
 type AdminTicket = {
@@ -103,7 +103,7 @@ export default async function AdminSupportPage() {
                     </span>
                     <span>
                       {format(new Date(ticket.lastMessageAt), "dd.MM.yyyy HH:mm", {
-                        locale: nb,
+                        locale: enGB,
                       })}
                     </span>
                   </div>

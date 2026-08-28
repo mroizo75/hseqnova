@@ -90,8 +90,8 @@ export function TavleUePortalConfig({
         <h3 className="font-semibold">Underentreprenør-portal</h3>
         <p className="text-sm text-muted-foreground">
           Underentreprenører kan sende inn avvik, RUH, SJA og PDF-rapporter uten å opprette
-          HMS Nova-konto. Støtter arbeidsgiverens plikt til å informere byggherren om
-          risikoforhold etter Byggherreforskriften § 18.
+          HSEQ Nova account. Supports the employer's duty to inform the client about
+          risk conditions under CDM 2015.
         </p>
       </div>
 

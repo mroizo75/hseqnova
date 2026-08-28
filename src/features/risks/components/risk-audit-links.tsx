@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { RiskAuditLink, RiskAuditRelation } from "@prisma/client";
 import { Trash2 } from "lucide-react";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 
 const relationLabels: Record<RiskAuditRelation, string> = {
   CONTROL_TEST: "Kontrolltest",
@@ -171,7 +171,7 @@ export function RiskAuditLinks({ riskId, audits, links }: RiskAuditLinksProps) {
                       <p className="font-medium">{link.audit.title}</p>
                       {link.audit.scheduledDate && (
                         <p className="text-xs text-muted-foreground">
-                          {format(link.audit.scheduledDate, "dd. MMM yyyy", { locale: nb })}
+                          {format(link.audit.scheduledDate, "dd. MMM yyyy", { locale: enGB })}
                         </p>
                       )}
                       <p className="text-xs text-muted-foreground">{link.audit.status}</p>

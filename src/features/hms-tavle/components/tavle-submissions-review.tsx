@@ -166,7 +166,7 @@ export function TavleSubmissionsReview({ submissions, tavleId, isAddon }: Props)
                 </div>
               )}
 
-              {/* Koblet til HMS Nova */}
+              {/* Linked to HSEQ Nova */}
               {isAddon && (sub.linkedIncidentId || sub.linkedRuhId || sub.linkedSjaId) && (
                 <div className="text-xs text-green-700 flex items-center gap-1">
                   <CheckCircle2 className="h-3.5 w-3.5" />

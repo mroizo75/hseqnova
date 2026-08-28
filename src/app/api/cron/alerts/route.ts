@@ -4,7 +4,7 @@ import { validateCronRequest } from "@/lib/cron-auth";
 import { startCronExecution } from "@/lib/cron-tracker";
 
 /**
- * Cron Job API Route for HMS Nova Alerts
+ * Cron Job API Route for HSEQ Nova Alerts
  * 
  * Denne ruten kjøres automatisk av en cron job (f.eks. Vercel Cron eller eksterne tjenester)
  * Anbefalt schedule: Daglig kl. 08:00

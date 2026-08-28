@@ -26,6 +26,12 @@
     "inspections": "Workplace inspections",
     "fireDrills": "Fire Drills",
     "chemicals": "COSHH",
+    "coshhAssessments": "COSHH assessments",
+    "permits": "Permits to work",
+    "assets": "Asset register",
+    "contractors": "Contractors",
+    "hseqCockpit": "HSEQ overview",
+    "fireRisk": "Fire risk assessments",
     "environment": "Environment",
     "wellbeing": "Psychosocial Pulse",
     "complaints": "Customer Complaints",
@@ -484,7 +490,7 @@
       },
       "description": {
         "title": "Who might be harmed and how",
-        "description": "Record significant findings: who is at risk, how they could be harmed, and what you already do to control it (MHSWR 1999)."
+        "description": "HSE INDG163: who is at risk, how they could be harmed, and what you already do (MHSWR 1999)."
       },
       "riskLevel": {
         "title": "Initial risk",
@@ -493,10 +499,10 @@
         "tipsEdit": "Add further action below with a person responsible and a due date, then set the residual risk.",
         "tipsCreate": "After saving, add further controls if the initial risk is not as low as reasonably practicable.",
         "descriptionReadOnly": "Likelihood × consequence before further action. Change it here if the initial rating needs updating.",
-        "descriptionEditable": "How likely is harm, and how severe would it be (HSE five-by-five).",
-        "scoreEquation": "Likelihood {likelihood} × Consequence {consequence} = {score}",
+        "descriptionEditable": "How likely is harm, and how severe would it be. A five-by-five matrix is good practice, not a legal duty.",
+        "scoreEquation": "Likelihood {likelihood} × Severity {consequence} = {score}",
         "likelihoodLabel": "Likelihood",
-        "consequenceLabel": "Consequence",
+        "consequenceLabel": "Severity",
         "levels": {
           "critical": "critical",
           "high": "high",
@@ -504,13 +510,13 @@
         }
       },
       "residual": {
-        "title": "Residual risk",
-        "description": "The risk that remains after existing controls and further action. It should be as low as reasonably practicable.",
-        "likelihoodLabel": "Residual likelihood",
-        "consequenceLabel": "Residual consequence",
+        "title": "Risk after controls",
+        "description": "The remaining risk after existing controls and further action. HSE expects it as low as reasonably practicable.",
+        "likelihoodLabel": "Likelihood after controls",
+        "consequenceLabel": "Severity after controls",
         "value": "{value}",
-        "selectValue": "Set 1–5",
-        "level": "Residual rating: {level} ({score})"
+        "selectValue": "Not rated yet",
+        "level": "After controls: {level} ({score})"
       },
       "followUp": {
         "title": "Review",

@@ -34,7 +34,7 @@ function formatFieldValue(fieldType: string, optionsJson: string | null, rawValu
     }
     case "DATE": {
       try {
-        return new Date(rawValue).toLocaleDateString("nb-NO", {
+        return new Date(rawValue).toLocaleDateString("en-GB", {
           day: "2-digit",
           month: "long",
           year: "numeric",
@@ -45,7 +45,7 @@ function formatFieldValue(fieldType: string, optionsJson: string | null, rawValu
     }
     case "DATETIME": {
       try {
-        return new Date(rawValue).toLocaleString("nb-NO", {
+        return new Date(rawValue).toLocaleString("en-GB", {
           day: "2-digit",
           month: "long",
           year: "numeric",
@@ -181,7 +181,7 @@ export async function GET(
     doc.rect(0, 0, pageWidth, 14, "F");
     doc.setFontSize(9);
     doc.setTextColor(255, 255, 255);
-    doc.text("HMS Nova", margin, 9);
+    doc.text("HSEQ Nova", margin, 9);
     yPos = 24;
 
     doc.setFontSize(20);
@@ -205,7 +205,7 @@ export async function GET(
     doc.setTextColor(80, 80, 80);
     const metaItems: string[] = [];
     if (submission.submissionNumber) metaItems.push(`Ref: ${submission.submissionNumber}`);
-    metaItems.push(`Innsendt: ${new Date(submission.createdAt).toLocaleString("nb-NO")}`);
+    metaItems.push(`Innsendt: ${new Date(submission.createdAt).toLocaleString("en-GB")}`);
     metaItems.push(`Status: ${getStatusLabel(submission.status)}`);
     const submittedByName = submission.submittedBy?.name || submission.submittedBy?.email;
     if (submittedByName) metaItems.push(`Utfylt av: ${submittedByName}`);
@@ -386,7 +386,7 @@ export async function GET(
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       doc.setTextColor(80, 80, 80);
-      doc.text(`Signert: ${new Date(submission.signedAt).toLocaleString("nb-NO")}`, margin, yPos);
+      doc.text(`Signert: ${new Date(submission.signedAt).toLocaleString("en-GB")}`, margin, yPos);
       yPos += 8;
 
       if (submission.metadata) {
@@ -409,7 +409,7 @@ export async function GET(
       doc.setFontSize(8);
       doc.setTextColor(150, 150, 150);
       doc.text(
-        `HMS Nova – ${form.title} – Side ${i} av ${totalPages}`,
+        `HSEQ Nova – ${form.title} – Page ${i} of ${totalPages}`,
         pageWidth / 2,
         pageHeight - 10,
         { align: "center" }

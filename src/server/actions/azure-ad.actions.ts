@@ -131,7 +131,7 @@ export async function syncAzureAdUsers() {
     let createdCount = 0;
     let updatedCount = 0;
 
-    // Opprett eller oppdater brukere i HMS Nova
+    // Create or update users in HSEQ Nova
     for (const azureUser of graphResult.users) {
       const email = azureUser.mail || azureUser.userPrincipalName;
       if (!email) continue;
@@ -267,14 +267,14 @@ export async function validateAzureAdLogin(
       console.log(`❌ No tenant found for domain: ${domain}`);
       return {
         allowed: false,
-        error: "Ingen aktiv HMS Nova-konto funnet for dette domenet",
+        error: "No active HSEQ Nova account found for this domain",
       };
     }
 
     if (tenant.status === "SUSPENDED" || tenant.status === "CANCELLED") {
       return {
         allowed: false,
-        error: "Bedriftskontoen er suspendert. Kontakt support@hmsnova.com",
+        error: "The company account is suspended. Contact support@hseqnova.com",
       };
     }
 

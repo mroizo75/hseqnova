@@ -47,7 +47,7 @@ function createContent(params: {
 
 const commonTemplates: RoutineTemplateLibraryEntry[] = [
   {
-    title: "Avviksbehandling og korrigerende tiltak",
+    title: "Incident management and corrective actions",
     description:
       "Rutine for registrering, vurdering, korrigering og verifisering av avvik i virksomheten.",
     category: "AVVIK",
@@ -85,7 +85,7 @@ const commonTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Varsling av kritikkverdige forhold",
+    title: "Whistleblowing procedure",
     description:
       "Rutine for intern varsling, behandling, konfidensialitet og vern mot gjengjeldelse.",
     category: "VARSLING",
@@ -123,7 +123,7 @@ const commonTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Årlig HMS-gjennomgang og handlingsplan",
+    title: "Annual H&S review and action plan",
     description:
       "Rutine for årlig evaluering av HMS-arbeid, måloppnåelse og nye tiltak.",
     category: "HMS_STYRING",
@@ -161,7 +161,7 @@ const commonTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Årlig medarbeidersamtale",
+    title: "Annual employee review",
     description:
       "Rutine for planlegging og gjennomføring av årlige medarbeidersamtaler – sikrer ivaretakelse av den enkelte ansattes arbeidsforhold, utvikling og psykososiale arbeidsmiljø.",
     category: "HMS_STYRING",
@@ -201,7 +201,7 @@ const commonTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Opplæring av nye konsulenter",
+    title: "Induction training for new consultants",
     description:
       "Rutine for strukturert onboarding og HMS-opplæring av nye konsulenter – sikrer at alle som starter har nødvendig kunnskap om arbeidsoppgaver, risikoer og gjeldende regler.",
     category: "HMS_STYRING",
@@ -243,7 +243,7 @@ const commonTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Debrief etter hvert oppdrag",
+    title: "Debrief after each assignment",
     description:
       "Rutine for systematisk erfaringsgjennomgang etter avsluttet oppdrag – fanger opp avvik, forbedringspunkter og god praksis til bruk i fremtidige oppdrag.",
     category: "HMS_STYRING",
@@ -284,7 +284,7 @@ const commonTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Elektrisk sikkerhet, anlegg og elektrisk arbeidsutstyr",
+    title: "Electrical safety, installations and electrical work equipment",
     description:
       "Internkontroll på lavspenningsanlegg, bruk av skjøteledninger og elektrisk arbeidsutstyr – ofte tema ved tilsyn i helse, handel, kontor, produksjon og andre bransjer.",
     category: "EL_SIKKERHET",
@@ -327,7 +327,7 @@ const commonTemplates: RoutineTemplateLibraryEntry[] = [
 
 const industrySpecificTemplates: RoutineTemplateLibraryEntry[] = [
   {
-    title: "Sikker jobb analyse (SJA) for risikofylt arbeid",
+    title: "RAMS for high-risk work",
     description:
       "Bransjetilpasset rutine for planlegging og gjennomføring av SJA i bygg- og anleggsarbeid.",
     category: "BYGG_ANLEGG",
@@ -364,7 +364,7 @@ const industrySpecificTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Pasientsikker hendelseshåndtering",
+    title: "Patient safety incident management",
     description:
       "Rutine for registrering, vurdering og oppfølging av uønskede pasientrelaterte hendelser.",
     category: "HELSE",
@@ -400,7 +400,7 @@ const industrySpecificTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Trafikksikkerhet og kjøre-/hviletid",
+    title: "Road safety and driving/rest hours",
     description:
       "Rutine for sikker kjøring, planlegging og oppfølging av arbeidstid i transportoppdrag.",
     category: "TRANSPORT",
@@ -436,7 +436,7 @@ const industrySpecificTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Maskinsikkerhet og LOTO",
+    title: "Machine safety and LOTO",
     description:
       "Rutine for lockout/tagout, vedlikehold og sikker oppstart av maskiner i produksjon.",
     category: "INDUSTRI",
@@ -472,7 +472,7 @@ const industrySpecificTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Kundekontakt, vold/trusler og alenearbeid",
+    title: "Client contact, violence/threats and lone working",
     description:
       "Rutine for håndtering av risiko ved kundekontakt, konflikt og alenearbeid i butikk/service.",
     category: "HANDEL_SERVICE",
@@ -508,7 +508,7 @@ const industrySpecificTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Brannvern og evakuering i servering/overnatting",
+    title: "Fire safety and evacuation in hospitality/accommodation",
     description:
       "Rutine for forebyggende brannvern, opplæring og evakuering i hotell- og restaurantdrift.",
     category: "HOTELL_RESTAURANT",
@@ -544,7 +544,7 @@ const industrySpecificTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Skolemiljø, trusler og hendelser i undervisning",
+    title: "School environment, threats and incidents in education",
     description:
       "Rutine for forebygging og håndtering av vold/trusler, hendelser og psykososial belastning i utdanning.",
     category: "UTDANNING",
@@ -580,7 +580,7 @@ const industrySpecificTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Informasjonssikkerhet og tilgangsstyring",
+    title: "Information security and access control",
     description:
       "Rutine for tilgangsstyring, passord, hendelser og personvern i teknologi- og IT-virksomhet.",
     category: "TEKNOLOGI_IT",
@@ -616,7 +616,7 @@ const industrySpecificTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Sikker gårdsdrift og maskinbruk",
+    title: "Safe farm operations and machinery use",
     description:
       "Rutine for trygg bruk av maskiner, dyrehåndtering og arbeidsoperasjoner i landbruk.",
     category: "LANDBRUK",
@@ -652,7 +652,7 @@ const industrySpecificTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Generell HMS-rutine for øvrige bransjer",
+    title: "General H&S procedure for other industries",
     description:
       "Standardrutine for virksomheter som ikke er dekket av spesifikk bransjepakke.",
     category: "GENERELL",
@@ -689,7 +689,7 @@ const industrySpecificTemplates: RoutineTemplateLibraryEntry[] = [
 const newIndustryTemplates: RoutineTemplateLibraryEntry[] = [
   // ── ELEKTRO ────────────────────────────────────────────────────────────────
   {
-    title: "Sikker arbeidspraksis – FSE og arbeid på elektriske anlegg",
+    title: "Safe working practices – electrical installations",
     description:
       "Rutine for sikker utførelse av arbeid på elektriske anlegg iht. FSE, inkl. spenningssetting og FU-prosedyrer.",
     category: "EL_SIKKERHET",
@@ -731,7 +731,7 @@ const newIndustryTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Periodisk el-kontroll og vedlikehold av elektriske anlegg",
+    title: "Periodic electrical inspection and maintenance",
     description:
       "Rutine for planlegging og gjennomføring av periodisk kontroll, termografering og vedlikehold av elektriske anlegg.",
     category: "EL_SIKKERHET",
@@ -773,7 +773,7 @@ const newIndustryTemplates: RoutineTemplateLibraryEntry[] = [
 
   // ── OFFSHORE ───────────────────────────────────────────────────────────────
   {
-    title: "Tillatelse til arbeid (PTW) – arbeidstillatelsessystem offshore",
+    title: "Permit to work (PTW) system",
     description:
       "Rutine for bruk av arbeidstillatelsessystem (PTW) for alle farlige arbeidsoperasjoner på innretning.",
     category: "OFFSHORE_SIKKERHET",
@@ -813,7 +813,7 @@ const newIndustryTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Beredskapsplan og øvelser – offshore innretning",
+    title: "Emergency preparedness plan and drills – offshore installation",
     description:
       "Rutine for beredskapsplanlegging, øvelsesgjennomføring og evaluering iht. Aktivitetsforskriften.",
     category: "BEREDSKAP",
@@ -853,7 +853,7 @@ const newIndustryTemplates: RoutineTemplateLibraryEntry[] = [
 
   // ── MARITIME ───────────────────────────────────────────────────────────────
   {
-    title: "Sikkerhetsstyringssystem (SMS) – ISM-koden",
+    title: "Safety management system (SMS) – ISM Code",
     description:
       "Rutine for utvikling, implementering og vedlikehold av ISM-samsvarende sikkerhetsstyringssystem ombord.",
     category: "MARITIM_SIKKERHET",
@@ -895,7 +895,7 @@ const newIndustryTemplates: RoutineTemplateLibraryEntry[] = [
 
   // ── FISKERI ────────────────────────────────────────────────────────────────
   {
-    title: "Sikker fangstoperasjon og dekksarbeid",
+    title: "Safe fishing operations and deck work",
     description:
       "Rutine for sikker gjennomføring av fangstoperasjoner og dekksarbeid på fiskefartøy.",
     category: "FISKERIFARTOY",
@@ -936,7 +936,7 @@ const newIndustryTemplates: RoutineTemplateLibraryEntry[] = [
 
   // ── BERGVERK ───────────────────────────────────────────────────────────────
   {
-    title: "Sikker gruveoperasjon og sprengningsarbeid",
+    title: "Safe mining operations and blasting",
     description:
       "Rutine for sikkert arbeid i gruve, tunneldrift og ved sprengningsoperasjoner.",
     category: "BERGVERK",
@@ -978,7 +978,7 @@ const newIndustryTemplates: RoutineTemplateLibraryEntry[] = [
 
   // ── OLJE OG GASS (deler med offshore) ────────────────────────────────────
   {
-    title: "Barrierestyring og -verifisering – olje og gass",
+    title: "Barrier management and verification – oil and gas",
     description:
       "Rutine for identifisering, vedlikehold og verifikasjon av sikkerhetsbarrierer i olje- og gassvirksomhet.",
     category: "OFFSHORE_SIKKERHET",
@@ -1023,7 +1023,7 @@ const newIndustryTemplates: RoutineTemplateLibraryEntry[] = [
 // Hjemmel: AML, IK-HMS, IK-mat, næringsmiddelhygieneforskriften, BHT-forskriften
 const hotelRestaurantTemplates: RoutineTemplateLibraryEntry[] = [
   {
-    title: "Renholdsrutine – housekeeping (daglig/ukentlig)",
+    title: "Cleaning procedure – housekeeping (daily/weekly)",
     description: "Rutine for daglig og ukentlig renhold av rom og felles arealer. Kjemikalier, ergonomi og kvalitetssikring.",
     category: "HOTELL_RESTAURANT",
     legalReference: "IK-HMS § 5, AML § 4-5 (kjemikalier), AML § 4-4 (ergonomi)",
@@ -1063,7 +1063,7 @@ const hotelRestaurantTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Temperaturkontroll – kjølerom og fryser",
+    title: "Temperature control – cold rooms and freezers",
     description: "Rutine for daglig temperaturlogging av kjøle- og fryseanlegg. HACCP – kritisk kontrollpunkt (CCP).",
     category: "HOTELL_RESTAURANT",
     legalReference: "Næringsmiddelhygieneforskriften, forordning (EF) 852/2004 art. 5 (HACCP CCP)",
@@ -1103,7 +1103,7 @@ const hotelRestaurantTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Allergeninformasjon og merking",
+    title: "Allergen information and labelling",
     description: "Rutine for håndtering og kommunikasjon av allergeninformasjon til gjester. EU-forordning 1169/2011 – de 14 EU-allergener.",
     category: "HOTELL_RESTAURANT",
     legalReference: "EU-forordning 1169/2011, Matmerkeforskriften § 5",
@@ -1142,7 +1142,7 @@ const hotelRestaurantTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Nattarbeid og alenearbeidsvurdering",
+    title: "Night work and lone working assessment",
     description: "Rutine for vurdering av nattarbeid og alenearbeid i overnatting og servering. AML § 10-11 og § 4-1.",
     category: "HOTELL_RESTAURANT",
     legalReference: "AML § 10-11 (nattarbeid), AML § 4-1 (forsvarlig arbeidsmiljø), IK-HMS § 5",
@@ -1182,7 +1182,7 @@ const hotelRestaurantTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Vold, trusler og krevende kundesituasjoner",
+    title: "Violence, threats and challenging client situations",
     description: "Rutine for forebygging og håndtering av vold og trusler i resepsjon, servering og bar. AML § 4-3.",
     category: "HOTELL_RESTAURANT",
     legalReference: "AML § 4-3 (psykososialt arbeidsmiljø), IK-HMS § 5, Arbeidstilsynet",
@@ -1223,7 +1223,7 @@ const hotelRestaurantTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Smilefjesberedskap – Mattilsynets tilsyn",
+    title: "Food hygiene inspection preparedness",
     description: "Rutine for forberedelse til og oppfølging av Mattilsynets tilsyn. Smilefjesordningen for serveringssteder.",
     category: "HOTELL_RESTAURANT",
     legalReference: "Næringsmiddelhygieneforskriften, smilefjesforskriften (FOR-2016-05-19-501)",
@@ -1265,7 +1265,7 @@ const hotelRestaurantTemplates: RoutineTemplateLibraryEntry[] = [
     }),
   },
   {
-    title: "Sesongoppstart – HMS-sjekkliste",
+    title: "Seasonal start-up – H&S checklist",
     description: "Rutine for HMS-forberedelser ved sesongoppstart. Onboarding av sesongansatte, utstyrkontroll og mattrygghet.",
     category: "HOTELL_RESTAURANT",
     legalReference: "IK-HMS § 5, AML § 3-2 (opplæring), IK-mat § 5 nr. 9 (kompetanse)",

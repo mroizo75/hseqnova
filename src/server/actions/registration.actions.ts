@@ -53,11 +53,11 @@ function calculatePricingTier(employeeCount: string): PricingTier {
 function calculateEmployeeCount(range: string): number {
   switch (range) {
     case "1-20":
-      return 10; // Gjennomsnitt
+      return 10; // Average
     case "21-50":
-      return 35; // Gjennomsnitt
+      return 35; // Average
     case "51+":
-      return 75; // Gjennomsnitt
+      return 75; // Average
     default:
       return 10;
   }
@@ -89,7 +89,7 @@ export async function submitRegistrationRequest(formData: FormData) {
     const normalizedIndustry = normalizeIndustryValue(validated.industry);
     const farmTypeNote =
       normalizedIndustry === "agriculture" && validated.farmType
-        ? `Gårdstype: ${validated.farmType}`
+        ? `Farm type: ${validated.farmType}`
         : undefined;
     const mergedNotes = [validated.notes || "", farmTypeNote || ""]
       .filter((part) => part.trim().length > 0)
@@ -105,7 +105,7 @@ export async function submitRegistrationRequest(formData: FormData) {
     if (existingTenant) {
       return {
         success: false,
-        error: "Denne bedriften er allerede registrert. Ta kontakt med oss hvis du har glemt innloggingsinformasjon.",
+        error: "This organisation is already registered. Please contact us if you have forgotten your login details.",
       };
     }
 
@@ -126,7 +126,7 @@ export async function submitRegistrationRequest(formData: FormData) {
     const pricingTier = calculatePricingTier(validated.employeeCount);
     const employeeCount = calculateEmployeeCount(validated.employeeCount);
 
-    // VIKTIG: Opprett KUN en "pending" tenant - INGEN subscription eller brukere før godkjenning!
+    // Create only a "pending" tenant — no subscription or users until approved
     const tenant = await prisma.tenant.create({
       data: {
         name: validated.companyName,
@@ -147,32 +147,32 @@ export async function submitRegistrationRequest(formData: FormData) {
         invoiceAddress: validated.address || undefined,
         invoicePostalCode: validated.postalCode || undefined,
         invoiceCity: validated.city || undefined,
-        // Bedriftsinformasjon
+        // Organisation details
         employeeCount,
         pricingTier,
         industry: normalizedIndustry,
         notes: mergedNotes || undefined,
-        onboardingStatus: "NOT_STARTED", // Venter på godkjenning
-        // Avtaleaksept — tidsstempler for juridisk dokumentasjon
+        onboardingStatus: "NOT_STARTED", // Awaiting approval
+        // Contract acceptance — timestamps for legal documentation
         termsAcceptedAt: new Date(),
-        // VIKTIG: subscription opprettes FØRST når superadmin aktiverer
-        // VIKTIG: users opprettes FØRST når superadmin aktiverer
+        // Subscription created only when superadmin activates
+        // Users created only when superadmin activates
       },
     });
 
-    // Opprett bransjepakke idempotent (på registreringstidspunktet)
+    // Provision industry package idempotently (at registration time)
     await provisionIndustryPackage(tenant.id);
 
-    // Get pricing info for email (ny prismodell: 1 år binding som standard)
+    // Get pricing info for email (1-year contract as standard)
     const yearlyPrice = getBindingPrice("1year").yearlyPrice;
 
     // Send confirmation email to customer
     if (process.env.RESEND_API_KEY) {
       try {
         await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL ?? "HMS Nova <noreply@hmsnova.no>",
+          from: process.env.RESEND_FROM_EMAIL ?? "HSEQ Nova <noreply@hseqnova.com>",
           to: validated.contactEmail,
-          subject: "Velkommen til HMS Nova - Din søknad er mottatt 🎉",
+          subject: "Welcome to HSEQ Nova — Your application has been received",
           html: getCustomerWelcomeEmail({
             contactPerson: validated.contactPerson,
             companyName: validated.companyName,
@@ -232,7 +232,7 @@ export async function submitRegistrationRequest(formData: FormData) {
 
     return {
       success: false,
-      error: "En uventet feil oppstod. Prøv igjen senere.",
+      error: "An unexpected error occurred. Please try again later.",
     };
   }
 }

@@ -81,28 +81,28 @@ export async function POST(request: NextRequest) {
 
     try {
       await resend.emails.send({
-        from: process.env.RESEND_FROM_EMAIL ?? "HMS Nova <noreply@hmsnova.no>",
+        from: process.env.RESEND_FROM_EMAIL ?? "HSEQ Nova <noreply@hseqnova.com>",
         to: user.email,
-        subject: "Verifiser e-postadressen din - HMS Nova",
+        subject: "Verify your email address - HSEQ Nova",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Velkommen til HMS Nova!</h2>
-            <p>Hei ${user.name || ""},</p>
-            <p>Takk for at du registrerte deg hos HMS Nova. Klikk på lenken nedenfor for å verifisere e-postadressen din:</p>
+            <h2>Welcome to HSEQ Nova!</h2>
+            <p>Hi ${user.name || ""},</p>
+            <p>Thank you for registering with HSEQ Nova. Click the link below to verify your email address:</p>
             <p>
               <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background-color: #22c55e; color: white; text-decoration: none; border-radius: 6px; margin: 16px 0;">
-                Verifiser e-postadresse
+                Verify email address
               </a>
             </p>
-            <p>Eller kopier og lim inn denne lenken i nettleseren din:</p>
+            <p>Or copy and paste this link into your browser:</p>
             <p style="word-break: break-all; color: #666; font-size: 14px;">${verifyUrl}</p>
-            <p><strong>Denne lenken utløper om ${expiresInHours} timer.</strong></p>
+            <p><strong>This link expires in ${expiresInHours} hours.</strong></p>
             <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;">
             <p style="color: #666; font-size: 12px;">
-              Hvis du ikke opprettet en konto hos HMS Nova, kan du ignorere denne e-posten.
+              If you did not create an account with HSEQ Nova, you can ignore this email.
             </p>
             <p style="color: #666; font-size: 12px;">
-              Dette er en automatisk e-post. Ikke svar på denne meldingen.
+              This is an automated email. Please do not reply to this message.
             </p>
           </div>
         `,

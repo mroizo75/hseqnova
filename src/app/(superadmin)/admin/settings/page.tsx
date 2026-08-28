@@ -13,33 +13,32 @@ export default async function AdminSettingsPage() {
   const session = await getServerSession(authOptions);
   const user = session?.user as SessionUser;
 
-  // Kun superadmin har tilgang
   if (!user?.isSuperAdmin) {
     redirect("/admin");
   }
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Systeminnstillinger</h1>
+        <h1 className="text-3xl font-bold">System settings</h1>
         <p className="text-muted-foreground">
-          Konfigurer system, e-post, lagring og betalingstjenester
+          Configure system, email, storage and payment services
         </p>
       </div>
 
       <Tabs defaultValue="system" className="space-y-4">
         <TabsList>
           <TabsTrigger value="system">System</TabsTrigger>
-          <TabsTrigger value="email">E-post</TabsTrigger>
-          <TabsTrigger value="storage">Lagring</TabsTrigger>
-          <TabsTrigger value="payment">Betaling</TabsTrigger>
+          <TabsTrigger value="email">Email</TabsTrigger>
+          <TabsTrigger value="storage">Storage</TabsTrigger>
+          <TabsTrigger value="payment">Payment</TabsTrigger>
         </TabsList>
 
         <TabsContent value="system">
           <Card>
             <CardHeader>
-              <CardTitle>Systeminnstillinger</CardTitle>
+              <CardTitle>System settings</CardTitle>
               <CardDescription>
-                Generelle innstillinger for HMS Nova
+                General settings for HSEQ Nova
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -51,9 +50,9 @@ export default async function AdminSettingsPage() {
         <TabsContent value="email">
           <Card>
             <CardHeader>
-              <CardTitle>E-postinnstillinger</CardTitle>
+              <CardTitle>Email settings</CardTitle>
               <CardDescription>
-                Konfigurer Resend for transaksjonelle e-poster
+                Configure Resend for transactional emails
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -65,9 +64,9 @@ export default async function AdminSettingsPage() {
         <TabsContent value="storage">
           <Card>
             <CardHeader>
-              <CardTitle>Lagringsinnstillinger</CardTitle>
+              <CardTitle>Storage settings</CardTitle>
               <CardDescription>
-                Konfigurer Cloudflare R2 eller S3 for fillagring
+                Configure Cloudflare R2 or S3 for file storage
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -79,9 +78,9 @@ export default async function AdminSettingsPage() {
         <TabsContent value="payment">
           <Card>
             <CardHeader>
-              <CardTitle>Betalingsinnstillinger</CardTitle>
+              <CardTitle>Payment settings</CardTitle>
               <CardDescription>
-                Konfigurer Fiken API for fakturering
+                Configure Stripe for billing
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -93,4 +92,3 @@ export default async function AdminSettingsPage() {
     </div>
   );
 }
-

@@ -138,8 +138,8 @@ export function ApiKeyManager({ initialKeys }: ApiKeyManagerProps) {
                       </Badge>
                     </div>
                     <div className="text-xs text-muted-foreground flex gap-4">
-                      <span>Opprettet: {new Date(key.createdAt).toLocaleDateString("nb-NO")}</span>
-                      <span>Sist brukt: {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleDateString("nb-NO") : "Aldri"}</span>
+                      <span>Opprettet: {new Date(key.createdAt).toLocaleDateString("en-GB")}</span>
+                      <span>Sist brukt: {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleDateString("en-GB") : "Aldri"}</span>
                       <span>Foresporsler: {key.requestCount}</span>
                       <span>Rate limit: {key.rateLimit}/time</span>
                     </div>

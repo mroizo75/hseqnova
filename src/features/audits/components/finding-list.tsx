@@ -153,7 +153,7 @@ export function FindingList({ findings }: FindingListProps) {
                     </div>
                     {finding.dueDate && (
                       <p className="text-sm text-muted-foreground">
-                        {t("deadline", { date: new Date(finding.dueDate).toLocaleDateString(locale === "en" ? "en-US" : "nb-NO") })}
+                        {t("deadline", { date: new Date(finding.dueDate).toLocaleDateString("en-GB") })}
                       </p>
                     )}
                   </div>
@@ -266,7 +266,7 @@ export function FindingList({ findings }: FindingListProps) {
                       {t("verifiedTitle")}
                     </p>
                     <p className="text-sm text-green-800">
-                      {new Date(finding.verifiedAt).toLocaleDateString(locale === "en" ? "en-US" : "nb-NO")}
+                      {new Date(finding.verifiedAt).toLocaleDateString("en-GB")}
                     </p>
                   </div>
                 )}

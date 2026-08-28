@@ -26,13 +26,10 @@ const LEVEL_OPTIONS = [
 ] as const;
 
 const WORKPLACE_CATEGORY_OPTIONS: Array<{ value: RiskCategory; label: string }> = [
-  { value: "PSYCHOSOCIAL", label: "Psychosocial" },
-  { value: "ERGONOMIC", label: "Ergonomic" },
-  { value: "ORGANISATIONAL", label: "Organisational" },
-  { value: "PHYSICAL", label: "Physical" },
   { value: "SAFETY", label: "Safety" },
   { value: "HEALTH", label: "Health" },
-  { value: "OPERATIONAL", label: "Operational" },
+  { value: "ERGONOMIC", label: "Ergonomic" },
+  { value: "PSYCHOSOCIAL", label: "Psychosocial" },
   { value: "ENVIRONMENTAL", label: "Environmental" },
 ];
 
@@ -64,7 +61,7 @@ export function RiskAssessmentItemForm({
     return d.toISOString().slice(0, 10);
   });
   const [beskrivelse, setBeskrivelse] = useState("");
-  const [konsekvens, setKonsekvens] = useState("");
+  const [existingControls, setExistingControls] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,13 +82,13 @@ export function RiskAssessmentItemForm({
         assessmentDate: assessmentDate || null,
         nextReviewDate: nextReviewDate || null,
         beskrivelse: beskrivelse.trim() || null,
-        konsekvens: konsekvens.trim() || null,
+        existingControls: existingControls.trim() || null,
       });
       if (result.success) {
         toast({ title: "Risk item added", className: "bg-green-50 border-green-200" });
         setTitle("");
         setBeskrivelse("");
-        setKonsekvens("");
+        setExistingControls("");
         onAdded?.();
         router.refresh();
       } else {
@@ -109,15 +106,15 @@ export function RiskAssessmentItemForm({
       <CardHeader>
         <CardTitle>Add a risk item</CardTitle>
         <CardDescription>
-          Title, description, consequence, level, category and review dates. Suitable and sufficient
-          assessment under MHSWR 1999.
+          Hazard, who might be harmed, existing controls and a rating. Suitable and sufficient
+          under MHSWR 1999 (HSE INDG163).
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="item-title">Title / short description *</Label>
+              <Label htmlFor="item-title">Hazard *</Label>
               <Input
                 id="item-title"
                 value={title}
@@ -149,23 +146,23 @@ export function RiskAssessmentItemForm({
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="item-beskrivelse">Description</Label>
+            <Label htmlFor="item-beskrivelse">Who might be harmed and how</Label>
             <Textarea
               id="item-beskrivelse"
               value={beskrivelse}
               onChange={(e) => setBeskrivelse(e.target.value)}
-              placeholder="Where it can happen, who is exposed, and what existing controls apply."
+              placeholder="Employees, contractors or others who could be harmed, and how."
               disabled={loading}
               rows={3}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="item-konsekvens">Consequence</Label>
+            <Label htmlFor="item-controls">Existing controls</Label>
             <Textarea
-              id="item-konsekvens"
-              value={konsekvens}
-              onChange={(e) => setKonsekvens(e.target.value)}
-              placeholder="What can happen if the risk is realised?"
+              id="item-controls"
+              value={existingControls}
+              onChange={(e) => setExistingControls(e.target.value)}
+              placeholder="What is already in place: training, PPE, guarding, permits, supervision."
               disabled={loading}
               rows={3}
             />

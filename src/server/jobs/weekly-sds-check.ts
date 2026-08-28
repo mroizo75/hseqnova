@@ -149,12 +149,12 @@ async function sendSDSUpdateNotification(
     // Bruk eksisterande sendEmail (Resend)
     await sendEmail({
       to: user.email,
-      subject: `HMS Nova: ${outdatedChemicals.length} kjemikalier trenger oppdatert SDS`,
+      subject: `HSEQ Nova: ${outdatedChemicals.length} chemicals need updated SDS`,
       html: `
         <h2>⚠️ Nye SDS-versjoner tilgjengelige</h2>
         <p>Hei ${user.name || "der"},</p>
 
-        <p>HMS Nova har funnet <strong>${outdatedChemicals.length} kjemikalier</strong> som har nyere sikkerhetsdatablad tilgjengelig hos leverandør:</p>
+        <p>HSEQ Nova has found <strong>${outdatedChemicals.length} chemicals</strong> with newer safety data sheets available from the supplier:</p>
 
         <table style="width:100%;border-collapse:collapse;margin:20px 0;">
           <thead>
@@ -187,13 +187,13 @@ async function sendSDSUpdateNotification(
         <p><strong>Hva må du gjøre?</strong></p>
         <ol>
           <li>Klikk på "Last ned ny SDS" for hvert kjemikalie</li>
-          <li>Gå til HMS Nova → Kjemikalier → Finn kjemikaliet</li>
-          <li>Last opp den nye SDS-en</li>
-          <li>HMS Nova oppdaterer automatisk alle felt med AI</li>
+          <li>Go to HSEQ Nova → Chemicals → Find the chemical</li>
+          <li>Upload the new SDS</li>
+          <li>HSEQ Nova automatically updates all fields with AI</li>
         </ol>
 
         <p style="color:#666;font-size:14px;margin-top:24px;">
-          Dette er en automatisk varsling fra HMS Nova sitt ukentlige SDS-sjekksystem.
+          This is an automatic alert from HSEQ Nova's weekly SDS check system.
           Du får denne hver uke dersom det er oppdateringer tilgjengelige.
         </p>
       `,

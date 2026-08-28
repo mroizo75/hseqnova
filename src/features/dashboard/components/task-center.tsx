@@ -23,7 +23,7 @@ import {
 import Link from "next/link";
 import { getMyTasks, type TaskSummary } from "@/server/actions/task.actions";
 import { formatDistanceToNow } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 
 interface TaskCenterProps {
   tenantId: string;
@@ -172,7 +172,7 @@ export function TaskCenter({ tenantId, userId }: TaskCenterProps) {
                       title={m.title}
                       sub={formatDistanceToNow(new Date(m.dueAt), {
                         addSuffix: true,
-                        locale: nb,
+                        locale: enGB,
                       })}
                       href="/dashboard/actions"
                     />
@@ -185,7 +185,7 @@ export function TaskCenter({ tenantId, userId }: TaskCenterProps) {
                       title={m.title}
                       sub={formatDistanceToNow(new Date(m.scheduledDate), {
                         addSuffix: true,
-                        locale: nb,
+                        locale: enGB,
                       })}
                       href={`/dashboard/meetings/${m.id}`}
                     />
@@ -198,7 +198,7 @@ export function TaskCenter({ tenantId, userId }: TaskCenterProps) {
                       title={i.title}
                       sub={formatDistanceToNow(new Date(i.scheduledDate), {
                         addSuffix: true,
-                        locale: nb,
+                        locale: enGB,
                       })}
                       href={`/dashboard/inspections/${i.id}`}
                     />
@@ -211,7 +211,7 @@ export function TaskCenter({ tenantId, userId }: TaskCenterProps) {
                       title={a.title}
                       sub={formatDistanceToNow(new Date(a.scheduledDate), {
                         addSuffix: true,
-                        locale: nb,
+                        locale: enGB,
                       })}
                       href={`/dashboard/audits/${a.id}`}
                     />

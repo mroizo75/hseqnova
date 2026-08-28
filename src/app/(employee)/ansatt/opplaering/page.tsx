@@ -14,7 +14,7 @@ export default async function AnsattOpplaering() {
   const session = await getServerSession(authOptions);
   const t = await getTranslations("employeeTrainingPage");
   const locale = await getLocale();
-  const dateLocale = locale === "en" ? "en-US" : "nb-NO";
+  const dateLocale = "en-GB";
 
   if (!session?.user?.tenantId || !session.user.id) {
     redirect("/login");

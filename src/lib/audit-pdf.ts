@@ -1,11 +1,11 @@
 /**
  * PDF Generator for Audits (ISO 9001/45001 Revisjoner)
- * Bruker profesjonell HMS Nova-branding via pdf-brand.ts
+ * Uses professional HSEQ Nova branding via pdf-brand.ts
  */
 
 import { generateBrandedPdf, type PdfSection } from "@/lib/pdf-brand";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 
 interface AuditData {
   id: string;
@@ -61,7 +61,7 @@ const FINDING_TYPE_LABELS: Record<string, string> = {
 
 function fmtDate(d: Date | null | undefined) {
   if (!d) return "–";
-  return format(new Date(d), "d. MMMM yyyy", { locale: nb });
+  return format(new Date(d), "d. MMMM yyyy", { locale: enGB });
 }
 
 export async function generateAuditReport(audit: AuditData): Promise<Buffer> {
@@ -180,7 +180,7 @@ export async function generateAuditReport(audit: AuditData): Promise<Buffer> {
     title: `Revisjonsrapport – ${audit.title}`,
     subtitle: `${STATUS_LABELS[audit.status] ?? audit.status} · ${fmtDate(audit.scheduledDate)}`,
     tenant: {
-      name: audit.tenantName ?? "HMS Nova",
+      name: audit.tenantName ?? "HSEQ Nova",
       orgNumber: audit.tenantOrgNumber,
       logoUrl: audit.tenantLogoUrl,
     },

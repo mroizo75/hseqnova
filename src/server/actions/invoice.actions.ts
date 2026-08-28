@@ -193,9 +193,9 @@ export async function createOnboardingInvoice(tenantId: string) {
     if (process.env.RESEND_API_KEY) {
       try {
         await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL ?? "HMS Nova <noreply@hmsnova.no>",
+          from: process.env.RESEND_FROM_EMAIL ?? "HSEQ Nova <noreply@hseqnova.com>",
           to: tenant.invoiceEmail || tenant.contactEmail || "",
-          subject: `🎉 Velkommen til HMS Nova - 14 dager gratis!`,
+          subject: `Welcome to HSEQ Nova — 14-day free trial!`,
           html: getTrialWelcomeEmail({
             companyName: tenant.name,
             trialEndsAt: tenant.trialEndsAt,
@@ -262,9 +262,9 @@ export async function checkOverdueInvoices() {
         if (process.env.RESEND_API_KEY && invoice.tenant.contactEmail) {
           try {
             await resend.emails.send({
-              from: process.env.RESEND_FROM_EMAIL ?? "HMS Nova <noreply@hmsnova.no>",
+              from: process.env.RESEND_FROM_EMAIL ?? "HSEQ Nova <noreply@hseqnova.com>",
               to: invoice.tenant.contactEmail,
-              subject: "⚠️ Din HMS Nova-konto er suspendert - Ubetalt faktura",
+              subject: "⚠️ Your HSEQ Nova account has been suspended — Unpaid invoice",
               html: getSuspensionEmail({
                 companyName: invoice.tenant.name,
                 invoiceNumber: invoice.id.slice(-8).toUpperCase(),
@@ -331,9 +331,9 @@ export async function sendTrialExpiringReminders() {
 
       try {
         await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL ?? "HMS Nova <noreply@hmsnova.no>",
+          from: process.env.RESEND_FROM_EMAIL ?? "HSEQ Nova <noreply@hseqnova.com>",
           to: tenant.contactEmail,
-          subject: "⏰ Din gratis prøveperiode utløper om 3 dager",
+          subject: "⏰ Your free trial expires in 3 days",
           html: getTrialExpiringEmail({
             companyName: tenant.name,
             trialEndsAt: tenant.trialEndsAt!,
@@ -397,23 +397,13 @@ export async function markInvoiceAsPaid(invoiceId: string) {
       }
     });
 
-    // Gratis 14-dagers kunde som nå betaler: fjern vannmerke, oppgrader til STANDARD (300 kr/mnd, 12 mnd binding)
-    if ((invoice.tenant as { registrationType?: string }).registrationType === "FREE_14_DAY") {
-      try {
-        const { upgradeFreeTrialTenantDocumentsToPaid } = await import("@/server/actions/generator.actions");
-        await upgradeFreeTrialTenantDocumentsToPaid(invoice.tenantId);
-      } catch (upgradeError) {
-        console.error("Upgrade free-trial tenant after manual mark paid:", upgradeError);
-      }
-    }
-
     // Send bekreftelse på betaling
     if (process.env.RESEND_API_KEY && invoice.tenant.contactEmail) {
       try {
         await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL ?? "HMS Nova <noreply@hmsnova.no>",
+          from: process.env.RESEND_FROM_EMAIL ?? "HSEQ Nova <noreply@hseqnova.com>",
           to: invoice.tenant.contactEmail,
-          subject: "✅ Betaling mottatt - HMS Nova",
+              subject: "✅ Payment received — HSEQ Nova",
           html: getPaymentConfirmationEmail({
             companyName: invoice.tenant.name,
             invoiceNumber: invoiceId.slice(-8).toUpperCase(),
@@ -456,7 +446,7 @@ function getInvoiceEmail(data: {
                 <tr>
                   <td style="padding: 40px; text-align: center; background: linear-gradient(135deg, #2d9c92 0%, #42c6b8 100%); border-radius: 12px 12px 0 0;">
                     <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
-                      📄 Faktura fra HMS Nova
+                      📄 Invoice from HSEQ Nova
                     </h1>
                   </td>
                 </tr>
@@ -464,11 +454,11 @@ function getInvoiceEmail(data: {
                 <tr>
                   <td style="padding: 40px;">
                     <p style="color: #1a1a1a; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                      Hei ${data.companyName},
+                      Dear ${data.companyName},
                     </p>
                     
                     <p style="color: #1a1a1a; font-size: 16px; line-height: 1.6; margin: 0 0 30px;">
-                      Takk for at du valgte HMS Nova! Her er fakturaen for ditt årsabonnement.
+                      Thank you for choosing HSEQ Nova! Here is the invoice for your annual subscription.
                     </p>
 
                     <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background: #f9f9f9; border-radius: 8px; margin: 30px 0;">
@@ -477,7 +467,7 @@ function getInvoiceEmail(data: {
                           <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
                             <tr>
                               <td style="padding: 12px 0; border-bottom: 1px solid #e0e0e0;">
-                                <strong style="color: #1a1a1a;">Fakturanummer:</strong>
+                                <strong style="color: #1a1a1a;">Invoice number:</strong>
                               </td>
                               <td style="padding: 12px 0; border-bottom: 1px solid #e0e0e0; text-align: right;">
                                 <span style="color: #666;">${data.invoiceNumber}</span>
@@ -485,10 +475,10 @@ function getInvoiceEmail(data: {
                             </tr>
                             <tr>
                               <td style="padding: 12px 0; border-bottom: 1px solid #e0e0e0;">
-                                <strong style="color: #1a1a1a;">Produkt:</strong>
+                                <strong style="color: #1a1a1a;">Product:</strong>
                               </td>
                               <td style="padding: 12px 0; border-bottom: 1px solid #e0e0e0; text-align: right;">
-                                <span style="color: #666;">HMS Nova ${data.plan}</span>
+                                <span style="color: #666;">HSEQ Nova ${data.plan}</span>
                               </td>
                             </tr>
                             <tr>
@@ -497,17 +487,17 @@ function getInvoiceEmail(data: {
                               </td>
                               <td style="padding: 12px 0; border-bottom: 1px solid #e0e0e0; text-align: right;">
                                 <span style="color: #2d9c92; font-size: 18px; font-weight: 600;">
-                                  ${data.amount.toLocaleString("nb-NO")} kr
+                                  ${data.amount.toLocaleString("en-GB")} kr
                                 </span>
                               </td>
                             </tr>
                             <tr>
                               <td style="padding: 12px 0;">
-                                <strong style="color: #1a1a1a;">Forfallsdato:</strong>
+                                <strong style="color: #1a1a1a;">Due date:</strong>
                               </td>
                               <td style="padding: 12px 0; text-align: right;">
                                 <span style="color: #d32f2f; font-weight: 600;">
-                                  ${new Date(data.dueDate).toLocaleDateString("nb-NO", {
+                                  ${new Date(data.dueDate).toLocaleDateString("en-GB", {
                                     day: "2-digit",
                                     month: "long",
                                     year: "numeric",
@@ -541,18 +531,17 @@ function getInvoiceEmail(data: {
                     `}
 
                     <div style="background: #ffebee; border-left: 4px solid #d32f2f; padding: 20px; margin: 30px 0; border-radius: 4px;">
-                      <p style="margin: 0; color: #1a1a1a; font-weight: 600;">
-                        ⚠️ Viktig informasjon
-                      </p>
-                      <p style="margin: 8px 0 0; color: #666; font-size: 14px;">
-                        Hvis fakturaen ikke betales innen forfallsdato, vil tilgangen til HMS Nova bli suspendert automatisk.
-                      </p>
+                        <p style="margin: 0; color: #1a1a1a; font-weight: 600;">
+                          ⚠️ Important information
+                        </p>
+                        <p style="margin: 8px 0 0; color: #666; font-size: 14px;">
+                          If the invoice is not paid by the due date, access to HSEQ Nova will be suspended automatically.
+                        </p>
                     </div>
 
                     <p style="color: #666; font-size: 14px; margin: 30px 0 0;">
-                      Har du spørsmål om fakturaen?<br/>
-                      📧 <a href="mailto:support@hmsnova.com" style="color: #2d9c92; text-decoration: none;">support@hmsnova.com</a><br/>
-                      📞 <a href="tel:+4799112916" style="color: #2d9c92; text-decoration: none;">+47 99 11 29 16</a>
+                      Have a question about this invoice?<br/>
+                      📧 <a href="mailto:support@hseqnova.com" style="color: #2d9c92; text-decoration: none;">support@hseqnova.com</a>
                     </p>
                   </td>
                 </tr>
@@ -560,7 +549,7 @@ function getInvoiceEmail(data: {
                 <tr>
                   <td style="padding: 30px 40px; background: #f9f9f9; border-radius: 0 0 12px 12px; text-align: center;">
                     <p style="margin: 0; color: #999; font-size: 12px;">
-                      © ${new Date().getFullYear()} HMS Nova. Alle rettigheter reservert.
+                      © ${new Date().getFullYear()} HSEQ Nova. All rights reserved.
                     </p>
                   </td>
                 </tr>
@@ -584,23 +573,23 @@ function getSuspensionEmail(data: {
     <html>
       <body style="margin: 0; padding: 0; font-family: Arial, sans-serif;">
         <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-          <h1 style="color: #d32f2f; margin-bottom: 20px;">⚠️ Din HMS Nova-konto er suspendert</h1>
+          <h1 style="color: #d32f2f; margin-bottom: 20px;">⚠️ Your HSEQ Nova account has been suspended</h1>
           
           <p>Hei ${data.companyName},</p>
           
-          <p>Vi har dessverre måttet suspendere tilgangen til HMS Nova på grunn av ubetalt faktura.</p>
+          <p>We have unfortunately had to suspend access to HSEQ Nova due to an unpaid invoice.</p>
           
           <div style="background: #ffebee; border-left: 4px solid #d32f2f; padding: 20px; margin: 30px 0;">
             <p><strong>Fakturanummer:</strong> ${data.invoiceNumber}</p>
-            <p><strong>Beløp:</strong> ${data.amount.toLocaleString("nb-NO")} kr</p>
-            <p><strong>Opprinnelig forfallsdato:</strong> ${new Date(data.dueDate).toLocaleDateString("nb-NO")}</p>
+            <p><strong>Beløp:</strong> ${data.amount.toLocaleString("en-GB")} kr</p>
+            <p><strong>Opprinnelig forfallsdato:</strong> ${new Date(data.dueDate).toLocaleDateString("en-GB")}</p>
           </div>
           
-          <p>For å reaktivere kontoen, vennligst betal fakturaen. Tilgangen vil bli gjenopprettet automatisk når vi mottar betalingen.</p>
+          <p>To reactivate your account, please pay the outstanding invoice. Access will be restored automatically once payment is received.</p>
           
-          <p>Kontakt oss på <a href="mailto:support@hmsnova.com">support@hmsnova.com</a> eller ring +47 99 11 29 16 hvis du har spørsmål.</p>
+          <p>Contact us at <a href="mailto:support@hseqnova.com">support@hseqnova.com</a> if you have any questions.</p>
           
-          <p>Med vennlig hilsen,<br/>HMS Nova Team</p>
+          <p>Kind regards,<br/>The HSEQ Nova Team</p>
         </div>
       </body>
     </html>
@@ -619,18 +608,18 @@ function getPaymentConfirmationEmail(data: {
         <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
           <h1 style="color: #2d9c92; margin-bottom: 20px;">✅ Betaling mottatt</h1>
           
-          <p>Hei ${data.companyName},</p>
+          <p>Dear ${data.companyName},</p>
           
-          <p>Vi har mottatt betaling for faktura ${data.invoiceNumber}. Takk!</p>
+          <p>We have received payment for invoice ${data.invoiceNumber}. Thank you!</p>
           
           <div style="background: #e8f6f4; border-left: 4px solid #2d9c92; padding: 20px; margin: 30px 0;">
-            <p><strong>Beløp betalt:</strong> ${data.amount.toLocaleString("nb-NO")} kr</p>
-            <p><strong>Status:</strong> Betalt</p>
+            <p><strong>Amount paid:</strong> £${data.amount.toLocaleString("en-GB")}</p>
+            <p><strong>Status:</strong> Paid</p>
           </div>
           
-          <p>Din HMS Nova-konto er nå aktiv og klar til bruk.</p>
+          <p>Your HSEQ Nova account is now active and ready to use.</p>
           
-          <p>Med vennlig hilsen,<br/>HMS Nova Team</p>
+          <p>Kind regards,<br/>The HSEQ Nova Team</p>
         </div>
       </body>
     </html>

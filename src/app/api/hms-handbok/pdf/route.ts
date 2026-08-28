@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { getPermissions } from "@/lib/permissions";
 import { generateBrandedPdf, type PdfSection } from "@/lib/pdf-brand";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 import type { Role } from "@prisma/client";
 
 export async function GET() {
@@ -64,7 +64,7 @@ export async function GET() {
 
   function fmtDate(d: Date | string | null | undefined) {
     if (!d) return "–";
-    return format(new Date(d), "d. MMM yyyy", { locale: nb });
+    return format(new Date(d), "d. MMM yyyy", { locale: enGB });
   }
 
   // Hent gjeldende versjon: currentVersionId -> nyeste APPROVED -> nyeste uansett
@@ -191,37 +191,13 @@ export async function GET() {
         }
       }
 
-      // Årshjul: legg til live fremdrift fra sjekklisten
+      // Annual plan section removed from UK product — skip live progress injection
       if (section.sectionKey === "s13") {
-        const { ANNUAL_HMS_PLAN_STEPS, getCategoryLabel } = await import(
-          "@/lib/annual-hms-plan-steps"
-        );
-        const currentYear = now.getFullYear();
-        const completions = await prisma.hmsAnnualPlanCompletion.findMany({
-          where: { tenantId, year: currentYear },
-          select: { stepKey: true, completedAt: true },
-        });
-        const completedKeys = new Set(completions.map((c) => c.stepKey));
-        const completedCount = completedKeys.size;
-
-        contentBlocks.push({
-          type: "paragraph",
-          text: `Fremdrift ${currentYear}: ${completedCount} av ${ANNUAL_HMS_PLAN_STEPS.length} aktiviteter fullført (${Math.round((completedCount / ANNUAL_HMS_PLAN_STEPS.length) * 100)} %)`,
-        });
-
-        contentBlocks.push({
-          type: "table" as const,
-          headers: ["Aktivitet", "Kategori", "Status"],
-          rows: ANNUAL_HMS_PLAN_STEPS.map((step) => [
-            step.title,
-            getCategoryLabel(step.category),
-            completedKeys.has(step.key) ? "✓ Fullført" : "○ Ikke fullført",
-          ]),
-        });
+        // no-op
       }
 
       if (contentBlocks.length === 0) {
-        contentBlocks.push({ type: "paragraph", text: "Ikke utfylt." });
+        contentBlocks.push({ type: "paragraph", text: "Not completed." });
       }
 
       sections.push({

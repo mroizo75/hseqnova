@@ -19,7 +19,6 @@ import { DeleteTenantDialog } from "@/features/admin/components/delete-tenant-di
 import { TenantActivityTimeline } from "@/features/admin/components/tenant-activity-timeline";
 import { TenantOfferCard } from "@/features/admin/components/tenant-offer-card";
 import { IndustryPackageActions } from "@/features/admin/components/industry-package-actions";
-import { KursavtaleCard } from "@/features/admin/components/kursavtale-card";
 import { GdprExportButton } from "@/features/admin/components/gdpr-export-button";
 import { HandbookTemplateImport } from "@/features/admin/components/handbook-template-import";
 import { 
@@ -40,7 +39,7 @@ import {
   Boxes,
 } from "lucide-react";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 
 interface PageProps {
   params: Promise<{
@@ -49,7 +48,7 @@ interface PageProps {
 }
 
 export const metadata = {
-  title: "Bedriftsdetaljer | HMS Nova Admin",
+  title: "Company Details | HSEQ Nova Admin",
 };
 
 async function TenantDetails({ id }: { id: string }) {
@@ -208,7 +207,7 @@ async function TenantDetails({ id }: { id: string }) {
                   </p>
                   <p className="mt-1 font-medium">
                     {lastManagementReview
-                      ? format(new Date(lastManagementReview.reviewDate), "d. MMM yyyy", { locale: nb })
+                      ? format(new Date(lastManagementReview.reviewDate), "d. MMM yyyy", { locale: enGB })
                       : "Ingen registrert"}
                   </p>
                 </div>
@@ -251,7 +250,7 @@ async function TenantDetails({ id }: { id: string }) {
                       Pris
                     </label>
                     <p className="font-medium mt-1 text-primary">
-                      {tenant.subscription.price.toLocaleString("nb-NO")} kr
+                      {tenant.subscription.price.toLocaleString("en-GB")} kr
                       <span className="text-sm text-muted-foreground">
                         /{tenant.subscription.billingInterval === "YEARLY" ? "år" : "mnd"}
                       </span>
@@ -278,7 +277,7 @@ async function TenantDetails({ id }: { id: string }) {
                       </label>
                     </div>
                     <p className="font-medium mt-1">
-                      {new Date(tenant.subscription.currentPeriodEnd).toLocaleDateString("nb-NO", {
+                      {new Date(tenant.subscription.currentPeriodEnd).toLocaleDateString("en-GB", {
                         day: "2-digit",
                         month: "long",
                         year: "numeric",
@@ -310,10 +309,10 @@ async function TenantDetails({ id }: { id: string }) {
                         <CreditCard className="h-4 w-4 text-muted-foreground" />
                         <div>
                           <p className="font-medium">
-                            {invoice.amount.toLocaleString("nb-NO")} kr
+                            {invoice.amount.toLocaleString("en-GB")} kr
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {new Date(invoice.createdAt).toLocaleDateString("nb-NO")}
+                            {new Date(invoice.createdAt).toLocaleDateString("en-GB")}
                           </p>
                         </div>
                       </div>
@@ -357,7 +356,7 @@ async function TenantDetails({ id }: { id: string }) {
                           {userTenant.user.email}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Opprettet: {new Date(userTenant.user.createdAt).toLocaleDateString("nb-NO")}
+                          Opprettet: {new Date(userTenant.user.createdAt).toLocaleDateString("en-GB")}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -390,7 +389,7 @@ async function TenantDetails({ id }: { id: string }) {
                 <div>
                   <p className="text-sm font-medium">Registrert</p>
                   <p className="text-xs text-muted-foreground">
-                    {new Date(tenant.createdAt).toLocaleDateString("nb-NO", {
+                    {new Date(tenant.createdAt).toLocaleDateString("en-GB", {
                       day: "2-digit",
                       month: "long",
                       year: "numeric",
@@ -407,7 +406,7 @@ async function TenantDetails({ id }: { id: string }) {
                   <div>
                     <p className="text-sm font-medium">Aktivert</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(tenant.onboardingCompletedAt).toLocaleDateString("nb-NO", {
+                      {new Date(tenant.onboardingCompletedAt).toLocaleDateString("en-GB", {
                         day: "2-digit",
                         month: "long",
                         year: "numeric",
@@ -425,7 +424,7 @@ async function TenantDetails({ id }: { id: string }) {
                   <div>
                     <p className="text-sm font-medium">Prøveperiode utløper</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(tenant.trialEndsAt).toLocaleDateString("nb-NO", {
+                      {new Date(tenant.trialEndsAt).toLocaleDateString("en-GB", {
                         day: "2-digit",
                         month: "long",
                         year: "numeric",
@@ -562,16 +561,6 @@ async function TenantDetails({ id }: { id: string }) {
             tenantIndustry={tenant.industry}
             orgNumber={tenant.orgNumber}
             adminName={adminUser?.name}
-          />
-
-          {/* Bransjekurs.no kursavtale */}
-          <KursavtaleCard
-            tenantId={tenant.id}
-            tenantName={tenant.name}
-            bransjekursEnabled={false}
-            bransjekursActivatedAt={null}
-            bransjekursLastSyncAt={null}
-            userCount={tenant._count.users}
           />
 
           {/* GDPR-eksport - kun superadmin */}

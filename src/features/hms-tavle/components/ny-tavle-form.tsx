@@ -109,7 +109,7 @@ export function NyTavleForm({ projects, plan }: Props) {
 
           {projects.length > 0 && (
             <div className="space-y-1.5">
-              <Label htmlFor="project">Koble til HMS Nova-prosjekt</Label>
+              <Label htmlFor="project">Link to HSEQ Nova project</Label>
               <Select
                 value={form.projectId}
                 onValueChange={(v) => setForm({ ...form, projectId: v })}

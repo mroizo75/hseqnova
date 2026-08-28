@@ -62,7 +62,7 @@ export function getSubscriptionLimits(tier: PricingTier | null): SubscriptionLim
     maxUsers: 999,
     price: 3600,
     monthlyPrice: 300,
-    name: "HMS Nova Software",
+    name: "HSEQ Nova Software",
     description: "Ubegrenset brukere inkludert",
   };
 

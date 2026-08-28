@@ -202,7 +202,7 @@ export function CreateInvoiceDialog({ tenants }: CreateInvoiceDialogProps) {
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="F.eks. HMS Nova Professional - Kvartalsabonnement"
+              placeholder="E.g. HSEQ Nova Professional - Quarterly subscription"
               rows={2}
             />
           </div>

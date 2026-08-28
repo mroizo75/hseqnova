@@ -1,5 +1,5 @@
 /**
- * Live HMS Nova-data til seksjonene på Digital HMS Tavle.
+ * Live HSEQ Nova data for sections on the Digital Safety Board.
  *
  * Gjelder kun tavler på ADDON-plan som er koblet til et prosjekt. Tavlen er
  * offentlig, så her hentes bare det som skal kunne stå på en vegg: statuser,
@@ -12,7 +12,9 @@
  */
 
 import { prisma } from "@/lib/db";
-import { ANNUAL_HMS_PLAN_STEPS } from "@/lib/annual-hms-plan-steps";
+
+/** Fixed step count for annual H&S plan progress on the safety board. */
+const ANNUAL_PLAN_STEP_COUNT = 12;
 
 export interface TavleSjaItem {
   id: string;
@@ -204,7 +206,7 @@ async function hentAarshjul(tenantId: string, now: Date): Promise<TavleAarshjulD
     where: { tenantId, year },
   });
 
-  return { year, completed, total: ANNUAL_HMS_PLAN_STEPS.length };
+  return { year, completed, total: ANNUAL_PLAN_STEP_COUNT };
 }
 
 async function hentKpi(

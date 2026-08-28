@@ -62,7 +62,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
         title: t("toast.profileSuccess.title"),
         description: t("toast.profileSuccess.description"),
       });
-      const preferredLocale = (formData.get("preferredLocale") as string) === "en" ? "en" : "nb";
+      const preferredLocale = (formData.get("preferredLocale") as string) || "en";
       document.cookie = `NEXT_LOCALE=${preferredLocale}; path=/; max-age=31536000; samesite=lax`;
 
       router.refresh();
@@ -113,7 +113,6 @@ export function ProfileForm({ user }: ProfileFormProps) {
         description: t("toast.passwordSuccess.description"),
       });
 
-      // Reset skjema
       (e.target as HTMLFormElement).reset();
     } catch (error: any) {
       toast({
@@ -128,12 +127,12 @@ export function ProfileForm({ user }: ProfileFormProps) {
 
   return (
     <div className="space-y-8">
-      {/* Profilbilde-seksjon */}
+      {/* Profile photo */}
       <div className="flex flex-col items-center gap-4">
         <div className="relative">
           <div className="h-32 w-32 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
             {avatarPreview ? (
-              // Bruk vanlig img tag for både storage og blob URLs
+              // Plain img tag for both storage and blob URLs
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={avatarPreview}
@@ -156,7 +155,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
         </p>
       </div>
 
-      {/* Profil-skjema */}
+      {/* Profile form */}
       <form onSubmit={handleSubmit} className="space-y-6">
         <Input
           id="avatar"
@@ -167,7 +166,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
           className="sr-only"
         />
 
-        {/* Navn */}
+        {/* Name */}
         <div className="space-y-2">
           <Label htmlFor="name">{t("fields.name")} *</Label>
           <Input
@@ -179,7 +178,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
           />
         </div>
 
-        {/* E-post (read-only) */}
+        {/* Email (read-only) */}
         <div className="space-y-2">
           <Label htmlFor="email">{t("fields.email")}</Label>
           <Input
@@ -193,7 +192,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
           </p>
         </div>
 
-        {/* Telefon */}
+        {/* Phone */}
         <div className="space-y-2">
           <Label htmlFor="phone">{t("fields.phone")}</Label>
           <Input
@@ -206,7 +205,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
           />
         </div>
 
-        {/* Adresse */}
+        {/* Address */}
         <div className="space-y-2">
           <Label htmlFor="address">{t("fields.address")}</Label>
           <Input
@@ -218,7 +217,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
           />
         </div>
 
-        {/* Postnummer og Sted */}
+        {/* Postcode and City */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="postalCode">{t("fields.postalCode")}</Label>
@@ -244,18 +243,18 @@ export function ProfileForm({ user }: ProfileFormProps) {
 
         <div className="space-y-2">
           <Label htmlFor="preferredLocale">{t("fields.preferredLocale")}</Label>
-          <Select name="preferredLocale" defaultValue={user.preferredLocale || "nb"}>
+          <Select name="preferredLocale" defaultValue={user.preferredLocale || "en"}>
             <SelectTrigger id="preferredLocale" className="h-12">
               <SelectValue placeholder={t("fields.preferredLocale")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="nb">Norsk</SelectItem>
               <SelectItem value="en">English</SelectItem>
+              <SelectItem value="nb">Norsk</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {/* Submit */}
+        {/* Save */}
         <Button
           type="submit"
           disabled={isSubmitting}
@@ -272,7 +271,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
         </Button>
       </form>
 
-      {/* Passord-seksjon */}
+      {/* Password section */}
       <div className="border-t pt-8">
         <h3 className="text-lg font-semibold mb-4">{t("password.title")}</h3>
         <form onSubmit={handlePasswordChange} className="space-y-4">

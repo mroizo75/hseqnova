@@ -30,25 +30,25 @@ function ResetPasswordContent() {
 
   useEffect(() => {
     if (!token) {
-      setError("Ingen gyldig token funnet. Be om en ny reset-lenke.");
+      setError("No valid token found. Please request a new reset link.");
     }
   }, [token]);
 
   const validatePassword = (pwd: string): string | null => {
     if (pwd.length < 12) {
-      return "Passordet må være minst 12 tegn";
+      return "Password must be at least 12 characters";
     }
     if (!/[A-Z]/.test(pwd)) {
-      return "Passordet må inneholde minst én stor bokstav";
+      return "Password must contain at least one uppercase letter";
     }
     if (!/[a-z]/.test(pwd)) {
-      return "Passordet må inneholde minst én liten bokstav";
+      return "Password must contain at least one lowercase letter";
     }
     if (!/[0-9]/.test(pwd)) {
-      return "Passordet må inneholde minst ett tall";
+      return "Password must contain at least one number";
     }
     if (!/[^A-Za-z0-9]/.test(pwd)) {
-      return "Passordet må inneholde minst ett spesialtegn (!@#$%^&* etc.)";
+      return "Password must contain at least one special character (!@#$%^&* etc.)";
     }
     return null;
   };
@@ -57,7 +57,7 @@ function ResetPasswordContent() {
     e.preventDefault();
     setError("");
 
-    // Valider passord
+    // Validate password
     const validationError = validatePassword(password);
     if (validationError) {
       setError(validationError);
@@ -65,7 +65,7 @@ function ResetPasswordContent() {
     }
 
     if (password !== confirmPassword) {
-      setError("Passordene matcher ikke");
+      setError("Passwords do not match");
       return;
     }
 
@@ -88,10 +88,10 @@ function ResetPasswordContent() {
           router.push("/login");
         }, 3000);
       } else {
-        setError(data.error || "Noe gikk galt. Prøv igjen.");
+        setError(data.error || "Something went wrong. Please try again.");
       }
     } catch (err) {
-      setError("Kunne ikke tilbakestille passordet. Prøv igjen.");
+      setError("Could not reset password. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -106,15 +106,15 @@ function ResetPasswordContent() {
               <CheckCircle2 className="h-6 w-6 text-green-600" />
             </div>
             <CardTitle className="text-2xl font-bold">
-              Passordet er tilbakestilt!
+              Password has been reset!
             </CardTitle>
             <CardDescription>
-              Du blir automatisk videresendt til påloggingssiden...
+              You will be redirected to the sign-in page automatically...
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Link href="/login">
-              <Button className="w-full">Gå til pålogging</Button>
+              <Button className="w-full">Go to sign in</Button>
             </Link>
           </CardContent>
         </Card>
@@ -127,22 +127,22 @@ function ResetPasswordContent() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">
-            Opprett nytt passord
+            Create new password
           </CardTitle>
           <CardDescription>
-            Velg et sterkt passord for din HMS Nova-konto
+            Choose a strong password for your HSEQ Nova account
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="password">Nytt passord</Label>
+              <Label htmlFor="password">New password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Minst 12 tegn, med stor bokstav, tall og spesialtegn"
+                  placeholder="At least 12 characters, with uppercase, number and special character"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -164,13 +164,13 @@ function ResetPasswordContent() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Bekreft passord</Label>
+              <Label htmlFor="confirmPassword">Confirm password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="confirmPassword"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Skriv inn passordet på nytt"
+                  placeholder="Re-enter your password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
@@ -186,13 +186,13 @@ function ResetPasswordContent() {
             )}
 
             <div className="rounded-lg bg-muted p-3 text-sm">
-              <p className="mb-2 font-medium">Passordkrav:</p>
+              <p className="mb-2 font-medium">Password requirements:</p>
               <ul className="list-inside list-disc space-y-1 text-muted-foreground">
-                <li>Minst 12 tegn</li>
-                <li>Minst én stor bokstav (A-Z)</li>
-                <li>Minst én liten bokstav (a-z)</li>
-                <li>Minst ett tall (0-9)</li>
-                <li>Minst ett spesialtegn (!@#$%^&*)</li>
+                <li>At least 12 characters</li>
+                <li>At least one uppercase letter (A-Z)</li>
+                <li>At least one lowercase letter (a-z)</li>
+                <li>At least one number (0-9)</li>
+                <li>At least one special character (!@#$%^&*)</li>
               </ul>
             </div>
 
@@ -207,7 +207,7 @@ function ResetPasswordContent() {
               className="w-full"
               disabled={loading || !token}
             >
-              {loading ? "Tilbakestiller..." : "Tilbakestill passord"}
+              {loading ? "Resetting..." : "Reset password"}
             </Button>
 
             <div className="text-center">
@@ -215,7 +215,7 @@ function ResetPasswordContent() {
                 href="/forgot-password"
                 className="text-sm text-muted-foreground hover:text-foreground"
               >
-                Be om en ny lenke
+                Request a new link
               </Link>
             </div>
           </form>
@@ -227,7 +227,7 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<div>Laster...</div>}>
+    <Suspense fallback={<div>Loading...</div>}>
       <ResetPasswordContent />
     </Suspense>
   );

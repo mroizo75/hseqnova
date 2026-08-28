@@ -1,11 +1,11 @@
 /**
  * PDF Generator for Inspections (Vernerunde/HMS-inspeksjoner)
- * Bruker profesjonell HMS Nova-branding via pdf-brand.ts
+ * Uses professional HSEQ Nova branding via pdf-brand.ts
  */
 
 import { generateBrandedPdf, type PdfSection } from "@/lib/pdf-brand";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 
 interface InspectionData {
   id: string;
@@ -66,7 +66,7 @@ const SEVERITY_LABELS: Record<number, string> = {
 
 function fmtDate(d: Date | null | undefined) {
   if (!d) return "–";
-  return format(new Date(d), "d. MMMM yyyy", { locale: nb });
+  return format(new Date(d), "d. MMMM yyyy", { locale: enGB });
 }
 
 export async function generateInspectionReport(inspection: InspectionData): Promise<Buffer> {
@@ -152,7 +152,7 @@ export async function generateInspectionReport(inspection: InspectionData): Prom
     title: inspection.title,
     subtitle: `${STATUS_LABELS[inspection.status] ?? inspection.status} · ${fmtDate(inspection.scheduledDate)}`,
     tenant: {
-      name: inspection.tenantName ?? "HMS Nova",
+      name: inspection.tenantName ?? "HSEQ Nova",
       orgNumber: inspection.tenantOrgNumber,
       logoUrl: inspection.tenantLogoUrl,
     },

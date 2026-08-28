@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildControlJourney,
   evaluateHseqStatus,
   visibleHseqDuties,
   type HseqDutyKey,
@@ -82,5 +83,74 @@ describe("hseq status", () => {
     );
     assert.equal(report.duties.some((duty) => duty.key === "chemicals"), true);
     assert.equal(report.duties.find((duty) => duty.key === "chemicals")?.level, "gap");
+  });
+});
+
+describe("control journey", () => {
+  function emptyFoundation(overrides: Partial<HseqStatusInput> = {}): HseqStatusInput {
+    return healthyInput({
+      policy: { hasPublished: false, lastReviewedAt: null },
+      risks: { total: 0, criticalCount: 0, overdueReviewCount: 0 },
+      documents: { total: 0 },
+      inspections: { total: 0, overdueCount: 0 },
+      fireDrills: { hasAny: false, completedInLastYear: false },
+      ...overrides,
+    });
+  }
+
+  it("opens as a wizard and points at the written policy first", () => {
+    const journey = buildControlJourney(evaluateHseqStatus(emptyFoundation()));
+    assert.equal(journey.mode, "wizard");
+    assert.equal(journey.nextStep?.duty.key, "policy");
+    assert.match(journey.nextStep?.action ?? "", /written health and safety policy/i);
+    assert.equal(journey.phases[0]?.status, "current");
+    assert.equal(journey.phases[1]?.status, "upcoming");
+  });
+
+  it("moves to risk assessments after the policy is published", () => {
+    const journey = buildControlJourney(
+      evaluateHseqStatus(
+        emptyFoundation({
+          policy: { hasPublished: true, lastReviewedAt: "2026-06-01T00:00:00.000Z" },
+        }),
+      ),
+    );
+    assert.equal(journey.mode, "wizard");
+    assert.equal(journey.nextStep?.duty.key, "risks");
+    assert.equal(journey.inPlace.some((duty) => duty.key === "policy"), true);
+  });
+
+  it("leaves wizard mode once the foundation is on file", () => {
+    const journey = buildControlJourney(
+      evaluateHseqStatus(
+        healthyInput({
+          fireDrills: { hasAny: false, completedInLastYear: false },
+        }),
+      ),
+    );
+    assert.equal(journey.mode, "steady");
+    assert.equal(journey.phases.find((phase) => phase.id === "foundation")?.status, "complete");
+    assert.equal(journey.nextStep?.duty.key, "fireDrills");
+  });
+
+  it("puts overdue RIDDOR ahead of the wizard path", () => {
+    const journey = buildControlJourney(
+      evaluateHseqStatus(
+        emptyFoundation({
+          incidents: { openCount: 1, overdueRiddorCount: 1, pendingRiddorCount: 0 },
+        }),
+      ),
+    );
+    assert.equal(journey.mode, "wizard");
+    assert.equal(journey.nextStep?.duty.key, "incidents");
+    assert.equal(journey.critical.length, 1);
+    assert.match(journey.nextStep?.action ?? "", /RIDDOR/);
+  });
+
+  it("has no next step when every duty is on track", () => {
+    const journey = buildControlJourney(evaluateHseqStatus(healthyInput()));
+    assert.equal(journey.mode, "steady");
+    assert.equal(journey.nextStep, null);
+    assert.equal(journey.inPlace.length, 8);
   });
 });

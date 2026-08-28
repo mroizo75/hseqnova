@@ -1,5 +1,5 @@
 /**
- * AI-modul for HMS Nova
+ * AI module for HSEQ Nova
  * Bruker OpenAI API for BHT-analyser og andre AI-funksjoner
  */
 

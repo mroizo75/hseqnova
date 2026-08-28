@@ -96,7 +96,7 @@ function FileUploader({
 
 /* ─── SHA-plan konfig ─── */
 function ShaPlanConfig({ cfg, set, tavleId, isAddon }: { cfg: any; set: (k: string, v: any) => void; tavleId: string; isAddon: boolean }) {
-  if (isAddon) return <p className="text-sm text-muted-foreground">HMS Nova-tilkobling: SHA-planstatus hentes automatisk fra prosjektet.</p>;
+  if (isAddon) return <p className="text-sm text-muted-foreground">HSEQ Nova connection: construction phase plan status is fetched automatically from the project.</p>;
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
@@ -147,7 +147,7 @@ function BeredskapsConfig({ cfg, set, tavleId }: { cfg: any; set: (k: string, v:
 
 /* ─── Avvik statistikk (manuell) ─── */
 function AvvikConfig({ cfg, set, isAddon }: { cfg: any; set: (k: string, v: any) => void; isAddon: boolean }) {
-  if (isAddon) return <p className="text-sm text-muted-foreground">HMS Nova-tilkobling: Avviksstatistikk hentes automatisk.</p>;
+  if (isAddon) return <p className="text-sm text-muted-foreground">HSEQ Nova connection: incident statistics are fetched automatically.</p>;
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">Oppdater tallene manuelt når du ønsker å vise statistikk på tavlen.</p>
@@ -188,7 +188,7 @@ function TallConfig({
   if (isAddon) {
     return (
       <p className="text-sm text-muted-foreground">
-        HMS Nova-tilkobling: tallene hentes automatisk fra systemet.
+        HSEQ Nova connection: figures are fetched automatically from the system.
       </p>
     );
   }
@@ -217,7 +217,7 @@ function VernerundeConfig({ cfg, set, isAddon }: { cfg: any; set: (k: string, v:
   if (isAddon) {
     return (
       <p className="text-sm text-muted-foreground">
-        HMS Nova-tilkobling: vernerunder og åpne funn hentes automatisk.
+        HSEQ Nova connection: workplace inspections and open findings are fetched automatically.
       </p>
     );
   }
@@ -273,7 +273,7 @@ function SjaConfig({ cfg, set, isAddon }: { cfg: any; set: (k: string, v: any) =
   if (isAddon) {
     return (
       <p className="text-sm text-muted-foreground">
-        HMS Nova-tilkobling: aktive sikker jobb-analyser hentes automatisk fra prosjektet.
+        HSEQ Nova connection: active RAMS are fetched automatically from the project.
       </p>
     );
   }
@@ -342,7 +342,7 @@ function AarshjulConfig({ cfg, set, isAddon }: { cfg: any; set: (k: string, v: a
   if (isAddon) {
     return (
       <p className="text-sm text-muted-foreground">
-        HMS Nova-tilkobling: framdriften i årsplanen hentes automatisk.
+        HSEQ Nova connection: annual plan progress is fetched automatically.
       </p>
     );
   }
@@ -674,7 +674,7 @@ function SnarveierConfig({ cfg, set, isAddon }: { cfg: any; set: (k: string, v: 
     <div className="space-y-5">
       {isAddon && (
         <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-700">
-          <strong>HMS Nova:</strong> Knapper uten ekstern URL åpner direkte i HMS Nova.
+          <strong>HSEQ Nova:</strong> Buttons without an external URL open directly in HSEQ Nova.
         </div>
       )}
       {!isAddon && (
@@ -705,12 +705,12 @@ function SnarveierConfig({ cfg, set, isAddon }: { cfg: any; set: (k: string, v: 
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-sm">{def.label}</span>
                       {def.lovRef && <span className="text-[10px] text-muted-foreground border rounded px-1">{def.lovRef}</span>}
-                      {isAddon && !shortcut.externalUrl && <span className="text-[10px] text-blue-600 bg-blue-50 border border-blue-200 rounded px-1">HMS Nova</span>}
+                      {isAddon && !shortcut.externalUrl && <span className="text-[10px] text-blue-600 bg-blue-50 border border-blue-200 rounded px-1">HSEQ Nova</span>}
                     </div>
                     {shortcut.isVisible && (
                       <div className="mt-2 space-y-1.5">
                         <Input
-                          placeholder={isAddon ? "Ekstern URL (valgfritt — overstyrer HMS Nova)" : "URL til ditt HMS-system"}
+                          placeholder={isAddon ? "External URL (optional — overrides HSEQ Nova)" : "URL to your HSEQ system"}
                           value={shortcut.externalUrl ?? ""}
                           onChange={(e) => updateShortcut(def.id, "externalUrl", e.target.value)}
                           className="h-7 text-xs"

@@ -118,7 +118,7 @@ export async function generateQuarterlyReportData(period?: string): Promise<Quar
   }
 
   return {
-    title: `HMS Nova Safety Intelligence — ${currentPeriod}`,
+    title: `HSEQ Nova Safety Intelligence — ${currentPeriod}`,
     period: currentPeriod,
     generatedAt: now.toISOString(),
     summary: { totalIndustries: industries.length, totalTenants, totalEmployees, totalIncidents, avgTrir, avgTrainingCompliance },
@@ -131,7 +131,7 @@ export async function generateQuarterlyReportExcel(period?: string): Promise<Buf
   const data = await generateQuarterlyReportData(period);
 
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "HMS Nova Safety Intelligence";
+  workbook.creator = "HSEQ Nova Safety Intelligence";
   workbook.created = new Date();
 
   const summary = workbook.addWorksheet("Oppsummering");
@@ -140,7 +140,7 @@ export async function generateQuarterlyReportExcel(period?: string): Promise<Buf
     { header: "Verdi", key: "value", width: 20 },
   ];
   summary.addRow({ field: "Rapport", value: data.title });
-  summary.addRow({ field: "Generert", value: new Date(data.generatedAt).toLocaleString("nb-NO") });
+  summary.addRow({ field: "Generert", value: new Date(data.generatedAt).toLocaleString("en-GB") });
   summary.addRow({ field: "Bransjer dekket", value: data.summary.totalIndustries });
   summary.addRow({ field: "Totalt bedrifter", value: data.summary.totalTenants });
   summary.addRow({ field: "Totalt ansatte", value: data.summary.totalEmployees });

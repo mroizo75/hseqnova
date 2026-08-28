@@ -25,7 +25,7 @@ interface Props {
 
 function formatDate(value: string | null, locale: GuestLocale): string | null {
   if (!value) return null;
-  return new Date(value).toLocaleString(locale === "en" ? "en-GB" : "nb-NO", {
+  return new Date(value).toLocaleString("en-GB", {
     dateStyle: "long",
     timeStyle: "short",
   });

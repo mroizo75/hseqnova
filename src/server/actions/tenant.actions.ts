@@ -171,7 +171,7 @@ export async function getTenantIndustryPackageStatus(tenantId: string) {
   try {
     const privilegedUser = await requirePrivilegedUser();
     if (!privilegedUser) {
-      return { success: false, error: "Ingen tilgang" };
+      return { success: false, error: "Access denied" };
     }
 
     const tenant = await prisma.tenant.findUnique({
@@ -184,7 +184,7 @@ export async function getTenantIndustryPackageStatus(tenantId: string) {
     });
 
     if (!tenant) {
-      return { success: false, error: "Bedrift ikke funnet" };
+      return { success: false, error: "Organisation not found" };
     }
 
     const industryPackage = getIndustryPackage(tenant.industry);
@@ -319,7 +319,7 @@ export async function getTenantIndustryPackageStatus(tenantId: string) {
     };
   } catch (error: any) {
     console.error("Get tenant industry package status error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente status for bransjepakke" };
+    return { success: false, error: error.message || "Could not fetch industry package status" };
   }
 }
 
@@ -327,12 +327,12 @@ export async function reprovisionTenantIndustryPackage(tenantId: string) {
   try {
     const privilegedUser = await requirePrivilegedUser();
     if (!privilegedUser) {
-      return { success: false, error: "Ingen tilgang" };
+      return { success: false, error: "Access denied" };
     }
 
     const result = await provisionIndustryPackage(tenantId);
     if (!result.success) {
-      return { success: false, error: result.error || "Kunne ikke reprovisjonere bransjepakke" };
+      return { success: false, error: result.error || "Could not reprovision industry package" };
     }
 
     revalidatePath(`/admin/tenants/${tenantId}`);
@@ -340,7 +340,7 @@ export async function reprovisionTenantIndustryPackage(tenantId: string) {
     return { success: true };
   } catch (error: any) {
     console.error("Reprovision tenant industry package error:", error);
-    return { success: false, error: error.message || "Kunne ikke reprovisjonere bransjepakke" };
+    return { success: false, error: error.message || "Could not reprovision industry package" };
   }
 }
 
@@ -348,7 +348,7 @@ export async function generateAiRiskSuggestionsForTenant(tenantId: string) {
   try {
     const privilegedUser = await requirePrivilegedUser();
     if (!privilegedUser) {
-      return { success: false, error: "Ingen tilgang" };
+      return { success: false, error: "Access denied" };
     }
 
     const tenant = await prisma.tenant.findUnique({
@@ -362,7 +362,7 @@ export async function generateAiRiskSuggestionsForTenant(tenantId: string) {
     });
 
     if (!tenant) {
-      return { success: false, error: "Bedrift ikke funnet" };
+      return { success: false, error: "Organisation not found" };
     }
 
     const industryLabel = tenant.industry?.trim()
@@ -379,7 +379,7 @@ export async function generateAiRiskSuggestionsForTenant(tenantId: string) {
     });
 
     if (!ownerCandidate) {
-      return { success: false, error: "Fant ingen ansvarlig bruker for nye risikoforslag" };
+      return { success: false, error: "No responsible user found for new risk suggestions" };
     }
 
     const [existingRisks, existingIncidents] = await Promise.all([
@@ -412,7 +412,7 @@ export async function generateAiRiskSuggestionsForTenant(tenantId: string) {
     if (!analysis.suggestedRisks.length) {
       return {
         success: true,
-        data: { created: 0, skipped: 0, message: "AI returnerte ingen nye forslag" },
+        data: { created: 0, skipped: 0, message: "AI returned no new suggestions" },
       };
     }
 
@@ -497,7 +497,7 @@ export async function generateAiRiskSuggestionsForTenant(tenantId: string) {
     console.error("Generate AI risk suggestions error:", error);
     return {
       success: false,
-      error: error.message || "Kunne ikke generere AI-risikoforslag",
+      error: error.message || "Could not generate AI risk suggestions",
     };
   }
 }
@@ -520,7 +520,7 @@ export async function previewAiRiskSuggestionsForTenant(tenantId: string) {
   try {
     const privilegedUser = await requirePrivilegedUser();
     if (!privilegedUser) {
-      return { success: false, error: "Ingen tilgang" };
+      return { success: false, error: "Access denied" };
     }
 
     const tenant = await prisma.tenant.findUnique({
@@ -533,7 +533,7 @@ export async function previewAiRiskSuggestionsForTenant(tenantId: string) {
     });
 
     if (!tenant) {
-      return { success: false, error: "Bedrift ikke funnet" };
+      return { success: false, error: "Organisation not found" };
     }
 
     const industryLabel = tenant.industry?.trim()
@@ -597,7 +597,7 @@ export async function previewAiRiskSuggestionsForTenant(tenantId: string) {
     console.error("Preview AI risk suggestions error:", error);
     return {
       success: false,
-      error: error.message || "Kunne ikke forhåndsvise AI-risikoforslag",
+      error: error.message || "Could not preview AI risk suggestions",
     };
   }
 }
@@ -610,7 +610,7 @@ export async function applyAiRiskSuggestionsForTenant(input: {
   try {
     const privilegedUser = await requirePrivilegedUser();
     if (!privilegedUser) {
-      return { success: false, error: "Ingen tilgang" };
+      return { success: false, error: "Access denied" };
     }
 
     const validated = applyAiSuggestionsSchema.parse(input);
@@ -624,7 +624,7 @@ export async function applyAiRiskSuggestionsForTenant(input: {
     });
 
     if (!tenant) {
-      return { success: false, error: "Bedrift ikke funnet" };
+      return { success: false, error: "Organisation not found" };
     }
 
     const industryLabel = tenant.industry?.trim()
@@ -641,7 +641,7 @@ export async function applyAiRiskSuggestionsForTenant(input: {
     });
 
     if (!ownerCandidate) {
-      return { success: false, error: "Fant ingen ansvarlig bruker for nye risikoforslag" };
+      return { success: false, error: "No responsible user found for new risk suggestions" };
     }
 
     const currentYear = new Date().getFullYear();
@@ -729,7 +729,7 @@ export async function applyAiRiskSuggestionsForTenant(input: {
     }
     return {
       success: false,
-      error: error.message || "Kunne ikke lagre AI-risikoforslag",
+      error: error.message || "Could not save AI risk suggestions",
     };
   }
 }
@@ -795,13 +795,13 @@ export async function getTenantDetails(tenantId: string) {
     });
 
     if (!tenant) {
-      return { success: false, error: "Bedrift ikke funnet" };
+      return { success: false, error: "Organisation not found" };
     }
 
     return { success: true, data: tenant };
   } catch (error) {
     console.error("Get tenant details error:", error);
-    return { success: false, error: "Kunne ikke hente bedriftsinformasjon" };
+    return { success: false, error: "Could not fetch organisation details" };
   }
 }
 
@@ -814,7 +814,7 @@ export async function createTenantOffer(input: z.infer<typeof createTenantOfferS
     });
 
     if (!tenant) {
-      return { success: false, error: "Bedrift ikke funnet" };
+      return { success: false, error: "Organisation not found" };
     }
 
     const binding = getBindingPrice("1year");
@@ -844,27 +844,27 @@ export async function createTenantOffer(input: z.infer<typeof createTenantOfferS
 
       await sendEmail({
         to: toEmail,
-        subject: `Tilbud fra HMS Nova – ${companyName}`,
+        subject: `Quotation from HSEQ Nova – ${companyName}`,
         html: `
-          <h1>Tilbud på HMS Nova</h1>
-          <p>Hei${tenant.contactPerson ? ` ${tenant.contactPerson}` : ""},</p>
-          <p>Takk for interessen for HMS Nova. Vi har satt opp et tilbud basert på standard pris med 12 måneders bindingstid og 3 måneders oppsigelse.</p>
+          <h1>HSEQ Nova Quotation</h1>
+          <p>Dear${tenant.contactPerson ? ` ${tenant.contactPerson}` : ""},</p>
+          <p>Thank you for your interest in HSEQ Nova. We have prepared a quotation based on standard pricing with a 12-month contract and 3-month notice period.</p>
           <ul>
-            <li>Årspris: <strong>${yearlyPrice.toLocaleString("nb-NO")} kr/år</strong></li>
-            <li>Bindingstid: <strong>12 måneder</strong></li>
-            <li>Oppsigelsestid: <strong>3 måneder etter endt binding</strong></li>
+            <li>Annual price: <strong>£${yearlyPrice.toLocaleString("en-GB")}/year</strong></li>
+            <li>Contract term: <strong>12 months</strong></li>
+            <li>Notice period: <strong>3 months after contract end</strong></li>
             ${
               validated.setupPrice != null
-                ? `<li>Etablering / oppsett av HMS-håndbok: <strong>${validated.setupPrice.toLocaleString(
-                    "nb-NO",
-                  )} kr</strong></li>`
+                ? `<li>Setup / health &amp; safety policy configuration: <strong>£${validated.setupPrice.toLocaleString(
+                    "en-GB",
+                  )}</strong></li>`
                 : ""
             }
           </ul>
-          <p>Du kan lese hele kontrakten og godkjenne den her:</p>
+          <p>You can review and accept the full contract here:</p>
           <p><a href="${offerUrl}">${offerUrl}</a></p>
-          <p>Ta gjerne kontakt hvis du har spørsmål.</p>
-          <p>Hilsen<br/>HMS Nova</p>
+          <p>Please do not hesitate to contact us if you have any questions.</p>
+          <p>Kind regards,<br/>HSEQ Nova</p>
         `,
       });
     }
@@ -877,7 +877,7 @@ export async function createTenantOffer(input: z.infer<typeof createTenantOfferS
     if (error instanceof ZodError) {
       return { success: false, error: error.issues[0].message };
     }
-    return { success: false, error: "Kunne ikke opprette tilbud" };
+    return { success: false, error: "Could not create offer" };
   }
 }
 
@@ -895,7 +895,7 @@ export async function acceptTenantOffer(token: string) {
     });
 
     if (!offer || offer.status !== "SENT") {
-      return { success: false, error: "Tilbudet er ikke lenger gyldig" };
+      return { success: false, error: "This offer is no longer valid" };
     }
 
     const now = new Date();
@@ -963,7 +963,7 @@ export async function acceptTenantOffer(token: string) {
           tenantId: offer.tenantId,
           type: "OTHER",
           channel: "OTHER",
-          note: "Kontrakt godkjent av kunden via tilbudslenke. Tenant aktivert.",
+          note: "Contract accepted by the customer via offer link. Tenant activated.",
         },
       });
     });
@@ -973,7 +973,7 @@ export async function acceptTenantOffer(token: string) {
     return { success: true, data: { tenantId: offer.tenantId } };
   } catch (error) {
     console.error("Accept tenant offer error:", error);
-    return { success: false, error: "Kunne ikke godkjenne tilbud" };
+    return { success: false, error: "Could not accept offer" };
   }
 }
 
@@ -998,7 +998,7 @@ export async function createTenantActivity(input: z.infer<typeof createTenantAct
     if (error instanceof ZodError) {
       return { success: false, error: error.issues[0].message };
     }
-    return { success: false, error: "Kunne ikke opprette aktivitet" };
+    return { success: false, error: "Could not create activity" };
   }
 }
 
@@ -1008,7 +1008,7 @@ export async function createTenantActivity(input: z.infer<typeof createTenantAct
 export async function updateTenant(input: z.infer<typeof updateTenantSchema>) {
   try {
     const superAdmin = await requireSuperAdmin();
-    if (!superAdmin) return { success: false, error: "Kun superadmin har tilgang" };
+    if (!superAdmin) return { success: false, error: "Only superadmin has access" };
 
     const validated = updateTenantSchema.parse(input);
 
@@ -1023,7 +1023,7 @@ export async function updateTenant(input: z.infer<typeof updateTenantSchema>) {
     });
 
     if (existingSlug) {
-      return { success: false, error: "Denne slugen er allerede i bruk" };
+      return { success: false, error: "This slug is already in use" };
     }
 
     const existingTenant = await prisma.tenant.findUnique({
@@ -1032,7 +1032,7 @@ export async function updateTenant(input: z.infer<typeof updateTenantSchema>) {
     });
 
     if (!existingTenant) {
-      return { success: false, error: "Bedrift ikke funnet" };
+      return { success: false, error: "Organisation not found" };
     }
 
     const normalizedIndustry = validated.industry
@@ -1080,7 +1080,7 @@ export async function updateTenant(input: z.infer<typeof updateTenantSchema>) {
     if (error instanceof ZodError) {
       return { success: false, error: error.issues[0].message };
     }
-    return { success: false, error: "Kunne ikke oppdatere bedriftsinformasjon" };
+    return { success: false, error: "Could not update organisation details" };
   }
 }
 
@@ -1090,7 +1090,7 @@ export async function updateTenant(input: z.infer<typeof updateTenantSchema>) {
 export async function updateTenantAdminEmail(input: z.infer<typeof updateAdminEmailSchema>) {
   try {
     const superAdmin = await requireSuperAdmin();
-    if (!superAdmin) return { success: false, error: "Kun superadmin har tilgang" };
+    if (!superAdmin) return { success: false, error: "Only superadmin has access" };
 
     const validated = updateAdminEmailSchema.parse(input);
 
@@ -1109,7 +1109,7 @@ export async function updateTenantAdminEmail(input: z.infer<typeof updateAdminEm
     });
 
     if (!userTenant) {
-      return { success: false, error: "Admin-bruker ikke funnet" };
+      return { success: false, error: "Admin user not found" };
     }
 
     // Sjekk at ny e-post ikke er i bruk
@@ -1118,7 +1118,7 @@ export async function updateTenantAdminEmail(input: z.infer<typeof updateAdminEm
     });
 
     if (existingUser && existingUser.id !== userTenant.userId) {
-      return { success: false, error: "E-postadressen er allerede i bruk av en annen bruker" };
+      return { success: false, error: "This email address is already in use by another user" };
     }
 
     // Oppdater e-post
@@ -1133,14 +1133,14 @@ export async function updateTenantAdminEmail(input: z.infer<typeof updateAdminEm
     // Send bekreftelse på e-post
     await sendEmail({
       to: validated.newEmail,
-      subject: "E-postadresse oppdatert - HMS Nova",
+      subject: "Email address updated — HSEQ Nova",
       html: `
-        <h1>E-postadresse oppdatert</h1>
-        <p>Hei ${updatedUser.name},</p>
-        <p>Din e-postadresse for HMS Nova har blitt oppdatert til: <strong>${validated.newEmail}</strong></p>
-        <p>Du kan nå logge inn med denne e-postadressen.</p>
+        <h1>Email address updated</h1>
+        <p>Dear ${updatedUser.name},</p>
+        <p>Your email address for HSEQ Nova has been updated to: <strong>${validated.newEmail}</strong></p>
+        <p>You can now sign in using this email address.</p>
         <br>
-        <p>Hilsen HMS Nova teamet</p>
+        <p>Kind regards,<br/>The HSEQ Nova Team</p>
       `,
     });
 
@@ -1152,7 +1152,7 @@ export async function updateTenantAdminEmail(input: z.infer<typeof updateAdminEm
     if (error instanceof ZodError) {
       return { success: false, error: error.issues[0].message };
     }
-    return { success: false, error: "Kunne ikke oppdatere e-postadresse" };
+    return { success: false, error: "Could not update email address" };
   }
 }
 
@@ -1168,7 +1168,7 @@ export async function resendActivationEmail(input: z.infer<typeof resendActivati
     });
 
     if (!tenant) {
-      return { success: false, error: "Bedrift ikke funnet" };
+      return { success: false, error: "Organisation not found" };
     }
 
     // Finn eller opprett admin-bruker
@@ -1240,44 +1240,44 @@ export async function resendActivationEmail(input: z.infer<typeof resendActivati
     // Send aktiverings-e-post med klartekst-passord
     await sendEmail({
       to: validated.adminEmail,
-      subject: `Velkommen til HMS Nova - ${tenant.name}`,
+      subject: `Welcome to HSEQ Nova — ${tenant.name}`,
       html: `
-        <h1>Velkommen til HMS Nova!</h1>
-        <p>Din bedrift, <strong>${tenant.name}</strong>, er nå aktivert.</p>
+        <h1>Welcome to HSEQ Nova!</h1>
+        <p>Your organisation, <strong>${tenant.name}</strong>, is now active.</p>
         
-        <h2>Påloggingsinformasjon</h2>
+        <h2>Sign-in details</h2>
         <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <p style="margin: 0 0 10px 0;">
             <strong>URL:</strong> <a href="${process.env.NEXT_PUBLIC_APP_URL}/login">${process.env.NEXT_PUBLIC_APP_URL}/login</a>
           </p>
           <p style="margin: 0 0 10px 0;">
-            <strong>E-post:</strong> ${validated.adminEmail}
+            <strong>Email:</strong> ${validated.adminEmail}
           </p>
           <p style="margin: 0;">
-            <strong>Passord:</strong> <code style="background-color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 16px;">${validated.adminPassword}</code>
+            <strong>Password:</strong> <code style="background-color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 16px;">${validated.adminPassword}</code>
           </p>
         </div>
 
         <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;">
           <p style="margin: 0; font-size: 14px;">
-            <strong>⚠️ Viktig:</strong> Vi anbefaler at du endrer dette passordet etter første innlogging. 
-            Du kan gjøre dette under "Min profil" når du er logget inn.
+            <strong>⚠️ Important:</strong> We recommend that you change this password after your first sign-in. 
+            You can do this under "My Profile" once signed in.
           </p>
         </div>
 
-        <p>Du har nå tilgang til systemet og kan begynne å bruke HMS Nova.</p>
+        <p>You now have access to the system and can start using HSEQ Nova.</p>
         
         <p style="margin-top: 20px;">
           <a href="${process.env.NEXT_PUBLIC_APP_URL}/login" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
-            Logg inn nå
+            Sign in now
           </a>
         </p>
 
         <p style="margin-top: 30px; color: #666; font-size: 14px;">
-          Hvis du har spørsmål, kontakt oss på post@hmsnova.no
+          If you have any questions, contact us at support@hseqnova.com
         </p>
         
-        <p>Hilsen HMS Nova teamet</p>
+        <p>Kind regards,<br/>The HSEQ Nova Team</p>
       `,
     });
 
@@ -1289,12 +1289,12 @@ export async function resendActivationEmail(input: z.infer<typeof resendActivati
     if (error instanceof ZodError) {
       return { success: false, error: error.issues[0].message };
     }
-    return { success: false, error: "Kunne ikke sende aktiverings-e-post" };
+    return { success: false, error: "Could not send activation email" };
   }
 }
 
 /**
- * Synk brukere fra en HMS Nova-tenant til Bransjekurs.no.
+ * Sync users from an HSEQ Nova tenant to Bransjekurs.no.
  * Kun mulig for tenants med bransjekursEnabled = true.
  */
 export async function syncTenantToBransjekurs(_tenantId: string) {
@@ -1321,7 +1321,7 @@ export async function toggleTenantStatus(tenantId: string, newStatus: "ACTIVE" |
     return { success: true, data: updatedTenant };
   } catch (error) {
     console.error("Toggle tenant status error:", error);
-    return { success: false, error: "Kunne ikke endre status" };
+    return { success: false, error: "Could not change status" };
   }
 }
 
@@ -1346,7 +1346,7 @@ export async function createTenant(input: z.infer<typeof createTenantSchema>) {
     if (existingSlug) {
       return { 
         success: false, 
-        error: `En bedrift med slug "${slug}" eksisterer allerede. Vennligst endre bedriftsnavnet litt.` 
+        error: `An organisation with slug "${slug}" already exists. Please change the name slightly.` 
       };
     }
 
@@ -1389,14 +1389,14 @@ export async function createTenant(input: z.infer<typeof createTenantSchema>) {
     return { 
       success: true, 
       data: tenant,
-      message: "Bedrift opprettet. Du kan nå aktivere den ved å sende påloggingsinformasjon til admin." 
+      message: "Organisation created. You can now activate it by sending login details to the admin." 
     };
   } catch (error) {
     console.error("Create tenant error:", error);
     if (error instanceof ZodError) {
       return { success: false, error: error.issues[0].message };
     }
-    return { success: false, error: "Kunne ikke opprette bedrift" };
+    return { success: false, error: "Could not create organisation" };
   }
 }
 
@@ -1408,7 +1408,7 @@ export async function deleteTenant(tenantId: string, confirmationText: string) {
   try {
     const privilegedUser = await requireSuperAdmin();
     if (!privilegedUser) {
-      return { success: false, error: "Kun superadmin kan slette bedrifter" };
+      return { success: false, error: "Only superadmin can delete organisations" };
     }
 
     // Hent tenant først for å verifisere navn
@@ -1433,14 +1433,14 @@ export async function deleteTenant(tenantId: string, confirmationText: string) {
     });
 
     if (!tenant) {
-      return { success: false, error: "Bedrift ikke funnet" };
+      return { success: false, error: "Organisation not found" };
     }
 
     // SIKKERHET: Verifiser at confirmationText matcher tenant.name
     if (confirmationText !== tenant.name) {
       return { 
         success: false, 
-        error: `Bekreftelse mislyktes. Skriv inn bedriftsnavnet nøyaktig: "${tenant.name}"` 
+        error: `Confirmation failed. Enter the organisation name exactly: "${tenant.name}"` 
       };
     }
 
@@ -1448,7 +1448,7 @@ export async function deleteTenant(tenantId: string, confirmationText: string) {
     if (tenant.status === "ACTIVE" || tenant.status === "TRIAL") {
       return {
         success: false,
-        error: "Kan ikke slette en aktiv bedrift. Endre status til CANCELLED eller SUSPENDED først.",
+        error: "Cannot delete an active organisation. Change status to CANCELLED or SUSPENDED first.",
       };
     }
 
@@ -1499,7 +1499,7 @@ export async function deleteTenant(tenantId: string, confirmationText: string) {
 
     return {
       success: true,
-      message: `Bedrift "${tenant.name}" og alle tilhørende data er permanent slettet. ${fileResult.deleted} filer fjernet fra R2 Cloud. ${deleteResult.deletedUsers} brukerkontoer ble også slettet.`,
+      message: `Organisation "${tenant.name}" and all associated data has been permanently deleted. ${fileResult.deleted} files removed from R2 Cloud. ${deleteResult.deletedUsers} user accounts were also deleted.`,
       filesDeleted: fileResult.deleted,
       fileErrors: fileResult.errors,
       usersDeleted: deleteResult.deletedUsers,
@@ -1508,7 +1508,7 @@ export async function deleteTenant(tenantId: string, confirmationText: string) {
     console.error("Delete tenant error:", error);
     return { 
       success: false, 
-      error: "Kunne ikke slette bedrift. Se server-logg for detaljer." 
+      error: "Could not delete organisation. See server log for details." 
     };
   }
 }

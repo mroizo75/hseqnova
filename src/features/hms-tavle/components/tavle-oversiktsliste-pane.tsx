@@ -46,7 +46,7 @@ function forrigeMaaned(): string {
 
 function formaterKlokke(verdi: string | null): string {
   if (!verdi) return "–";
-  return new Date(verdi).toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
+  return new Date(verdi).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
 /**

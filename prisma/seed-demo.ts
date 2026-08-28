@@ -904,7 +904,7 @@ async function main() {
         rating: 5,
         summary: "Roser responstid og oppfølging fra HMS-teamet",
         details:
-          "Nordic Retail fremhever at HMS Nova ga rask respons ved kritisk hendelse og sikret at korrigerende tiltak ble fulgt opp.",
+          "Nordic Retail highlights that HSEQ Nova delivered a rapid response to a critical incident and ensured corrective actions were followed up.",
         highlights: "Ønskes delt i kundecase og ledelsens gjennomgang.",
         followUpStatus: "SHARED",
         followUpOwnerId: leaderUser.id,
@@ -1223,7 +1223,7 @@ async function main() {
         evidence: "Manuell excel-fil brukes for å spore opplæring.",
         requirement: "Kompetansestyring skal være systematisk.",
         responsibleId: hmsUser.id,
-        correctiveAction: "Implementert digital opplæringsmodul i HMS Nova.",
+        correctiveAction: "Implemented digital training module in HSEQ Nova.",
         status: "RESOLVED",
         closedAt: new Date(Date.now() - 70 * 24 * 60 * 60 * 1000),
       },
@@ -1869,7 +1869,7 @@ async function main() {
   console.log("\n" + "=".repeat(80));
   console.log("\n✨ Test Bedrift AS er nå klar for demo! ✨");
   console.log("\n🔗 Tilgang til varslingssystemet:");
-  console.log(`   URL: https://hmsnova.com/varsling/test-bedrift`);
+  console.log(`   URL: https://hseqnova.com/varsling/test-bedrift`);
   console.log(`   Tilgangskoder for sporing:`);
   console.log(`   - VAR-2024-001: ABC123DEF456GHIJ (Lukket)`);
   console.log(`   - VAR-2024-002: XYZ789KLM012NOPQ (Under undersøkelse)`);

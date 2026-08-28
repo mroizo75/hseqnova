@@ -79,7 +79,7 @@ export async function GET(
     });
 
     // Standalone-tavler fyller inn opplysningene selv. Er tavlen koblet til et
-    // HMS Nova-prosjekt, hentes de derfra når de ikke er overstyrt.
+    // HSEQ Nova project, fetched from there when not overridden.
     const kontekst = {
       siteName: tavle.project?.name ?? tavle.name,
       siteAddress: tavle.siteAddress ?? tavle.project?.location ?? null,

@@ -8,7 +8,6 @@ import {
   getFormSequenceType,
 } from "@/lib/sequence";
 import { notifyUsersByRoles } from "@/server/actions/notification.actions";
-import { analyzeWellbeingSubmission } from "@/server/actions/wellbeing.actions";
 import { tenantCanUseGlobalFormTemplate } from "@/lib/form-template-industry";
 
 interface SubmittedInspectionFindingInput {
@@ -45,13 +44,13 @@ export async function POST(request: NextRequest) {
     const storage = getStorage();
     const sessionTenantId = session.user.tenantId;
     if (!sessionTenantId) {
-      return NextResponse.json({ error: "Ingen tenant i sesjon" }, { status: 403 });
+      return NextResponse.json({ error: "No tenant in session" }, { status: 403 });
     }
     if (tenantId !== sessionTenantId) {
-      return NextResponse.json({ error: "Ugyldig tenant-kontekst" }, { status: 403 });
+      return NextResponse.json({ error: "Invalid tenant context" }, { status: 403 });
     }
 
-    // Hent skjemaet for å få feltene
+    // Fetch form to get the fields
     const form = await prisma.formTemplate.findUnique({
       where: { id: formId },
       include: { fields: true },
@@ -63,7 +62,7 @@ export async function POST(request: NextRequest) {
     const canAccessForm =
       form.tenantId === sessionTenantId || (form.isGlobal === true && form.tenantId === null);
     if (!canAccessForm) {
-      return NextResponse.json({ error: "Ingen tilgang til skjema" }, { status: 403 });
+      return NextResponse.json({ error: "No access to this form" }, { status: 403 });
     }
 
     if (form.isGlobal && form.tenantId === null) {
@@ -78,7 +77,7 @@ export async function POST(request: NextRequest) {
         })
       ) {
         return NextResponse.json(
-          { error: "Skjemaet er ikke tilgjengelig for virksomhetens bransje" },
+          { error: "This form is not available for your organisation's industry" },
           { status: 403 }
         );
       }
@@ -95,7 +94,7 @@ export async function POST(request: NextRequest) {
     const isAnonymous =
       form.category === "WELLBEING" || form.allowAnonymousResponses;
     if (!isAnonymous && userId !== session.user.id) {
-      return NextResponse.json({ error: "Ugyldig bruker-kontekst" }, { status: 403 });
+      return NextResponse.json({ error: "Invalid user context" }, { status: 403 });
     }
 
     // Bygg metadata-objekt
@@ -124,13 +123,13 @@ export async function POST(request: NextRequest) {
         });
 
         if (!project) {
-          return NextResponse.json({ error: "Ugyldig prosjektvalg" }, { status: 400 });
+          return NextResponse.json({ error: "Invalid project selection" }, { status: 400 });
         }
 
         selectedProjectId = project.id;
         selectedProjectName = project.name;
       } else if (status === "SUBMITTED" && projectField.isRequired) {
-        return NextResponse.json({ error: "Prosjekt er påkrevd" }, { status: 400 });
+        return NextResponse.json({ error: "Project is required" }, { status: 400 });
       }
     }
 
@@ -143,7 +142,7 @@ export async function POST(request: NextRequest) {
         }
       } catch {
         return NextResponse.json(
-          { error: "Ugyldig format for inspeksjonsfunn" },
+          { error: "Invalid format for inspection findings" },
           { status: 400 }
         );
       }
@@ -222,7 +221,7 @@ export async function POST(request: NextRequest) {
         },
       });
       if (!inspection) {
-        return NextResponse.json({ error: "Inspeksjon ikke funnet" }, { status: 404 });
+        return NextResponse.json({ error: "Inspection not found" }, { status: 404 });
       }
 
       for (const findingInput of submittedInspectionFindings) {
@@ -235,7 +234,7 @@ export async function POST(request: NextRequest) {
         const severity = hasSeverity ? Math.max(1, Math.min(5, findingInput.severity!)) : 3;
         // Avviket får null når funnet ikke er gradert, slik at leder vurderer det
         const incidentSeverity = hasSeverity ? severity : null;
-        const title = (findingInput.title || findingInput.fieldLabel || "Funn fra vernerunde").trim();
+        const title = (findingInput.title || findingInput.fieldLabel || "Inspection finding").trim();
         const location = (findingInput.location || "").trim();
         const imageKeys = Array.isArray(findingInput.imageKeys)
           ? findingInput.imageKeys.filter((key): key is string => typeof key === "string")
@@ -259,12 +258,12 @@ export async function POST(request: NextRequest) {
           "AVVIK",
           occurredAt.getFullYear()
         );
-        const inspectionContext = `Kilde: Vernerunde "${inspection.title}"`;
+        const inspectionContext = `Source: Workplace inspection "${inspection.title}"`;
         const fieldContext = findingInput.fieldLabel
-          ? `\nSjekkpunkt: ${findingInput.fieldLabel}`
+          ? `\nCheckpoint: ${findingInput.fieldLabel}`
           : "";
         const answerContext = findingInput.answer
-          ? `\nSvar i skjema: ${findingInput.answer}`
+          ? `\nForm answer: ${findingInput.answer}`
           : "";
         const incidentDescription = `${inspectionContext}${fieldContext}${answerContext}\n\n${description}`;
 
@@ -273,7 +272,7 @@ export async function POST(request: NextRequest) {
             tenantId: inspection.tenantId,
             avviksnummer,
             type: "AVVIK",
-            title: `[Vernerunde] ${finding.title}`,
+            title: `[Workplace inspection] ${finding.title}`,
             description: incidentDescription,
             severity: incidentSeverity,
             occurredAt,
@@ -297,45 +296,10 @@ export async function POST(request: NextRequest) {
     if (status === "SUBMITTED" && form.requiresApproval) {
       await notifyUsersByRoles(tenantId, ["ADMIN", "HMS", "LEDER"], {
         type: "FORM_SUBMITTED",
-        title: "Nytt skjema sendt inn",
-        message: `${form.title} - venter på godkjenning`,
-        link: `/dashboard/wellbeing`,
+        title: "New form submitted",
+        message: `${form.title} - awaiting approval`,
+        link: `/dashboard/forms/${formId}`,
       });
-    }
-
-    // AUTOMATISK VURDERING: Hvis dette er et WELLBEING-skjema
-    if (status === "SUBMITTED" && form.category === "WELLBEING") {
-      try {
-        console.log(`🧠 [Wellbeing] Analyserer submission: ${submission.id}`);
-        const analysis = await analyzeWellbeingSubmission(submission.id);
-        
-        console.log(`✅ [Wellbeing] Analyse ferdig:`, {
-          overallScore: analysis.overallScore,
-          riskLevel: analysis.riskLevel,
-          requiresAction: analysis.requiresAction,
-          riskId: analysis.riskId,
-          measures: analysis.measures.length,
-        });
-
-        // Lagre analyse-resultatet i submission metadata
-        await prisma.formSubmission.update({
-          where: { id: submission.id },
-          data: {
-            metadata: JSON.stringify({
-              ...JSON.parse(submission.metadata || "{}"),
-              wellbeingAnalysis: {
-                overallScore: analysis.overallScore,
-                riskLevel: analysis.riskLevel,
-                riskId: analysis.riskId,
-                analyzedAt: new Date().toISOString(),
-              }
-            })
-          }
-        });
-      } catch (error) {
-        console.error("❌ [Wellbeing] Analyse feilet:", error);
-        // Ikke la analyse-feil stoppe submission
-      }
     }
 
     return NextResponse.json({ success: true, submission }, { status: 201 });

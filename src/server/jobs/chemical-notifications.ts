@@ -82,7 +82,7 @@ export async function checkOutdatedSDS() {
           try {
             await sendEmail({
               to: user.email,
-              subject: "HMS Nova: Stoffkartotek trenger oppdatering",
+              subject: "HSEQ Nova: COSHH register needs updating",
               html: `
                 <h2>Stoffkartotek trenger oppdatering</h2>
                 <p>Hei ${user.name || "der"},</p>
@@ -103,9 +103,9 @@ export async function checkOutdatedSDS() {
                   ${outdatedChemicals.length > 5 ? `<li>... og ${outdatedChemicals.length - 5} til</li>` : ""}
                 </ul>
                 <p>
-                  <a href="https://hmsnova.no/dashboard/chemicals" 
+                  <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://hseqnova.com"}/dashboard/chemicals" 
                      style="display:inline-block;padding:12px 24px;background:#0066CC;color:white;text-decoration:none;border-radius:6px;">
-                    Se stoffkartotek
+                    View COSHH register
                   </a>
                 </p>
                 <p style="color:#666;font-size:14px;">
@@ -192,7 +192,7 @@ export async function checkCMRAndSubstitution() {
           try {
             await sendEmail({
               to: user.email,
-              subject: "HMS Nova: Substitusjonsvurdering påkrevd",
+              subject: "HSEQ Nova: Substitution assessment required",
               html: `
                 <h2>Farlige kjemikalier krever substitusjonsvurdering</h2>
                 <p>Hei ${user.name || "der"},</p>
@@ -214,7 +214,7 @@ export async function checkCMRAndSubstitution() {
                   ${dangerousChemicals.length > 5 ? `<li>... og ${dangerousChemicals.length - 5} til</li>` : ""}
                 </ul>
                 <p>
-                  <a href="https://hmsnova.no/dashboard/chemicals?filter=high-risk" 
+                  <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://hseqnova.com"}/dashboard/chemicals?filter=high-risk" 
                      style="display:inline-block;padding:12px 24px;background:#ff4444;color:white;text-decoration:none;border-radius:6px;">
                     Gjennomgå farlige kjemikalier
                   </a>

@@ -24,7 +24,7 @@ export default async function AnsattProfil() {
   const session = await getServerSession(authOptions);
   const t = await getTranslations("employeeProfilePage");
   const locale = await getLocale();
-  const dateLocale = locale === "en" ? "en-US" : "nb-NO";
+  const dateLocale = "en-GB";
 
   if (!session?.user?.id) {
     redirect("/login");

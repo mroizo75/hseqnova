@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
   });
 
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "HMS Nova";
+  workbook.creator = "HSEQ Nova";
   workbook.created = new Date();
 
   const sheet = workbook.addWorksheet("Fakturaer");

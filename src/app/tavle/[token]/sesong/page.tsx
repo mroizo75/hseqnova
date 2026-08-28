@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     select: { tenant: { select: { name: true } } },
   });
   return {
-    title: `HMS-intro for sesongansatte – ${tavle?.tenant.name ?? "HMS Nova"}`,
+    title: `H&S induction for seasonal workers – ${tavle?.tenant.name ?? "HSEQ Nova"}`,
     robots: { index: false },
   };
 }

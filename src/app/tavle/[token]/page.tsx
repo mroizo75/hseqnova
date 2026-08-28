@@ -102,13 +102,13 @@ export default async function PublicTavlePage({ params, searchParams }: Props) {
   });
 
   const forceKiosk = kiosk === "1";
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://hmsnova.no";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://hseqnova.com";
 
   // Kun anonymiserte tall – aldri saksinnhold på offentlig tavle
   const harTillitspanel = tavle.sections.some((s) => s.type === "GJESTESERVICE_STATUS");
   const guestStats = harTillitspanel ? await getGuestServiceStats(tavle.id) : null;
 
-  // Live HMS Nova-data er forbeholdt planer med full integrasjon
+  // Live HSEQ Nova data is reserved for plans with full integration
   const liveData =
     getPlanLimits(subscription.plan).hasLiveHmsNovaData
       ? await getTavleLiveData({

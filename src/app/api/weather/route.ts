@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
  * Returnerer: { current, forecast: [{ date, symbolCode, tempMin, tempMax, precipitation }] }
  */
 
-const APP_UA = "HMS-Nova-Digital-Tavle/1.0 (post@hmsnova.no)";
+const APP_UA = "HSEQ-Nova-Digital-Board/1.0 (support@hseqnova.co.uk)";
 const GEO_URL = "https://nominatim.openstreetmap.org/search";
 const MET_URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact";
 
@@ -38,15 +38,15 @@ const SYMBOL_EMOJI: Record<string, string> = {
   heavysnow: "❄️",
 };
 
-const SYMBOL_NO: Record<string, string> = {
-  clearsky_day: "Klart", clearsky_night: "Klart",
-  fair_day: "Lettskyet", fair_night: "Lettskyet",
-  partlycloudy_day: "Delvis skyet", partlycloudy_night: "Delvis skyet",
-  cloudy: "Overskyet",
-  rainshowers_day: "Regnbyger", rainshowers_night: "Regnbyger",
-  rain: "Regn", lightrain: "Lett regn", heavyrain: "Kraftig regn",
-  sleet: "Sludd", snow: "Snø", fog: "Tåke",
-  rainandthunder: "Torden og regn", snowandthunder: "Torden og snø",
+const SYMBOL_LABEL: Record<string, string> = {
+  clearsky_day: "Clear", clearsky_night: "Clear",
+  fair_day: "Fair", fair_night: "Fair",
+  partlycloudy_day: "Partly cloudy", partlycloudy_night: "Partly cloudy",
+  cloudy: "Overcast",
+  rainshowers_day: "Rain showers", rainshowers_night: "Rain showers",
+  rain: "Rain", lightrain: "Light rain", heavyrain: "Heavy rain",
+  sleet: "Sleet", snow: "Snow", fog: "Fog",
+  rainandthunder: "Thunder and rain", snowandthunder: "Thunder and snow",
 };
 
 function getEmoji(code: string): string {
@@ -55,13 +55,13 @@ function getEmoji(code: string): string {
 
 function getLabel(code: string): string {
   const base = code.replace(/_day$|_night$|_polartwilight$/, "");
-  return SYMBOL_NO[code] ?? SYMBOL_NO[base] ?? code;
+  return SYMBOL_LABEL[code] ?? SYMBOL_LABEL[base] ?? code;
 }
 
 async function geocode(q: string): Promise<{ lat: number; lon: number; displayName: string } | null> {
-  const url = `${GEO_URL}?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=no`;
+  const url = `${GEO_URL}?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=gb`;
   const res = await fetch(url, {
-    headers: { "User-Agent": APP_UA, "Accept-Language": "nb" },
+    headers: { "User-Agent": APP_UA, "Accept-Language": "en-GB" },
     next: { revalidate: 86400 },
   });
   if (!res.ok) return null;
@@ -101,20 +101,20 @@ export async function GET(req: NextRequest) {
   const q = searchParams.get("q")?.trim();
 
   if (!q) {
-    return NextResponse.json({ error: "Mangler sted (?q=...)" }, { status: 400 });
+    return NextResponse.json({ error: "Missing location (?q=...)" }, { status: 400 });
   }
 
   try {
     const geo = await geocode(q);
     if (!geo) {
-      return NextResponse.json({ error: `Fant ikke stedet "${q}"` }, { status: 404 });
+      return NextResponse.json({ error: `Location "${q}" not found` }, { status: 404 });
     }
 
     const metRes = await fetch(`${MET_URL}?lat=${geo.lat}&lon=${geo.lon}`, {
       headers: { "User-Agent": APP_UA },
       next: { revalidate: 1800 },
     });
-    if (!metRes.ok) throw new Error("MET Norway feilet");
+    if (!metRes.ok) throw new Error("MET Norway request failed");
 
     const metData = await metRes.json();
     const timeseries: any[] = metData.properties?.timeseries ?? [];
@@ -141,6 +141,6 @@ export async function GET(req: NextRequest) {
       forecast,
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message ?? "Ukjent feil" }, { status: 500 });
+    return NextResponse.json({ error: err.message ?? "Unknown error" }, { status: 500 });
   }
 }

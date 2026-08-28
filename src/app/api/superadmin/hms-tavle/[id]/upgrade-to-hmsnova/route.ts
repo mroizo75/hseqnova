@@ -7,11 +7,11 @@ import { createErrorResponse, createSuccessResponse, handleApiError, ErrorCodes 
 /**
  * POST /api/superadmin/hms-tavle/[id]/upgrade-to-hmsnova
  *
- * Oppgraderer en standalone HMS Tavle-kunde til full HMS Nova-abonnent:
- *  1. Setter Tenant.isTavleOnly = false  → kunden får tilgang til hele HMS Nova
+ * Oppgraderer en standalone HMS Tavle-kunde til full HSEQ Nova-abonnent:
+ *  1. Setter Tenant.isTavleOnly = false  → kunden får tilgang til hele HSEQ Nova
  *  2. Oppdaterer HmsTavleSubscription.plan = ADDON, isAddon = true
  *     → tavlen konverteres til tilleggsmodul (kr 290/mnd)
- *  3. Oppretter en HMS Nova Subscription om den ikke finnes fra før
+ *  3. Oppretter en HSEQ Nova Subscription om den ikke finnes fra før
  *     (type STANDARD med 12 måneder som startpunkt)
  */
 export async function POST(
@@ -43,7 +43,7 @@ export async function POST(
     }
 
     if (!tavleSub.tenant.isTavleOnly) {
-      return createErrorResponse(ErrorCodes.CONFLICT, "Kunden er allerede en full HMS Nova-bruker", 400);
+      return createErrorResponse(ErrorCodes.CONFLICT, "Kunden er allerede en full HSEQ Nova-bruker", 400);
     }
 
     const tenantId = tavleSub.tenantId;
@@ -68,7 +68,7 @@ export async function POST(
         },
       });
 
-      // 3. Opprett HMS Nova-abonnement om det ikke finnes
+      // 3. Opprett HSEQ Nova-abonnement om det ikke finnes
       if (!tavleSub.tenant.subscription) {
         await tx.subscription.create({
           data: {
@@ -87,7 +87,7 @@ export async function POST(
     return createSuccessResponse({
       upgraded: true,
       tenantName: tavleSub.tenant.name,
-      message: `${tavleSub.tenant.name} er nå en full HMS Nova-bruker. Tavlen er konvertert til Add-on (kr 290/mnd).`,
+      message: `${tavleSub.tenant.name} er nå en full HSEQ Nova-bruker. Tavlen er konvertert til Add-on (kr 290/mnd).`,
     });
   } catch (error) {
     return handleApiError(error);

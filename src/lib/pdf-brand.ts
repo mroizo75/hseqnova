@@ -1,5 +1,5 @@
 /**
- * Sentralt PDF-brandings-bibliotek for HMS Nova.
+ * Central PDF branding library for HSEQ Nova.
  *
  * Bygger HTML-maler med full profesjonell branding og kaller Adobe PDF Services
  * for å konvertere til pixel-perfekt PDF.
@@ -472,22 +472,22 @@ function buildSections(sections: PdfSection[]): string {
 // ── Eksporterte funksjoner ─────────────────────────────────────────────────────
 
 /**
- * Bygg komplett HTML-streng for en rapport med full HMS Nova-branding.
+ * Build complete HTML string for a report with full HSEQ Nova branding.
  * Kan brukes direkte med Adobe htmlToPdf() eller returneres for videre prosessering.
  */
 export async function buildReportHtml(config: PdfReportConfig): Promise<string> {
   const logo = getLogoBase64();
   const now = config.generatedAt ?? new Date();
-  const dateStr = now.toLocaleDateString("nb-NO", {
+  const dateStr = now.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "long",
     year: "numeric",
   });
-  const timeStr = now.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
+  const timeStr = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
   const logoImg = logo
-    ? `<img src="${logo}" alt="HMS Nova" class="header-logo-hms" />`
-    : `<span style="font-size:16px;font-weight:900;color:#16a34a;letter-spacing:-0.5px;">HMS<span style="color:#0f172a;">NOVA</span></span>`;
+    ? `<img src="${logo}" alt="HSEQ Nova" class="header-logo-hms" />`
+    : `<span style="font-size:16px;font-weight:900;color:#16a34a;letter-spacing:-0.5px;">HSEQ<span style="color:#0f172a;">NOVA</span></span>`;
 
   const tenantLogoBase64 = await resolveImageToBase64(config.tenant.logoUrl);
   const tenantLogoImg = tenantLogoBase64
@@ -544,7 +544,7 @@ export async function buildReportHtml(config: PdfReportConfig): Promise<string> 
     <div class="report-footer">
       <table class="report-footer-table" cellpadding="0" cellspacing="0">
         <tr>
-          <td><span class="footer-brand">HMS Nova</span> · hmsnova.no</td>
+          <td><span class="footer-brand">HSEQ Nova</span> · hseqnova.com</td>
           <td class="footer-right">${escHtml(config.tenant.name)} · Generert ${dateStr}</td>
         </tr>
       </table>

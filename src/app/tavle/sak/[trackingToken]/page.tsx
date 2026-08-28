@@ -13,7 +13,7 @@ import { getGuestDictionary } from "@/features/hms-tavle/lib/guest-i18n";
  * aldri indekseres – GDPR art. 5 (dataminimering, formålsbegrensning).
  */
 export const metadata: Metadata = {
-  title: "Din sak – HMS Nova",
+  title: "Your case – HSEQ Nova",
   robots: { index: false, follow: false, nocache: true },
 };
 
@@ -40,7 +40,7 @@ export default async function GjestSakPage({ params }: Props) {
   });
 
   if (!submission) {
-    const t = getGuestDictionary("nb");
+    const t = getGuestDictionary("en");
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="text-center max-w-sm">

@@ -11,7 +11,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNotifications } from "@/hooks/useNotifications";
 import { formatDistanceToNow } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
@@ -141,7 +141,7 @@ function NotificationBellInner() {
                                 new Date(notification.createdAt),
                                 {
                                   addSuffix: true,
-                                  locale: nb,
+                                  locale: enGB,
                                 }
                               )}
                             </p>
@@ -165,7 +165,7 @@ function NotificationBellInner() {
                               new Date(notification.createdAt),
                               {
                                 addSuffix: true,
-                                locale: nb,
+                                locale: enGB,
                               }
                             )}
                           </p>

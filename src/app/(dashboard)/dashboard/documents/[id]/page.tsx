@@ -11,7 +11,7 @@ import { loadDocumentDetail } from "@/server/queries/documents.queries";
 
 function formatDate(date: Date | string | null | undefined, locale: string, fallback: string) {
   if (!date) return fallback;
-  return new Date(date).toLocaleDateString(locale === "en" ? "en-GB" : "nb-NO", {
+  return new Date(date).toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "long",
     year: "numeric",

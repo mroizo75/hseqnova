@@ -86,7 +86,7 @@ export function ImprovementTimeline({ entries }: ImprovementTimelineProps) {
                 </p>
               )}
               <p className="text-xs text-muted-foreground mt-1">
-                {date.toLocaleDateString("nb-NO", {
+                {date.toLocaleDateString("en-GB", {
                   day: "2-digit",
                   month: "long",
                   year: "numeric",

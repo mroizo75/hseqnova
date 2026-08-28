@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { htmlToPdf } from "@/lib/adobe-pdf";
 import { getLogoBase64, resolveImageToBase64 } from "@/lib/pdf-brand";
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 import {
   loadInspectionPeople,
   loadInspectionsForReport,
@@ -299,8 +299,8 @@ function buildReportHtml(data: {
     ? `<img src="${data.tenantLogoBase64}" alt="${data.tenantName}" style="height:57px;max-height:57px;width:auto;max-width:260px;" />`
     : "";
   const hmsLogoHtml = data.hmsLogoBase64
-    ? `<img src="${data.hmsLogoBase64}" alt="HMS Nova" style="height:36px;width:auto;opacity:0.7;" />`
-    : `<span style="font-size:16px;font-weight:900;color:#16a34a;letter-spacing:-0.5px;">HMS<span style="color:#0f172a;">NOVA</span></span>`;
+    ? `<img src="${data.hmsLogoBase64}" alt="HSEQ Nova" style="height:36px;width:auto;opacity:0.7;" />`
+    : `<span style="font-size:16px;font-weight:900;color:#16a34a;letter-spacing:-0.5px;">HSEQ<span style="color:#0f172a;">NOVA</span></span>`;
 
   return `<!DOCTYPE html>
 <html lang="no">
@@ -465,7 +465,7 @@ ${
 <div class="report-footer">
   <table style="width:100%;border-collapse:collapse;" cellpadding="0" cellspacing="0">
     <tr>
-      <td style="padding:8px 30px;font-size:9px;color:#94a3b8;"><span class="footer-brand">HMS Nova</span> · hmsnova.no</td>
+      <td style="padding:8px 30px;font-size:9px;color:#94a3b8;"><span class="footer-brand">HSEQ Nova</span> · hseqnova.com</td>
       <td style="padding:8px 30px;font-size:9px;color:#94a3b8;text-align:right;">${data.tenantName} · Generert ${data.generatedAt}</td>
     </tr>
   </table>
@@ -493,7 +493,7 @@ export async function GET(req: NextRequest) {
 
   const periodLabel =
     month !== null
-      ? format(refDate, "MMMM yyyy", { locale: nb }).replace(/^./, (c) => c.toUpperCase())
+      ? format(refDate, "MMMM yyyy", { locale: enGB }).replace(/^./, (c) => c.toUpperCase())
       : `Årsrapport ${year}`;
 
   const inspections = await loadInspectionsForReport(tenantId, startDate, endDate);
@@ -569,7 +569,7 @@ export async function GET(req: NextRequest) {
           (ins) => new Date(ins.scheduledDate).getMonth() === i
         );
         return {
-          label: format(mo, "MMM", { locale: nb }),
+          label: format(mo, "MMM", { locale: enGB }),
           inspections: moInsp.length,
           findings: moInsp.reduce((s, ins) => s + ins.findings.length, 0),
         };
@@ -583,7 +583,7 @@ export async function GET(req: NextRequest) {
 
   const reportData = {
     periodLabel,
-    generatedAt: format(new Date(), "d. MMMM yyyy 'kl.' HH:mm", { locale: nb }),
+    generatedAt: format(new Date(), "d. MMMM yyyy 'kl.' HH:mm", { locale: enGB }),
     tenantName: tenant?.name ?? tenantId,
     tenantOrgNumber: tenant?.orgNumber,
     tenantLogoBase64,
@@ -598,9 +598,9 @@ export async function GET(req: NextRequest) {
       title: ins.title,
       type: TYPE_LABELS[ins.type] ?? ins.type,
       status: ins.status,
-      scheduledDate: format(new Date(ins.scheduledDate), "d. MMM yyyy", { locale: nb }),
+      scheduledDate: format(new Date(ins.scheduledDate), "d. MMM yyyy", { locale: enGB }),
       completedDate: ins.completedDate
-        ? format(new Date(ins.completedDate), "d. MMM yyyy", { locale: nb })
+        ? format(new Date(ins.completedDate), "d. MMM yyyy", { locale: enGB })
         : "",
       location: ins.location ?? "",
       conductedBy: ins.conductedBy ? (userMap[ins.conductedBy] ?? ins.conductedBy) : "",
@@ -617,9 +617,9 @@ export async function GET(req: NextRequest) {
       statusLabel: FINDING_STATUS_LABELS[f.status] ?? f.status,
       location: f.location ?? "",
       responsible: f.responsibleName,
-      dueDate: f.dueDate ? format(new Date(f.dueDate), "d. MMM yyyy", { locale: nb }) : "",
+      dueDate: f.dueDate ? format(new Date(f.dueDate), "d. MMM yyyy", { locale: enGB }) : "",
       resolvedAt: f.resolvedAt
-        ? format(new Date(f.resolvedAt), "d. MMM yyyy", { locale: nb })
+        ? format(new Date(f.resolvedAt), "d. MMM yyyy", { locale: enGB })
         : "",
       resolutionNotes: f.resolutionNotes ?? "",
     })),

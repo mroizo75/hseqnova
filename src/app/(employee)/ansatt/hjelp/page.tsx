@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 import { Headphones, Plus, MessageSquare } from "lucide-react";
 
 import { listMySupportTickets } from "@/server/actions/support.actions";
@@ -30,16 +30,16 @@ export default async function AnsattHjelpPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Headphones className="h-7 w-7 text-primary" />
-            Hjelp og support
+            Help &amp; support
           </h1>
           <p className="text-muted-foreground mt-1">
-            Chat med HMS-representantene våre via ticketsystemet.
+            Chat with our HSEQ representatives via the ticket system.
           </p>
         </div>
         <Button asChild>
           <Link href="/ansatt/hjelp/ny">
             <Plus className="mr-2 h-4 w-4" />
-            Ny sak
+            New ticket
           </Link>
         </Button>
       </div>
@@ -48,9 +48,9 @@ export default async function AnsattHjelpPage() {
         <Card>
           <CardContent className="p-10 text-center">
             <MessageSquare className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-            <p className="font-medium mb-4">Ingen saker ennå</p>
+            <p className="font-medium mb-4">No tickets yet</p>
             <Button asChild>
-              <Link href="/ansatt/hjelp/ny">Opprett sak</Link>
+              <Link href="/ansatt/hjelp/ny">Create ticket</Link>
             </Button>
           </CardContent>
         </Card>
@@ -73,7 +73,7 @@ export default async function AnsattHjelpPage() {
                 <CardContent className="text-sm text-muted-foreground">
                   {SUPPORT_CATEGORY_LABELS[ticket.category]} ·{" "}
                   {format(new Date(ticket.lastMessageAt), "dd.MM.yyyy HH:mm", {
-                    locale: nb,
+                    locale: enGB,
                   })}
                 </CardContent>
               </Card>

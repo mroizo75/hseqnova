@@ -364,9 +364,9 @@ export function TenantOnboardingForm({ salesRep }: TenantOnboardingFormProps) {
                     <SelectValue placeholder="Velg plan" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="MICRO">MICRO - HMS Nova Software (kr 3.300/år)</SelectItem>
-                    <SelectItem value="SMALL">SMALL - HMS Nova Software (kr 3.300/år)</SelectItem>
-                    <SelectItem value="MEDIUM">MEDIUM - HMS Nova Software (kr 3.300/år)</SelectItem>
+                    <SelectItem value="MICRO">MICRO - HSEQ Nova Software (kr 3,300/yr)</SelectItem>
+                    <SelectItem value="SMALL">SMALL - HSEQ Nova Software (kr 3,300/yr)</SelectItem>
+                    <SelectItem value="MEDIUM">MEDIUM - HSEQ Nova Software (kr 3,300/yr)</SelectItem>
                     <SelectItem value="LARGE">LARGE - Enterprise (kontakt for pris)</SelectItem>
                   </SelectContent>
                 </Select>
@@ -475,7 +475,7 @@ export function TenantOnboardingForm({ salesRep }: TenantOnboardingFormProps) {
             <CardHeader>
               <CardTitle>Onboarding-prosess</CardTitle>
               <CardDescription>
-                Veiledning for å komme i gang med HMS Nova 2.0
+                Guidance for getting started with HSEQ Nova 2.0
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -515,9 +515,9 @@ export function TenantOnboardingForm({ salesRep }: TenantOnboardingFormProps) {
         <TabsContent value="advantage" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Hvorfor HMS Nova 2.0 er bedre enn konkurrentene</CardTitle>
+              <CardTitle>Why HSEQ Nova 2.0 outperforms competitors</CardTitle>
               <CardDescription>
-                Sammenligning med andre HMS-systemer
+                Comparison with other HSEQ systems
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -529,7 +529,7 @@ export function TenantOnboardingForm({ salesRep }: TenantOnboardingFormProps) {
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="text-muted-foreground mb-1">HMS Nova 2.0:</p>
+                        <p className="text-muted-foreground mb-1">HSEQ Nova 2.0:</p>
                         <p className="font-medium">{advantage.hmsNova}</p>
                       </div>
                       <div>
@@ -550,7 +550,7 @@ export function TenantOnboardingForm({ salesRep }: TenantOnboardingFormProps) {
               <Alert className="mt-6 border-primary">
                 <TrendingUp className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Sammendrag:</strong> HMS Nova 2.0 tilbyr 10+ unike funksjoner som
+                  <strong>Summary:</strong> HSEQ Nova 2.0 offers 10+ unique features that
                   konkurrentene ikke har, kombinert med bedre UX og lavere pris for små bedrifter.
                 </AlertDescription>
               </Alert>

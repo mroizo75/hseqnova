@@ -8,7 +8,7 @@ import {
 const clientId = "8ad2dc50-0d84-4625-8ac0-75335cdc9503";
 
 test("samtykke-URL peker på organizations og ikke common", () => {
-  const url = new URL(buildMicrosoftAdminConsentUrl({ clientId, appUrl: "https://www.hmsnova.no" }));
+  const url = new URL(buildMicrosoftAdminConsentUrl({ clientId, appUrl: "https://www.hseqnova.com" }));
 
   // Personlige Microsoft-kontoer kan ikke gi admin-samtykke via /common.
   assert.equal(url.pathname, "/organizations/v2.0/adminconsent");
@@ -16,12 +16,12 @@ test("samtykke-URL peker på organizations og ikke common", () => {
 });
 
 test("samtykke-URL inneholder client_id, scope og registrert redirect_uri", () => {
-  const url = new URL(buildMicrosoftAdminConsentUrl({ clientId, appUrl: "https://www.hmsnova.no" }));
+  const url = new URL(buildMicrosoftAdminConsentUrl({ clientId, appUrl: "https://www.hseqnova.com" }));
 
   assert.equal(url.searchParams.get("client_id"), clientId);
   assert.equal(
     url.searchParams.get("redirect_uri"),
-    "https://www.hmsnova.no/api/auth/microsoft-consent"
+    "https://www.hseqnova.com/api/auth/microsoft-consent"
   );
   assert.equal(
     url.searchParams.get("scope"),

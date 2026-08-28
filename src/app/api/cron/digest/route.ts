@@ -4,7 +4,7 @@ import { validateCronRequest } from "@/lib/cron-auth";
 import { startCronExecution } from "@/lib/cron-tracker";
 
 /**
- * Cron Job API Route for HMS Nova Email Digest
+ * Cron Job API Route for HSEQ Nova Email Digest
  * 
  * Denne ruten sender daglige eller ukentlige e-post sammendrag.
  * 

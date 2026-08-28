@@ -23,7 +23,7 @@ import type {
 import { updateRiskControl, deleteRiskControl } from "@/server/actions/risk-register.actions";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale/en-GB";
 
 const statusColors: Record<RiskControlStatus, string> = {
   ACTIVE: "bg-green-100 text-green-800",
@@ -208,10 +208,10 @@ export function RiskControlList({ riskId, controls }: RiskControlListProps) {
               <TableCell className="text-sm">
                 {control.nextTestDate ? (
                   <>
-                    {format(new Date(control.nextTestDate), "dd. MMM yyyy", { locale: nb })}
+                    {format(new Date(control.nextTestDate), "dd. MMM yyyy", { locale: enGB })}
                     {control.lastTestedAt && (
                       <p className="text-xs text-muted-foreground">
-                        Sist testet {format(new Date(control.lastTestedAt), "dd.MM.yyyy", { locale: nb })}
+                        Sist testet {format(new Date(control.lastTestedAt), "dd.MM.yyyy", { locale: enGB })}
                       </p>
                     )}
                   </>

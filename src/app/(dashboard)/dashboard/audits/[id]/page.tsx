@@ -109,7 +109,7 @@ export default async function AuditDetailPage({ params }: { params: Promise<{ id
               <div>
                 <p className="text-sm font-medium text-muted-foreground">{t("basicInfo.scheduledDate")}</p>
                 <p className="font-medium">
-                  {new Date(audit.scheduledDate).toLocaleDateString(locale === "en" ? "en-US" : "nb-NO", {
+                  {new Date(audit.scheduledDate).toLocaleDateString("en-GB", {
                     day: "numeric",
                     month: "long",
                     year: "numeric",
@@ -124,7 +124,7 @@ export default async function AuditDetailPage({ params }: { params: Promise<{ id
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">{t("basicInfo.completed")}</p>
                   <p className="font-medium">
-                    {new Date(audit.completedAt).toLocaleDateString(locale === "en" ? "en-US" : "nb-NO", {
+                    {new Date(audit.completedAt).toLocaleDateString("en-GB", {
                       day: "numeric",
                       month: "long",
                       year: "numeric",

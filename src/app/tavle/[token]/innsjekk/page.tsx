@@ -51,7 +51,7 @@ export default async function InnsjekksPage({ params }: Props) {
     where: { tavleId: tavle.id, date: today },
   });
 
-  // Hent telefonnummer for pålogget HMS Nova-bruker
+  // Get phone number for logged-in HSEQ Nova user
   let hmsNovaUser: { name: string; employer: string; phone: string } | null = null;
   if (session?.user?.id) {
     const dbUser = await prisma.user.findUnique({

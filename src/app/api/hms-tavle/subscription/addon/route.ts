@@ -42,21 +42,21 @@ export async function POST(_req: NextRequest) {
       },
     });
 
-    // Varsle HMS Nova om ny addon-aktivering
+    // Notify HSEQ Nova about new addon activation
     try {
       await sendEmail({
-        to: "post@hmsnova.no",
+        to: "support@hseqnova.com",
         subject: `HMS Tavle Add-on aktivert: ${tenant?.name ?? "Ukjent"}`,
         html: `<h2>HMS Tavle Add-on aktivert</h2>
 <table style="font-family:sans-serif;font-size:14px;border-collapse:collapse;">
   <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Bedrift:</td><td>${tenant?.name ?? "Ukjent"}</td></tr>
   <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Org.nr:</td><td>${tenant?.orgNumber ?? "–"}</td></tr>
-  <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Plan:</td><td>HMS Nova Add-on</td></tr>
+  <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Plan:</td><td>HSEQ Nova Add-on</td></tr>
   <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Pris:</td><td>kr 290/mnd</td></tr>
   <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Aktivert av:</td><td>${session.user.name ?? session.user.email}</td></tr>
   <tr><td style="padding:4px 12px 4px 0;font-weight:600;">Kontakt-e-post:</td><td>${tenant?.contactEmail ?? "–"}</td></tr>
 </table>
-<p style="margin-top:16px;font-size:13px;color:#666;">Faktura: kr 290/mnd legges til eksisterende HMS Nova-abonnement.</p>`,
+<p style="margin-top:16px;font-size:13px;color:#666;">Invoice: £29/mo added to existing HSEQ Nova subscription.</p>`,
       });
     } catch {
       // Ikke blokker aktiveringen om intern varsel feiler

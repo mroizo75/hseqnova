@@ -13,7 +13,7 @@ import { getStorage } from "@/lib/storage";
 export default async function AnsattTrainingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const t = await getTranslations("employeeTrainingDetailPage");
   const locale = await getLocale();
-  const dateLocale = locale === "en" ? "en-US" : "nb-NO";
+  const dateLocale = "en-GB";
   const { id } = await params;
   const session = await getServerSession(authOptions);
 

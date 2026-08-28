@@ -1,5 +1,5 @@
 /**
- * Flerspråklig nøkkelinnhold for HMS Nova.
+ * Multilingual key content for HSEQ Nova.
  * Prioriterte språk: norsk (nb), engelsk (en).
  * Brukes for onboarding-sjekkliste, nøkkelrutiner og HMS-tavle offentlig visning.
  *

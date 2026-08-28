@@ -219,13 +219,13 @@ export function TenantActivityTimeline({ tenantId, activities }: TenantActivityT
                     <div className="flex-1 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs text-muted-foreground">
-                          {createdAt.toLocaleDateString("nb-NO", {
+                          {createdAt.toLocaleDateString("en-GB", {
                             day: "2-digit",
                             month: "short",
                             year: "numeric",
                           })}{" "}
                           kl.{" "}
-                          {createdAt.toLocaleTimeString("nb-NO", {
+                          {createdAt.toLocaleTimeString("en-GB", {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}

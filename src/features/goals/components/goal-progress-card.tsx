@@ -95,7 +95,7 @@ export function GoalProgressCard({ goal }: GoalProgressCardProps) {
             <Calendar className="h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">Frist:</span>
             <span className="font-medium">
-              {new Date(goal.deadline).toLocaleDateString("nb-NO")}
+              {new Date(goal.deadline).toLocaleDateString("en-GB")}
             </span>
             {daysToDeadline !== null && (
               <Badge

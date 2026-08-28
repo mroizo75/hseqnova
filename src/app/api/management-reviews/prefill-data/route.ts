@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/management-reviews/prefill-data - Hent data for forhåndsutfylling
+// GET /api/management-reviews/prefill-data - Fetch data for pre-filling
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -147,43 +147,41 @@ export async function GET(req: NextRequest) {
 // Generer tekst for HMS-mål
 function generateGoalsReview(goals: any[]): string {
   if (goals.length === 0) {
-    return "Ingen HMS-mål er registrert i perioden.\n\n⚠️ ANBEFALING: Sett opp målbare HMS-mål for neste periode.";
+    return "No HSEQ objectives recorded in the period.\n\n⚠️ RECOMMENDATION: Set measurable HSEQ objectives for the next period.";
   }
 
-  let text = `## HMS-mål og måloppnåelse\n\n`;
-  text += `Totalt antall mål: ${goals.length}\n\n`;
+  let text = `## HSEQ objectives and achievement\n\n`;
+  text += `Total number of objectives: ${goals.length}\n\n`;
 
   goals.forEach((goal, index) => {
     text += `### ${index + 1}. ${goal.title}\n`;
     text += `- Type: ${goal.type}\n`;
-    text += `- Mål: ${goal.targetValue} ${goal.unit}\n`;
+    text += `- Target: ${goal.targetValue} ${goal.unit}\n`;
     text += `- Status: ${goal.status}\n`;
-    text += `- Startdato: ${new Date(goal.startDate).toLocaleDateString("nb-NO")}\n`;
-    text += `- Sluttdato: ${new Date(goal.endDate).toLocaleDateString("nb-NO")}\n`;
+    text += `- Start date: ${new Date(goal.startDate).toLocaleDateString("en-GB")}\n`;
+    text += `- End date: ${new Date(goal.endDate).toLocaleDateString("en-GB")}\n`;
 
     if (goal.measurements && goal.measurements.length > 0) {
       const latest = goal.measurements[0];
-      text += `- Siste måling: ${latest.value} ${goal.unit} (${new Date(latest.measurementDate).toLocaleDateString("nb-NO")})\n`;
+      text += `- Latest measurement: ${latest.value} ${goal.unit} (${new Date(latest.measurementDate).toLocaleDateString("en-GB")})\n`;
       
-      // Beregn måloppnåelse
       const progress = (parseFloat(latest.value) / parseFloat(goal.targetValue)) * 100;
-      text += `- Måloppnåelse: ${progress.toFixed(1)}%\n`;
+      text += `- Achievement: ${progress.toFixed(1)}%\n`;
     } else {
-      text += `- ⚠️ Ingen målinger registrert\n`;
+      text += `- ⚠️ No measurements recorded\n`;
     }
 
     text += `\n`;
   });
 
-  // Oppsummering
   const completedGoals = goals.filter(g => g.status === "COMPLETED").length;
   const inProgressGoals = goals.filter(g => g.status === "IN_PROGRESS").length;
   const notStartedGoals = goals.filter(g => g.status === "NOT_STARTED").length;
 
-  text += `\n### Oppsummering\n`;
-  text += `- ✅ Fullført: ${completedGoals}\n`;
-  text += `- 🔄 Pågående: ${inProgressGoals}\n`;
-  text += `- ⏸️ Ikke startet: ${notStartedGoals}\n`;
+  text += `\n### Summary\n`;
+  text += `- ✅ Completed: ${completedGoals}\n`;
+  text += `- 🔄 In progress: ${inProgressGoals}\n`;
+  text += `- ⏸️ Not started: ${notStartedGoals}\n`;
 
   return text;
 }
@@ -191,13 +189,12 @@ function generateGoalsReview(goals: any[]): string {
 // Generer tekst for hendelser
 function generateIncidentStatistics(incidents: any[]): string {
   if (incidents.length === 0) {
-    return "Ingen hendelser eller avvik registrert i perioden.\n\n✅ Dette er positivt, men sørg for at ansatte vet hvordan de rapporterer hendelser.";
+    return "No incidents recorded in the period.\n\n✅ This is positive, but ensure employees know how to report incidents.";
   }
 
-  let text = `## Hendelser og avvik\n\n`;
-  text += `Totalt antall hendelser: ${incidents.length}\n\n`;
+  let text = `## Incidents\n\n`;
+  text += `Total number of incidents: ${incidents.length}\n\n`;
 
-  // Gruppér etter type
   const types = {
     ACCIDENT: 0,
     NEAR_MISS: 0,
@@ -211,13 +208,12 @@ function generateIncidentStatistics(incidents: any[]): string {
     }
   });
 
-  text += `### Hendelser per type\n`;
-  text += `- 🚨 Ulykker: ${types.ACCIDENT}\n`;
-  text += `- ⚠️ Nestenulykker: ${types.NEAR_MISS}\n`;
-  text += `- 👁️ Observasjoner: ${types.OBSERVATION}\n`;
-  text += `- 🏥 Sykdom/helseplager: ${types.ILLNESS}\n\n`;
+  text += `### Incidents by type\n`;
+  text += `- 🚨 Accidents: ${types.ACCIDENT}\n`;
+  text += `- ⚠️ Near misses: ${types.NEAR_MISS}\n`;
+  text += `- 👁️ Observations: ${types.OBSERVATION}\n`;
+  text += `- 🏥 Illness/health issues: ${types.ILLNESS}\n\n`;
 
-  // Gruppér etter alvorlighetsgrad (1-5, null = ikke vurdert av leder ennå)
   const severities = {
     LOW: 0,
     MEDIUM: 0,
@@ -240,14 +236,13 @@ function generateIncidentStatistics(incidents: any[]): string {
     }
   });
 
-  text += `### Alvorlighetsgrad\n`;
-  text += `- 🟢 Lav: ${severities.LOW}\n`;
-  text += `- 🟡 Middels: ${severities.MEDIUM}\n`;
-  text += `- 🟠 Høy: ${severities.HIGH}\n`;
-  text += `- 🔴 Kritisk: ${severities.CRITICAL}\n`;
-  text += `- ⚪ Ikke vurdert: ${severities.NOT_ASSESSED}\n\n`;
+  text += `### Severity\n`;
+  text += `- 🟢 Low: ${severities.LOW}\n`;
+  text += `- 🟡 Medium: ${severities.MEDIUM}\n`;
+  text += `- 🟠 High: ${severities.HIGH}\n`;
+  text += `- 🔴 Critical: ${severities.CRITICAL}\n`;
+  text += `- ⚪ Not assessed: ${severities.NOT_ASSESSED}\n\n`;
 
-  // Status på hendelser
   const statuses = {
     OPEN: 0,
     UNDER_INVESTIGATION: 0,
@@ -261,22 +256,20 @@ function generateIncidentStatistics(incidents: any[]): string {
   });
 
   text += `### Status\n`;
-  text += `- 📂 Åpne: ${statuses.OPEN}\n`;
-  text += `- 🔍 Under etterforskning: ${statuses.UNDER_INVESTIGATION}\n`;
-  text += `- ✅ Lukket: ${statuses.CLOSED}\n\n`;
+  text += `- 📂 Open: ${statuses.OPEN}\n`;
+  text += `- 🔍 Under investigation: ${statuses.UNDER_INVESTIGATION}\n`;
+  text += `- ✅ Closed: ${statuses.CLOSED}\n\n`;
 
-  // Hendelser med etterforskning
   const investigated = incidents.filter(i => i.rootCause && i.rootCause.trim().length > 0).length;
-  text += `### Etterforskning\n`;
-  text += `- ${investigated} av ${incidents.length} hendelser har gjennomført etterforskning (${((investigated / incidents.length) * 100).toFixed(0)}%)\n\n`;
+  text += `### Investigation\n`;
+  text += `- ${investigated} of ${incidents.length} incidents have completed investigation (${((investigated / incidents.length) * 100).toFixed(0)}%)\n\n`;
 
-  // Anbefaling
   if (statuses.OPEN > 0 || statuses.UNDER_INVESTIGATION > 0) {
-    text += `⚠️ PÅKREVD OPPFØLGING: ${statuses.OPEN + statuses.UNDER_INVESTIGATION} hendelser mangler lukking.\n`;
+    text += `⚠️ ACTION REQUIRED: ${statuses.OPEN + statuses.UNDER_INVESTIGATION} incidents require closure.\n`;
   }
 
   if (types.ACCIDENT > 0) {
-    text += `⚠️ VIKTIG: ${types.ACCIDENT} ulykker er registrert. Sørg for grundig rotårsaksanalyse og korrigerende tiltak.\n`;
+    text += `⚠️ IMPORTANT: ${types.ACCIDENT} accidents recorded. Ensure thorough root cause analysis and corrective actions.\n`;
   }
 
   return text;
@@ -285,13 +278,12 @@ function generateIncidentStatistics(incidents: any[]): string {
 // Generer tekst for risikovurderinger
 function generateRiskReview(risks: any[]): string {
   if (risks.length === 0) {
-    return "Ingen risikovurderinger er registrert.\n\n🚨 KRITISK: Risikovurdering er lovpålagt (Arbeidsmiljøloven § 3-1). Dette må gjøres umiddelbart.";
+    return "No risk assessments recorded.\n\n🚨 CRITICAL: Risk assessment is a legal requirement (MHSWR 1999 reg. 3). This must be done immediately.";
   }
 
-  let text = `## Risikovurderinger\n\n`;
-  text += `Totalt antall registrerte risikoer: ${risks.length}\n\n`;
+  let text = `## Risk assessments\n\n`;
+  text += `Total number of recorded risks: ${risks.length}\n\n`;
 
-  // Gruppér etter risikonivå
   const riskLevels = {
     LOW: 0,
     MEDIUM: 0,
@@ -307,38 +299,35 @@ function generateRiskReview(risks: any[]): string {
     else riskLevels.CRITICAL++;
   });
 
-  text += `### Risikonivå (5x5 matrise)\n`;
-  text += `- 🟢 Lav risiko (1-4): ${riskLevels.LOW}\n`;
-  text += `- 🟡 Middels risiko (5-9): ${riskLevels.MEDIUM}\n`;
-  text += `- 🟠 Høy risiko (10-16): ${riskLevels.HIGH}\n`;
-  text += `- 🔴 Kritisk risiko (17-25): ${riskLevels.CRITICAL}\n\n`;
+  text += `### Risk level (5x5 matrix)\n`;
+  text += `- 🟢 Low risk (1-4): ${riskLevels.LOW}\n`;
+  text += `- 🟡 Medium risk (5-9): ${riskLevels.MEDIUM}\n`;
+  text += `- 🟠 High risk (10-16): ${riskLevels.HIGH}\n`;
+  text += `- 🔴 Critical risk (17-25): ${riskLevels.CRITICAL}\n\n`;
 
-  // Risikoer med tiltak
   const withMeasures = risks.filter(r => r.proposedMeasures && r.proposedMeasures.trim().length > 0).length;
-  text += `### Tiltak\n`;
-  text += `- ${withMeasures} av ${risks.length} risikoer har foreslåtte tiltak (${((withMeasures / risks.length) * 100).toFixed(0)}%)\n\n`;
+  text += `### Actions\n`;
+  text += `- ${withMeasures} of ${risks.length} risks have proposed actions (${((withMeasures / risks.length) * 100).toFixed(0)}%)\n\n`;
 
-  // Risikoer med høy/kritisk score som mangler tiltak
   const highRisksWithoutMeasures = risks.filter(r => {
     const score = r.probability * r.consequence;
     return score >= 10 && (!r.proposedMeasures || r.proposedMeasures.trim().length === 0);
   });
 
   if (highRisksWithoutMeasures.length > 0) {
-    text += `🚨 KRITISK: ${highRisksWithoutMeasures.length} høyrisiko/kritiske risikoer mangler tiltak:\n`;
+    text += `🚨 CRITICAL: ${highRisksWithoutMeasures.length} high/critical risks lack actions:\n`;
     highRisksWithoutMeasures.slice(0, 5).forEach(r => {
       text += `  - ${r.hazard} (Score: ${r.probability * r.consequence})\n`;
     });
     text += `\n`;
   }
 
-  // Gamle risikovurderinger (ikke oppdatert siste 12 mnd)
   const oneYearAgo = new Date();
   oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
   const outdatedRisks = risks.filter(r => new Date(r.updatedAt) < oneYearAgo);
 
   if (outdatedRisks.length > 0) {
-    text += `⚠️ ANBEFALING: ${outdatedRisks.length} risikovurderinger er ikke oppdatert siste 12 måneder. Disse bør gjennomgås.\n`;
+    text += `⚠️ RECOMMENDATION: ${outdatedRisks.length} risk assessments have not been updated in the last 12 months. These should be reviewed.\n`;
   }
 
   return text;
@@ -346,15 +335,14 @@ function generateRiskReview(risks: any[]): string {
 
 // Generer tekst for revisjoner
 function generateAuditResults(audits: any[], inspections: any[]): string {
-  let text = `## Revisjoner og inspeksjoner\n\n`;
+  let text = `## Audits and inspections\n\n`;
 
-  // Revisjoner
   if (audits.length === 0) {
-    text += `⚠️ Ingen revisjoner gjennomført i perioden.\n`;
-    text += `ISO 9001 krever minimum én internrevisjon per år.\n\n`;
+    text += `⚠️ No audits conducted in the period.\n`;
+    text += `ISO 9001 requires a minimum of one internal audit per year.\n\n`;
   } else {
-    text += `### Revisjoner\n`;
-    text += `Totalt antall revisjoner: ${audits.length}\n\n`;
+    text += `### Audits\n`;
+    text += `Total number of audits: ${audits.length}\n\n`;
 
     const auditStatuses = {
       PLANNED: 0,
@@ -376,27 +364,26 @@ function generateAuditResults(audits: any[], inspections: any[]): string {
     });
 
     text += `Status:\n`;
-    text += `- Planlagt: ${auditStatuses.PLANNED}\n`;
-    text += `- Pågående: ${auditStatuses.IN_PROGRESS}\n`;
-    text += `- Fullført: ${auditStatuses.COMPLETED}\n\n`;
+    text += `- Planned: ${auditStatuses.PLANNED}\n`;
+    text += `- In progress: ${auditStatuses.IN_PROGRESS}\n`;
+    text += `- Completed: ${auditStatuses.COMPLETED}\n\n`;
 
-    text += `Funn:\n`;
-    text += `- Totalt antall funn: ${totalFindings}\n`;
-    text += `- Kritiske/alvorlige funn: ${criticalFindings}\n\n`;
+    text += `Findings:\n`;
+    text += `- Total findings: ${totalFindings}\n`;
+    text += `- Critical/major findings: ${criticalFindings}\n\n`;
 
     if (criticalFindings > 0) {
-      text += `🚨 PÅKREVD OPPFØLGING: ${criticalFindings} kritiske/alvorlige funn må følges opp.\n\n`;
+      text += `🚨 ACTION REQUIRED: ${criticalFindings} critical/major findings must be followed up.\n\n`;
     }
   }
 
-  // Inspeksjoner/Vernerunder
   if (inspections.length === 0) {
-    text += `### Vernerunder/Inspeksjoner\n`;
-    text += `⚠️ Ingen vernerunder gjennomført i perioden.\n`;
-    text += `Arbeidsmiljøloven krever regelmessige vernerunder.\n\n`;
+    text += `### Workplace inspections\n`;
+    text += `⚠️ No workplace inspections conducted in the period.\n`;
+    text += `MHSWR 1999 requires regular workplace inspections.\n\n`;
   } else {
-    text += `### Vernerunder/Inspeksjoner\n`;
-    text += `Totalt antall inspeksjoner: ${inspections.length}\n\n`;
+    text += `### Workplace inspections\n`;
+    text += `Total number of inspections: ${inspections.length}\n\n`;
 
     const inspectionStatuses = {
       PLANNED: 0,
@@ -418,16 +405,16 @@ function generateAuditResults(audits: any[], inspections: any[]): string {
     });
 
     text += `Status:\n`;
-    text += `- Planlagt: ${inspectionStatuses.PLANNED}\n`;
-    text += `- Pågående: ${inspectionStatuses.IN_PROGRESS}\n`;
-    text += `- Fullført: ${inspectionStatuses.COMPLETED}\n\n`;
+    text += `- Planned: ${inspectionStatuses.PLANNED}\n`;
+    text += `- In progress: ${inspectionStatuses.IN_PROGRESS}\n`;
+    text += `- Completed: ${inspectionStatuses.COMPLETED}\n\n`;
 
-    text += `Funn:\n`;
-    text += `- Totalt antall funn: ${totalInspectionFindings}\n`;
-    text += `- Kritiske/høy alvorlighetsgrad: ${criticalInspectionFindings}\n\n`;
+    text += `Findings:\n`;
+    text += `- Total findings: ${totalInspectionFindings}\n`;
+    text += `- Critical/high severity: ${criticalInspectionFindings}\n\n`;
 
     if (criticalInspectionFindings > 0) {
-      text += `⚠️ VIKTIG: ${criticalInspectionFindings} kritiske funn fra vernerunder må følges opp.\n`;
+      text += `⚠️ IMPORTANT: ${criticalInspectionFindings} critical findings from workplace inspections must be followed up.\n`;
     }
   }
 
@@ -437,20 +424,19 @@ function generateAuditResults(audits: any[], inspections: any[]): string {
 // Generer tekst for opplæring
 function generateTrainingStatus(trainings: any[]): string {
   if (trainings.length === 0) {
-    return "Ingen opplæring er registrert i perioden.\n\n⚠️ ANBEFALING: Dokumenter all opplæring. Dette er viktig for compliance og ved tilsyn.";
+    return "No training recorded in the period.\n\n⚠️ RECOMMENDATION: Document all training. This is important for compliance and during inspections.";
   }
 
-  let text = `## Opplæring og kompetanse\n\n`;
-  text += `Totalt antall registrerte opplæringer: ${trainings.length}\n\n`;
+  let text = `## Training and competence\n\n`;
+  text += `Total number of recorded training sessions: ${trainings.length}\n\n`;
 
-  // Gruppér etter courseKey (type kurs)
   const courseTypes: { [key: string]: number } = {};
   trainings.forEach((training) => {
     const key = training.courseKey || "other";
     courseTypes[key] = (courseTypes[key] || 0) + 1;
   });
 
-  text += `### Opplæring per type\n`;
+  text += `### Training by type\n`;
   Object.entries(courseTypes)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
@@ -459,15 +445,13 @@ function generateTrainingStatus(trainings: any[]): string {
     });
   text += `\n`;
 
-  // Status basert på completedAt
   const completed = trainings.filter(t => t.completedAt).length;
   const notCompleted = trainings.length - completed;
 
   text += `### Status\n`;
-  text += `- ✅ Gjennomført: ${completed}\n`;
-  text += `- ⏳ Ikke gjennomført: ${notCompleted}\n\n`;
+  text += `- ✅ Completed: ${completed}\n`;
+  text += `- ⏳ Not completed: ${notCompleted}\n\n`;
 
-  // Opplæringer med utløpsdato
   const withExpiry = trainings.filter(t => t.validUntil);
   const now = new Date();
   const expired = withExpiry.filter(t => new Date(t.validUntil) < now).length;
@@ -479,41 +463,38 @@ function generateTrainingStatus(trainings: any[]): string {
   }).length;
 
   if (withExpiry.length > 0) {
-    text += `### Sertifikater med utløpsdato\n`;
-    text += `- Totalt: ${withExpiry.length}\n`;
-    text += `- ❌ Utløpt: ${expired}\n`;
-    text += `- ⚠️ Utløper snart (3 mnd): ${expiringSoon}\n\n`;
+    text += `### Certificates with expiry date\n`;
+    text += `- Total: ${withExpiry.length}\n`;
+    text += `- ❌ Expired: ${expired}\n`;
+    text += `- ⚠️ Expiring soon (3 months): ${expiringSoon}\n\n`;
   }
 
-  // Obligatoriske kurs
   const required = trainings.filter(t => t.isRequired);
   if (required.length > 0) {
-    text += `### Obligatoriske kurs\n`;
-    text += `- ${required.length} av ${trainings.length} er markert som obligatoriske\n\n`;
+    text += `### Mandatory training\n`;
+    text += `- ${required.length} of ${trainings.length} are marked as mandatory\n\n`;
   }
 
-  // Evaluering av effektivitet (ISO 9001)
   const evaluated = trainings.filter(t => t.effectiveness && t.effectiveness.trim().length > 0).length;
   if (trainings.length > 0) {
-    text += `### Effektivitetsevaluering (ISO 9001)\n`;
-    text += `- ${evaluated} av ${trainings.length} opplæringer har effektivitetsevaluering (${((evaluated / trainings.length) * 100).toFixed(0)}%)\n\n`;
+    text += `### Effectiveness evaluation (ISO 9001)\n`;
+    text += `- ${evaluated} of ${trainings.length} training sessions have effectiveness evaluation (${((evaluated / trainings.length) * 100).toFixed(0)}%)\n\n`;
   }
 
-  // Anbefalinger
   if (expired > 0) {
-    text += `🚨 KRITISK: ${expired} sertifikater har utløpt og må fornyes.\n`;
+    text += `🚨 CRITICAL: ${expired} certificates have expired and must be renewed.\n`;
   }
 
   if (expiringSoon > 0) {
-    text += `⚠️ VIKTIG: ${expiringSoon} sertifikater utløper innen 3 måneder.\n`;
+    text += `⚠️ IMPORTANT: ${expiringSoon} certificates expire within 3 months.\n`;
   }
 
   if (notCompleted > 0) {
-    text += `📅 INFO: ${notCompleted} opplæringer er ikke fullført ennå.\n`;
+    text += `📅 INFO: ${notCompleted} training sessions are not yet completed.\n`;
   }
 
   if (evaluated < trainings.length * 0.5) {
-    text += `⚠️ ANBEFALING: Kun ${((evaluated / trainings.length) * 100).toFixed(0)}% av opplæringene har effektivitetsevaluering. ISO 9001 krever dette.\n`;
+    text += `⚠️ RECOMMENDATION: Only ${((evaluated / trainings.length) * 100).toFixed(0)}% of training has effectiveness evaluation. ISO 9001 requires this.\n`;
   }
 
   return text;

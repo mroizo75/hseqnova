@@ -13,9 +13,9 @@ export function SystemSettingsForm() {
   const [loading, setLoading] = useState(false);
 
   const currentSettings = {
-    appName: process.env.NEXT_PUBLIC_APP_NAME || "HMS Nova",
+    appName: process.env.NEXT_PUBLIC_APP_NAME || "HSEQ Nova",
     appUrl: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-    supportEmail: "support@hmsnova.com",
+    supportEmail: "support@hseqnova.com",
     maxUsersPerTenant: "100",
     sessionTimeout: "30",
     enableRegistration: false,

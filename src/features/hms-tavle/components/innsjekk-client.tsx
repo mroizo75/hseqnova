@@ -78,7 +78,7 @@ export function InnsjekksClient({
       // ignorer
     }
 
-    if (hmsNovaUser) return; // HMS Nova-brukere trenger ikke husket info
+    if (hmsNovaUser) return; // HSEQ Nova users don't need remembered info
     try {
       const saved = localStorage.getItem(LS_KEY(publicToken));
       if (saved) {
@@ -231,7 +231,7 @@ export function InnsjekksClient({
 
         {step === "form" && (
           <div className="space-y-4">
-            {/* ── HMS Nova ett-klikk ────────────────────────── */}
+            {/* ── HSEQ Nova one-click ────────────────────────── */}
             {hmsNovaUser && (
               <Card className="border-green-200 bg-green-50/50">
                 <CardContent className="p-4 space-y-3">
@@ -250,7 +250,7 @@ export function InnsjekksClient({
                       )}
                     </div>
                     <span className="ml-auto text-[10px] bg-green-100 text-green-700 border border-green-200 rounded px-1.5 py-0.5 font-medium shrink-0">
-                      HMS Nova
+                      HSEQ Nova
                     </span>
                   </div>
 
@@ -271,7 +271,7 @@ export function InnsjekksClient({
               <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl text-sm">
                 <LogIn className="h-4 w-4 text-blue-500 shrink-0" />
                 <p className="text-blue-700 flex-1">
-                  Har du HMS Nova-konto?
+                  Have an HSEQ Nova account?
                 </p>
                 <Link
                   href={`/login?callbackUrl=/tavle/${publicToken}/innsjekk`}
@@ -415,7 +415,7 @@ export function InnsjekksClient({
                 Ny innsjekk
               </Button>
               <Button asChild>
-                <Link href={`/tavle/${publicToken}`}>Se HMS-tavlen</Link>
+                <Link href={`/tavle/${publicToken}`}>View safety board</Link>
               </Button>
             </div>
           </div>

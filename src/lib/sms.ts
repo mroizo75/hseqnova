@@ -3,8 +3,8 @@
  * Støtter norske SMS-providers (Link Mobility, IntelliSMS, ProSMS) og proSMS.se for Ring meg
  */
 
-/** Godkjent avsendernavn for proSMS.se – bruk kun "HMS Nova" */
-export const RING_MEG_SENDER_NAME = "HMS Nova";
+/** Approved sender name for proSMS.se – use only "HSEQ Nova" */
+export const RING_MEG_SENDER_NAME = "HSEQ Nova";
 
 
 interface SmsOptions {
@@ -65,7 +65,7 @@ export async function sendSms(options: SmsOptions): Promise<{
 async function sendViaLinkMobility(options: SmsOptions) {
   const username = process.env.LINK_MOBILITY_USERNAME;
   const password = process.env.LINK_MOBILITY_PASSWORD;
-  const fromName = process.env.LINK_MOBILITY_FROM || "HMS Nova";
+  const fromName = process.env.LINK_MOBILITY_FROM || "HSEQ Nova";
 
   if (!username || !password) {
     throw new Error("Link Mobility miljøvariabler ikke satt");
@@ -111,7 +111,7 @@ async function sendViaLinkMobility(options: SmsOptions) {
 async function sendViaIntelliSMS(options: SmsOptions) {
   const username = process.env.INTELLISMS_USERNAME;
   const password = process.env.INTELLISMS_PASSWORD;
-  const fromName = process.env.INTELLISMS_FROM || "HMS Nova";
+  const fromName = process.env.INTELLISMS_FROM || "HSEQ Nova";
 
   if (!username || !password) {
     throw new Error("IntelliSMS miljøvariabler ikke satt");
@@ -166,7 +166,7 @@ function normalizePhoneForProSMS(phone: string): string {
 /**
  * Send via ProSMS.se API (v1)
  * Dokumentasjon: https://docs.prosms.se/
- * Krever: PROSMS_API_KEY eller PRO_SMS_API_KEY (Bearer), PROSMS_FROM for avsendernavn (f.eks. "HMS Nova")
+ * Requires: PROSMS_API_KEY or PRO_SMS_API_KEY (Bearer), PROSMS_FROM for sender name (e.g. "HSEQ Nova")
  */
 async function sendViaProSMS(options: SmsOptions) {
   const apiKey = process.env.PROSMS_API_KEY ?? process.env.PRO_SMS_API_KEY;
@@ -282,7 +282,7 @@ export async function sendRingMegSms(customerName: string, customerPhone: string
     return { success: false, error: "RING_MEG_SALES_PHONE er ikke satt" };
   }
   const to = salesPhone.trim().startsWith("+") ? salesPhone.trim() : `+47${salesPhone.trim()}`;
-  const message = `Ring meg: ${customerName} ${customerPhone}. Ønsker mer info/kjøp HMS Nova.`;
+  const message = `Call back: ${customerName} ${customerPhone}. Interested in HSEQ Nova.`;
 
   const apiKey = process.env.PROSMS_API_KEY ?? process.env.PRO_SMS_API_KEY;
   if (apiKey) {

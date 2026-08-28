@@ -1,5 +1,5 @@
 /**
- * Pricing & CRM utilities for HMS Nova 2.0
+ * Pricing & CRM utilities for HSEQ Nova 2.0
  * 
  * Konkurransefordel mot Grønn Jobb:
  * - Bedre UI/UX
@@ -38,14 +38,14 @@ export interface PricingPlan {
 }
 
 /**
- * HMS Nova Prisplan (Kun Software)
+ * HSEQ Nova Pricing Plan (Software Only)
  * 
  * Transparent prising. Ingen skjulte kostnader.
  * 
  * Prismodell: én pakke 12 mnd binding
  * - 12 mnd binding: 300 kr/mnd (3 600 kr/år)
  * 
- * HMS Nova fordeler:
+ * HSEQ Nova advantages:
  * - Ingen oppstartskostnader: 0 kr (konkurrenter: 20.000-50.000 kr)
  * - Alt inkludert: Alle funksjoner i prisen
  * - Norsk support: E-post og telefon inkludert
@@ -88,7 +88,7 @@ export const INCLUDED_FEATURES = [
 export const PRICING_PLANS: PricingPlan[] = [
   {
     tier: "MICRO",
-    name: "HMS Nova Software",
+    name: "HSEQ Nova Software",
     employeeRange: "Alle bedriftsstørrelser",
     minEmployees: 1,
     maxEmployees: null,
@@ -103,7 +103,7 @@ export const PRICING_PLANS: PricingPlan[] = [
   },
   {
     tier: "SMALL",
-    name: "HMS Nova Software",
+    name: "HSEQ Nova Software",
     employeeRange: "Alle bedriftsstørrelser",
     minEmployees: 1,
     maxEmployees: null,
@@ -118,7 +118,7 @@ export const PRICING_PLANS: PricingPlan[] = [
   },
   {
     tier: "MEDIUM",
-    name: "HMS Nova Software",
+    name: "HSEQ Nova Software",
     employeeRange: "Alle bedriftsstørrelser",
     minEmployees: 1,
     maxEmployees: null,
@@ -172,7 +172,7 @@ export function getPriceForEmployeeCount(employeeCount: number, isYearly: boolea
 }
 
 /**
- * HMS Nova 2.0 vs Grønn Jobb - Konkurransefortrinn
+ * HSEQ Nova 2.0 vs Grønn Jobb - Competitive advantages
  */
 export const COMPETITIVE_ADVANTAGES = [
   {
