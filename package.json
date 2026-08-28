@@ -6,7 +6,8 @@
   "copyright": "Copyright (c) 2026 HSEQ Nova. All rights reserved.",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
+    "postinstall": "prisma generate",
     "build:prod": "npm run cleanup:logs && next build",
     "start": "next start -p 3040",
     "lint": "next lint",
