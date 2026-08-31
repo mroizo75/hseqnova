@@ -78,9 +78,11 @@ export function RiskMatrix({
             : "5×5 risk matrix — Initial risk"}
         </CardTitle>
         <CardDescription>
-          {viewMode === "residual"
-            ? "After controls. If residual risk is not set, the initial score is shown. ISO 45001 / MHSWR 1999."
-            : "Before controls. Likelihood × consequence (ISO 31000). Select a cell to set the score."}
+          {onCellClick
+            ? "Click a cell to set likelihood and consequence."
+            : viewMode === "residual"
+              ? "After controls. Where residual score is not recorded, the initial score is shown."
+              : "Before controls. Colour is likelihood × consequence. The number in a cell is how many risks sit there."}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -121,9 +123,13 @@ export function RiskMatrix({
                     <td
                       key={`${l.value}-${c.value}`}
                       className={`border p-1.5 md:p-2 text-center transition-all h-14 md:h-16 ${cellColor} ${
-                        onCellClick ? "cursor-pointer" : ""
+                        onCellClick ? "cursor-pointer" : "pointer-events-none"
                       } ${isSelected ? "ring-2 ring-primary ring-offset-1" : ""}`}
-                      onClick={() => onCellClick?.(l.value, c.value)}
+                      onClick={
+                        onCellClick
+                          ? () => onCellClick(l.value, c.value)
+                          : undefined
+                      }
                     >
                       <div className="text-white font-bold text-base md:text-lg leading-none">{score}</div>
                       {riskCount > 0 && (

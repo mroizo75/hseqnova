@@ -86,6 +86,5 @@ export const ADVANCED_MODE_ONLY = [
   "managementReviews",  // Ledelsens gjennomgang
   "meetings",           // AMU/VO-møter
   "whistleblowing",     // Varsling
-  "goals",              // Mål og KPIer
 ] as const;
 

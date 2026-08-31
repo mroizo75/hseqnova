@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { z } from "zod";
 import { createNotification } from "@/server/actions/notification.actions";
+import {
+  createWhistleblowMessage,
+  loadWhistleblowingByCase,
+} from "@/server/queries/whistleblowing.queries";
 
 export const dynamic = "force-dynamic";
 
@@ -21,20 +24,16 @@ export async function POST(
     const body = await req.json();
     const { caseNumber, accessCode, message } = messageSchema.parse(body);
 
-    const report = await prisma.whistleblowing.findFirst({
-      where: { id, caseNumber, accessCode },
-    });
+    const report = await loadWhistleblowingByCase({ caseNumber, accessCode });
 
-    if (!report) {
+    if (!report || report.id !== id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const newMessage = await prisma.whistleblowMessage.create({
-      data: {
-        whistleblowingId: id,
-        sender: "REPORTER",
-        message,
-      },
+    const newMessage = await createWhistleblowMessage({
+      whistleblowingId: id,
+      sender: "REPORTER",
+      message,
     });
 
     const notifyUserId = report.assignedTo || report.handledBy;

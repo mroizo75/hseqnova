@@ -2,14 +2,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
 import { getPermissions } from "@/lib/permissions";
-import { db } from "@/lib/db";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { enUS, nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale";
 import { Shield, AlertCircle, MessageSquare, Eye } from "lucide-react";
+import { loadWhistleblowingList } from "@/server/queries/whistleblowing.queries";
 import {
   Table,
   TableBody,
@@ -21,20 +21,7 @@ import {
 import { WhistleblowStatus, WhistleblowCategory, WhistleblowSeverity } from "@prisma/client";
 import { PageHelpDialog } from "@/components/dashboard/page-help-dialog";
 import { helpContent } from "@/lib/help-content";
-import { getLocale, getTranslations } from "next-intl/server";
-
-async function getWhistleblowings(tenantId: string) {
-  return await db.whistleblowing.findMany({
-    where: { tenantId },
-    include: {
-      messages: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-      },
-    },
-    orderBy: { receivedAt: "desc" },
-  });
-}
+import { getTranslations } from "next-intl/server";
 
 function getStatusBadge(status: WhistleblowStatus, t: Awaited<ReturnType<typeof getTranslations>>) {
   switch (status) {
@@ -97,8 +84,6 @@ function getCategoryLabel(category: WhistleblowCategory, t: Awaited<ReturnType<t
 
 export default async function WhistleblowingListPage() {
   const t = await getTranslations("dashboardWhistleblowingPage");
-  const locale = await getLocale();
-  const dateLocale = locale === "en" ? enUS : nb;
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.role || !session.user.tenantId) {
@@ -111,7 +96,7 @@ export default async function WhistleblowingListPage() {
     redirect("/dashboard");
   }
 
-  const cases = await getWhistleblowings(session.user.tenantId);
+  const cases = await loadWhistleblowingList(session.user.tenantId);
 
   return (
     <div className="space-y-6">
@@ -126,7 +111,7 @@ export default async function WhistleblowingListPage() {
           <PageHelpDialog content={helpContent.whistleblowing} />
         </div>
         <Button asChild variant="outline">
-          <Link href="/varsling">
+          <Link href="/ansatt/varsling">
             <Shield className="mr-2 h-4 w-4" />
             {t("actions.publicPage")}
           </Link>
@@ -223,7 +208,7 @@ export default async function WhistleblowingListPage() {
                   <TableCell>{getSeverityBadge(c.severity, t)}</TableCell>
                   <TableCell>{getStatusBadge(c.status, t)}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {format(new Date(c.receivedAt), "dd. MMM yyyy", { locale: dateLocale })}
+                    {format(new Date(c.receivedAt), "d MMM yyyy", { locale: enGB })}
                   </TableCell>
                   <TableCell className="text-right">
                     <Link href={`/dashboard/whistleblowing/${c.id}`}>
@@ -252,7 +237,7 @@ export default async function WhistleblowingListPage() {
                 <Badge variant="outline">{getCategoryLabel(c.category, t)}</Badge>
                 {getSeverityBadge(c.severity, t)}
                 <span className="text-sm text-muted-foreground">
-                  {format(new Date(c.receivedAt), "dd. MMM yyyy", { locale: dateLocale })}
+                  {format(new Date(c.receivedAt), "d MMM yyyy", { locale: enGB })}
                 </span>
               </div>
               <Button variant="outline" size="sm" className="w-full" asChild>

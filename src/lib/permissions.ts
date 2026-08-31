@@ -924,7 +924,7 @@ export function getVisibleNavItems(role: Role) {
     managementReviews: perms.canReadManagementReviews,
     annualHmsPlan: perms.canReadManagementReviews,
     meetings: perms.canReadMeetings,
-    whistleblowing: perms.canViewWhistleblowing || perms.canSubmitWhistleblowing,
+    whistleblowing: perms.canViewWhistleblowing,
     actions: perms.canReadActions,
     goals: perms.canReadGoals,
     environment: perms.canReadEnvironment,

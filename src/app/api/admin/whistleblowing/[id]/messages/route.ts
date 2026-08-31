@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { z } from "zod";
 import { createNotification } from "@/server/actions/notification.actions";
+import {
+  createWhistleblowMessage,
+  loadWhistleblowingDetail,
+} from "@/server/queries/whistleblowing.queries";
 
 export const dynamic = "force-dynamic";
 
@@ -32,22 +35,18 @@ export async function POST(
     const body = await req.json();
     const { message, isInternal } = adminMessageSchema.parse(body);
 
-    const report = await prisma.whistleblowing.findFirst({
-      where: { id, tenantId: session.user.tenantId },
-    });
+    const report = await loadWhistleblowingDetail(session.user.tenantId, id);
 
     if (!report) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
 
-    const newMessage = await prisma.whistleblowMessage.create({
-      data: {
-        whistleblowingId: id,
-        sender: "HANDLER",
-        senderUserId: session.user.id,
-        message,
-        isInternal,
-      },
+    const newMessage = await createWhistleblowMessage({
+      whistleblowingId: id,
+      sender: "HANDLER",
+      senderUserId: session.user.id,
+      message,
+      isInternal,
     });
 
     if (report.assignedTo && report.assignedTo !== session.user.id) {

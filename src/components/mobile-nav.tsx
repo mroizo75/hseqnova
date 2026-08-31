@@ -35,6 +35,7 @@ import {
   Leaf,
   FileBarChart,
   ChevronDown,
+  Megaphone,
   type LucideIcon,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -116,6 +117,7 @@ const navGroups: NavGroup[] = [
       { href: "/dashboard/environment", label: "nav.environment", icon: Leaf, permission: "environment" },
       { href: "/dashboard/audits", label: "nav.audits", icon: ClipboardCheck, permission: "audits" },
       { href: "/dashboard/management-reviews", label: "nav.managementReviews", icon: FileBarChart, permission: "managementReviews" },
+      { href: "/dashboard/whistleblowing", label: "nav.whistleblowing", icon: Megaphone, permission: "whistleblowing" },
     ],
   },
   {

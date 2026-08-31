@@ -21,7 +21,8 @@ import {
   seedMissingHsRoles,
 } from "@/server/actions/org-chart.actions";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Building2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Plus, Edit, Trash2, Building2, CheckCircle2, AlertTriangle, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   buildOrgChartTree,
   type OrgChartTreeBranch,
@@ -538,6 +539,7 @@ export function OrgChartTree({ nodes, canManage }: OrgChartTreeProps) {
   const tree = buildOrgChartTree(nodes);
   const isEmpty = tree.length === 0;
   const coverage = assessOrgChartCoverage(nodes);
+  const [dutyNoteOpen, setDutyNoteOpen] = useState(isEmpty);
   const [seeding, startSeed] = useTransition();
   const { toast } = useToast();
 
@@ -561,41 +563,73 @@ export function OrgChartTree({ nodes, canManage }: OrgChartTreeProps) {
     <>
       <style dangerouslySetInnerHTML={{ __html: chartStyles }} />
 
-      <Card className={coverage.complete ? "border-l-4 border-l-emerald-600" : "border-l-4 border-l-amber-500"}>
-        <CardContent className="py-4 text-sm space-y-3">
-          <p className="font-medium">HSWA 1974 s.2(3) Part 2 — who does what</p>
-          <p className="text-muted-foreground">
-            List the names, positions and roles of people with specific health and safety responsibility (HSE).
-            Employees must be able to see this. A competent person is required by MHSWR reg.7. First-aiders
-            must be named under the First-Aid Regulations 1981 reg.4.
-          </p>
-          <ul className="grid gap-2 sm:grid-cols-2">
-            {coverage.items.map((item) => (
-              <li key={item.key} className="flex items-start gap-2">
-                {item.ok ? (
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                ) : (
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                )}
-                <span>
-                  <span className="font-medium">{item.label}</span>
-                  <span className="block text-xs text-muted-foreground">{item.legalRef}</span>
-                  {!item.ok && (
-                    <span className="block text-xs text-amber-800">
-                      {item.present ? "Add the person's name." : "Not on the chart yet."}
+      <Collapsible open={dutyNoteOpen} onOpenChange={setDutyNoteOpen}>
+        <Card className={coverage.complete ? "border-l-4 border-l-emerald-600" : "border-l-4 border-l-amber-500"}>
+          <CardContent className="py-4 text-sm space-y-3">
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex w-full items-start gap-3 text-left"
+                aria-expanded={dutyNoteOpen}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">
+                    {coverage.complete
+                      ? "H&S roles named"
+                      : isEmpty
+                        ? "HSWA 1974 s.2(3) Part 2 — who does what"
+                        : `${coverage.items.filter((item) => item.ok).length} of ${coverage.items.length} named H&S roles`}
+                  </p>
+                  <p className="mt-0.5 text-muted-foreground">
+                    {dutyNoteOpen
+                      ? "Hide this note"
+                      : isEmpty
+                        ? "Open for what the written policy must name"
+                        : coverage.complete
+                          ? "Organisation recorded. Open to review the legal checklist."
+                          : "Open to see what is still missing"}
+                  </p>
+                </div>
+                <ChevronDown
+                  className={`mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform ${dutyNoteOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-3">
+              <p className="text-muted-foreground">
+                List the names, positions and roles of people with specific health and safety responsibility (HSE).
+                Employees must be able to see this. A competent person is required by MHSWR reg.7. First-aiders
+                must be named under the First-Aid Regulations 1981 reg.4.
+              </p>
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {coverage.items.map((item) => (
+                  <li key={item.key} className="flex items-start gap-2">
+                    {item.ok ? (
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                    ) : (
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                    )}
+                    <span>
+                      <span className="font-medium">{item.label}</span>
+                      <span className="block text-xs text-muted-foreground">{item.legalRef}</span>
+                      {!item.ok && (
+                        <span className="block text-xs text-amber-800">
+                          {item.present ? "Add the person's name." : "Not on the chart yet."}
+                        </span>
+                      )}
                     </span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-          {canManage && coverage.absent.length > 0 ? (
-            <Button variant="outline" size="sm" onClick={handleSeed} disabled={seeding}>
-              {seeding ? "Adding…" : "Add missing H&S roles"}
-            </Button>
-          ) : null}
-        </CardContent>
-      </Card>
+                  </li>
+                ))}
+              </ul>
+              {canManage && coverage.absent.length > 0 ? (
+                <Button variant="outline" size="sm" onClick={handleSeed} disabled={seeding}>
+                  {seeding ? "Adding…" : "Add missing H&S roles"}
+                </Button>
+              ) : null}
+            </CollapsibleContent>
+          </CardContent>
+        </Card>
+      </Collapsible>
 
       {isEmpty ? (
         <Card>

@@ -495,7 +495,6 @@ Data:
       "/dashboard/audits",
       "/dashboard/inspections",
       "/dashboard/sja",
-      "/dashboard/goals",
     ]);
     return {
       success: true,

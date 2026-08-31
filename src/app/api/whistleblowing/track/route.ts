@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { z } from "zod";
+import {
+  loadWhistleblowingByCase,
+  markWhistleblowMessagesReadByReporter,
+} from "@/server/queries/whistleblowing.queries";
 
 export const dynamic = "force-dynamic";
 
@@ -15,15 +18,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { caseNumber, accessCode } = trackSchema.parse(body);
 
-    const report = await prisma.whistleblowing.findFirst({
-      where: { caseNumber, accessCode },
-      include: {
-        messages: {
-          where: { isInternal: false },
-          orderBy: { createdAt: "asc" },
-        },
-      },
-    });
+    const report = await loadWhistleblowingByCase({ caseNumber, accessCode });
 
     if (!report) {
       return NextResponse.json(
@@ -32,13 +27,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await prisma.whistleblowMessage.updateMany({
-      where: {
-        whistleblowingId: report.id,
-        readByReporter: false,
-      },
-      data: { readByReporter: true },
-    });
+    await markWhistleblowMessagesReadByReporter(report.id);
 
     const { handledBy, assignedTo, investigationNotes, ...publicData } = report;
 

@@ -118,6 +118,8 @@ export default async function RiskAssessmentPage({
         <IndustryRiskStarter
           initialIndustry={(tenant?.industry as string | null) ?? null}
           assessmentId={assessment.id}
+          aiEnabled={aiEnabled}
+          existingRisks={assessment.risks.map((risk) => risk.title)}
         />
       ) : null}
 

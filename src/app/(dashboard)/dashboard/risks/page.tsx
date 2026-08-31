@@ -19,6 +19,7 @@ import {
 } from "@/server/queries/risks.queries";
 import { IndustryRiskStarter } from "@/features/risks/components/industry-risk-starter";
 import { getAdminDb } from "@/lib/supabase/admin";
+import { hasAiAddon } from "@/lib/ai-gate";
 
 export default async function RisksPage() {
   const t = await getTranslations("dashboardRisksPage");
@@ -36,9 +37,10 @@ export default async function RisksPage() {
   const permissions = getPermissions(context.role);
   const canDeleteRiskAssessments = permissions.canDeleteRisks;
 
-  const [riskAssessments, risks] = await Promise.all([
+  const [riskAssessments, risks, aiEnabled] = await Promise.all([
     loadRiskAssessmentsForList(context.tenantId),
     loadRisksForList(context.tenantId),
+    hasAiAddon(context.tenantId),
   ]);
 
   const { data: tenant } = await getAdminDb()
@@ -88,7 +90,10 @@ export default async function RisksPage() {
 
       {showStarter ? (
         <div className="space-y-4">
-          <IndustryRiskStarter initialIndustry={(tenant?.industry as string | null) ?? null} />
+          <IndustryRiskStarter
+            initialIndustry={(tenant?.industry as string | null) ?? null}
+            aiEnabled={aiEnabled}
+          />
           <p className="text-center text-sm text-muted-foreground">
             Prefer a blank document?{" "}
             <Link href="/dashboard/risks/new" className="font-medium text-primary hover:underline">

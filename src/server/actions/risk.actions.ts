@@ -26,6 +26,8 @@ import {
   resolveUkRiskStarterIndustry,
 } from "@/lib/uk-risk-starters";
 import { isSupportedIndustry } from "@/lib/industry-packages";
+import { sanitizeIndustryRiskPack } from "@/lib/industry-risk-pack";
+import { serializeGroupsAtRisk } from "@/lib/risk-mhswr";
 
 const sanitizeString = (value?: string | null) => {
   if (!value) return null;
@@ -878,6 +880,128 @@ export async function createRiskAssessmentFromStarter(input: {
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Could not create the risk assessment from the starter";
+    return { success: false, error: message };
+  }
+}
+
+export async function createRiskAssessmentFromGeneratedPack(input: {
+  industryLabel: string;
+  hazards: unknown[];
+  assessmentId?: string | null;
+}): Promise<{ success: boolean; assessmentId?: string; error?: string }> {
+  try {
+    const { user, tenantId, role } = await getActionContext();
+    const permissions = getPermissions(role);
+    if (!permissions.canCreateRisks) {
+      return { success: false, error: "You do not have permission to create risk assessments" };
+    }
+
+    const pack = sanitizeIndustryRiskPack({
+      industryLabel: input.industryLabel,
+      hazards: input.hazards,
+    });
+    const hazards = pack.hazards.slice(0, MAX_STARTER_HAZARDS);
+    if (hazards.length === 0) {
+      return { success: false, error: "Select at least one hazard that applies to your workplace" };
+    }
+
+    const db = getAdminDb();
+    const year = new Date().getFullYear();
+    let assessmentId = input.assessmentId?.trim() || null;
+    const industryLabel = pack.industryLabel;
+
+    if (assessmentId) {
+      const { data: existing } = await db
+        .from("RiskAssessment")
+        .select("id")
+        .eq("id", assessmentId)
+        .eq("tenantId", tenantId)
+        .maybeSingle();
+      if (!existing) {
+        return { success: false, error: "Risk assessment not found" };
+      }
+    } else {
+      const now = new Date().toISOString();
+      const createdId = createId();
+      const { data: assessment, error } = await db
+        .from("RiskAssessment")
+        .insert({
+          id: createdId,
+          tenantId,
+          title: `${industryLabel} risk assessment ${year}`,
+          assessmentYear: year,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .select("id")
+        .single();
+      if (error || !assessment) {
+        return { success: false, error: error?.message || "Could not create the risk assessment" };
+      }
+      assessmentId = assessment.id as string;
+    }
+
+    const now = new Date().toISOString();
+    const nextReview = new Date();
+    nextReview.setFullYear(nextReview.getFullYear() + 1);
+    const nextReviewIso = nextReview.toISOString();
+
+    const riskRows = hazards.map((hazard) => {
+      const score = hazard.likelihood * hazard.consequence;
+      return {
+        id: createId(),
+        tenantId,
+        riskAssessmentId: assessmentId,
+        title: hazard.title,
+        context: hazard.context,
+        description: hazard.legalRef,
+        existingControls: hazard.existingControls,
+        groupsAtRisk: serializeGroupsAtRisk(hazard.whoAtRisk),
+        likelihood: hazard.likelihood,
+        consequence: hazard.consequence,
+        score,
+        ownerId: user.id,
+        status: "OPEN",
+        category: hazard.category,
+        controlFrequency: "ANNUAL",
+        nextReviewDate: nextReviewIso,
+        assessmentDate: now,
+        createdAt: now,
+        updatedAt: now,
+      };
+    });
+
+    const { error: riskError } = await db.from("Risk").insert(riskRows);
+    if (riskError) {
+      return { success: false, error: riskError.message || "Could not add the selected hazards" };
+    }
+
+    await db.from("RiskHistory").insert(
+      riskRows.map((row) => ({
+        id: createId(),
+        tenantId,
+        riskId: row.id,
+        changeType: "CREATED",
+        newScore: row.score,
+        changedById: user.id,
+      })),
+    );
+
+    await insertAuditLog({
+      tenantId,
+      userId: user.id,
+      action: "RISK_ASSESSMENT_AI_PACK_APPLIED",
+      resource: `RiskAssessment:${assessmentId}`,
+      metadata: { industry: industryLabel, count: riskRows.length },
+    });
+
+    revalidatePath("/dashboard/risks");
+    revalidatePath("/ansatt/risikovurderinger");
+    revalidatePath(`/dashboard/risks/assessment/${assessmentId}`);
+    return { success: true, assessmentId };
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Could not create the risk assessment from the draft";
     return { success: false, error: message };
   }
 }

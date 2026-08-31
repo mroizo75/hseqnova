@@ -4,20 +4,28 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Loader2, Shield } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Check, Loader2, Shield, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { createRiskAssessmentFromStarter } from "@/server/actions/risk.actions";
+import {
+  createRiskAssessmentFromGeneratedPack,
+  createRiskAssessmentFromStarter,
+} from "@/server/actions/risk.actions";
 import {
   UK_RISK_STARTER_INDUSTRIES,
   getUkRiskStarterPack,
   resolveUkRiskStarterIndustry,
-  type UkRiskStarterHazard,
 } from "@/lib/uk-risk-starters";
+import type { IndustryRiskPackHazard } from "@/lib/industry-risk-pack";
+import { formatGroupsAtRiskLabels, serializeGroupsAtRisk } from "@/lib/risk-mhswr";
 
 interface IndustryRiskStarterProps {
   initialIndustry: string | null;
   assessmentId?: string | null;
+  aiEnabled?: boolean;
+  existingRisks?: string[];
 }
 
 function defaultKeysFor(industry: string): string[] {
@@ -27,21 +35,38 @@ function defaultKeysFor(industry: string): string[] {
     .map((hazard) => hazard.key);
 }
 
+function industryHint(value: string | null): string {
+  if (!value) return "";
+  const match = UK_RISK_STARTER_INDUSTRIES.find((option) => option.value === value);
+  return match?.label ?? value;
+}
+
 export function IndustryRiskStarter({
   initialIndustry,
   assessmentId = null,
+  aiEnabled = false,
+  existingRisks = [],
 }: IndustryRiskStarterProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const [industry, setIndustry] = useState(() => resolveUkRiskStarterIndustry(initialIndustry));
-  const [selected, setSelected] = useState<string[]>(() => defaultKeysFor(industry));
+  const resolvedIndustry = resolveUkRiskStarterIndustry(initialIndustry);
+  const [lineOfBusiness, setLineOfBusiness] = useState(() => industryHint(initialIndustry));
+  const [industry, setIndustry] = useState(resolvedIndustry);
+  const [selected, setSelected] = useState<string[]>(() => defaultKeysFor(resolvedIndustry));
+  const [aiHazards, setAiHazards] = useState<IndustryRiskPackHazard[] | null>(null);
+  const [aiLabel, setAiLabel] = useState("");
+  const [generating, setGenerating] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const pack = useMemo(() => getUkRiskStarterPack(industry), [industry]);
+  const usingAi = aiHazards != null && aiHazards.length > 0;
 
   function handleIndustry(next: string) {
     setIndustry(next);
     setSelected(defaultKeysFor(next));
+    setAiHazards(null);
+    const option = UK_RISK_STARTER_INDUSTRIES.find((item) => item.value === next);
+    if (option) setLineOfBusiness(option.label);
   }
 
   function toggleHazard(key: string) {
@@ -50,13 +75,68 @@ export function IndustryRiskStarter({
     );
   }
 
+  async function handleGenerate() {
+    const industryText = lineOfBusiness.trim();
+    if (industryText.length < 2) return;
+    setGenerating(true);
+    try {
+      const response = await fetch("/api/ai/industry-risks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          industry: industryText,
+          existingRisks,
+        }),
+      });
+
+      if (response.status === 403) {
+        toast({
+          variant: "destructive",
+          title: "AI Pro required",
+          description:
+            "Enable AI Pro to draft hazards from a line of business, or pick a standard pack below.",
+        });
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Could not draft hazards");
+      }
+
+      const json = (await response.json()) as {
+        data?: { industryLabel?: string; hazards?: IndustryRiskPackHazard[] };
+      };
+      const hazards = json.data?.hazards ?? [];
+      if (hazards.length === 0) {
+        throw new Error("Empty pack");
+      }
+      setAiHazards(hazards);
+      setAiLabel(json.data?.industryLabel?.trim() || industryText);
+      setSelected(hazards.map((hazard) => hazard.key));
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Could not draft hazards",
+        description: "Try a more specific line of business, or pick a standard pack.",
+      });
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   function handleCreate() {
     startTransition(async () => {
-      const result = await createRiskAssessmentFromStarter({
-        industry,
-        hazardKeys: selected,
-        assessmentId,
-      });
+      const result = usingAi
+        ? await createRiskAssessmentFromGeneratedPack({
+            industryLabel: aiLabel || lineOfBusiness.trim() || "Workplace",
+            hazards: (aiHazards ?? []).filter((hazard) => selected.includes(hazard.key)),
+            assessmentId,
+          })
+        : await createRiskAssessmentFromStarter({
+            industry,
+            hazardKeys: selected,
+            assessmentId,
+          });
       if (!result.success || !result.assessmentId) {
         toast({
           variant: "destructive",
@@ -75,6 +155,8 @@ export function IndustryRiskStarter({
     });
   }
 
+  const busy = isPending || generating;
+
   return (
     <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
       <div className="border-b bg-primary/[0.04] p-6 sm:p-8">
@@ -82,27 +164,65 @@ export function IndustryRiskStarter({
           Get started
         </p>
         <h2 className="mt-2 max-w-2xl text-2xl font-semibold tracking-tight text-balance">
-          Build a first assessment from your type of work
+          Draft an assessment from your type of work
         </h2>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Tick the hazards that apply. We draft the record with typical controls and the legal
-          hook. You still review likelihood, who is at risk, and the controls so it is suitable
-          and sufficient (MHSWR 1999).
+          Describe the industry or line of business. We draft typical hazards, who might be harmed,
+          and controls. You still review each item so the record is suitable and sufficient
+          (MHSWR 1999 reg.&nbsp;3).
         </p>
       </div>
 
       <div className="space-y-8 p-6 sm:p-8">
+        <div className="space-y-3">
+          <Label htmlFor="line-of-business">Industry or line of business</Label>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Input
+              id="line-of-business"
+              value={lineOfBusiness}
+              onChange={(event) => setLineOfBusiness(event.target.value)}
+              placeholder="e.g. Roofing and cladding, care home, commercial kitchen"
+              disabled={busy}
+              className="sm:flex-1"
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleGenerate();
+                }
+              }}
+            />
+            <Button
+              type="button"
+              onClick={handleGenerate}
+              disabled={busy || lineOfBusiness.trim().length < 2 || !aiEnabled}
+              className="shrink-0 gap-2"
+            >
+              {generating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              Draft typical hazards
+            </Button>
+          </div>
+          {!aiEnabled ? (
+            <p className="text-sm text-muted-foreground">
+              AI drafting needs the AI Pro add-on. Pick a standard pack below in the meantime.
+            </p>
+          ) : null}
+        </div>
+
         <div>
-          <h3 className="text-sm font-semibold">What kind of work do you do?</h3>
+          <h3 className="text-sm font-semibold">Or pick a standard pack</h3>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {UK_RISK_STARTER_INDUSTRIES.map((option) => {
-              const isActive = option.value === industry;
+              const isActive = !usingAi && option.value === industry;
               return (
                 <li key={option.value}>
                   <button
                     type="button"
                     onClick={() => handleIndustry(option.value)}
-                    disabled={isPending}
+                    disabled={busy}
                     className={cn(
                       "flex min-h-11 w-full flex-col items-start rounded-lg border px-3 py-3 text-left transition-colors",
                       isActive
@@ -119,32 +239,56 @@ export function IndustryRiskStarter({
           </ul>
         </div>
 
-        {pack.groups.map((group) => (
-          <div key={group.id}>
-            <h3 className="text-sm font-semibold">{group.title}</h3>
+        {usingAi ? (
+          <div>
+            <h3 className="text-sm font-semibold">Typical hazards for {aiLabel}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Untick anything that does not apply. These are drafts, not a finished assessment.
+            </p>
             <ul className="mt-3 space-y-2">
-              {group.hazards.map((hazard) => (
+              {aiHazards.map((hazard) => (
                 <HazardRow
                   key={hazard.key}
-                  hazard={hazard}
+                  title={hazard.title}
+                  context={hazard.context}
+                  legalRef={hazard.legalRef}
+                  whoLabel={formatGroupsAtRiskLabels(
+                    serializeGroupsAtRisk(hazard.whoAtRisk),
+                  ).join(", ")}
                   checked={selected.includes(hazard.key)}
-                  disabled={isPending}
+                  disabled={busy}
                   onToggle={() => toggleHazard(hazard.key)}
                 />
               ))}
             </ul>
           </div>
-        ))}
+        ) : (
+          pack.groups.map((group) => (
+            <div key={group.id}>
+              <h3 className="text-sm font-semibold">{group.title}</h3>
+              <ul className="mt-3 space-y-2">
+                {group.hazards.map((hazard) => (
+                  <HazardRow
+                    key={hazard.key}
+                    title={hazard.title}
+                    context={hazard.context}
+                    legalRef={hazard.legalRef}
+                    whoLabel={hazard.whoAtRisk}
+                    checked={selected.includes(hazard.key)}
+                    disabled={busy}
+                    onToggle={() => toggleHazard(hazard.key)}
+                  />
+                ))}
+              </ul>
+            </div>
+          ))
+        )}
 
         <div className="flex flex-col gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted-foreground">
             {selected.length} {selected.length === 1 ? "hazard" : "hazards"} selected
           </p>
-          <Button
-            size="lg"
-            onClick={handleCreate}
-            disabled={isPending || selected.length === 0}
-          >
+          <Button size="lg" onClick={handleCreate} disabled={busy || selected.length === 0}>
             {isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -159,12 +303,18 @@ export function IndustryRiskStarter({
 }
 
 function HazardRow({
-  hazard,
+  title,
+  context,
+  legalRef,
+  whoLabel,
   checked,
   disabled,
   onToggle,
 }: {
-  hazard: UkRiskStarterHazard;
+  title: string;
+  context: string;
+  legalRef: string;
+  whoLabel: string;
   checked: boolean;
   disabled: boolean;
   onToggle: () => void;
@@ -194,12 +344,17 @@ function HazardRow({
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium">{hazard.title}</span>
+            <span className="text-sm font-medium">{title}</span>
             <Badge variant="outline" className="bg-transparent font-normal">
-              {hazard.legalRef.split(";")[0]}
+              {legalRef.split(";")[0]}
             </Badge>
           </span>
-          <span className="mt-1 block text-sm text-muted-foreground">{hazard.context}</span>
+          <span className="mt-1 block text-sm text-muted-foreground">{context}</span>
+          {whoLabel ? (
+            <span className="mt-1 block text-xs text-muted-foreground">
+              Who might be harmed: {whoLabel}
+            </span>
+          ) : null}
         </span>
       </button>
     </li>

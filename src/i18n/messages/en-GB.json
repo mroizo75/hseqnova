@@ -2975,7 +2975,7 @@
     "title": "Whistleblowing cases",
     "description": "Case management of received reports",
     "actions": {
-      "publicPage": "Public whistleblowing page",
+      "publicPage": "Open reporting form",
       "process": "Process"
     },
     "stats": {

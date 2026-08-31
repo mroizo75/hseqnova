@@ -17,7 +17,6 @@ import {
   ChevronRight,
   AlertCircle,
   Beaker,
-  Target,
   Shield,
 } from "lucide-react";
 import Link from "next/link";
@@ -62,7 +61,6 @@ export function TaskCenter({ tenantId, userId }: TaskCenterProps) {
     tasks.documentsNeedingReview +
     tasks.chemicalsNeedingReview +
     tasks.risksNeedingReview +
-    tasks.goalsAtRisk +
     tasks.expiringTraining.length;
 
   const hasCritical =
@@ -249,14 +247,6 @@ export function TaskCenter({ tenantId, userId }: TaskCenterProps) {
                       iconClass="text-amber-600 bg-amber-50"
                       title={`${tasks.risksNeedingReview} risikoer`}
                       href="/dashboard/risks"
-                    />
-                  )}
-                  {tasks.goalsAtRisk > 0 && (
-                    <TaskRow
-                      icon={Target}
-                      iconClass="text-amber-600 bg-amber-50"
-                      title={`${tasks.goalsAtRisk} mål i fare`}
-                      href="/dashboard/goals"
                     />
                   )}
                   {tasks.expiringTraining.length > 0 && (

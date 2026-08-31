@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 
 export class AiAddonNotEnabledError extends Error {
   constructor() {
@@ -7,47 +7,69 @@ export class AiAddonNotEnabledError extends Error {
   }
 }
 
+type TenantAiRow = {
+  aiAddonEnabled: boolean | null;
+  aiMonthlyCallCount: number | null;
+  aiMonthlyCallResetAt: string | null;
+};
+
 /**
  * Verify the tenant has the AI Pro add-on enabled.
  * Throws AiAddonNotEnabledError if not.
  * Also increments the monthly call counter.
  */
 export async function requireAiAddon(tenantId: string): Promise<void> {
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: {
-      aiAddonEnabled: true,
-      aiMonthlyCallCount: true,
-      aiMonthlyCallResetAt: true,
-    },
-  });
+  const db = getAdminDb();
+  const { data, error } = await db
+    .from("Tenant")
+    .select("aiAddonEnabled, aiMonthlyCallCount, aiMonthlyCallResetAt")
+    .eq("id", tenantId)
+    .maybeSingle();
 
+  if (error) {
+    throw { code: "TENANT_LOOKUP_FAILED", message: error.message };
+  }
+
+  const tenant = data as TenantAiRow | null;
   if (!tenant?.aiAddonEnabled) {
     throw new AiAddonNotEnabledError();
   }
 
   const now = new Date();
   const resetAt = tenant.aiMonthlyCallResetAt ? new Date(tenant.aiMonthlyCallResetAt) : null;
-  const shouldReset = !resetAt || resetAt.getTime() < now.getTime();
+  const shouldReset = !resetAt || Number.isNaN(resetAt.getTime()) || resetAt.getTime() < now.getTime();
+  const nextCount = shouldReset ? 1 : (tenant.aiMonthlyCallCount ?? 0) + 1;
+  const nextReset = shouldReset
+    ? new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString()
+    : tenant.aiMonthlyCallResetAt;
 
-  await prisma.tenant.update({
-    where: { id: tenantId },
-    data: {
-      aiMonthlyCallCount: shouldReset ? 1 : { increment: 1 },
-      aiMonthlyCallResetAt: shouldReset
-        ? new Date(now.getFullYear(), now.getMonth() + 1, 1)
-        : undefined,
-    },
-  });
+  const { error: updateError } = await db
+    .from("Tenant")
+    .update({
+      aiMonthlyCallCount: nextCount,
+      aiMonthlyCallResetAt: nextReset,
+      updatedAt: now.toISOString(),
+    })
+    .eq("id", tenantId);
+
+  if (updateError) {
+    throw { code: "TENANT_UPDATE_FAILED", message: updateError.message };
+  }
 }
 
 /**
  * Check if AI addon is enabled without throwing — for conditional UI rendering.
  */
 export async function hasAiAddon(tenantId: string): Promise<boolean> {
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { aiAddonEnabled: true },
-  });
-  return tenant?.aiAddonEnabled === true;
+  const { data, error } = await getAdminDb()
+    .from("Tenant")
+    .select("aiAddonEnabled")
+    .eq("id", tenantId)
+    .maybeSingle();
+
+  if (error) {
+    throw { code: "TENANT_LOOKUP_FAILED", message: error.message };
+  }
+
+  return data?.aiAddonEnabled === true;
 }

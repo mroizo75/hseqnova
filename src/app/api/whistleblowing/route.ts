@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { z } from "zod";
 import { nanoid } from "nanoid";
 import { strictRateLimiter, getClientIp } from "@/lib/rate-limit";
 import { notifyUsersByRole } from "@/server/actions/notification.actions";
 import { withAuditLog } from "@/lib/audit-log";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { createWhistleblowingReport } from "@/server/queries/whistleblowing.queries";
 
 export const dynamic = "force-dynamic";
 
@@ -55,83 +56,37 @@ export async function POST(req: NextRequest) {
 
     const validatedData = createWhistleblowSchema.parse(body);
 
-    const tenant = await prisma.tenant.findFirst({
-      where: {
-        id: validatedData.tenantId,
-        slug: validatedData.tenantSlug,
-        status: "ACTIVE",
-      },
-      select: { id: true },
-    });
+    const { data: tenant } = await getAdminDb()
+      .from("Tenant")
+      .select("id")
+      .eq("id", validatedData.tenantId)
+      .eq("slug", validatedData.tenantSlug)
+      .eq("status", "ACTIVE")
+      .maybeSingle();
 
     if (!tenant) {
       return NextResponse.json({ error: "Invalid reporting channel" }, { status: 403 });
     }
 
     const accessCode = nanoid(16).toUpperCase();
-    const year = new Date().getFullYear();
-    const prefix = `WB-${year}-`;
-
-    // Atomically find next number: query highest existing case number for this tenant+year
-    const latest = await prisma.whistleblowing.findFirst({
-      where: {
-        tenantId: tenant.id,
-        caseNumber: { startsWith: prefix },
-      },
-      orderBy: { caseNumber: "desc" },
-      select: { caseNumber: true },
-    });
-
-    const nextSeq = latest
-      ? parseInt(latest.caseNumber.replace(prefix, ""), 10) + 1
-      : 1;
-
-    // Retry loop handles the rare case of concurrent inserts
-    let report;
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const seq = nextSeq + attempt;
-      const caseNumber = `${prefix}${String(seq).padStart(3, "0")}`;
-      try {
-        report = await prisma.whistleblowing.create({
-          data: {
-            tenantId: tenant.id,
-            caseNumber,
-            accessCode,
-            category: validatedData.category,
-            title: validatedData.title,
-            description: validatedData.description,
-            occurredAt: validatedData.occurredAt ? new Date(validatedData.occurredAt) : null,
-            location: validatedData.location || null,
-            involvedPersons: validatedData.involvedPersons || null,
-            witnesses: validatedData.witnesses || null,
-            reporterName: validatedData.reporterName || null,
-            reporterEmail: validatedData.reporterEmail || null,
-            reporterPhone: validatedData.reporterPhone || null,
-            isAnonymous: validatedData.isAnonymous,
-          },
-        });
-        break;
-      } catch (e: any) {
-        // P2002 = unique constraint violation — retry with next number
-        if (e?.code === "P2002" && attempt < 4) continue;
-        throw e;
-      }
-    }
-
-    if (!report) {
-      return NextResponse.json({ error: "Could not generate unique case number" }, { status: 500 });
-    }
-
-    await prisma.whistleblowMessage.create({
-      data: {
-        whistleblowingId: report.id,
-        sender: "SYSTEM",
-        message: `Report received with case number ${report.caseNumber}. Use your access code to follow up.`,
-      },
+    const report = await createWhistleblowingReport({
+      tenantId: tenant.id as string,
+      accessCode,
+      category: validatedData.category,
+      title: validatedData.title,
+      description: validatedData.description,
+      occurredAt: validatedData.occurredAt ?? null,
+      location: validatedData.location || null,
+      involvedPersons: validatedData.involvedPersons || null,
+      witnesses: validatedData.witnesses || null,
+      reporterName: validatedData.reporterName || null,
+      reporterEmail: validatedData.reporterEmail || null,
+      reporterPhone: validatedData.reporterPhone || null,
+      isAnonymous: validatedData.isAnonymous,
     });
 
     await withAuditLog(
-      tenant.id,
+      tenant.id as string,
       "anonymous",
       "whistleblowing",
       report.id,
@@ -139,19 +94,22 @@ export async function POST(req: NextRequest) {
       { caseNumber: report.caseNumber, category: report.category },
     );
 
-    await notifyUsersByRole(tenant.id, "HMS", {
-      type: "WHISTLEBLOWING",
-      title: "New whistleblowing report received",
-      message: `${report.category}: ${report.title} — Case: ${report.caseNumber}`,
-      link: `/dashboard/whistleblowing/${report.id}`,
-    });
-
-    await notifyUsersByRole(tenant.id, "LEDER", {
-      type: "WHISTLEBLOWING",
-      title: "New whistleblowing report received",
-      message: `${report.category}: ${report.title} — Case: ${report.caseNumber}`,
-      link: `/dashboard/whistleblowing/${report.id}`,
-    });
+    try {
+      await notifyUsersByRole(tenant.id as string, "HMS", {
+        type: "WHISTLEBLOWING",
+        title: "New whistleblowing report received",
+        message: `${report.category}: ${report.title} — Case: ${report.caseNumber}`,
+        link: `/dashboard/whistleblowing/${report.id}`,
+      });
+      await notifyUsersByRole(tenant.id as string, "ADMIN", {
+        type: "WHISTLEBLOWING",
+        title: "New whistleblowing report received",
+        message: `${report.category}: ${report.title} — Case: ${report.caseNumber}`,
+        link: `/dashboard/whistleblowing/${report.id}`,
+      });
+    } catch {
+      /* Notifications still use Prisma; the report is already stored. */
+    }
 
     return NextResponse.json(
       {

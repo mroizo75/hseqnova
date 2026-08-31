@@ -35,7 +35,6 @@ import {
   FileBarChart,
   ChevronDown,
   Gauge,
-  Target,
   Megaphone,
   type LucideIcon,
 } from "lucide-react";
@@ -124,7 +123,6 @@ const navGroups: NavGroup[] = [
       { href: "/dashboard/environment", label: "nav.environment", icon: Leaf, permission: "environment" },
       { href: "/dashboard/audits", label: "nav.audits", icon: ClipboardCheck, permission: "audits" },
       { href: "/dashboard/management-reviews", label: "nav.managementReviews", icon: FileBarChart, permission: "managementReviews" },
-      { href: "/dashboard/goals", label: "nav.goals", icon: Target, permission: "goals" },
       { href: "/dashboard/whistleblowing", label: "nav.whistleblowing", icon: Megaphone, permission: "whistleblowing" },
     ],
   },

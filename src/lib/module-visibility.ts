@@ -177,7 +177,6 @@ export const MODULE_CREATE_PERMISSION: Partial<Record<ModuleKey, keyof RolePermi
   inspections: "canCreateInspections",
   training: "canCreateTraining",
   actions: "canCreateActions",
-  whistleblowing: "canSubmitWhistleblowing",
 };
 
 /**

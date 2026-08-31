@@ -24,7 +24,6 @@ export type NavPermission =
   | "support"
   | "hmsHandbok"
   | "whistleblowing"
-  | "goals"
   | "hseqCockpit"
   | "permits"
   | "fireRisk"
@@ -63,6 +62,7 @@ export const UK_EXCLUDED_NAV_HREFS = new Set([
   "/dashboard/ruh",
   "/dashboard/hms-pulse",
   "/dashboard/hms-handbok",
+  "/dashboard/goals",
 ]);
 
 export const DASHBOARD_NAV_CONFIG: DashboardNavItemConfig[] = [
@@ -90,7 +90,6 @@ export const DASHBOARD_NAV_CONFIG: DashboardNavItemConfig[] = [
   { href: "/dashboard/environment", label: "nav.environment", permission: "environment", defaultSimple: true },
   { href: "/dashboard/audits", label: "nav.audits", permission: "audits", defaultSimple: true },
   { href: "/dashboard/management-reviews", label: "nav.managementReviews", permission: "managementReviews", defaultSimple: true },
-  { href: "/dashboard/goals", label: "nav.goals", permission: "goals", defaultSimple: true },
   { href: "/dashboard/whistleblowing", label: "nav.whistleblowing", permission: "whistleblowing", defaultSimple: true },
   { href: "/dashboard/organisasjonskart", label: "nav.orgChart", permission: "settings", defaultSimple: true },
   { href: "/dashboard/users", label: "nav.users", permission: "settings", defaultSimple: true },

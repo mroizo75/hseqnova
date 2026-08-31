@@ -1,5 +1,9 @@
 import { generateAIResponse } from "@/lib/ai";
 import { requireAiAddon } from "@/lib/ai-gate";
+import {
+  sanitizeIndustryRiskPack,
+  type IndustryRiskPack,
+} from "@/lib/industry-risk-pack";
 
 const UK_SYSTEM_PROMPT = `You are an experienced HSEQ consultant specialising in UK health and safety law.
 You provide practical advice based on:
@@ -13,7 +17,12 @@ You provide practical advice based on:
 
 Always respond in British English. Be concise, practical and cite relevant legislation.`;
 
-async function callAI(tenantId: string, userPrompt: string, model = "gpt-4o-mini"): Promise<string> {
+async function callAI(
+  tenantId: string,
+  userPrompt: string,
+  model = "gpt-4o-mini",
+  maxTokens = 2500,
+): Promise<string> {
   await requireAiAddon(tenantId);
 
   const apiKey = process.env.OPENAI_API_KEY;
@@ -34,7 +43,7 @@ async function callAI(tenantId: string, userPrompt: string, model = "gpt-4o-mini
         { role: "user", content: userPrompt },
       ],
       temperature: 0.6,
-      max_tokens: 2500,
+      max_tokens: maxTokens,
     }),
   });
 
@@ -46,14 +55,25 @@ async function callAI(tenantId: string, userPrompt: string, model = "gpt-4o-mini
   return data.choices?.[0]?.message?.content ?? "";
 }
 
-function parseJSON<T>(raw: string, fallback: T): T {
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) return fallback;
+function extractJsonObject(raw: string): unknown {
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const text = fenced?.[1] ?? raw;
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end <= start) return null;
   try {
-    return JSON.parse(match[0]);
+    return JSON.parse(text.slice(start, end + 1));
   } catch {
-    return fallback;
+    return null;
   }
+}
+
+function parseJSON<T>(raw: string, fallback: T): T {
+  const parsed = extractJsonObject(raw);
+  if (parsed && typeof parsed === "object") {
+    return parsed as T;
+  }
+  return fallback;
 }
 
 // ─── Risk Assessment Generator ───────────────────────────────────────
@@ -123,6 +143,61 @@ Requirements:
     severityAfter: 2,
     legalReference: "MHSWR 1999 reg.3",
   });
+}
+
+const EMPTY_INDUSTRY_PACK: IndustryRiskPack = { industryLabel: "Workplace", hazards: [] };
+
+/**
+ * Draft a pack of typical workplace hazards for a free-text industry / line of business.
+ * The employer must still review so the assessment is suitable and sufficient (MHSWR 1999 reg.3).
+ */
+export async function generateIndustryRiskPack(
+  tenantId: string,
+  input: {
+    industry: string;
+    existingRisks?: string[];
+  },
+): Promise<IndustryRiskPack> {
+  const industry = input.industry.trim();
+  const prompt = `Draft a UK workplace risk assessment pack for this industry or line of business.
+
+Industry / line of business: ${industry}
+${input.existingRisks?.length ? `Do not repeat these existing risks: ${input.existingRisks.join("; ")}` : ""}
+
+Respond ONLY with valid JSON:
+{
+  "industryLabel": "short industry label",
+  "hazards": [
+    {
+      "title": "concise hazard title",
+      "context": "how this arises in this type of work (two sentences)",
+      "whoAtRisk": ["employees"],
+      "category": "SAFETY",
+      "likelihood": 3,
+      "consequence": 4,
+      "existingControls": "controls typically already in place in this sector",
+      "legalRef": "MHSWR 1999 reg.3"
+    }
+  ]
+}
+
+Rules:
+- 10 to 14 hazards that are typical for this line of business in Great Britain
+- Mix of common workplace hazards and sector-specific hazards
+- whoAtRisk may only use: employees, young_persons, new_expectant_mothers, disabled, migrant, contractors, visitors_public
+- category may only use: SAFETY, HEALTH, ERGONOMIC, PSYCHOSOCIAL, ENVIRONMENTAL, PHYSICAL, ORGANISATIONAL, OPERATIONAL, LEGAL
+- likelihood and consequence are integers 1-5
+- legalRef must cite UK law or HSE guidance (MHSWR, HSWA, COSHH, WAHR, PUWER, CDM, FSO, Manual Handling as relevant)
+- British English
+- Do not invent a named workplace or named people`;
+
+  const raw = await callAI(tenantId, prompt, "gpt-4o-mini", 4000);
+  const parsed = extractJsonObject(raw);
+  const pack = sanitizeIndustryRiskPack(parsed ?? EMPTY_INDUSTRY_PACK);
+  if (pack.industryLabel === "Workplace" && industry) {
+    return { ...pack, industryLabel: industry.slice(0, 80) };
+  }
+  return pack;
 }
 
 // ─── Incident Analysis ──────────────────────────────────────────────

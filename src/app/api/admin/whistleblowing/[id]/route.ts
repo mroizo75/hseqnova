@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { z } from "zod";
 import { createNotification } from "@/server/actions/notification.actions";
 import { withAuditLog } from "@/lib/audit-log";
+import {
+  loadWhistleblowingDetail,
+  updateWhistleblowingReport,
+} from "@/server/queries/whistleblowing.queries";
 
 export const dynamic = "force-dynamic";
 
@@ -45,10 +48,7 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const report = await prisma.whistleblowing.findFirst({
-      where: { id, tenantId: session.user.tenantId },
-      include: { messages: { orderBy: { createdAt: "asc" } } },
-    });
+    const report = await loadWhistleblowingDetail(session.user.tenantId, id);
 
     if (!report) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -80,9 +80,7 @@ export async function PATCH(
     const body = await req.json();
     const validatedData = updateWhistleblowSchema.parse(body);
 
-    const existing = await prisma.whistleblowing.findFirst({
-      where: { id, tenantId: session.user.tenantId },
-    });
+    const existing = await loadWhistleblowingDetail(session.user.tenantId, id);
 
     if (!existing) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -95,11 +93,11 @@ export async function PATCH(
     }
 
     if (validatedData.status === "ACKNOWLEDGED" && !existing.acknowledgedAt) {
-      updateData.acknowledgedAt = new Date();
+      updateData.acknowledgedAt = new Date().toISOString();
       updateData.handledBy = session.user.id;
     }
     if (validatedData.status === "UNDER_INVESTIGATION" && !existing.investigatedAt) {
-      updateData.investigatedAt = new Date();
+      updateData.investigatedAt = new Date().toISOString();
     }
     if (
       (validatedData.status === "RESOLVED" ||
@@ -107,16 +105,19 @@ export async function PATCH(
         validatedData.status === "DISMISSED") &&
       !existing.closedAt
     ) {
-      updateData.closedAt = new Date();
+      updateData.closedAt = new Date().toISOString();
     }
 
     updateData.updatedById = session.user.id;
 
-    const report = await prisma.whistleblowing.update({
-      where: { id },
-      data: updateData,
-      include: { messages: { orderBy: { createdAt: "asc" } } },
+    const report = await updateWhistleblowingReport({
+      id,
+      tenantId: session.user.tenantId,
+      patch: updateData,
     });
+    if (!report) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
     await withAuditLog(
       session.user.tenantId,

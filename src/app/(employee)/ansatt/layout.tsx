@@ -5,7 +5,7 @@ import { Home } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { AppBreadcrumbs } from "@/components/app-breadcrumbs";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { LogoutButton } from "@/components/ansatt/logout-button";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationsProvider } from "@/hooks/useNotifications";
@@ -31,23 +31,18 @@ export default async function EmployeeLayout({
     redirect("/admin");
   }
 
-  const [user, tenant] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { image: true, name: true },
-    }),
+  const db = getAdminDb();
+  const [{ data: user }, tenantResult] = await Promise.all([
+    db.from("User").select("image, name").eq("id", session.user.id).maybeSingle(),
     session.user.tenantId
-      ? prisma.tenant.findUnique({
-          where: { id: session.user.tenantId },
-          select: {
-            timeRegistrationEnabled: true,
-            dashboardLocked: true,
-            lockedDashboardConfig: true,
-            ruhModuleEnabled: true,
-          },
-        })
-      : null,
+      ? db
+          .from("Tenant")
+          .select("timeRegistrationEnabled, dashboardLocked, lockedDashboardConfig, ruhModuleEnabled")
+          .eq("id", session.user.tenantId)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
+  const tenant = tenantResult.data;
 
   let allWidgets = tenant?.dashboardLocked && tenant.lockedDashboardConfig
     ? getEmployeeWidgetsFromLockedConfig(tenant.lockedDashboardConfig as Array<{ id: string }>)

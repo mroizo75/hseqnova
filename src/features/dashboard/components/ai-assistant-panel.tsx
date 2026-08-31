@@ -24,7 +24,6 @@ const getActionTag = (href: string): string => {
   if (href.includes("/dashboard/audits")) return "Revisjon";
   if (href.includes("/dashboard/inspections")) return "Vernerunde";
   if (href.includes("/dashboard/sja")) return "SJA";
-  if (href.includes("/dashboard/goals")) return "Mål";
   return "Oppfølging";
 };
 
