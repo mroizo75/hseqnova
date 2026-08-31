@@ -6,6 +6,7 @@ import {
   createMeasureSchema,
   updateMeasureSchema,
   completeMeasureSchema,
+  ownerProgressSchema,
   isMeasureOverdue,
 } from "@/features/measures/schemas/measure.schema";
 import {
@@ -22,6 +23,12 @@ import {
   updateIncidentActionStage,
   updateMeasureRecord,
 } from "@/server/queries/measures.queries";
+import { createNotification } from "@/server/actions/notification.actions";
+import {
+  formatActionDueDate,
+  validateHsg245Action,
+  validateOwnerProgress,
+} from "@/lib/measure-uk";
 
 function errorMessage(error: unknown, fallback: string): string {
   if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
@@ -61,6 +68,25 @@ function revalidateMeasurePaths(input: {
   if (input.fireDrillId) {
     revalidatePath(`/dashboard/fire-drills/${input.fireDrillId}`);
   }
+  revalidatePath("/ansatt/tiltak");
+}
+
+async function notifyMeasureOwner(input: {
+  tenantId: string;
+  actorUserId: string;
+  responsibleId: string;
+  title: string;
+  dueAt: Date;
+}): Promise<void> {
+  if (input.responsibleId === input.actorUserId) return;
+  await createNotification({
+    tenantId: input.tenantId,
+    userId: input.responsibleId,
+    type: "MEASURE_ASSIGNED",
+    title: "Action assigned to you",
+    message: `"${input.title}" is due ${formatActionDueDate(input.dueAt)}. Record progress and close it when done.`,
+    link: "/ansatt/tiltak",
+  });
 }
 
 export async function getMeasures(_tenantId: string) {
@@ -125,6 +151,11 @@ export async function createMeasure(input: unknown) {
       }
     }
 
+    const legal = validateHsg245Action(validated);
+    if (legal.ok === false) {
+      return { success: false, error: legal.message };
+    }
+
     const measure = await insertMeasure({
       tenantId,
       projectId: validated.projectId,
@@ -162,6 +193,14 @@ export async function createMeasure(input: unknown) {
         riskId: validated.riskId,
         responsibleId: validated.responsibleId,
       },
+    });
+
+    await notifyMeasureOwner({
+      tenantId,
+      actorUserId: userId,
+      responsibleId: validated.responsibleId,
+      title: measure.title,
+      dueAt: measure.dueAt,
     });
 
     revalidateMeasurePaths({
@@ -212,12 +251,96 @@ export async function updateMeasure(input: unknown) {
       Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined)),
     );
 
+    if (measure.status === "DONE") {
+      if (measure.riskId) {
+        await closeRiskIfAllMeasuresDone(measure.riskId, tenantId);
+      }
+      if (measure.incidentId) {
+        const allDone = await incidentMeasuresAllDone(measure.incidentId, tenantId);
+        await updateIncidentActionStage(
+          measure.incidentId,
+          tenantId,
+          allDone ? "ACTIONS_COMPLETE" : "ACTIONS_DEFINED",
+        );
+      }
+    }
+
     await logMeasureAction({
       tenantId,
       userId,
       action: "MEASURE_UPDATED",
       resource: `Measure:${measure.id}`,
       metadata: { title: measure.title },
+    });
+
+    if (
+      validated.responsibleId &&
+      validated.responsibleId !== existingMeasure.responsibleId
+    ) {
+      await notifyMeasureOwner({
+        tenantId,
+        actorUserId: userId,
+        responsibleId: validated.responsibleId,
+        title: measure.title,
+        dueAt: measure.dueAt,
+      });
+    }
+
+    revalidateMeasurePaths({
+      riskId: measure.riskId,
+      incidentId: measure.incidentId,
+      fireDrillId: measure.fireDrillId,
+      measureId: measure.id,
+    });
+
+    return { success: true, data: measure };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not update the action") };
+  }
+}
+
+export async function updateMyAssignedMeasure(input: unknown) {
+  try {
+    const { userId, tenantId } = await getRequiredTenantContext();
+    const validated = ownerProgressSchema.parse(input);
+    const existing = await loadMeasureById(validated.id, tenantId);
+    if (!existing) {
+      return { success: false, error: "Action not found" };
+    }
+    if (existing.responsibleId !== userId) {
+      return { success: false, error: "Only the named owner can update this action" };
+    }
+    if (existing.status === "DONE") {
+      return { success: false, error: "This action is already complete" };
+    }
+
+    const progress = validateOwnerProgress({
+      status: validated.status,
+      completionNote: validated.completionNote,
+    });
+    if (progress.ok === false) {
+      return { success: false, error: progress.message };
+    }
+
+    if (validated.status === "DONE") {
+      return completeMeasure({
+        id: validated.id,
+        completedAt: new Date(),
+        completionNote: validated.completionNote,
+        effectiveness: "NOT_EVALUATED",
+      });
+    }
+
+    const measure = await updateMeasureRecord(validated.id, tenantId, {
+      status: "IN_PROGRESS",
+    });
+
+    await logMeasureAction({
+      tenantId,
+      userId,
+      action: "MEASURE_UPDATED",
+      resource: `Measure:${measure.id}`,
+      metadata: { title: measure.title, status: "IN_PROGRESS" },
     });
 
     revalidateMeasurePaths({

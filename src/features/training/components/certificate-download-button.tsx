@@ -18,13 +18,13 @@ export function CertificateDownloadButton({ trainingId }: CertificateDownloadBut
     try {
       const res = await fetch(`/api/training/${trainingId}/certificate`);
       if (!res.ok) {
-        toast({ variant: "destructive", title: "Feil", description: "Kunne ikke hente sertifikat" });
+        toast({ variant: "destructive", title: "Could not fetch the certificate", description: "Try again." });
         return;
       }
       const { url } = await res.json();
       window.open(url, "_blank", "noopener,noreferrer");
     } catch {
-      toast({ variant: "destructive", title: "Feil", description: "Kunne ikke åpne sertifikat" });
+      toast({ variant: "destructive", title: "Could not open the certificate", description: "Try again." });
     } finally {
       setLoading(false);
     }
@@ -37,7 +37,7 @@ export function CertificateDownloadButton({ trainingId }: CertificateDownloadBut
       ) : (
         <Download className="mr-1 h-3 w-3" />
       )}
-      Last ned sertifikat
+      Download certificate
     </Button>
   );
 }

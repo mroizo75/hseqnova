@@ -443,6 +443,87 @@
       "noTenantAccess": "No tenant access"
     }
   },
+  "accidentBookReport": {
+    "type": {
+      "label": "What happened? *",
+      "required": "Choose what you are reporting.",
+      "showOther": "Quality, environment or customer complaint",
+      "hideOther": "Hide other record types",
+      "injury": { "label": "Accident / injury", "hint": "Someone was hurt" },
+      "near_miss": { "label": "Near miss", "hint": "Could have caused injury" },
+      "unsafe": { "label": "Unsafe condition", "hint": "Danger present, no injury" },
+      "disease": { "label": "Occupational disease", "hint": "Work-related illness" },
+      "visitor": { "label": "Visitor / public", "hint": "Someone who is not an employee" },
+      "quality": { "label": "Quality", "hint": "" },
+      "environment": { "label": "Environment", "hint": "" },
+      "customer": { "label": "Customer complaint", "hint": "" }
+    },
+    "when": { "label": "When did it happen? *" },
+    "where": {
+      "label": "Where did it happen?",
+      "placeholder": "Site, room or workplace",
+      "required": "Place of accident is required for the accident book."
+    },
+    "what": {
+      "label": "What happened? *",
+      "placeholder": "Short description — what happened and how",
+      "help": "A few sentences is enough. The competent person completes RIDDOR and the investigation.",
+      "tooShort": "Please describe what happened."
+    },
+    "person": {
+      "title": "Injured person",
+      "legal": "BI 510 — full name, occupation and address. Required for the accident book.",
+      "name": "Full name *",
+      "occupation": "Occupation *",
+      "address": "Address *",
+      "role": "This person is",
+      "injury": "Nature of the injury *",
+      "hospital": "Taken from the scene to hospital for treatment (RIDDOR for non-workers)",
+      "consent": "I agree that these personal details may be shared with safety representatives (SRSCWR 1977).",
+      "acknowledge": "I confirm this is an accurate record of the event.",
+      "required": "Name, occupation, address and nature of injury are required.",
+      "roles": {
+        "employee": "An employee",
+        "contractor": "A contractor",
+        "visitor": "A visitor"
+      }
+    },
+    "confirm": { "required": "Confirm the record is accurate before sending." },
+    "witness": {
+      "name": "Witness name (optional)",
+      "address": "Witness address (optional)"
+    },
+    "customer": { "name": "Customer name *" },
+    "project": {
+      "label": "Project / job",
+      "none": "Not project-related",
+      "reference": "Project number / reference"
+    },
+    "photos": {
+      "label": "Photos (optional)",
+      "add": "Add photos",
+      "max": "Maximum 5 photos"
+    },
+    "actions": {
+      "submit": "Send report",
+      "sending": "Sending…"
+    },
+    "offline": {
+      "queued": "Offline queue: {count} saved",
+      "sync": "Sync saved reports",
+      "syncing": "Syncing…"
+    },
+    "toasts": {
+      "error": "Could not send",
+      "success": "Report sent",
+      "successHint": "The competent person has been notified. RIDDOR and investigation follow if needed.",
+      "submitFailed": "Could not record the incident. Please try again.",
+      "offline": "Saved on this device",
+      "offlineHint": "It will send automatically when you are back online.",
+      "synced": "Synced",
+      "syncedHint": "{count} report(s) sent."
+    }
+  },
   "riskForm": {
     "status": {
       "OPEN": "Identified",
@@ -955,8 +1036,8 @@
       "viewReport": "View report"
     },
     "info": {
-      "title": "📋 Safety inspection (Working Environment Act § 6-2):",
-      "description": "Regular safety inspections are required to map the working environment. You are shown here because you are responsible for or a participant in these inspections."
+      "title": "Workplace inspections:",
+      "description": "These are monitoring records under MHSWR 1999 reg.5. Union safety representatives may inspect every three months (SRSCWR 1977 reg.5). You see inspections you lead or take part in. Keep your copy here — do not send it to the HSE."
     }
   },
   "employeeProfilePage": {
@@ -975,7 +1056,7 @@
     },
     "exposure": {
       "title": "Health records",
-      "subtitle": "Your registered exposures to hazardous substances and agents",
+      "subtitle": "Your COSHH health record — you may read it on reasonable notice (reg.11(4)(a))",
       "downloadPdf": "Download PDF",
       "empty": "You are not on a health record. If you have questions, contact your HSE manager.",
       "warning": "You are on a health record. These details are retained until {year} and may be used as documentation in case of occupational disease.",
@@ -1001,24 +1082,25 @@
       },
       "healthCheck": {
         "done": "Health check completed{date}",
-        "pending": "Health check is required – not completed yet"
+        "pending": "Health check is required – not completed yet",
+        "fitness": "Fitness for work: {fitness}"
       },
-      "footer": "Questions about these records? Contact your HSE manager. You have the right of access under UK GDPR / DPA 2018."
+      "footer": "Questions about these records? Contact your HSE manager. You have the right of access under COSHH 2002 reg.11(4)(a) and UK GDPR / DPA 2018."
     }
   },
   "employeeDocumentsPage": {
     "header": {
-      "title": "📄 Documents",
-      "description": "HSE documents and procedures you have access to"
+      "title": "Documents",
+      "description": "Current approved procedures and information you need to work safely (MHSWR 1999 reg.10)"
     },
     "empty": "No documents available yet",
     "kind": {
       "LAW": "⚖️ Laws and regulations",
-      "PROCEDURE": "📋 Procedure (ISO 9001)",
+      "PROCEDURE": "Procedure",
       "CHECKLIST": "✅ Checklist",
       "FORM": "📝 Form",
       "SDS": "⚠️ Safety Data Sheet (SDS)",
-      "PLAN": "📖 HSE handbook / Plan",
+      "PLAN": "Plan",
       "OTHER": "📄 Other"
     },
     "approvedBadge": "✓ Approved",
@@ -1031,7 +1113,7 @@
   "employeeTrainingPage": {
     "header": {
       "title": "My training",
-      "description": "Overview of required and completed training",
+      "description": "Overview of required and completed training — HSWA 1974 s.2(2)(c)",
       "addCompetence": "Add own competence"
     },
     "approvalInfo": {
@@ -1069,7 +1151,7 @@
       },
       "step4": {
         "label": "4. Approved:",
-        "text": "The training is now registered in your HSE profile."
+        "text": "The training is now on your record."
       }
     }
   },
@@ -1099,7 +1181,7 @@
       "fields": {
         "title": {
           "label": "Course title / Certificate",
-          "placeholder": "E.g. First aid, HSE course, Safety representative, etc."
+          "placeholder": "E.g. First aid, health and safety induction, fire marshal, etc."
         },
         "description": {
           "label": "Description",
@@ -1107,10 +1189,15 @@
         },
         "provider": {
           "label": "Instructor / Provider",
-          "placeholder": "E.g. Norwegian First Aid Council, Labour Inspection Authority, etc."
+          "placeholder": "E.g. St John Ambulance, in-house trainer"
         },
         "completedAt": {
           "label": "Completion date"
+        },
+        "mhswrReason": {
+          "label": "Why this training was given",
+          "placeholder": "On recruitment, new risk, or periodic refresher",
+          "help": "MHSWR 1999 reg.13 — employers must train on recruitment and when risks change."
         },
         "certificate": {
           "label": "Upload proof (certificate, diploma, etc.)",
@@ -1273,11 +1360,11 @@
     },
     "kind": {
       "LAW": "⚖️ Laws and regulations",
-      "PROCEDURE": "📋 Procedure (ISO 9001)",
+      "PROCEDURE": "Procedure",
       "CHECKLIST": "✅ Checklist",
       "FORM": "📝 Form",
       "SDS": "⚠️ Safety Data Sheet (SDS)",
-      "PLAN": "📖 HSE handbook / Plan",
+      "PLAN": "Plan",
       "OTHER": "📄 Other"
     },
     "approvedBadge": "✓ Approved",
@@ -1304,6 +1391,12 @@
     }
   },
   "employeeChemicalsPage": {
+    "title": "COSHH register",
+    "description": "Hazardous substances in use — safety data sheets and COSHH assessments",
+    "sdsNotice": {
+      "title": "Before you use a substance:",
+      "description": "Read the safety data sheet and the COSHH assessment. Use the controls and PPE required. An SDS is not a COSHH assessment (COSHH 2002)."
+    },
     "searchPlaceholder": "Search by product name, supplier, or CAS number...",
     "showingCount": "Showing {filtered} of {total} chemicals",
     "emptySearch": "No chemicals found",
@@ -1405,11 +1498,21 @@
     }
   },
   "employeeChemicalDetailPage": {
-    "back": "Back to chemical register",
+    "back": "Back to COSHH register",
     "supplier": "Supplier: {name}",
     "overdue": {
       "title": "⚠️ Warning",
-      "description": "This chemical has an overdue review date. Contact the HSE responsible before use."
+      "description": "This substance has an overdue review date. Contact your HSE manager before use."
+    },
+    "assessments": {
+      "title": "COSHH assessments",
+      "description": "Significant findings of the assessment for this substance (COSHH 2002 reg.12)",
+      "empty": "No COSHH assessment is recorded for this substance yet. Do not start the work until an assessment is in place. Contact your HSE manager.",
+      "task": "Task / activity",
+      "routes": "How people may be exposed",
+      "controls": "Controls you must use",
+      "further": "Further controls",
+      "surveillance": "Health surveillance is required for this work — see your HSE manager."
     },
     "sds": {
       "title": "Safety Data Sheet (SDS)",
@@ -1419,7 +1522,7 @@
       "nextReview": "Next review",
       "overdueBadge": "Overdue!",
       "download": "Download safety data sheet (PDF)",
-      "missing": "⚠️ Safety data sheet is missing - contact the HSE responsible"
+      "missing": "⚠️ Safety data sheet is missing — contact your HSE manager"
     },
     "product": {
       "title": "Product information",
@@ -1446,7 +1549,7 @@
     },
     "tip": {
       "title": "💡 Remember:",
-      "description": "If uncertain or if you have questions, contact the HSE responsible before use. Always read the safety data sheet carefully!"
+      "description": "If you are unsure, contact your HSE manager before use. Read the safety data sheet and the COSHH assessment."
     }
   },
   "employeeTimeRegistrationPage": {
@@ -1581,7 +1684,7 @@
     },
     "important": {
       "title": "Before work starts:",
-      "description": "Complete RAMS with everyone who will do the work. Identify hazards and control measures, then brief the team so they understand the safe system of work."
+      "description": "Complete RAMS with everyone who will do the work. Record the method of work, who might be harmed and how, and the controls. Then brief the team."
     },
     "project": "Recorded against project: {name}",
     "formTitle": "RAMS form",
@@ -1590,9 +1693,9 @@
       "title": "How to complete RAMS",
       "stepsTitle": "Step by step:",
       "steps": {
-        "s1": "Fill in the date, work location and everyone doing the work",
+        "s1": "Fill in the date, location, method of work and everyone doing the work",
         "s2": "Record anything different today (weather, new people, changes)",
-        "s3": "Review every hazard — add new ones if needed",
+        "s3": "For each hazard, say how someone might be harmed and what controls apply",
         "s4": "Describe control measures for each hazard",
         "s5": "Photograph the work area if it helps",
         "s6": "Confirm that everyone understands the RAMS"
@@ -1624,13 +1727,13 @@
     }
   },
   "employeeIncidentNewPage": {
-    "title": "Report incident",
-    "description": "Report dangerous situations, accidents or near misses",
+    "title": "Record an incident",
+    "description": "Send an accident book entry in under a minute. RIDDOR and investigation are completed by the competent person.",
     "emergency": {
-      "title": "🚨 In acute danger:",
-      "description": "Call 110 (fire), 112 (police) or 113 (ambulance) FIRST! Then report the incident here."
+      "title": "If someone is in immediate danger:",
+      "description": "Call 999 (or 112) first. Then record the incident here."
     },
-    "formTitle": "Incident form",
+    "formTitle": "Accident book entry",
     "employeeFallback": "Employee",
     "help": {
       "title": "💡 What should I report?",
@@ -2147,7 +2250,7 @@
       "item": "Hazard #{index}",
       "activity": "Activity *",
       "hazard": "Hazard/risk *",
-      "consequence": "Possible consequence",
+      "consequence": "Who might be harmed / how *",
       "probability": "Probability",
       "severity": "Severity",
       "responsible": "Responsible",
@@ -2214,8 +2317,9 @@
         "placeholder": "E.g.: Rain, wind 10 m/s, slippery"
       },
       "description": {
-        "label": "Work description",
-        "placeholder": "Describe the work to be performed..."
+        "label": "Method of work",
+        "placeholder": "How will the work be done, in order — access, the task, and how you leave the area...",
+        "help": "A RAMS without a method of work is only a risk assessment (MHSWR 1999; industry practice)."
       },
       "participants": {
         "label": "All participants in the work",
@@ -2236,8 +2340,8 @@
       "activityPlaceholder": "What will be done?",
       "hazard": "Hazard / risk",
       "hazardPlaceholder": "What can go wrong?",
-      "consequence": "Possible consequence",
-      "consequencePlaceholder": "What is the worst-case outcome?",
+      "consequence": "Who might be harmed / how",
+      "consequencePlaceholder": "E.g. roofers falling from the leading edge",
       "probability": "Probability (1-5)",
       "severity": "Severity (1-5)",
       "responsible": "Responsible for measures",
@@ -2301,7 +2405,11 @@
       },
       "noHazards": {
         "title": "No hazards registered",
-        "description": "Add at least one hazard with activity, hazard and measures."
+        "description": "Add at least one hazard with activity, who might be harmed, and control measures."
+      },
+      "methodMissing": {
+        "title": "Method of work missing",
+        "description": "Describe how the work will be done (at least 20 characters). A RAMS without a method is only a risk assessment."
       },
       "dateMissing": {
         "title": "Date missing",
@@ -2783,7 +2891,7 @@
       "r2": "Keep safety data sheets available to employees",
       "r3": "Review the COSHH assessment when it is no longer valid",
       "r4": "Provide information, instruction and training on safe handling",
-      "r5": "Keep health surveillance records for 40 years where they apply"
+      "r5": "Health surveillance records (40 years) sit in the exposure register, not on this page"
     },
     "stats": {
       "total": {
@@ -3194,7 +3302,7 @@
   "dashboardTrainingPage": {
     "noTenantAccess": "No tenant access",
     "title": "Competence",
-    "description": "Overview and follow-up of employee competence, courses and certifications",
+    "description": "Who was trained, in what, when, and why — HSWA 1974 s.2(2)(c); MHSWR 1999 reg.13",
     "stats": {
       "total": {
         "title": "Total",
@@ -3339,7 +3447,7 @@
   "dashboardDocumentsPage": {
     "title": "Documents",
     "noTenantAccess": "No tenant access",
-    "description": "Manage laws, procedures, checklists and more",
+    "description": "Current approved procedures and information for employees (MHSWR 1999 reg.10)",
     "actions": {
       "newDocument": "New document"
     },
@@ -3527,10 +3635,10 @@
     },
     "findings": {
       "title": "Findings and observations",
-      "registered": "{count} findings registered from the safety round",
-      "noneDescription": "No findings registered. Findings are created directly in the safety round when answering \"Not OK\".",
-      "noneTitle": "No findings registered yet",
-      "noneHelp": "Findings are registered in the safety round when filling out items."
+      "registered": "{count} findings recorded",
+      "noneDescription": "No findings yet. Record unsafe or unhealthy conditions here (HSE F2533), or from a checklist if one is attached.",
+      "noneTitle": "No findings recorded yet",
+      "noneHelp": "Add a finding with who will act and by when. A checklist is optional."
     },
     "compliance": {
       "title": "📋 HSE Compliance",
@@ -3758,7 +3866,7 @@
       "draft": "Draft",
       "underReview": "Under review",
       "approved": "Approved",
-      "obsolete": "Obsolete"
+      "archived": "Withdrawn"
     },
     "documentType": {
       "title": "Document type"
@@ -3782,11 +3890,11 @@
     },
     "kinds": {
       "LAW": "Laws and regulations",
-      "PROCEDURE": "Procedure (ISO 9001)",
+      "PROCEDURE": "Procedure",
       "CHECKLIST": "Checklist",
       "FORM": "Form",
       "SDS": "Safety data sheet (SDS)",
-      "PLAN": "HSE handbook / Plan",
+      "PLAN": "Plan",
       "OTHER": "Other"
     }
   },
@@ -3814,16 +3922,16 @@
     },
     "openActions": {
       "title": "Open actions requiring follow-up ({count})",
-      "description": "Ref. Working Environment Act § 3-1 and Internal Control Regulation § 5 – these findings require actions to be implemented"
+      "description": "These findings need employer action (HSE F2533). Explain in writing if action is not appropriate or will be delayed."
     },
     "labels": {
       "types": {
-        "vernerunde": "Safety round",
-        "hmsInspection": "HSE inspection",
+        "vernerunde": "Workplace inspection",
+        "hmsInspection": "Management inspection",
         "fireDrill": "Fire drill",
-        "shaPlan": "HSE plan",
-        "safetyWalk": "Safety walk",
-        "other": "Other"
+        "shaPlan": "Construction site inspection",
+        "safetyWalk": "Safety representative inspection",
+        "other": "Statutory / other"
       },
       "status": {
         "planned": "Planned",
@@ -3869,7 +3977,7 @@
     "noInspections": "No inspections in selected period",
     "allFindingsAndMeasures": "All findings and actions ({count})",
     "allFindingsDescription": "Detailed overview with severity, responsible and actions",
-    "legal": "Ref. Working Environment Act § 5-1 (registration duty), § 5-2 (notification duty), § 3-1 (systematic HSE work) and Internal Control Regulation § 5. ISO 45001:2018 section 9.1."
+    "legal": "MHSWR 1999 reg.5 (monitoring arrangements); SRSCWR 1977 regs 5–6 (safety representative inspections). Internal records — not submitted to the HSE."
   },
   "dashboardAuditComponents": {
     "updateStatus": {
@@ -4058,9 +4166,9 @@
     "findingList": {
       "labels": {
         "status": "Status",
-        "resolutionNotes": "Resolution notes",
+        "resolutionNotes": "Employer response / action",
         "description": "Description:",
-        "solution": "Solution:"
+        "solution": "Employer response:"
       },
       "status": {
         "open": "Open",
@@ -4077,10 +4185,10 @@
       },
       "updateDialog": {
         "title": "Update finding",
-        "description": "Change status and add resolution notes"
+        "description": "Change status and record the employer’s response (HSE F2533)"
       },
       "placeholders": {
-        "resolutionNotes": "Describe how the finding was handled..."
+        "resolutionNotes": "Action taken, or why action is not appropriate or will be delayed..."
       },
       "confirmDelete": "Are you sure you want to delete \"{title}\"?",
       "imageAlt": "Image from finding",
@@ -4744,12 +4852,12 @@
       "description": "Description"
     },
     "types": {
-      "vernerunde": "Safety round",
-      "hmsInspection": "HSE inspection",
+      "vernerunde": "Workplace inspection",
+      "hmsInspection": "Management inspection",
       "fireDrill": "Fire drill",
-      "shaPlan": "HSE plan",
-      "safetyWalk": "Safety walk",
-      "other": "Other"
+      "shaPlan": "Construction site inspection",
+      "safetyWalk": "Safety representative inspection",
+      "other": "Statutory / other"
     },
     "status": {
       "planned": "Planned",
@@ -4817,15 +4925,16 @@
       "edit": "Edit document",
       "approve": "Approve document",
       "newVersion": "Upload new version",
+      "archive": "Withdraw — no longer the working copy",
       "delete": "Delete"
     },
     "kind": {
       "LAW": "Laws and regulations",
-      "PROCEDURE": "Procedure (ISO 9001)",
+      "PROCEDURE": "Procedure",
       "CHECKLIST": "Checklist",
       "FORM": "Form",
       "SDS": "Safety data sheet (SDS)",
-      "PLAN": "HSE handbook / Plan",
+      "PLAN": "Plan",
       "OTHER": "Other"
     },
     "status": {
@@ -4836,7 +4945,7 @@
     "roles": {
       "ADMIN": "Admin",
       "HMS": "HSE manager",
-      "LEDER": "Leader",
+      "LEDER": "Line manager",
       "VERNEOMBUD": "Safety representative",
       "ANSATT": "Employee",
       "BHT": "OHS service",
@@ -4858,7 +4967,8 @@
       "description": "Upload your first document to get started",
       "action": "Upload document"
     },
-    "confirmApprove": "Approve \"{title}\"?\n\nThis will activate the document for use.",
+    "confirmApprove": "Approve \"{title}\"?\n\nThis becomes the current working copy employees must follow.",
+    "confirmArchive": "Withdraw \"{title}\"?\n\nEmployees will no longer see this as the working copy.",
     "confirmDelete": "Are you sure you want to delete \"{title}\"?\n\nThis cannot be undone.",
     "toasts": {
       "downloading": {
@@ -4882,12 +4992,20 @@
         "description": "Could not convert to PDF"
       },
       "approved": {
-        "title": "✅ Document approved",
-        "description": "\"{title}\" is now activated for use"
+        "title": "Document published",
+        "description": "\"{title}\" is now the current working copy"
       },
       "approveError": {
         "title": "Approval failed",
         "description": "Could not approve document"
+      },
+      "archived": {
+        "title": "Document withdrawn",
+        "description": "\"{title}\" is no longer the working copy"
+      },
+      "archiveError": {
+        "title": "Could not withdraw",
+        "description": "Could not withdraw the document"
       },
       "deleted": {
         "title": "🗑️ Document deleted",
@@ -4924,8 +5042,8 @@
     },
     "kinds": {
       "LAW": "Laws and regulations",
-      "PLAN": "HSE handbook / Plan",
-      "PROCEDURE": "Procedure (ISO 9001)",
+      "PLAN": "Plan",
+      "PROCEDURE": "Procedure",
       "CHECKLIST": "Checklist",
       "FORM": "Form",
       "SDS": "Safety data sheet (SDS)",
@@ -4934,7 +5052,7 @@
     "roles": {
       "ADMIN": "Admin",
       "HMS": "HSE manager",
-      "LEDER": "Leader",
+      "LEDER": "Line manager",
       "VERNEOMBUD": "Safety representative",
       "ANSATT": "Employee",
       "BHT": "OHS service",
@@ -5011,8 +5129,8 @@
     },
     "kinds": {
       "LAW": "Laws and regulations",
-      "PLAN": "HSE handbook / Plan",
-      "PROCEDURE": "Procedure (ISO 9001)",
+      "PLAN": "Plan",
+      "PROCEDURE": "Procedure",
       "CHECKLIST": "Checklist",
       "FORM": "Form",
       "SDS": "Safety data sheet (SDS)",
@@ -5021,7 +5139,7 @@
     "roles": {
       "ADMIN": "Admin",
       "HMS": "HSE manager",
-      "LEDER": "Leader",
+      "LEDER": "Line manager",
       "VERNEOMBUD": "Safety representative",
       "ANSATT": "Employee",
       "BHT": "OHS service",

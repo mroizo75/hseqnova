@@ -18,26 +18,26 @@ export function TrainingExpiryAlertButton() {
     if (!result.success) {
       toast({
         variant: "destructive",
-        title: "Kunne ikke sende varsler",
-        description: result.error || "Ukjent feil",
+        title: "Could not send alerts",
+        description: result.error || "Unknown error",
       });
       return;
     }
 
     const sent = result.data?.sent ?? 0;
     toast({
-      title: "Varsler sendt",
+      title: "Alerts sent",
       description:
         sent > 0
-          ? `${sent} helsevarsler om utlopende kompetanse er sendt.`
-          : "Ingen nye varsler var nodvendige akkurat na.",
+          ? `${sent} competence expiry alerts were sent.`
+          : "No new alerts were needed.",
     });
   }
 
   return (
     <Button type="button" variant="outline" className="gap-2" onClick={handleSendAlerts} disabled={loading}>
       <BellRing className="h-4 w-4" />
-      {loading ? "Sender varsler..." : "Send kompetansevarsler"}
+      {loading ? "Sending alerts..." : "Send expiry alerts"}
     </Button>
   );
 }

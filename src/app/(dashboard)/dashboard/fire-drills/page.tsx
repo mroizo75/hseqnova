@@ -2,7 +2,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
 import { getPermissions } from "@/lib/permissions";
-import { loadFireDrillUserNames, loadFireDrillsForList } from "@/server/queries/fire-drills.queries";
+import {
+  loadFireDrillUserNames,
+  loadFireDrillsForList,
+  loadNamedFireMarshals,
+} from "@/server/queries/fire-drills.queries";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +38,7 @@ import {
   FIRE_DRILL_STATUS_LABELS,
 } from "@/features/fire-drills/schemas/fire-drill.schema";
 import type { FireDrillStatus, FireDrillType } from "@/features/fire-drills/schemas/fire-drill.schema";
-import { FireDrillLegalNote } from "@/features/fire-drills/components/fire-drill-legal-note";
+import { FireSafetyLegalNote } from "@/features/fire-risk/components/fire-safety-legal-note";
 
 function getStatusBadge(status: FireDrillStatus) {
   const map: Record<FireDrillStatus, string> = {
@@ -71,9 +75,10 @@ export default async function FireDrillsPage() {
     redirect("/dashboard");
   }
 
-  const [drills, userMap] = await Promise.all([
+  const [drills, userMap, fireMarshals] = await Promise.all([
     loadFireDrillsForList(session.user.tenantId),
     loadFireDrillUserNames(session.user.tenantId),
+    loadNamedFireMarshals(session.user.tenantId),
   ]);
 
   const stats = {
@@ -83,15 +88,15 @@ export default async function FireDrillsPage() {
     evaluated: drills.filter((d) => d.status === "EVALUATED").length,
   };
 
-  const lastEvaluation = drills
-    .filter((d) => d.status === "EVALUATED" && d.evaluatedAt)
+  const lastCompleted = drills
+    .filter((d) => d.completedAt && (d.status === "COMPLETED" || d.status === "EVALUATED"))
     .sort(
       (a, b) =>
-        new Date(b.evaluatedAt ?? 0).getTime() - new Date(a.evaluatedAt ?? 0).getTime(),
+        new Date(b.completedAt ?? 0).getTime() - new Date(a.completedAt ?? 0).getTime(),
     )[0];
 
-  const monthsSinceLast = lastEvaluation?.evaluatedAt
-    ? differenceInMonths(new Date(), new Date(lastEvaluation.evaluatedAt))
+  const monthsSinceLast = lastCompleted?.completedAt
+    ? differenceInMonths(new Date(), new Date(lastCompleted.completedAt))
     : null;
 
   const showAnnualReminder = monthsSinceLast === null || monthsSinceLast >= 10;
@@ -106,17 +111,45 @@ export default async function FireDrillsPage() {
           <div>
             <h1 className="text-3xl font-bold">Fire drills</h1>
             <p className="text-muted-foreground mt-1">
-              Plan, carry out and review fire drills — Fire Safety Order 2005 art.15
+              Fire Safety Order 2005 art.15 — tests the fire risk assessment (art.9)
             </p>
           </div>
         </div>
-        <Button asChild>
-          <Link href="/dashboard/fire-drills/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Plan a new drill
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" className="bg-transparent" asChild>
+            <Link href="/dashboard/fire-risk">Fire risk assessment</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/dashboard/fire-drills/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Plan a new drill
+            </Link>
+          </Button>
+        </div>
       </div>
+
+      <FireSafetyLegalNote />
+
+      {fireMarshals.length === 0 ? (
+        <Alert className="border-orange-200 bg-orange-50">
+          <AlertTriangle className="h-4 w-4 text-orange-600" />
+          <AlertDescription className="text-orange-800">
+            <strong>Fire marshals:</strong> No competent person is named to implement
+            evacuation (Fire Safety Order 2005 art.15(1)(b)). Name fire marshals on the{" "}
+            <Link href="/dashboard/organisasjonskart" className="font-medium underline">
+              organisation chart
+            </Link>
+            .
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <Alert>
+          <AlertDescription>
+            <strong>Nominated fire marshals:</strong>{" "}
+            {fireMarshals.map((marshal) => `${marshal.name} (${marshal.title})`).join(", ")}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {showAnnualReminder && (
         <Alert className="border-orange-200 bg-orange-50">
@@ -124,8 +157,8 @@ export default async function FireDrillsPage() {
           <AlertDescription className="text-orange-800">
             <strong>Annual drill:</strong>{" "}
             {monthsSinceLast === null
-              ? "No reviewed fire drill has been recorded yet."
-              : `The last reviewed drill was ${monthsSinceLast} months ago.`}{" "}
+              ? "No fire drill has been completed yet."
+              : `The last completed drill was ${monthsSinceLast} months ago.`}{" "}
             Practise evacuation at least once a year (Fire Safety Order 2005 art.15 and art.21).
           </AlertDescription>
         </Alert>
@@ -330,8 +363,6 @@ export default async function FireDrillsPage() {
           )}
         </CardContent>
       </Card>
-
-      <FireDrillLegalNote />
     </div>
   );
 }

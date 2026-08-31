@@ -21,6 +21,8 @@ import {
 import { toast } from "sonner";
 import { updatePreQualificationStatus } from "@/server/actions/contractor.actions";
 import type { PreQualStatus } from "@prisma/client";
+import { ContractorLegalNote } from "@/features/contractors/components/contractor-legal-note";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface ContractorData {
   id: string;
@@ -31,6 +33,9 @@ interface ContractorData {
   contactPhone: string | null;
   address: string | null;
   tradeCategory: string | null;
+  workToBeDone: string | null;
+  hostInformationProvided: boolean;
+  hostInformationProvidedAt: Date | null;
   hasPublicLiabilityInsurance: boolean | null;
   publicLiabilityAmount: string | null;
   publicLiabilityExpiry: Date | null;
@@ -144,6 +149,10 @@ function InsuranceRow({
 
 export function PrequalificationReview({ contractor }: Props) {
   const [notes, setNotes] = useState(contractor.preQualificationNotes ?? "");
+  const [workToBeDone, setWorkToBeDone] = useState(contractor.workToBeDone ?? "");
+  const [hostInformationProvided, setHostInformationProvided] = useState(
+    contractor.hostInformationProvided,
+  );
   const [saving, setSaving] = useState(false);
   const accreditations = parseAccreditations(contractor.safetyAccreditations);
   const statusConf = STATUS_CONFIG[contractor.preQualificationStatus];
@@ -151,7 +160,10 @@ export function PrequalificationReview({ contractor }: Props) {
   async function handleStatusChange(status: PreQualStatus) {
     setSaving(true);
     try {
-      await updatePreQualificationStatus(contractor.id, status, notes);
+      await updatePreQualificationStatus(contractor.id, status, notes, {
+        workToBeDone,
+        hostInformationProvided,
+      });
       toast.success(`Contractor ${status === "APPROVED" ? "approved" : status === "REJECTED" ? "rejected" : "updated"}`);
       window.location.reload();
     } catch (err: any) {
@@ -163,6 +175,8 @@ export function PrequalificationReview({ contractor }: Props) {
 
   return (
     <div className="space-y-6">
+      <ContractorLegalNote />
+
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
@@ -210,14 +224,14 @@ export function PrequalificationReview({ contractor }: Props) {
             hasInsurance={contractor.hasPublicLiabilityInsurance}
             amount={contractor.publicLiabilityAmount}
             expiry={contractor.publicLiabilityExpiry}
-            legalRef="Recommended for all contractors"
+            legalRef="Not required by health and safety law — commercial check only"
           />
           <InsuranceRow
             label="Employers' Liability Insurance"
             hasInsurance={contractor.hasEmployersLiabilityInsurance}
             amount={contractor.employersLiabilityAmount}
             expiry={contractor.employersLiabilityExpiry}
-            legalRef="Employers' Liability (Compulsory Insurance) Act 1969"
+            legalRef="Contractor's duty if they have employees (ELCIA 1969) — not a named client form"
           />
         </CardContent>
       </Card>
@@ -227,9 +241,9 @@ export function PrequalificationReview({ contractor }: Props) {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            Health &amp; Safety Competence
+            Health and safety competence
           </CardTitle>
-          <p className="text-xs text-muted-foreground">CDM 2015 · MHSWR 1999 reg.7</p>
+          <p className="text-xs text-muted-foreground">INDG368 — evidence they can do this job safely. SSIP is optional.</p>
         </CardHeader>
         <CardContent className="space-y-3">
           <CheckItem label="Health and safety policy" checked={contractor.hasHealthSafetyPolicy} fileKey={contractor.healthSafetyPolicyFile} />
@@ -290,10 +304,37 @@ export function PrequalificationReview({ contractor }: Props) {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">Pre-Qualification Decision</CardTitle>
           <p className="text-xs text-muted-foreground">
-            CDM 2015 requires duty holders to take reasonable steps to ensure contractors are competent.
+            Identify the job and record that host information has been given before they are
+            approved to work (INDG368; MHSWR 1999 regs 11 and 12). SSIP is not a legal requirement.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Work they will do</Label>
+            <Textarea
+              value={workToBeDone}
+              onChange={(e) => setWorkToBeDone(e.target.value)}
+              placeholder="Describe the job this contractor is engaged to do"
+              rows={3}
+            />
+          </div>
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id="host-info-review"
+              checked={hostInformationProvided}
+              onCheckedChange={(checked) => setHostInformationProvided(checked === true)}
+            />
+            <Label htmlFor="host-info-review" className="font-normal leading-snug">
+              Site risks, our controls and emergency arrangements have been given to this
+              contractor (MHSWR 1999 regs 11 and 12)
+            </Label>
+          </div>
+          {contractor.hostInformationProvidedAt ? (
+            <p className="text-xs text-muted-foreground">
+              Information recorded:{" "}
+              {new Date(contractor.hostInformationProvidedAt).toLocaleDateString("en-GB")}
+            </p>
+          ) : null}
           <div className="space-y-1.5">
             <Label>Review Notes</Label>
             <Textarea

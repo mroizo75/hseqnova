@@ -9,6 +9,7 @@ import {
   type CdmDutyHolderInput,
   type CdmDutyHolderRoleKey,
   emptyDutyHolder,
+  hasMoreThanOneContractor,
 } from "@/features/projects/lib/cdm-duty-holders";
 
 type CdmDutyHolderFieldsProps = {
@@ -111,6 +112,7 @@ export function CdmDutyHolderFields({ holders, disabled, onChange }: CdmDutyHold
   }
 
   const extrasStart = 3;
+  const pdPcRequired = hasMoreThanOneContractor(holders);
 
   return (
     <Card>
@@ -126,7 +128,11 @@ export function CdmDutyHolderFields({ holders, disabled, onChange }: CdmDutyHold
             key={`${holder.role}-${holder.id ?? index}`}
             holder={holder}
             index={index}
-            required={holder.role === "CLIENT"}
+            required={
+              holder.role === "CLIENT" ||
+              (pdPcRequired &&
+                (holder.role === "PRINCIPAL_DESIGNER" || holder.role === "PRINCIPAL_CONTRACTOR"))
+            }
             disabled={disabled}
             onChange={patch}
           />

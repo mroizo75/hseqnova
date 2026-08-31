@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { CertificateDownloadButton } from "@/features/training/components/certificate-download-button";
+import { mhswrReasonLabel } from "@/lib/training-uk";
 
 export default async function TrainingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -114,6 +115,11 @@ export default async function TrainingDetailPage({ params }: { params: Promise<{
                 <p className="text-sm">{training.description}</p>
               </div>
             )}
+
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-1">Why this training was given</p>
+              <p className="text-sm">{mhswrReasonLabel(training.mhswrReason)}</p>
+            </div>
 
             <div className="flex items-center gap-2">
               {training.isRequired && (

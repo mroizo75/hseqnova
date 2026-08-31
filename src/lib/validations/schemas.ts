@@ -93,7 +93,7 @@ export const CreateRiskControlSchema = z.object({
  * Validering for oppretting av kjemikalie
  */
 export const CreateChemicalSchema = z.object({
-  productName: z.string().min(1, "Produktnavn er påkrevd").max(200),
+  productName: z.string().min(1, "Product name is required").max(200),
   supplier: z.string().max(200).optional(),
   casNumber: z.string().max(50).optional(),
   hazardStatements: z.string().max(1000).optional(),

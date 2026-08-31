@@ -21,20 +21,14 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.tenantId) {
-      return NextResponse.json(
-        { error: "Ikke autorisert" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const formData = await request.formData();
     const file = formData.get("file");
 
     if (!file || typeof file === "string") {
-      return NextResponse.json(
-        { error: "Ingen fil lastet opp" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
     // Validate file size first
@@ -86,18 +80,12 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    console.log(`Training certificate uploaded: ${key}`);
-
     return NextResponse.json({
       success: true,
       key,
     });
-  } catch (error) {
-    console.error("Training certificate upload error:", error);
-    return NextResponse.json(
-      { error: "Kunne ikke laste opp fil" },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ error: "Could not upload the file" }, { status: 500 });
   }
 }
 

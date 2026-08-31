@@ -26,7 +26,7 @@ function getStatusColor(status: string) {
       return "bg-yellow-100 text-yellow-800";
     case "APPROVED":
       return "bg-green-100 text-green-800";
-    case "OBSOLETE":
+    case "ARCHIVED":
       return "bg-red-100 text-red-800";
     default:
       return "bg-gray-100 text-gray-800";
@@ -38,7 +38,7 @@ function getStatusLabel(status: string, t: Awaited<ReturnType<typeof getTranslat
     DRAFT: t("status.draft"),
     UNDER_REVIEW: t("status.underReview"),
     APPROVED: t("status.approved"),
-    OBSOLETE: t("status.obsolete"),
+    ARCHIVED: t("status.archived"),
   };
   return labels[status] || status;
 }
@@ -74,6 +74,10 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
 
   const permissions = auth.permissions;
   const currentUserId = auth.userId;
+  const pendingRevision =
+    document.status === "APPROVED"
+      ? document.versions.find((version) => !version.approvedAt)
+      : undefined;
 
   return (
     <div className="space-y-6">
@@ -105,6 +109,15 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
           </Button>
         </div>
       </div>
+
+      {pendingRevision ? (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <p className="font-medium">Revision awaiting approval</p>
+          <p className="mt-1 text-amber-900">
+            {pendingRevision.version} is not yet the working copy. Employees still see {document.version}.
+          </p>
+        </div>
+      ) : null}
 
       {/* Status og metadata */}
       <div className="grid gap-4 md:grid-cols-3">

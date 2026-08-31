@@ -71,6 +71,7 @@ export async function loadHseqStatusInput(opts: {
     measuresRes,
     inspectionsRes,
     drillsRes,
+    fraRes,
     trainingsRes,
     documentsRes,
     sjaRes,
@@ -105,6 +106,9 @@ export async function loadHseqStatusInput(opts: {
       : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
     include("fireDrills", "fireDrills")
       ? db.from("FireDrill").select("status, completedAt").eq("tenantId", tenantId)
+      : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
+    include("fireDrills", "fireDrills")
+      ? db.from("FireRiskAssessment").select("status, reviewDate").eq("tenantId", tenantId)
       : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
     include("training", "training")
       ? db.from("Training").select("completedAt, validUntil").eq("tenantId", tenantId)
@@ -155,6 +159,7 @@ export async function loadHseqStatusInput(opts: {
   const measures = (measuresRes.data ?? []) as Array<Record<string, unknown>>;
   const inspections = (inspectionsRes.data ?? []) as Array<Record<string, unknown>>;
   const drills = (drillsRes.data ?? []) as Array<Record<string, unknown>>;
+  const fireAssessments = (fraRes.data ?? []) as Array<Record<string, unknown>>;
   const trainings = (trainingsRes.data ?? []) as Array<Record<string, unknown>>;
   const documents = (documentsRes.data ?? []) as Array<Record<string, unknown>>;
   const sja = (sjaRes.data ?? []) as Array<Record<string, unknown>>;
@@ -216,6 +221,15 @@ export async function loadHseqStatusInput(opts: {
         if (!COMPLETED_DRILL.has(String(row.status))) return false;
         const completed = asDate(row.completedAt as string | null);
         return completed !== null && completed >= yearAgo;
+      }),
+      hasRecordedAssessment: fireAssessments.some((row) => {
+        const status = String(row.status);
+        return status === "COMPLETED" || status === "REVIEW_DUE";
+      }),
+      assessmentReviewOverdue: fireAssessments.some((row) => {
+        if (String(row.status) === "ARCHIVED") return false;
+        const review = asDate(row.reviewDate as string | null);
+        return review !== null && review < now;
       }),
     },
     training: {

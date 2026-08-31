@@ -123,10 +123,10 @@ export function TavleUePortalConfig({
         </CardHeader>
         <CardContent className="space-y-3">
           {[
-            { key: "allowAvvik", label: "Avvik", desc: "AML § 5-2, IK-HMS § 5" },
-            { key: "allowRuh", label: "RUH – Rapport om uønsket hendelse", desc: "Nestenulykker og observasjoner" },
-            { key: "allowSja", label: "SJA – Sikker jobb-analyse", desc: "Byggherreforskriften § 18 andre ledd" },
-            { key: "allowPdfUpload", label: "PDF-rapport opplasting", desc: "Fra UEs eget HMS-system (Synergi, EHS osv.)" },
+            { key: "allowAvvik", label: "Incident / accident book", desc: "RIDDOR 2013 / accident book" },
+            { key: "allowRuh", label: "Near miss / unsafe condition", desc: "Accident book — not RIDDOR unless listed" },
+            { key: "allowSja", label: "RAMS", desc: "MHSWR 1999 / CDM 2015" },
+            { key: "allowPdfUpload", label: "PDF report upload", desc: "From the contractor’s own HSEQ system" },
           ].map(({ key, label, desc }) => (
             <div key={key} className="flex items-center justify-between">
               <div>

@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || !session.user.tenantId) {
-      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Ikke autentisert", 401);
+      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Not authenticated", 401);
     }
 
     const formData = await request.formData();
@@ -34,11 +34,11 @@ export async function POST(request: NextRequest) {
     const inspectionIdValue = formData.get("inspectionId");
 
     if (!(file instanceof File)) {
-      return createErrorResponse(ErrorCodes.VALIDATION_ERROR, "Ingen fil lastet opp", 400);
+      return createErrorResponse(ErrorCodes.VALIDATION_ERROR, "No file uploaded", 400);
     }
 
     if (typeof inspectionIdValue !== "string" || inspectionIdValue.trim().length === 0) {
-      return createErrorResponse(ErrorCodes.VALIDATION_ERROR, "InspectionId mangler", 400);
+      return createErrorResponse(ErrorCodes.VALIDATION_ERROR, "Inspection id is required", 400);
     }
 
     const inspectionId = inspectionIdValue.trim();
@@ -100,7 +100,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || !session.user.tenantId) {
-      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Ikke autentisert", 401);
+      return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Not authenticated", 401);
     }
 
     const { searchParams } = new URL(request.url);

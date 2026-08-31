@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Flame, Save, Plus, X } from "lucide-react";
 import Link from "next/link";
 import { createFireRiskAssessment } from "@/server/actions/fire-risk.actions";
+import { FireSafetyLegalNote } from "@/features/fire-risk/components/fire-safety-legal-note";
 
 const LIKELIHOOD_LABELS: Record<number, string> = {
   1: "Very unlikely",
@@ -51,6 +52,10 @@ export default function NewFireRiskPage() {
   const [title, setTitle] = useState("");
   const [buildingName, setBuildingName] = useState("");
   const [buildingAddress, setBuildingAddress] = useState("");
+  const [responsiblePersonName, setResponsiblePersonName] = useState("");
+  const [responsiblePersonAddress, setResponsiblePersonAddress] = useState("");
+  const [assessorName, setAssessorName] = useState("");
+  const [assessorOrganisation, setAssessorOrganisation] = useState("");
   const [maxOccupancy, setMaxOccupancy] = useState("");
   const [reviewDate, setReviewDate] = useState("");
 
@@ -127,6 +132,10 @@ export default function NewFireRiskPage() {
       likelihoodOfFire: likelihood,
       consequenceSeverity: consequence,
       additionalMeasures: nonEmpty(actions).length > 0 ? JSON.stringify(nonEmpty(actions)) : null,
+      responsiblePersonName: responsiblePersonName.trim() || null,
+      responsiblePersonAddress: responsiblePersonAddress.trim() || null,
+      assessorName: assessorName.trim() || null,
+      assessorOrganisation: assessorOrganisation.trim() || null,
     });
 
     if (!result.success) {
@@ -153,6 +162,8 @@ export default function NewFireRiskPage() {
           </p>
         </div>
       </div>
+
+      <FireSafetyLegalNote />
 
       {error && (
         <Card className="border-red-200 bg-red-50">
@@ -207,6 +218,49 @@ export default function NewFireRiskPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
+                <Label htmlFor="responsiblePersonName">Responsible person *</Label>
+                <Input
+                  id="responsiblePersonName"
+                  value={responsiblePersonName}
+                  onChange={(e) => setResponsiblePersonName(e.target.value)}
+                  placeholder="Name of the employer or person in control"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="assessorName">Who carried out this assessment *</Label>
+                <Input
+                  id="assessorName"
+                  value={assessorName}
+                  onChange={(e) => setAssessorName(e.target.value)}
+                  placeholder="May be the same person"
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="responsiblePersonAddress">Responsible person UK address *</Label>
+                <Textarea
+                  id="responsiblePersonAddress"
+                  value={responsiblePersonAddress}
+                  onChange={(e) => setResponsiblePersonAddress(e.target.value)}
+                  rows={2}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="assessorOrganisation">Assessor organisation</Label>
+                <Input
+                  id="assessorOrganisation"
+                  value={assessorOrganisation}
+                  onChange={(e) => setAssessorOrganisation(e.target.value)}
+                  placeholder="If an external assessor was engaged"
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
                 <Label htmlFor="maxOccupancy">Maximum occupancy</Label>
                 <Input
                   id="maxOccupancy"
@@ -217,12 +271,13 @@ export default function NewFireRiskPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="reviewDate">Next review date</Label>
+                <Label htmlFor="reviewDate">Next review date *</Label>
                 <Input
                   id="reviewDate"
                   type="date"
                   value={reviewDate}
                   onChange={(e) => setReviewDate(e.target.value)}
+                  required
                 />
               </div>
             </div>

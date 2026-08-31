@@ -24,6 +24,7 @@ import {
   loadTrainingsForTenant,
 } from "@/server/queries/training.queries";
 import { AiToolboxTalk } from "@/features/training/components/ai-toolbox-talk";
+import { TrainingLegalNote } from "@/features/training/components/training-legal-note";
 import { hasAiAddon } from "@/lib/ai-gate";
 
 export default async function TrainingPage() {
@@ -126,6 +127,8 @@ export default async function TrainingPage() {
           />
         </div>
       </div>
+
+      <TrainingLegalNote />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>

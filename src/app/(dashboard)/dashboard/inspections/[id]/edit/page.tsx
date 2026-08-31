@@ -25,6 +25,13 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import {
+  defaultLegalBasisForType,
+  INSPECTION_LEGAL_BASIS,
+  INSPECTION_LEGAL_BASIS_KEYS,
+  resolveLegalBasis,
+  type InspectionLegalBasisKey,
+} from "@/lib/inspection-uk";
 
 interface TenantUser {
   user: {
@@ -49,6 +56,7 @@ export default function EditInspectionPage() {
     title: "",
     description: "",
     type: "VERNERUNDE",
+    legalBasis: defaultLegalBasisForType("VERNERUNDE") as InspectionLegalBasisKey,
     status: "PLANNED",
     scheduledDate: "",
     completedDate: "",
@@ -92,6 +100,7 @@ export default function EditInspectionPage() {
           title: inspection.title || "",
           description: inspection.description || "",
           type: inspection.type || "VERNERUNDE",
+          legalBasis: resolveLegalBasis(inspection.legalBasis, inspection.type || "VERNERUNDE"),
           status: inspection.status || "PLANNED",
           scheduledDate: inspection.scheduledDate
             ? new Date(inspection.scheduledDate).toISOString().split("T")[0]
@@ -222,6 +231,30 @@ export default function EditInspectionPage() {
                     <SelectItem value="ANDRE">{t("types.other")}</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="legalBasis">Reason for inspection</Label>
+                <Select
+                  value={formData.legalBasis}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, legalBasis: value as InspectionLegalBasisKey })
+                  }
+                >
+                  <SelectTrigger id="legalBasis">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INSPECTION_LEGAL_BASIS_KEYS.map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {INSPECTION_LEGAL_BASIS[key].label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {INSPECTION_LEGAL_BASIS[formData.legalBasis].legalRef}
+                </p>
               </div>
 
               <div className="space-y-2">

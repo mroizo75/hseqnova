@@ -31,6 +31,7 @@ describe("createSjaSchema ids", () => {
     const parsed = createSjaSchema.parse({
       tenantId: createId(),
       title: "Working at height — roof of block C",
+      description: "Access via MEWP, fit edge protection, then strip tiles from the ridge.",
       workLocation: "Block C roof",
       plannedDate: new Date("2026-09-01"),
       responsibleName: "Alex Taylor",
@@ -39,6 +40,7 @@ describe("createSjaSchema ids", () => {
         {
           activity: "Access the roof",
           hazard: "Fall from height",
+          consequence: "Serious injury to the roofers",
           measures: "Use a MEWP and edge protection",
         },
       ],

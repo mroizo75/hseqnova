@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { generateFireDrillReport } from "@/lib/fire-drill-pdf";
 import {
   loadFireDrillById,
+  loadNamedFireMarshals,
   loadTenantName,
   loadUsersById,
 } from "@/server/queries/fire-drills.queries";
@@ -31,14 +32,21 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     const drill = await loadFireDrillById(session.user.tenantId, id);
 
     if (!drill) {
-      return new NextResponse("Ikke funnet", { status: 404 });
+      return new NextResponse("Not found", { status: 404 });
+    }
+
+    if (drill.status !== "COMPLETED" && drill.status !== "EVALUATED") {
+      return new NextResponse("The drill must be completed before a record can be downloaded", {
+        status: 409,
+      });
     }
 
     const responsibleId = String(drill.responsibleId ?? "");
     const evaluatedBy = drill.evaluatedBy ? String(drill.evaluatedBy) : null;
-    const [users, tenantName] = await Promise.all([
+    const [users, tenantName, fireMarshals] = await Promise.all([
       loadUsersById([responsibleId, evaluatedBy ?? ""]),
       loadTenantName(session.user.tenantId),
+      loadNamedFireMarshals(session.user.tenantId),
     ]);
     const userMap = Object.fromEntries(
       users.map((user) => [user.id, user.name ?? user.email ?? user.id]),
@@ -54,6 +62,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
       completedAt: asDateOrNull(drill.completedAt),
       location: String(drill.location ?? ""),
       responsibleName: userMap[responsibleId] ?? responsibleId,
+      fireMarshals,
       objectives: String(drill.objectives ?? ""),
       scenario: drill.scenario ? String(drill.scenario) : null,
       riskAssessment: drill.riskAssessment ? String(drill.riskAssessment) : null,
@@ -76,6 +85,8 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
       procedureChangesDesc: drill.procedureChangesDesc ? String(drill.procedureChangesDesc) : null,
       evaluatedByName: evaluatedBy ? (userMap[evaluatedBy] ?? null) : null,
       evaluatedAt: asDateOrNull(drill.evaluatedAt),
+      sharedPremises: drill.sharedPremises === undefined ? null : Boolean(drill.sharedPremises),
+      buildingOwnerName: drill.buildingOwnerName ? String(drill.buildingOwnerName) : null,
       measures: drill.measures.map((measure) => ({
         title: measure.title,
         status: measure.status,
@@ -92,10 +103,10 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     return new NextResponse(pdfBuffer as unknown as BodyInit, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="Brannøvelsesrapport-${safeName}.pdf"`,
+        "Content-Disposition": `attachment; filename="Fire-drill-record-${safeName}.pdf"`,
       },
     });
   } catch {
-    return new NextResponse("Intern feil", { status: 500 });
+    return new NextResponse("Could not generate the fire drill record", { status: 500 });
   }
 }

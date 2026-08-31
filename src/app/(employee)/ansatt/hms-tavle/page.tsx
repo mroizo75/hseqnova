@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   LayoutDashboard,
@@ -15,6 +15,21 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
+type BoardSection = {
+  id: string;
+  tavleId: string;
+  isVisible: boolean;
+  title: string | null;
+  type: string;
+};
+
+type BoardLink = {
+  id: string;
+  tavleId: string;
+  url: string;
+  title: string | null;
+};
+
 export default async function EmployeeSafetyBoardPage() {
   const session = await getServerSession(authOptions);
 
@@ -24,26 +39,35 @@ export default async function EmployeeSafetyBoardPage() {
 
   const tenantId = session.user.tenantId;
 
-  const [boards, tenant] = await Promise.all([
-    prisma.hmsTavle.findMany({
-      where: { tenantId },
-      include: {
-        sections: {
-          orderBy: { order: "asc" },
-        },
-        externalLinks: true,
-      },
-      orderBy: { name: "asc" },
-    }),
-    prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: {
-        hmsContactName: true,
-        hmsContactPhone: true,
-        hmsContactEmail: true,
-      },
-    }),
+  const db = getAdminDb();
+  const [boardsRes, tenantRes] = await Promise.all([
+    db
+      .from("HmsTavle")
+      .select("id, name, siteAddress")
+      .eq("tenantId", tenantId)
+      .order("name", { ascending: true }),
+    db
+      .from("Tenant")
+      .select("hmsContactName, hmsContactPhone, hmsContactEmail")
+      .eq("id", tenantId)
+      .maybeSingle(),
   ]);
+
+  const boardRows = boardsRes.data ?? [];
+  const boardIds = boardRows.map((row) => row.id);
+  const [sectionsRes, linksRes] = boardIds.length
+    ? await Promise.all([
+        db.from("HmsTavleSection").select("*").in("tavleId", boardIds).order("order", { ascending: true }),
+        db.from("HmsTavleExternalLink").select("*").in("tavleId", boardIds),
+      ])
+    : [{ data: [] as Array<Record<string, unknown>> }, { data: [] as Array<Record<string, unknown>> }];
+
+  const boards = boardRows.map((board) => ({
+    ...board,
+    sections: ((sectionsRes.data ?? []) as BoardSection[]).filter((section) => section.tavleId === board.id),
+    externalLinks: ((linksRes.data ?? []) as BoardLink[]).filter((link) => link.tavleId === board.id),
+  }));
+  const tenant = tenantRes.data;
 
   return (
     <div className="space-y-6">

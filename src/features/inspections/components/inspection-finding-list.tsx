@@ -25,8 +25,8 @@ import {
 import { MapPin, Calendar, CheckCircle2, Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { enUS, nb } from "date-fns/locale";
-import { useLocale, useTranslations } from "next-intl";
+import { enGB } from "date-fns/locale";
+import { useTranslations } from "next-intl";
 
 interface Finding {
   id: string;
@@ -178,8 +178,7 @@ function UpdateFindingStatusDialog({ finding }: { finding: Finding }) {
 
 export function InspectionFindingList({ findings }: InspectionFindingListProps) {
   const t = useTranslations("dashboardInspectionComponents.findingList");
-  const locale = useLocale();
-  const dateLocale = locale === "en" ? enUS : nb;
+  const dateLocale = enGB;
   const router = useRouter();
   const { toast } = useToast();
   const [deletingId, setDeletingId] = useState<string | null>(null);

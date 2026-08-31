@@ -196,9 +196,9 @@ export function InnsjekksClient({
           <div className="flex items-center justify-center gap-2 mb-2">
             <Users className="h-8 w-8 text-green-600" />
           </div>
-          <h1 className="text-2xl font-bold">Innsjekk</h1>
+          <h1 className="text-2xl font-bold">Check-in</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Byggherreforskriften § 15 – elektronisk oversiktsliste
+            Operational site attendance — not a CDM 2015 duty
           </p>
           <div className="mt-3 inline-flex items-center gap-2 bg-green-50 text-green-800 text-sm px-3 py-1 rounded-full border border-green-200">
             <Users className="h-3.5 w-3.5" />
@@ -339,11 +339,11 @@ export function InnsjekksClient({
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>HMS-kortnummer</Label>
+                      <Label>Competence card number</Label>
                       <Input
                         value={form.hmsCardNr}
                         onChange={(e) => setForm({ ...form, hmsCardNr: e.target.value })}
-                        placeholder="HMS-kort nr."
+                        placeholder="e.g. CSCS"
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -357,8 +357,8 @@ export function InnsjekksClient({
                       />
                     </div>
                     <p className="text-[11px] text-muted-foreground">
-                      Fødselsdato, arbeidsgiver, organisasjonsnummer og HMS-kortnummer kreves i
-                      oversiktslisten etter Byggherreforskriften § 15 bokstav c–e.
+                      Name, employer and competence card help identify who is on site.
+                      This is an operational record, not a CDM duty.
                     </p>
                   </CardContent>
                 </Card>
@@ -368,11 +368,9 @@ export function InnsjekksClient({
                 </Button>
 
                 <p className="text-xs text-muted-foreground text-center">
-                  Opplysningene føres i oversiktslisten for bygge- eller anleggsplassen.
-                  Behandlingsgrunnlaget er rettslig forpliktelse etter Byggherreforskriften
-                  § 15, jf. GDPR art. 6 nr. 1 bokstav c. Listen oppbevares i seks måneder
-                  etter at arbeidet er avsluttet, og kan vises til arbeidsgiver, verneombud,
-                  Arbeidstilsynet og skattemyndighetene. Opplysningene huskes på denne enheten.
+                  These details are kept as an operational site attendance record for six
+                  months after work ends (UK GDPR — keep only as long as needed). They are
+                  not sent to the HSE.
                 </p>
               </form>
             )}

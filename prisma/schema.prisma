@@ -791,7 +791,9 @@ enum Role {
 }
 
 // ============================================
-// Document Management (MED VERSJONERING)
+// Document Management
+// HSWA 1974 s.2(2)(c); MHSWR 1999 reg.10 — current information for employees.
+// HSG65 — keep the working copy current. Not submitted to the HSE.
 // ============================================
 
 model Document {
@@ -800,16 +802,16 @@ model Document {
   kind                 DocumentKind
   title                String
   slug                 String
-  version              String // Gjeldende versjon (v1.0, v1.1, v2.0)
+  version              String // Published working-copy version (v1.0, v1.1)
   status               DocStatus    @default(DRAFT)
-  fileKey              String // Gjeldende fil
-  mime                 String       @default("application/pdf") // MIME-type (f.eks. application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document)
+  fileKey              String // Published file — not a draft in progress
+  mime                 String       @default("application/pdf")
   approvedBy           String?
   approvedAt           DateTime?
   updatedBy            String?
   ownerId              String?
   templateId           String?
-  nextReviewDate       DateTime? // Når skal dokumentet gjennomgås igjen?
+  nextReviewDate       DateTime? // Review date (MHSWR reg.5 monitoring)
   reviewIntervalMonths Int          @default(12)
   effectiveFrom        DateTime?
   effectiveTo          DateTime?
@@ -822,8 +824,8 @@ model Document {
   updatedAt            DateTime     @updatedAt
 
   tenant                   Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  versions                 DocumentVersion[] // Historikk av alle versjoner
-  signatures               DocumentSignature[] // IK-HMS § 5: signaturer fra ansvarlige
+  versions                 DocumentVersion[]
+  signatures               DocumentSignature[]
   approvedByUser           User?                     @relation("DocumentApprovedBy", fields: [approvedBy], references: [id], onDelete: SetNull)
   owner                    User?                     @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   template                 DocumentTemplate?         @relation(fields: [templateId], references: [id], onDelete: SetNull)
@@ -871,9 +873,9 @@ enum DocumentKind {
 }
 
 enum DocStatus {
-  DRAFT // Nytt dokument, ikke godkjent
-  APPROVED // Godkjent og aktivt
-  ARCHIVED // Utdatert/erstattet
+  DRAFT // Not yet the working copy
+  APPROVED // Current working copy for employees
+  ARCHIVED // Withdrawn — no longer used
 }
 
 model DocumentTemplate {
@@ -895,8 +897,8 @@ model DocumentTemplate {
   @@index([isGlobal])
 }
 
-/// Digital signatur på dokument (IK-HMS § 5: dokumenter skal signeres av ansvarlige)
-/// Hver signatur inneholder hvem som signerte, rolle, tidspunkt og selve signaturbilde (base64 data-URL).
+/// Optional management signatures (not a statutory form)
+/// Stores who signed, their role, when, and the signature image.
 model DocumentSignature {
   id           String             @id @default(cuid())
   tenantId     String
@@ -922,16 +924,19 @@ enum DocumentSignerRole {
   GODKJENT_AV // Godkjent av (leder/daglig leder)
 }
 
-/// Organisasjonskart – hierarkisk trestruktur (AML § 3-1: organisering av HMS-ansvar)
-/// Selvhenvisende: parentId peker på overordnet node. Null = rotnode.
+/// Organisation chart — HSWA 1974 s.2(3) Part 2 (names, positions and roles)
 model OrgChartNode {
   id         String   @id @default(cuid())
   tenantId   String
-  parentId   String? // Null = rotnode (øverste leder)
-  title      String // Stillingstittel / rolle (f.eks. "Daglig leder")
-  name       String? // Navn på person i rollen
-  department String? // Avdeling
-  sortOrder  Int      @default(0) // Rekkefølge blant søsken
+  parentId   String? // Null = most senior / root
+  title      String // Job title / position (HSE Part 2)
+  name       String? // Person in the role (HSE: list names)
+  department String?
+  /// Statutory H&S hat: md | competent_person | first_aid | fire | safety_rep | line_manager | other
+  hsDutyKey  String?
+  /// What they do for health and safety (HSE Part 2 "roles")
+  hsDuty     String?  @db.Text
+  sortOrder  Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -1021,16 +1026,19 @@ model RiskAssessment {
   title          String // f.eks. "Risikovurdering 2026"
   assessmentYear Int // år (2026)
 
-  // IK-HMS § 5 nr. 3 + AML § 3-1 (1): Hvem deltok i vurderingen (arbeidstakere, verneombud)
+  // MHSWR 1999: who took part (consult employees / safety representatives — SRSCWR 1977 / HSCER 1996)
   participants String? @db.Text
 
-  // IK-HMS § 5 nr. 6: Godkjenning av risikovurderingen
+  // Who assessed it (competent person — MHSWR reg.7). Not a statutory "approval".
   approvedById String?
   approvedAt   DateTime?
 
-  // IK-HMS § 5 nr. 8: Hvem gjennomgikk vurderingen (periodisk gjennomgang)
+  // MHSWR 1999 reg.3(3): review if no longer valid or after a significant change
   reviewedById String?
   reviewedAt   DateTime?
+
+  /// JSON array of group keys especially at risk, or ["none"] — MHSWR reg.3(6)(b)
+  groupsAtRisk String? @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1062,6 +1070,8 @@ model Risk {
   area                 String?
   description          String?              @db.Text
   existingControls     String?              @db.Text
+  /// JSON: who might be harmed — employees, young persons, contractors, public (MHSWR / HSE)
+  groupsAtRisk         String?              @db.Text
   residualLikelihood   Int?
   residualConsequence  Int?
   residualScore        Int?
@@ -1583,6 +1593,8 @@ model CustomerFeedback {
 
 // ============================================
 // Measures/Actions
+// MHSWR 1999 reg.5 — planning, organisation, control, monitoring and review.
+// HSG245 — what (title), who (responsibleId), when (dueAt). Not sent to the HSE.
 // ============================================
 
 model Measure {
@@ -1797,6 +1809,13 @@ model Incident {
   involvedPersons          String?              @db.Text
   injuryDescription        String?              @db.Text
   suggestedActions         String?              @db.Text
+  // BI 510 accident book — Social Security (Claims and Payments) Regulations 1979
+  injuredPersonOccupation  String?
+  injuredPersonAddress     String?              @db.Text
+  injuredPersonRole        String? // employee | contractor | visitor | member_of_public
+  witnessAddress           String?
+  shareWithSafetyRepsConsent Boolean            @default(false)
+  reporterAcknowledged     Boolean              @default(false)
   // HSE-statistikk (TRIR – Total Recordable Injury Rate)
   isFatal                  Boolean              @default(false)
   isLostTimeIncident       Boolean              @default(false)
@@ -1825,7 +1844,13 @@ model Incident {
   riddorDueAt              DateTime?
   riddorReportedAt         DateTime?
   riddorReference          String?
+  riddorReportMethod       String? // phone | online — RIDDOR record of how it was reported
   overSevenDayInjury       Boolean              @default(false)
+  overThreeDayInjury       Boolean              @default(false) // RIDDOR recording duty (not reportable)
+  specifiedInjury          Boolean              @default(false) // RIDDOR 2013 reg.4 / Schedule 1
+  listedOccupationalDisease Boolean             @default(false) // RIDDOR 2013 reg.8
+  listedDangerousOccurrence Boolean             @default(false) // RIDDOR 2013 Schedule 2
+  nonWorkerTakenToHospital Boolean              @default(false) // RIDDOR injuries to non-workers
   accidentBookEntry        Boolean              @default(true)
   createdById              String? // Red thread: who created this incident
   updatedById              String? // Red thread: who last updated
@@ -2121,15 +2146,16 @@ model Training {
   id            String    @id @default(cuid())
   tenantId      String
   userId        String
-  courseKey     String // Unik ID for kurset (f.eks. "first-aid", "forklift")
-  title         String // "Førstehjelp", "Truckførerbevis"
-  provider      String // "Røde Kors", "BHT", "Internt"
+  courseKey     String // Unique course id (e.g. "first-aid", "forklift")
+  title         String
+  provider      String // Training provider or in-house
   description   String?   @db.Text
-  completedAt   DateTime? // ISO 9001: Når ble opplæringen fullført
-  validUntil    DateTime? // For kurs med utløpsdato
-  proofDocKey   String? // ISO 9001: Dokumentert bevis (sertifikat PDF/bilde)
-  isRequired    Boolean   @default(false) // Obligatorisk for alle/visse roller
-  effectiveness String?   @db.Text // ISO 9001: Evaluering av effektivitet
+  completedAt   DateTime?
+  validUntil    DateTime?
+  proofDocKey   String? // Certificate or other evidence (PDF/image)
+  isRequired    Boolean   @default(false)
+  mhswrReason   String? // MHSWR 1999 reg.13(2)–(3) — why the training was given
+  effectiveness String?   @db.Text // HSE: was the training relevant and effective
   evaluatedBy   String?
   evaluatedAt   DateTime?
   createdById   String? // Red thread: who registered this training
@@ -2149,14 +2175,14 @@ model Training {
 // Kursmal/template som definerer hvilke kurs en tenant bruker
 model CourseTemplate {
   id            String   @id @default(cuid())
-  tenantId      String? // Null = globalt kurs, String = tenant-spesifikt
-  courseKey     String // Unik nøkkel (f.eks. "first-aid", "forklift")
-  title         String // "Førstehjelp", "Truckførerbevis"
+  tenantId      String? // Null = global course, String = tenant-specific
+  courseKey     String // Unique key (e.g. "first-aid", "forklift")
+  title         String
   description   String?  @db.Text
-  provider      String? // Standard leverandør (f.eks. "Røde Kors")
-  isRequired    Boolean  @default(false) // Obligatorisk for alle
-  validityYears Int? // Hvor lenge er kurset gyldig (null = ikke utløpsdato)
-  isGlobal      Boolean  @default(false) // Globalt standard HMS-kurs
+  provider      String?
+  isRequired    Boolean  @default(false)
+  validityYears Int?
+  isGlobal      Boolean  @default(false)
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -2444,6 +2470,7 @@ model ExposureRegister {
   employeeId          String? // FK til User (nullable for arkiverte poster)
   employeeName        String // Fullt navn
   employeeBirthNumber String // Fødselsnummer (kryptert)
+  homeAddress         String? // HSE health-record particular (name, address, NINO)
   department          String? // Avdeling
   jobTitle            String // Stilling/Rolle
   workLocation        String // Arbeidssted/Lokasjon
@@ -2469,6 +2496,7 @@ model ExposureRegister {
   healthCheckRequired Boolean   @default(false)
   healthCheckDone     Boolean   @default(false)
   healthCheckDate     DateTime?
+  fitnessForWork      String? // FIT | FIT_WITH_RESTRICTIONS | UNFIT | PENDING — not clinical notes
 
   // Langtidslagring – kan ikke slettes uten tillatelse fra Arbeidstilsynet
   retentionYears     Int                    @default(40)
@@ -2599,6 +2627,8 @@ model Inspection {
   followUpById     String?
   nextInspection   DateTime?
   projectId        String?
+  /// Why the inspection is taking place — MHSWR reg.5 / SRSCWR regs 5–6 / CDM 2015
+  legalBasis       String?
   findings         InspectionFinding[]
   createdById      String? // Red thread: who created this inspection
   updatedById      String? // Red thread: who last updated
@@ -4077,6 +4107,8 @@ model ConstructionPreNotification {
   maxWorkersSimultaneous     Int?
   plannedBusinessesCount     Int?
   visibleAtSite              Boolean                        @default(false) // Oppdatert melding synlig på byggeplassen
+  localAuthority             String? // CDM 2015 Schedule 1 para 3
+  clientDutyAcknowledged     Boolean                        @default(false) // Schedule 1 para 15
   createdAt                  DateTime                       @default(now())
   updatedAt                  DateTime                       @updatedAt
 
@@ -4262,47 +4294,47 @@ model DashboardConfig {
 }
 
 // ============================================
-// Brannøvelse (Forskrift om brannforebygging § 12 og § 13)
+// Fire drills — Regulatory Reform (Fire Safety) Order 2005 arts 15, 21 and 22
 // ============================================
 
 model FireDrill {
   id       String @id @default(cuid())
   tenantId String
 
-  // Planleggingsfase — § 12b/c/d: rutiner for evakuering, kunnskap og informasjon
+  // Plan — art.15 procedures including safety drills; art.21 training
   title          String
   drillType      FireDrillType   @default(EVACUATION)
   isAnnounced    Boolean         @default(true)
   status         FireDrillStatus @default(PLANNED)
   plannedDate    DateTime
   location       String
-  responsibleId  String // Øvingsleder
-  objectives     String          @db.Text // Mål for øvelsen
-  scenario       String?         @db.Text // Scenario-beskrivelse
-  riskAssessment String?         @db.Text // Risikovurdering
-  participantIds String?         @db.Text // JSON array av planlagte deltakere (userId[])
+  responsibleId  String // Person in charge of the drill
+  objectives     String          @db.Text
+  scenario       String?         @db.Text
+  riskAssessment String?         @db.Text
+  participantIds String?         @db.Text // JSON array of planned participant user ids
 
-  // Delte lokaler — § 4 tredje ledd: eier skal sikre samordning mellom brukere
-  sharedPremises           Boolean  @default(false) // Deler virksomheten lokaler med andre?
-  buildingOwnerCoordinated Boolean? // Er byggeier/gårdeier koordinert og informert?
-  buildingOwnerName        String? // Navn/kontakt for byggeier eller samordningsansvarlig
-  otherTenantsInformed     Boolean? // Er øvrige leietakere/virksomheter informert?
-  fullBuildingEvacuation   Boolean? // Var øvelsen felles for hele bygget (ikke bare egne lokaler)?
-  totalBuildingOccupants   Int? // Totalt antall personer i bygget under øvelsen — § 13
+  // Shared premises — art.22 co-operation and co-ordination
+  sharedPremises           Boolean  @default(false)
+  buildingOwnerCoordinated Boolean?
+  buildingOwnerName        String?
+  otherTenantsInformed     Boolean?
+  fullBuildingEvacuation   Boolean?
+  totalBuildingOccupants   Int?
 
-  // Gjennomføringsfase — § 13: dokumentasjonskrav
+  // Completion — fire safety log: date, headcount, evacuation time, observations
   completedAt            DateTime?
-  actualParticipantCount Int? // Antall faktiske deltakere (egne ansatte/tilhørende)
-  evacuationTimeSeconds  Int? // Evakueringstid i sekunder
-  observations           String?   @db.Text // Observasjoner under øvelsen
+  actualParticipantCount Int?
+  evacuationTimeSeconds  Int?
+  observations           String?   @db.Text
 
-  // Evalueringsfase — § 12e + § 13: avdekke og rette opp mangler
+  // Review — if the drill is not satisfactory, change the procedures (art.15)
   objectivesAchieved     String? // FULL | PARTIAL | NOT_ACHIEVED
-  evaluation             String?   @db.Text // Evaluering og vurdering
-  improvementPoints      String?   @db.Text // Forbedringspunkter
+  evaluation             String?   @db.Text
+  improvementPoints      String?   @db.Text
   procedureChangesNeeded Boolean?
   procedureChangesDesc   String?   @db.Text
-  evaluatedBy            String? // userId for øvingsleder som bekreftet
+  evaluatedBy            String? // userId of the person who reviewed the drill
   evaluatedAt            DateTime?
   createdById            String? // Red thread: who created this fire drill
   updatedById            String? // Red thread: who last updated
@@ -4575,9 +4607,9 @@ enum SubcontractorSubmissionStatus {
 }
 
 // ─── Contractor Pre-Qualification ───────────────────────────────────────────
-// CDM 2015: duty holders must assess competence of contractors
-// MHSWR 1999 reg.7: appointment of competent persons
-// Employers' Liability (Compulsory Insurance) Act 1969
+// HSWA 1974 s.3; MHSWR 1999 regs 11 and 12; INDG368 / HSG159
+// CDM 2015 reg.8 applies only to construction appointments (separate module)
+// Employers' Liability (Compulsory Insurance) Act 1969 — contractor's duty if they have employees
 
 enum PreQualStatus {
   PENDING
@@ -4607,13 +4639,20 @@ model ContractorRegistration {
   employersLiabilityAmount       String?
   employersLiabilityExpiry       DateTime?
 
-  // H&S competence — CDM 2015, MHSWR 1999 reg.7
+  // What they are engaged to do (INDG368 — identify the job)
+  workToBeDone                   String?         @db.Text
+
+  // MHSWR 1999 regs 11 and 12 — information on host risks and emergencies
+  hostInformationProvided        Boolean         @default(false)
+  hostInformationProvidedAt      DateTime?
+
+  // H&S competence evidence — INDG368 / CDM 2015 reg.8 for construction
   hasHealthSafetyPolicy          Boolean?
   healthSafetyPolicyFile         String?         // storage key
   hasRiskAssessments             Boolean?
   hasMethodStatements            Boolean?
 
-  // Accreditations — SSIP, CHAS, SafeContractor, Constructionline
+  // Accreditations — optional; not a legal requirement (HSE)
   safetyAccreditations           String?         @db.Text  // JSON array
 
   // Enforcement history
@@ -5924,6 +5963,11 @@ model FireRiskAssessment {
   fireExtinguishers     String?  @db.Text
   escapeRoutes          String?  @db.Text
   signage               String?  @db.Text
+
+  responsiblePersonName     String?
+  responsiblePersonAddress  String?  @db.Text
+  assessorName              String?
+  assessorOrganisation      String?
 
   likelihoodOfFire      Int?
   consequenceSeverity   Int?

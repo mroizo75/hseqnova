@@ -57,7 +57,7 @@ export default async function NyttAvvik() {
         <CardContent>
           <ReportIncidentForm 
             tenantId={session.user.tenantId}
-            reportedBy={session.user.name || session.user.email || t("employeeFallback")}
+            reportedBy={session.user.id}
             projects={projects}
             ruhModuleEnabled={tenant?.ruhModuleEnabled ?? true}
           />

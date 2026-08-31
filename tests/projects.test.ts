@@ -4,6 +4,7 @@ import {
   countWorkdaysInclusive,
   isF10Notifiable,
   evaluatePreNotificationRequirement,
+  validatePreNotificationForSubmission,
 } from "../src/lib/construction-compliance-rules";
 import {
   clientNameFromDutyHolders,
@@ -103,5 +104,60 @@ describe("CDM 2015 duty holders", () => {
     assert.equal(form[0].organisationName, "North West Developments Ltd");
     assert.equal(form[1].role, "PRINCIPAL_DESIGNER");
     assert.equal(form[2].role, "PRINCIPAL_CONTRACTOR");
+  });
+
+  it("allows a single-contractor project with Client and Principal Contractor only", () => {
+    const result = validateDutyHolders([
+      { role: "CLIENT", organisationName: "City of Manchester" },
+      { role: "PRINCIPAL_CONTRACTOR", organisationName: "Site Build Ltd" },
+    ]);
+    assert.equal(result.ok, true);
+  });
+
+  it("requires a principal designer where more than one contractor will work (CDM 2015 reg.5)", () => {
+    const result = validateDutyHolders([
+      { role: "CLIENT", organisationName: "City of Manchester" },
+      { role: "PRINCIPAL_CONTRACTOR", organisationName: "Site Build Ltd" },
+      { role: "CONTRACTOR", organisationName: "Roofing Co Ltd" },
+    ]);
+    assert.equal(result.ok, false);
+    assert.ok(result.message?.includes("principal designer"));
+  });
+});
+
+const completeF10Particulars = {
+  projectAddress: "12 Site Lane, Manchester",
+  projectType: "Office fit-out",
+  builderName: "City of Manchester",
+  builderRepresentativeName: "Alex Patel",
+  expectedStartDate: "2026-04-06",
+  coordinators: "PD: Design Co / PC: Site Build Ltd",
+  contractors: "Site Build Ltd",
+  localAuthority: "Manchester City Council",
+  clientDutyAcknowledged: true,
+  visibleAtSite: true,
+};
+
+describe("CDM 2015 F10 Schedule 1 particulars", () => {
+  it("rejects submission without local authority or the client declaration", () => {
+    const missingAuthority = validatePreNotificationForSubmission({
+      ...completeF10Particulars,
+      localAuthority: "",
+    });
+    assert.equal(missingAuthority.isValid, false);
+    assert.ok(missingAuthority.missingFields.some((field) => field.includes("Local authority")));
+
+    const missingDeclaration = validatePreNotificationForSubmission({
+      ...completeF10Particulars,
+      clientDutyAcknowledged: false,
+    });
+    assert.equal(missingDeclaration.isValid, false);
+    assert.ok(missingDeclaration.missingFields.some((field) => field.includes("Client declaration")));
+  });
+
+  it("accepts Schedule 1 particulars when local authority and client declaration are present", () => {
+    const result = validatePreNotificationForSubmission(completeF10Particulars);
+    assert.equal(result.isValid, true);
+    assert.deepEqual(result.missingFields, []);
   });
 });

@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ManagementReviewLegalNote } from "@/features/management-reviews/components/management-review-legal-note";
 import { PageHelpDialog } from "@/components/dashboard/page-help-dialog";
 import { helpContent } from "@/lib/help-content";
 
@@ -59,7 +60,7 @@ export default async function ManagementReviewsPage() {
           <div>
             <h1 className="text-3xl font-bold">Management review</h1>
             <p className="text-muted-foreground mt-1">
-              Annual/periodic review of the HSEQ system
+              Recorded review of the arrangements — MHSWR 1999 reg.5. ISO 45001 is optional.
             </p>
           </div>
           <PageHelpDialog content={helpContent["management-reviews"]} />
@@ -73,6 +74,8 @@ export default async function ManagementReviewsPage() {
           </Link>
         )}
       </div>
+
+      <ManagementReviewLegalNote />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Card>

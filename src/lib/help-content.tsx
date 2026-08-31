@@ -3,13 +3,19 @@ import { HelpContent } from "@/components/dashboard/page-help-dialog";
 export const helpContent: Record<string, HelpContent> = {
   documents: {
     title: "Document control",
-    description: "How to use the documents module to build your quality and HSEQ management system",
+    description: "Current approved procedures and information for employees (MHSWR 1999 reg.10)",
     sections: [
+      {
+        heading: "UK law",
+        emoji: "⚖️",
+        content:
+          "HSWA 1974 s.2(2)(c) and MHSWR 1999 reg.10: give employees comprehensible information on the risks that affect them and the measures that protect them. HSE HSG65: keep documents functional, concise and current. The working copy is the approved version. A draft revision must not replace it until it is approved. There is no statutory document-control form, and records are not sent to the HSE.",
+      },
       {
         heading: "What is document control?",
         emoji: "📚",
         content:
-          "Documents are the foundation of your health and safety and quality system. Store the controlling documents that set how work is done: policies, procedures, work instructions, checklists and templates. This is your documented management system.",
+          "Store the procedures and instructions people must follow at work: policies sit in the health and safety policy module; this list is the current working copies of other documents.",
       },
       {
         heading: "Why do you need this?",
@@ -31,9 +37,9 @@ export const helpContent: Record<string, HelpContent> = {
               "New employees can quickly learn the correct method by reading the documents.",
           },
           {
-            title: "ISO requirements met",
+            title: "ISO 45001 (if you hold it)",
             description:
-              "All ISO standards require a documented management system with controlled processes.",
+              "Clause 7.5 documented information is extra if you run a certified management system. UK law does not require ISO document control.",
           },
         ],
       },
@@ -65,10 +71,9 @@ export const helpContent: Record<string, HelpContent> = {
       },
     ],
     isoStandards: [
-      "ISO 9001 (quality): clause 7.5 — documented information",
-      "ISO 14001 (environment): clause 7.5 — documented environmental procedures",
-      "ISO 45001 (OH&S): clause 7.5 — documented OH&S procedures",
-      "ISO 27001 (information security): clause 7.5 — ISMS documentation",
+      "HSWA 1974 s.2(2)(c) and MHSWR 1999 reg.10 — information for employees",
+      "HSE HSG65 — keep health and safety documents current and concise",
+      "ISO 45001 clause 7.5 — only if you hold that certificate",
     ],
     tips: [
       "Start with a document hierarchy: policy → procedure → instruction",
@@ -394,8 +399,14 @@ export const helpContent: Record<string, HelpContent> = {
 
   actions: {
     title: "Actions and tasks",
-    description: "Manage corrective and preventive actions",
+    description: "Preventive and protective measures with an owner and due date (MHSWR 1999)",
     sections: [
+      {
+        heading: "UK law",
+        emoji: "⚖️",
+        content:
+          "MHSWR 1999 reg.5: make and give effect to arrangements for planning, organisation, control, monitoring and review of preventive and protective measures. HSG245: each action needs what, who and when. Track it to close. Keep the record — do not send it to the HSE.",
+      },
       {
         heading: "What are actions?",
         emoji: "✅",
@@ -406,7 +417,7 @@ export const helpContent: Record<string, HelpContent> = {
         heading: "Should actions be closed?",
         emoji: "1️⃣",
         content:
-          "Yes. Actions should be closed when they have been completed and verified. ISO 45001 clauses 6.1 and 8.1, ISO 9001 clause 6.1. If actions are not closed, you cannot show that risk has been reduced or that the incident is resolved. In HSEQ Nova: mark the action complete, record the effect, and close it — that supports the PDCA cycle (Plan–Do–Check–Act) that ISO is built on.",
+          "Yes. MHSWR 1999 reg.5 requires you to monitor and review the measures. HSG245: track each action to close and record what was done. If you hold ISO 45001 or 9001, closing also supports those clauses. In HSEQ Nova the named owner marks the action complete.",
         items: [
           {
             title: "What should be closed — and what should not?",
@@ -912,7 +923,7 @@ export const helpContent: Record<string, HelpContent> = {
           {
             title: "Health surveillance",
             description:
-              "Where the assessment shows employees are exposed to substances linked to identifiable disease, health surveillance must be arranged (reg. 11). Health records must be kept for 40 years.",
+              "Where the assessment shows employees are exposed to substances linked to identifiable disease, health surveillance must be arranged (reg. 11). The 40-year health record sits in the exposure register, not on this assessment.",
           },
           {
             title: "Review and update",
@@ -948,7 +959,7 @@ export const helpContent: Record<string, HelpContent> = {
           {
             title: "5. Set a review date",
             description:
-              "COSHH assessments should be reviewed at least annually or when circumstances change.",
+              "Review regularly, and whenever there is reason to believe the assessment is no longer valid (reg. 6(3)). A fixed annual date is good practice, not a statutory deadline.",
           },
         ],
       },
@@ -965,7 +976,7 @@ export const helpContent: Record<string, HelpContent> = {
       "Use the hierarchy of control: eliminate, substitute, engineer, administer, PPE",
       "Record who is exposed, how often and for how long",
       "Review assessments when substances, processes or people change",
-      "Flag health surveillance where appropriate — keep records for 40 years",
+      "Flag health surveillance where appropriate — keep the 40-year health record in the exposure register",
     ],
   },
 
@@ -977,7 +988,7 @@ export const helpContent: Record<string, HelpContent> = {
         heading: "What is COSHH management?",
         emoji: "⚗️",
         content:
-          "COSHH management means knowing every hazardous substance in the organisation, assessing the risk of use, and ensuring safe handling through procedures, PPE and training. COSHH 2002 requires suitable and sufficient assessments; health records for certain exposures must be kept for 40 years.",
+          "COSHH management means knowing every hazardous substance in the organisation, assessing the risk of use, and ensuring safe handling through procedures, PPE and training. COSHH 2002 requires suitable and sufficient assessments. Health records for certain exposures (reg. 11) are kept in the exposure register for 40 years.",
       },
       {
         heading: "Why does it matter?",
@@ -1613,7 +1624,7 @@ export const helpContent: Record<string, HelpContent> = {
           {
             title: "Company",
             description:
-              "Companies House number, VAT, logo, competent person (MHSWR 1999 reg.7) and dashboard lock.",
+              "Companies House number, VAT, logo, H&S contact for employees, and dashboard lock. Name the competent person on the organisation chart (MHSWR 1999 reg.7).",
           },
           {
             title: "Notifications",
@@ -1680,13 +1691,19 @@ export const helpContent: Record<string, HelpContent> = {
 
   users: {
     title: "Users",
-    description: "Invite employees, set roles and line managers for this company",
+    description: "Invite people and set roles. The competent person is named on the organisation chart (MHSWR 1999 reg.7).",
     sections: [
+      {
+        heading: "UK law",
+        emoji: "⚖️",
+        content:
+          "MHSWR 1999 reg.7: appoint one or more competent persons. Prefer someone in employment if they are competent. Formal qualifications are not required. The HSE manager role in HSEQ Nova is system access. Name the appointment on the organisation chart so employees can see it (HSWA 1974 s.2(3) Part 2).",
+      },
       {
         heading: "What is user management?",
         emoji: "👥",
         content:
-          "This is where you add people to the company, set their role and record who their line manager is. HSWA s.2(3) requires the organisation of health and safety to be clear. Unlimited users per company.",
+          "This is where you add people to the company, set their role and record who their line manager is. Unlimited users per company.",
       },
       {
         heading: "Roles",
@@ -1698,9 +1715,9 @@ export const helpContent: Record<string, HelpContent> = {
               "Full access for this company: users, billing, access matrix and Microsoft 365.",
           },
           {
-            title: "HSE manager / competent person",
+            title: "HSE manager",
             description:
-              "MHSWR 1999 reg.7: the person appointed to assist with health and safety. Maps to the HMS role.",
+              "Runs the HSEQ system day to day (HMS role). This is not the MHSWR reg.7 appointment — name that person on the organisation chart.",
           },
           {
             title: "Line manager",

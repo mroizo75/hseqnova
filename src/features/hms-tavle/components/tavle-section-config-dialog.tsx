@@ -104,9 +104,9 @@ function ShaPlanConfig({ cfg, set, tavleId, isAddon }: { cfg: any; set: (k: stri
         <Select value={cfg.status ?? "ikke-satt"} onValueChange={(v) => set("status", v)}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="godkjent">✅ Godkjent og aktiv</SelectItem>
-            <SelectItem value="under-arbeid">⚠️ Under arbeid</SelectItem>
-            <SelectItem value="ikke-satt">— Ikke satt</SelectItem>
+            <SelectItem value="godkjent">Active</SelectItem>
+            <SelectItem value="under-arbeid">In progress</SelectItem>
+            <SelectItem value="ikke-satt">Not set</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -120,8 +120,8 @@ function ShaPlanConfig({ cfg, set, tavleId, isAddon }: { cfg: any; set: (k: stri
           <Input type="date" value={cfg.approvedDate ?? ""} onChange={(e) => set("approvedDate", e.target.value)} />
         </div>
       </div>
-      <FileUploader label="SHA-plan PDF" accept=".pdf" currentUrl={cfg.pdfUrl} tavleId={tavleId} onUploaded={(url) => set("pdfUrl", url)} />
-      <FileUploader label="Riggplan / bilde" accept="image/*,.pdf" currentUrl={cfg.imageUrl} tavleId={tavleId} onUploaded={(url) => set("imageUrl", url)} />
+      <FileUploader label="Construction phase plan PDF" accept=".pdf" currentUrl={cfg.pdfUrl} tavleId={tavleId} onUploaded={(url) => set("pdfUrl", url)} />
+      <FileUploader label="Site layout / image" accept="image/*,.pdf" currentUrl={cfg.imageUrl} tavleId={tavleId} onUploaded={(url) => set("imageUrl", url)} />
     </div>
   );
 }
@@ -1005,8 +1005,8 @@ const SECTION_TITLES: Partial<Record<HmsTavleSectionType, string>> = {
   SNARVEIER: "Hurtigtilganger",
   GJEST_SKJEMA: "Gjesteskjema og serviceløfte",
   GJESTESERVICE_STATUS: "Tillitspanel for gjesteservice",
-  SHA_PLAN: "Rediger SHA-plan",
-  BEREDSKAPSPLAN: "Rediger beredskapsplan",
+  SHA_PLAN: "Edit construction phase plan",
+  BEREDSKAPSPLAN: "Edit emergency plan",
   AVVIK_STATISTIKK: "Rediger avviksstatistikk",
   KONTAKTINFO: "Rediger kontaktpersoner",
   NYHETER_MELDINGER: "Rediger meldinger",

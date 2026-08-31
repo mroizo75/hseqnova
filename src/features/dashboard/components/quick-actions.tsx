@@ -18,13 +18,13 @@ interface QuickActionsProps {
 
 const PRIORITY_ACTIONS = [
   {
-    label: "Rapporter hendelse",
+    label: "Record incident",
     icon: AlertCircle,
     href: "/dashboard/incidents/new",
     canPerform: (p: RolePermissions) => p.canCreateIncidents,
   },
   {
-    label: "Nytt tiltak",
+    label: "New action",
     icon: ListTodo,
     href: "/dashboard/actions",
     canPerform: (p: RolePermissions) => p.canCreateActions,

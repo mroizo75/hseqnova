@@ -242,7 +242,7 @@ function FixedSidebar({
         </div>
       </div>
 
-      {/* ── SHA-plan status ───────────────────────────────────── */}
+      {/* ── Construction phase plan status ────────────────────── */}
       <div className="bg-white/10 rounded-xl p-3 border border-white/20">
         <p className="text-blue-200 text-[10px] font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1">
           <ClipboardList className="h-3 w-3" /> Construction phase plan
@@ -250,7 +250,7 @@ function FixedSidebar({
         {shaStatus === "godkjent" ? (
           <div className="flex items-center gap-1.5">
             <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0" />
-            <span className="text-green-300 text-xs font-semibold leading-tight">Approved</span>
+            <span className="text-green-300 text-xs font-semibold leading-tight">Active</span>
           </div>
         ) : shaStatus === "under-arbeid" ? (
           <div className="flex items-center gap-1.5">
@@ -703,12 +703,11 @@ function MannskapslisteSection({ title, checkins, tavle, appUrl, publicToken }: 
     });
   }, [checkinUrl]);
 
-  // § 15 krever at listen viser hvem som faktisk er på plassen, ikke bare hvem
-  // som har vært innom. Utsjekkede vises derfor nedtonet.
+  // Show who is on site now. Checked-out names stay visible but muted.
   const paaPlassen = checkins.filter((c: any) => !c.checkedOutAt);
 
   return (
-    <Wrapper icon={<Users className="h-6 w-6" />} title={title ?? "Site register"} badge="CDM 2015">
+    <Wrapper icon={<Users className="h-6 w-6" />} title={title ?? "Site register"} badge="Operational">
       <div className="flex gap-4 h-full">
         {/* Venstre: teller + navn */}
         <div className="flex-1 min-w-0 space-y-3">
@@ -1114,7 +1113,7 @@ function KpiSection({ title, config, isAddon, live }: {
   );
 }
 
-/** Aktive sikker jobb-analyser – Byggherreforskriften § 18 andre ledd og § 19 */
+/** Live RAMS on the board — MHSWR / CDM 2015. */
 function SjaSection({ title, config, isAddon, live }: {
   title: string | null; config: any; isAddon: boolean; live: TavleSjaItem[];
 }) {
@@ -1167,7 +1166,7 @@ function SjaSection({ title, config, isAddon, live }: {
   );
 }
 
-/** Vernerundestatus – AML § 3-1 andre ledd bokstav e om systematisk kartlegging */
+/** Workplace inspection status — MHSWR 1999 */
 function VernerundeSection({ title, config, isAddon, live }: {
   title: string | null; config: any; isAddon: boolean; live: TavleVernerundeData | null;
 }) {
@@ -1220,7 +1219,7 @@ function VernerundeSection({ title, config, isAddon, live }: {
   );
 }
 
-/** Opplæringsstatus – AML § 3-2 første ledd bokstav a om nødvendig opplæring */
+/** Induction / competency — HSWA 1974 s.2(2)(c) */
 function OpplaringSection({ title, config, isAddon, live }: {
   title: string | null; config: any; isAddon: boolean; live: TavleOpplaringData | null;
 }) {

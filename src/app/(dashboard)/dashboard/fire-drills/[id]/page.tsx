@@ -57,6 +57,11 @@ import {
 } from "@/features/fire-drills/schemas/fire-drill.schema";
 import type { FireDrillStatus, FireDrillType } from "@/features/fire-drills/schemas/fire-drill.schema";
 import type { ActionStatus } from "@prisma/client";
+import {
+  evacuationTimeIsRequired,
+  formatEvacuationTime,
+} from "@/lib/fire-drill-uk";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Measure {
   id: string;
@@ -90,7 +95,8 @@ interface FireDrill {
   procedureChangesDesc: string | null;
   evaluatedBy: string | null;
   evaluatedAt: string | null;
-  // Delte lokaler — § 4 tredje ledd
+  fireMarshals?: Array<{ name: string; title: string }>;
+  // Shared premises — art.22
   sharedPremises: boolean;
   buildingOwnerCoordinated: boolean | null;
   buildingOwnerName: string | null;
@@ -116,13 +122,6 @@ function StatusBadge({ status }: { status: FireDrillStatus }) {
   );
 }
 
-function formatEvacTime(seconds: number): string {
-  if (seconds < 60) return `${seconds} sec`;
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return s > 0 ? `${m} min ${s} sec` : `${m} min`;
-}
-
 export default function FireDrillDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -135,7 +134,7 @@ export default function FireDrillDetailPage() {
   const [users, setUsers] = useState<{ id: string; name: string | null; email: string }[]>([]);
   const [activeTab, setActiveTab] = useState("plan");
 
-  // Completion-skjema
+  // Completion form
   const [completeForm, setCompleteForm] = useState({
     completedAt: new Date().toISOString().substring(0, 10),
     actualParticipantCount: "",
@@ -143,7 +142,7 @@ export default function FireDrillDetailPage() {
     observations: "",
   });
 
-  // Evaluerings-skjema
+  // Review form
   const [evalForm, setEvalForm] = useState({
     objectivesAchieved: "",
     evaluation: "",
@@ -190,6 +189,17 @@ export default function FireDrillDetailPage() {
       toast({ title: "Complete participant numbers and observations", variant: "destructive" });
       return;
     }
+    if (
+      drill &&
+      evacuationTimeIsRequired(drill.drillType) &&
+      !completeForm.evacuationTimeSeconds
+    ) {
+      toast({
+        title: "Record the time taken to evacuate the premises",
+        variant: "destructive",
+      });
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch(`/api/fire-drills/${id}/complete`, {
@@ -205,10 +215,18 @@ export default function FireDrillDetailPage() {
         }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
-      const updated: FireDrill = await res.json();
-      setDrill(updated);
+      const updated = (await res.json()) as FireDrill;
+      setDrill((prev) => {
+        if (!prev) return updated;
+        return {
+          ...prev,
+          ...updated,
+          measures: prev.measures,
+          fireMarshals: updated.fireMarshals ?? prev.fireMarshals ?? [],
+        };
+      });
       setActiveTab("evaluate");
-      toast({ title: "Completion recorded", description: "The drill is ready for evaluation" });
+      toast({ title: "Completion recorded", description: "The drill is ready for review" });
     } catch (err) {
       toast({ title: "Could not save", description: err instanceof Error ? err.message : "Something went wrong", variant: "destructive" });
     } finally {
@@ -222,20 +240,43 @@ export default function FireDrillDetailPage() {
       toast({ title: "Complete all required fields", variant: "destructive" });
       return;
     }
+    if (
+      (evalForm.objectivesAchieved === "PARTIAL" ||
+        evalForm.objectivesAchieved === "NOT_ACHIEVED") &&
+      evalForm.procedureChangesDesc.trim().length < 5
+    ) {
+      toast({
+        title: "Record how the evacuation procedures will be changed",
+        variant: "destructive",
+      });
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch(`/api/fire-drills/${id}/evaluate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...evalForm,
+          objectivesAchieved: evalForm.objectivesAchieved,
+          evaluation: evalForm.evaluation,
+          improvementPoints: evalForm.improvementPoints,
+          procedureChangesNeeded:
+            evalForm.objectivesAchieved !== "FULL" || evalForm.procedureChangesNeeded,
           procedureChangesDesc: evalForm.procedureChangesDesc || undefined,
         }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
-      const updated: FireDrill = await res.json();
-      setDrill(updated);
-      toast({ title: "Evaluation completed", description: "Documentation is now complete" });
+      const updated = (await res.json()) as FireDrill;
+      setDrill((prev) => {
+        if (!prev) return updated;
+        return {
+          ...prev,
+          ...updated,
+          measures: prev.measures,
+          fireMarshals: updated.fireMarshals ?? prev.fireMarshals ?? [],
+        };
+      });
+      toast({ title: "Review completed", description: "The fire drill record is complete" });
     } catch (err) {
       toast({ title: "Could not save", description: err instanceof Error ? err.message : "Something went wrong", variant: "destructive" });
     } finally {
@@ -267,6 +308,9 @@ export default function FireDrillDetailPage() {
   const canComplete = drill.status === "PLANNED" || drill.status === "IN_PROGRESS";
   const canEvaluate = drill.status === "COMPLETED";
   const isEvaluated = drill.status === "EVALUATED";
+  const reviewNotFull =
+    evalForm.objectivesAchieved === "PARTIAL" ||
+    evalForm.objectivesAchieved === "NOT_ACHIEVED";
 
   return (
     <div className="space-y-6">
@@ -281,11 +325,11 @@ export default function FireDrillDetailPage() {
           </Button>
         </div>
         <div className="flex items-center gap-2">
-          {isEvaluated && (
+          {(drill.status === "COMPLETED" || drill.status === "EVALUATED") && (
             <Button variant="outline" size="sm" asChild>
               <a href={`/api/fire-drills/${id}/rapport`} target="_blank" rel="noopener noreferrer">
                 <Download className="mr-1.5 h-4 w-4" />
-                Download report
+                Download record
               </a>
             </Button>
           )}
@@ -348,6 +392,26 @@ export default function FireDrillDetailPage() {
           </div>
         </div>
       </div>
+
+      {(!drill.fireMarshals || drill.fireMarshals.length === 0) ? (
+        <Alert className="border-orange-200 bg-orange-50">
+          <AlertTriangle className="h-4 w-4 text-orange-600" />
+          <AlertDescription className="text-orange-800">
+            No fire marshal is named on the{" "}
+            <Link href="/dashboard/organisasjonskart" className="font-medium underline">
+              organisation chart
+            </Link>
+            . Nominate competent people to implement the evacuation (art.15(1)(b)).
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <Alert>
+          <AlertDescription>
+            <strong>Nominated fire marshals:</strong>{" "}
+            {drill.fireMarshals.map((marshal) => `${marshal.name} (${marshal.title})`).join(", ")}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -490,7 +554,7 @@ export default function FireDrillDetailPage() {
                         <Timer className="h-3 w-3" />
                         Evacuation time
                       </p>
-                      <p className="text-sm font-medium">{formatEvacTime(drill.evacuationTimeSeconds)}</p>
+                      <p className="text-sm font-medium">{formatEvacuationTime(drill.evacuationTimeSeconds)}</p>
                     </div>
                   )}
                 </div>
@@ -555,6 +619,9 @@ export default function FireDrillDetailPage() {
                   <div className="space-y-2">
                     <Label htmlFor="evacuationTimeSeconds">
                       Evacuation time (seconds)
+                      {evacuationTimeIsRequired(drill.drillType) ? (
+                        <span className="text-destructive"> *</span>
+                      ) : null}
                     </Label>
                     <div className="flex items-center gap-2">
                       <Input
@@ -570,14 +637,20 @@ export default function FireDrillDetailPage() {
                         }
                         placeholder="e.g. 180 (3 min)"
                         className="max-w-[200px]"
+                        required={evacuationTimeIsRequired(drill.drillType)}
                       />
                       <Timer className="h-4 w-4 text-muted-foreground" />
                       {completeForm.evacuationTimeSeconds && (
                         <span className="text-sm text-muted-foreground">
-                          = {formatEvacTime(Number(completeForm.evacuationTimeSeconds))}
+                          = {formatEvacuationTime(Number(completeForm.evacuationTimeSeconds))}
                         </span>
                       )}
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      {evacuationTimeIsRequired(drill.drillType)
+                        ? "Required for an evacuation drill — Fire Safety Order 2005 art.15"
+                        : "Optional for alarm tests and extinguisher training"}
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -696,7 +769,13 @@ export default function FireDrillDetailPage() {
                     </Label>
                     <Select
                       value={evalForm.objectivesAchieved}
-                      onValueChange={(v) => setEvalForm((p) => ({ ...p, objectivesAchieved: v }))}
+                      onValueChange={(v) =>
+                        setEvalForm((p) => ({
+                          ...p,
+                          objectivesAchieved: v,
+                          procedureChangesNeeded: v !== "FULL" ? true : p.procedureChangesNeeded,
+                        }))
+                      }
                     >
                       <SelectTrigger id="objectivesAchieved">
                         <SelectValue placeholder="Select whether objectives were met" />
@@ -747,20 +826,27 @@ export default function FireDrillDetailPage() {
                     <div>
                       <Label className="text-sm font-medium">Procedure changes needed?</Label>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Did the drill identify a need to change procedures?
+                        If the drill was not fully satisfactory, procedures must be made appropriate
+                        (art.15).
                       </p>
                     </div>
                     <Switch
-                      checked={evalForm.procedureChangesNeeded}
+                      checked={reviewNotFull || evalForm.procedureChangesNeeded}
+                      disabled={reviewNotFull}
                       onCheckedChange={(v) =>
                         setEvalForm((p) => ({ ...p, procedureChangesNeeded: v }))
                       }
                     />
                   </div>
 
-                  {evalForm.procedureChangesNeeded && (
+                  {(reviewNotFull || evalForm.procedureChangesNeeded) && (
                     <div className="space-y-2">
-                      <Label htmlFor="procedureChangesDesc">Describe required changes</Label>
+                      <Label htmlFor="procedureChangesDesc">
+                        Describe required changes
+                        {reviewNotFull ? (
+                          <span className="text-destructive"> *</span>
+                        ) : null}
+                      </Label>
                       <Textarea
                         id="procedureChangesDesc"
                         value={evalForm.procedureChangesDesc}
@@ -769,6 +855,7 @@ export default function FireDrillDetailPage() {
                         }
                         placeholder="Which procedures must change and how?"
                         rows={3}
+                        required={reviewNotFull}
                       />
                     </div>
                   )}

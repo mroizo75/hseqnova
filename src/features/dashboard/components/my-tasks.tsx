@@ -19,7 +19,7 @@ interface MyTasksProps {
 export function MyTasks({ tasks }: MyTasksProps) {
   const getTypeLabel = (type: Task["type"]) => {
     const labels = {
-      measure: "Tiltak",
+      measure: "Action",
       training: "Opplæring",
       approval: "Godkjenning",
       audit: "Revisjon",

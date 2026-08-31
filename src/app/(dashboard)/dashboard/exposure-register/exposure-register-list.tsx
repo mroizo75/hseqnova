@@ -32,6 +32,7 @@ import { format } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { EndExposureDialog } from "./end-exposure-dialog";
 import { effectiveExposureStatus } from "@/features/exposure-register/lib/exposure-status";
+import { fitnessForWorkLabel } from "@/lib/health-record-uk";
 
 type Entry = {
   id: string;
@@ -49,6 +50,7 @@ type Entry = {
   healthCheckRequired: boolean;
   healthCheckDone: boolean;
   healthCheckDate: Date | null;
+  fitnessForWork?: string | null;
   status: ExposureRegisterStatus;
   registeredBy: string;
   createdAt: Date;
@@ -353,14 +355,13 @@ export function ExposureRegisterList({ entries }: { entries: Entry[] }) {
                         <p className="text-xs text-muted-foreground">Health surveillance</p>
                         {!entry.healthCheckRequired ? (
                           <p className="text-xs text-muted-foreground">Not required</p>
-                        ) : entry.healthCheckDone ? (
-                          <p className="text-xs text-green-700 font-medium">
-                            ✓ Completed{" "}
-                            {entry.healthCheckDate &&
-                              format(new Date(entry.healthCheckDate), "dd MMM yyyy", { locale: enGB })}
-                          </p>
                         ) : (
-                          <p className="text-xs text-red-600 font-semibold">⚠ Not completed</p>
+                          <p className={`text-xs font-medium ${healthAlert ? "text-red-600" : "text-green-700"}`}>
+                            {fitnessForWorkLabel(entry.fitnessForWork)}
+                            {entry.healthCheckDate
+                              ? ` · ${format(new Date(entry.healthCheckDate), "dd MMM yyyy", { locale: enGB })}`
+                              : ""}
+                          </p>
                         )}
                       </div>
                     </div>

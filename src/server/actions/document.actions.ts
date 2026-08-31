@@ -14,11 +14,22 @@ import { DocStatus } from "@prisma/client";
 import { requirePermission, requireResourceAccess } from "@/lib/server-authorization";
 import { calculateNextReviewDate, parseDateInput } from "@/lib/document-utils";
 import { convertDocumentToPDF } from "@/lib/adobe-pdf";
+import { notifyUsersByRoles } from "@/server/actions/notification.actions";
+import { mayOpenDocumentFile } from "@/lib/document-uk";
 
 type ActionError = { code: string; message: string; details?: unknown };
 
 function fail(code: string, message: string, details?: unknown): ActionError {
   return { code, message, details };
+}
+
+function revalidateDocumentPaths(documentId?: string) {
+  revalidatePath("/dashboard/documents");
+  revalidatePath("/ansatt/dokumenter");
+  if (documentId) {
+    revalidatePath(`/dashboard/documents/${documentId}`);
+    revalidatePath(`/ansatt/dokumenter/${documentId}`);
+  }
 }
 
 function toIso(value: Date | string | null | undefined): string | null {
@@ -347,13 +358,6 @@ export async function uploadNewVersion(formData: FormData) {
     const fileKey = generateFileKey(document.tenantId, "documents", file.name);
     await storage.upload(fileKey, file);
 
-    const now = new Date().toISOString();
-    await db
-      .from("DocumentVersion")
-      .update({ supersededAt: now })
-      .eq("documentId", document.id)
-      .is("supersededAt", null);
-
     const mime = file.type || "application/octet-stream";
     const { error: versionError } = await db.from("DocumentVersion").insert({
       id: createId(),
@@ -370,15 +374,56 @@ export async function uploadNewVersion(formData: FormData) {
       throw fail("DOCUMENT_VERSION_CREATE_FAILED", versionError.message);
     }
 
+    const now = new Date().toISOString();
+    const keepPublishedCopy = document.status === DocStatus.APPROVED;
+    if (!keepPublishedCopy) {
+      await db
+        .from("DocumentVersion")
+        .update({ supersededAt: now })
+        .eq("documentId", document.id)
+        .is("supersededAt", null)
+        .neq("fileKey", fileKey);
+
+      const { data: updatedDocument, error: updateError } = await db
+        .from("Document")
+        .update({
+          version,
+          fileKey,
+          mime,
+          status: DocStatus.DRAFT,
+          approvedBy: null,
+          approvedAt: null,
+          updatedBy: context.userEmail,
+          updatedAt: now,
+        })
+        .eq("id", documentId)
+        .select("*")
+        .single();
+
+      if (updateError || !updatedDocument) {
+        throw fail("DOCUMENT_UPDATE_FAILED", updateError?.message || "Could not update the document.");
+      }
+
+      const viewCacheKey = `${document.tenantId}/documents/pdf/${document.id}.pdf`;
+      try {
+        await storage.delete(viewCacheKey);
+      } catch {
+        // Cache may not exist yet.
+      }
+
+      await AuditLog.log(document.tenantId, context.userId, "DOCUMENT_VERSION_UPLOADED", "Document", document.id, {
+        version,
+        changeComment,
+        previousVersion: document.version,
+      });
+
+      revalidateDocumentPaths(documentId);
+      return { success: true as const, data: updatedDocument };
+    }
+
     const { data: updatedDocument, error: updateError } = await db
       .from("Document")
       .update({
-        version,
-        fileKey,
-        mime,
-        status: DocStatus.DRAFT,
-        approvedBy: null,
-        approvedAt: null,
         updatedBy: context.userEmail,
         updatedAt: now,
       })
@@ -394,17 +439,10 @@ export async function uploadNewVersion(formData: FormData) {
       version,
       changeComment,
       previousVersion: document.version,
+      publishedCopyKept: true,
     });
 
-    const viewCacheKey = `${document.tenantId}/documents/pdf/${document.id}.pdf`;
-    try {
-      await storage.delete(viewCacheKey);
-    } catch {
-      // Cache may not exist yet.
-    }
-
-    revalidatePath(`/dashboard/documents`);
-    revalidatePath(`/dashboard/documents/${documentId}`);
+    revalidateDocumentPaths(documentId);
     return { success: true as const, data: updatedDocument };
   } catch (error: unknown) {
     const err = error as ActionError;
@@ -517,8 +555,7 @@ export async function updateDocument(input: Record<string, unknown>) {
       reviewIntervalMonths: resolvedReviewInterval,
     });
 
-    revalidatePath(`/dashboard/documents`);
-    revalidatePath(`/dashboard/documents/${validated.id}`);
+    revalidateDocumentPaths(validated.id);
     return { success: true as const, data: updated };
   } catch (error: unknown) {
     const err = error as ActionError;
@@ -542,10 +579,52 @@ export async function approveDocument(input: unknown) {
     const nextReviewDate = calculateNextReviewDate(new Date(effectiveFrom), reviewIntervalMonths);
     const now = new Date().toISOString();
 
+    const { data: pendingVersion } = await db
+      .from("DocumentVersion")
+      .select("*")
+      .eq("documentId", document.id)
+      .is("approvedAt", null)
+      .order("createdAt", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const published = {
+      version: pendingVersion?.version ?? document.version,
+      fileKey: pendingVersion?.fileKey ?? document.fileKey,
+      mime: pendingVersion?.mime ?? document.mime,
+    };
+
+    if (pendingVersion) {
+      await db
+        .from("DocumentVersion")
+        .update({ supersededAt: now })
+        .eq("documentId", document.id)
+        .neq("id", pendingVersion.id)
+        .is("supersededAt", null);
+
+      await db
+        .from("DocumentVersion")
+        .update({
+          approvedBy: validated.approvedBy,
+          approvedAt: now,
+        })
+        .eq("id", pendingVersion.id);
+
+      const viewCacheKey = `${document.tenantId}/documents/pdf/${document.id}.pdf`;
+      try {
+        await getStorage().delete(viewCacheKey);
+      } catch {
+        // Cache may not exist yet.
+      }
+    }
+
     const { data: approved, error } = await db
       .from("Document")
       .update({
         status: DocStatus.APPROVED,
+        version: published.version,
+        fileKey: published.fileKey,
+        mime: published.mime,
         approvedBy: validated.approvedBy,
         approvedAt: now,
         nextReviewDate: toIso(nextReviewDate),
@@ -559,35 +638,62 @@ export async function approveDocument(input: unknown) {
       throw fail("DOCUMENT_APPROVE_FAILED", error?.message || "Could not approve the document.");
     }
 
-    const { data: latestVersion } = await db
-      .from("DocumentVersion")
-      .select("id")
-      .eq("documentId", document.id)
-      .order("createdAt", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (latestVersion) {
-      await db
-        .from("DocumentVersion")
-        .update({
-          approvedBy: validated.approvedBy,
-          approvedAt: now,
-        })
-        .eq("id", latestVersion.id);
-    }
-
     await AuditLog.log(document.tenantId, context.userId, "DOCUMENT_APPROVED", "Document", document.id, {
-      version: document.version,
+      version: published.version,
       approvedBy: validated.approvedBy,
     });
 
-    revalidatePath(`/dashboard/documents`);
-    revalidatePath(`/dashboard/documents/${validated.id}`);
+    notifyUsersByRoles(document.tenantId, ["ANSATT", "VERNEOMBUD", "LEDER"], {
+      type: "DOCUMENT_APPROVED",
+      title: "Current document published",
+      message: `"${document.title}" (${published.version}) is now the working copy. Use this version.`,
+      link: `/ansatt/dokumenter/${document.id}`,
+    }).catch(() => {});
+
+    revalidateDocumentPaths(validated.id);
     return { success: true as const, data: approved };
   } catch (error: unknown) {
     const err = error as ActionError;
     return { success: false as const, error: err.message || "Could not approve the document." };
+  }
+}
+
+export async function archiveDocument(id: string) {
+  try {
+    const context = await requirePermission("canApproveDocuments");
+    const db = getAdminDb();
+    const { data: document } = await db.from("Document").select("*").eq("id", id).maybeSingle();
+
+    if (!document) {
+      return { success: false as const, error: "Document not found." };
+    }
+
+    const now = new Date().toISOString();
+    const { data: archived, error } = await db
+      .from("Document")
+      .update({
+        status: DocStatus.ARCHIVED,
+        updatedBy: context.userEmail,
+        updatedAt: now,
+      })
+      .eq("id", id)
+      .select("*")
+      .single();
+
+    if (error || !archived) {
+      throw fail("DOCUMENT_ARCHIVE_FAILED", error?.message || "Could not withdraw the document.");
+    }
+
+    await AuditLog.log(document.tenantId, context.userId, "DOCUMENT_ARCHIVED", "Document", document.id, {
+      title: document.title,
+      version: document.version,
+    });
+
+    revalidateDocumentPaths(id);
+    return { success: true as const, data: archived };
+  } catch (error: unknown) {
+    const err = error as ActionError;
+    return { success: false as const, error: err.message || "Could not withdraw the document." };
   }
 }
 
@@ -639,7 +745,7 @@ export async function deleteDocument(id: string) {
       throw fail("DOCUMENT_DELETE_FAILED", error.message);
     }
 
-    revalidatePath(`/dashboard/documents`);
+    revalidateDocumentPaths();
     return { success: true as const, data: null };
   } catch (error: unknown) {
     const err = error as ActionError;
@@ -649,11 +755,28 @@ export async function deleteDocument(id: string) {
 
 export async function getDocumentDownloadUrl(id: string) {
   try {
-    await requireResourceAccess("document", id);
+    const context = await requireResourceAccess("document", id);
 
-    const { data: document } = await getAdminDb().from("Document").select("fileKey").eq("id", id).maybeSingle();
+    const { data: document } = await getAdminDb()
+      .from("Document")
+      .select("fileKey, status, visibleToRoles, effectiveTo")
+      .eq("id", id)
+      .maybeSingle();
 
     if (!document) {
+      return { success: false as const, error: "Document not found." };
+    }
+
+    if (
+      !mayOpenDocumentFile({
+        status: String(document.status),
+        visibleToRoles: document.visibleToRoles,
+        effectiveTo: document.effectiveTo as string | null,
+        role: context.role,
+        canCreateDocuments: context.permissions.canCreateDocuments,
+        canApproveDocuments: context.permissions.canApproveDocuments,
+      })
+    ) {
       return { success: false as const, error: "Document not found." };
     }
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRequiredTenantContext } from "@/lib/tenant-context";
 import { generateInspectionReport } from "@/lib/inspection-pdf";
-import { loadInspectionDetail, loadTenantBranding } from "@/server/queries/inspections.queries";
+import { loadInspectionDetail, loadInspectionPeople, loadTenantBranding, parseParticipantIds } from "@/server/queries/inspections.queries";
 
 export async function GET(
   _request: NextRequest,
@@ -16,9 +16,19 @@ export async function GET(
     }
 
     const tenant = await loadTenantBranding(tenantContext.tenantId);
+    const participantIds = parseParticipantIds(inspection.participants);
+    const people = await loadInspectionPeople([inspection.conductedBy, ...participantIds]);
+    const nameOf = (id: string) => {
+      const person = people.find((entry) => entry.id === id);
+      return person?.name || person?.email || id;
+    };
+    const inspectorName = nameOf(inspection.conductedBy);
+    const participantNames = participantIds.map(nameOf).filter(Boolean).join(", ") || null;
+
     const pdfBuffer = await generateInspectionReport({
       ...inspection,
-      conductedBy: tenantContext.email,
+      conductedBy: inspectorName,
+      participants: participantNames,
       tenantName: tenant?.name,
       tenantOrgNumber: tenant?.orgNumber,
       tenantLogoUrl: tenant?.logoUrl,

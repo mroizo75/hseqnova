@@ -1,25 +1,28 @@
 "use server";
 
-import { prisma } from "@/lib/db";
+import { revalidatePath } from "next/cache";
 import { getRequiredTenantContext } from "@/lib/tenant-context";
-import { PreQualStatus } from "@prisma/client";
+import type { PreQualStatus } from "@prisma/client";
+import {
+  validateContractorForApproval,
+  validateContractorRegistration,
+} from "@/lib/contractor-uk";
+import {
+  insertContractor,
+  loadContractorById,
+  loadContractorsForTenant,
+  toIso,
+  updateContractorRecord,
+} from "@/server/queries/contractor.queries";
 
 export async function listContractors(statusFilter?: PreQualStatus) {
   const { tenantId } = await getRequiredTenantContext();
-  return prisma.contractorRegistration.findMany({
-    where: {
-      tenantId,
-      ...(statusFilter ? { preQualificationStatus: statusFilter } : {}),
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  return loadContractorsForTenant(tenantId, statusFilter);
 }
 
 export async function getContractor(id: string) {
   const { tenantId } = await getRequiredTenantContext();
-  return prisma.contractorRegistration.findFirst({
-    where: { id, tenantId },
-  });
+  return loadContractorById(id, tenantId);
 }
 
 export async function registerContractor(input: {
@@ -30,6 +33,8 @@ export async function registerContractor(input: {
   contactPhone?: string;
   address?: string;
   tradeCategory?: string;
+  workToBeDone?: string;
+  hostInformationProvided?: boolean;
   hasPublicLiabilityInsurance?: boolean;
   publicLiabilityAmount?: string;
   publicLiabilityExpiry?: Date;
@@ -45,64 +50,85 @@ export async function registerContractor(input: {
   enforcementDetails?: string;
 }) {
   const { tenantId } = await getRequiredTenantContext();
-
-  if (!input.companyName.trim()) {
-    throw { code: "VALIDATION", message: "Company name is required" };
-  }
-  if (!input.contactName.trim()) {
-    throw { code: "VALIDATION", message: "Contact name is required" };
-  }
-  if (!input.contactEmail.trim()) {
-    throw { code: "VALIDATION", message: "Contact email is required" };
+  const valid = validateContractorRegistration(input);
+  if (valid.ok === false) {
+    throw { code: valid.code, message: valid.message };
   }
 
-  return prisma.contractorRegistration.create({
-    data: {
-      tenantId,
-      companyName: input.companyName.trim(),
-      companyNumber: input.companyNumber?.trim() || null,
-      contactName: input.contactName.trim(),
-      contactEmail: input.contactEmail.trim(),
-      contactPhone: input.contactPhone?.trim() || null,
-      address: input.address?.trim() || null,
-      tradeCategory: input.tradeCategory?.trim() || null,
-      hasPublicLiabilityInsurance: input.hasPublicLiabilityInsurance,
-      publicLiabilityAmount: input.publicLiabilityAmount,
-      publicLiabilityExpiry: input.publicLiabilityExpiry,
-      hasEmployersLiabilityInsurance: input.hasEmployersLiabilityInsurance,
-      employersLiabilityAmount: input.employersLiabilityAmount,
-      employersLiabilityExpiry: input.employersLiabilityExpiry,
-      hasHealthSafetyPolicy: input.hasHealthSafetyPolicy,
-      healthSafetyPolicyFile: input.healthSafetyPolicyFile,
-      hasRiskAssessments: input.hasRiskAssessments,
-      hasMethodStatements: input.hasMethodStatements,
-      safetyAccreditations: input.safetyAccreditations,
-      previousEnforcementAction: input.previousEnforcementAction,
-      enforcementDetails: input.enforcementDetails,
-      preQualificationStatus: PreQualStatus.PENDING,
-    },
+  const hostInformationProvided = input.hostInformationProvided === true;
+  const row = await insertContractor({
+    tenantId,
+    companyName: input.companyName.trim(),
+    companyNumber: input.companyNumber?.trim() || null,
+    contactName: input.contactName.trim(),
+    contactEmail: input.contactEmail.trim(),
+    contactPhone: input.contactPhone?.trim() || null,
+    address: input.address?.trim() || null,
+    tradeCategory: input.tradeCategory?.trim() || null,
+    workToBeDone: input.workToBeDone?.trim() || null,
+    hostInformationProvided,
+    hostInformationProvidedAt: hostInformationProvided ? toIso(new Date()) : null,
+    hasPublicLiabilityInsurance: input.hasPublicLiabilityInsurance ?? null,
+    publicLiabilityAmount: input.publicLiabilityAmount?.trim() || null,
+    publicLiabilityExpiry: toIso(input.publicLiabilityExpiry),
+    hasEmployersLiabilityInsurance: input.hasEmployersLiabilityInsurance ?? null,
+    employersLiabilityAmount: input.employersLiabilityAmount?.trim() || null,
+    employersLiabilityExpiry: toIso(input.employersLiabilityExpiry),
+    hasHealthSafetyPolicy: input.hasHealthSafetyPolicy ?? null,
+    healthSafetyPolicyFile: input.healthSafetyPolicyFile ?? null,
+    hasRiskAssessments: input.hasRiskAssessments ?? null,
+    hasMethodStatements: input.hasMethodStatements ?? null,
+    safetyAccreditations: input.safetyAccreditations ?? null,
+    previousEnforcementAction: input.previousEnforcementAction ?? null,
+    enforcementDetails: input.enforcementDetails?.trim() || null,
+    preQualificationStatus: "PENDING",
   });
+  revalidatePath("/dashboard/contractors");
+  return row;
 }
 
 export async function updatePreQualificationStatus(
   id: string,
   status: PreQualStatus,
   notes?: string,
+  extras?: {
+    workToBeDone?: string;
+    hostInformationProvided?: boolean;
+  },
 ) {
   const { tenantId, userId } = await getRequiredTenantContext();
-  const contractor = await prisma.contractorRegistration.findFirst({
-    where: { id, tenantId },
-  });
+  const contractor = await loadContractorById(id, tenantId);
   if (!contractor) {
     throw { code: "NOT_FOUND", message: "Contractor not found" };
   }
-  return prisma.contractorRegistration.update({
-    where: { id },
-    data: {
-      preQualificationStatus: status,
-      preQualificationNotes: notes ?? contractor.preQualificationNotes,
-      preQualifiedById: userId,
-      preQualifiedAt: new Date(),
-    },
+
+  const workToBeDone = extras?.workToBeDone?.trim() || contractor.workToBeDone;
+  const hostInformationProvided =
+    extras?.hostInformationProvided ?? contractor.hostInformationProvided;
+
+  if (status === "APPROVED") {
+    const valid = validateContractorForApproval({
+      workToBeDone,
+      hostInformationProvided,
+    });
+    if (valid.ok === false) {
+      throw { code: valid.code, message: valid.message };
+    }
+  }
+
+  const hostJustSet = hostInformationProvided === true && !contractor.hostInformationProvided;
+  const row = await updateContractorRecord(id, tenantId, {
+    preQualificationStatus: status,
+    preQualificationNotes: notes ?? contractor.preQualificationNotes,
+    preQualifiedById: userId,
+    preQualifiedAt: toIso(new Date()),
+    workToBeDone: workToBeDone ?? null,
+    hostInformationProvided,
+    hostInformationProvidedAt: hostInformationProvided
+      ? toIso(hostJustSet ? new Date() : contractor.hostInformationProvidedAt ?? new Date())
+      : null,
   });
+  revalidatePath("/dashboard/contractors");
+  revalidatePath(`/dashboard/contractors/${id}`);
+  return row;
 }

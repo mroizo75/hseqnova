@@ -12,8 +12,8 @@ const optionalId = z.preprocess(
 );
 
 /**
- * MHSWR 1999: preventive and protective measures after risk assessment.
- * HSWA s.2: organisation and arrangements — owner, due date, follow-up.
+ * MHSWR 1999 reg.5: arrangements for preventive and protective measures.
+ * HSG245: each control needs what (title), who (responsibleId), when (dueAt).
  */
 export const createMeasureSchema = z.object({
   tenantId: z.string().min(1),
@@ -59,13 +59,26 @@ export const updateMeasureSchema = z.object({
 export const completeMeasureSchema = z.object({
   id: z.string().min(1),
   completedAt: z.date(),
-  completionNote: z.string().optional(),
-  effectiveness: z.nativeEnum(ActionEffectiveness).default("EFFECTIVE"),
+  completionNote: z
+    .string()
+    .min(10, "Say what was done (HSG245 — monitor implementation)"),
+  effectiveness: z.nativeEnum(ActionEffectiveness).default("NOT_EVALUATED"),
+});
+
+/** Named owner records progress — HSG245 monitor implementation. */
+export const ownerProgressSchema = z.object({
+  id: z.string().min(1),
+  status: z.enum(["IN_PROGRESS", "DONE"]),
+  completionNote: z.preprocess(
+    (value) => (value === "" || value == null ? undefined : value),
+    z.string().min(10).optional(),
+  ),
 });
 
 export type CreateMeasureInput = z.infer<typeof createMeasureSchema>;
 export type UpdateMeasureInput = z.infer<typeof updateMeasureSchema>;
 export type CompleteMeasureInput = z.infer<typeof completeMeasureSchema>;
+export type OwnerProgressInput = z.infer<typeof ownerProgressSchema>;
 
 export function isMeasureOverdue(dueAt: Date, status: ActionStatus): boolean {
   if (status === "DONE") return false;

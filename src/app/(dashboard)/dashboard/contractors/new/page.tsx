@@ -23,7 +23,7 @@ export default async function NewContractorPage() {
         </Link>
         <h1 className="text-xl sm:text-2xl font-bold">Register Contractor</h1>
         <p className="text-sm text-muted-foreground">
-          Complete the pre-qualification checklist to register a new contractor.
+          Identify the job and record the evidence you used to select this contractor.
         </p>
       </div>
       <PrequalificationChecklist />

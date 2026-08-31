@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server";
 import { tavleEmitter } from "@/lib/tavle-events";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,9 +8,7 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/hms-tavle/public/[token]/events
  *
- * SSE-strøm for sanntidsoppdateringer av HMS Tavle.
- * Klienten kobler til én gang og mottar "update"-hendelse
- * når admin lagrer endringer — ingen polling nødvendig.
+ * SSE stream for live digital safety board updates.
  */
 export async function GET(
   req: NextRequest,
@@ -18,14 +16,14 @@ export async function GET(
 ) {
   const { token } = await params;
 
-  // Verifiser at tavlen eksisterer og er offentlig
-  const tavle = await prisma.hmsTavle.findFirst({
-    where: { publicToken: token },
-    select: { id: true, isPublic: true },
-  });
+  const { data: tavle } = await getAdminDb()
+    .from("HmsTavle")
+    .select("id, isPublic")
+    .eq("publicToken", token)
+    .maybeSingle();
 
   if (!tavle) {
-    return new Response("Tavle ikke funnet", { status: 404 });
+    return new Response("Board not found", { status: 404 });
   }
 
   const eventName = `tavle:${token}`;

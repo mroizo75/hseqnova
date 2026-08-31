@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ZodError } from "zod";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { evaluateFireDrillSchema } from "@/features/fire-drills/schemas/fire-drill.schema";
-import { assertFireDrillOwnership, updateFireDrillRecord } from "@/server/queries/fire-drills.queries";
+import { validateFireDrillReview } from "@/lib/fire-drill-uk";
+import {
+  assertFireDrillOwnership,
+  loadNamedFireMarshals,
+  updateFireDrillRecord,
+} from "@/server/queries/fire-drills.queries";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -20,14 +26,14 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       existing = await assertFireDrillOwnership(id, session.user.tenantId);
     } catch (error) {
       if (error && typeof error === "object" && "code" in error && error.code === "FIRE_DRILL_NOT_FOUND") {
-        return NextResponse.json({ error: "Ikke funnet" }, { status: 404 });
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
       throw error;
     }
 
     if (existing.status !== "COMPLETED") {
       return NextResponse.json(
-        { error: "Øvelsen må være gjennomført før evaluering" },
+        { error: "The drill must be completed before it can be reviewed" },
         { status: 409 },
       );
     }
@@ -35,22 +41,41 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const body = await request.json();
     const validated = evaluateFireDrillSchema.parse(body);
 
-    const drill = await updateFireDrillRecord(id, session.user.tenantId, {
-      status: "EVALUATED",
+    const check = validateFireDrillReview({
       objectivesAchieved: validated.objectivesAchieved,
       evaluation: validated.evaluation,
       improvementPoints: validated.improvementPoints,
-      procedureChangesNeeded: validated.procedureChangesNeeded,
       procedureChangesDesc: validated.procedureChangesDesc ?? null,
-      evaluatedBy: session.user.id,
-      evaluatedAt: new Date(),
     });
-
-    return NextResponse.json(drill);
-  } catch (error) {
-    if (error instanceof Error && error.name === "ZodError") {
-      return NextResponse.json({ error: "Ugyldig data", details: error.message }, { status: 400 });
+    if (check.ok === false) {
+      return NextResponse.json(
+        { code: check.code, message: check.message, error: check.message },
+        { status: 400 },
+      );
     }
-    return NextResponse.json({ error: "Intern feil" }, { status: 500 });
+
+    const procedureChangesNeeded =
+      validated.objectivesAchieved !== "FULL" || validated.procedureChangesNeeded;
+
+    const [drill, fireMarshals] = await Promise.all([
+      updateFireDrillRecord(id, session.user.tenantId, {
+        status: "EVALUATED",
+        objectivesAchieved: validated.objectivesAchieved,
+        evaluation: validated.evaluation,
+        improvementPoints: validated.improvementPoints,
+        procedureChangesNeeded,
+        procedureChangesDesc: validated.procedureChangesDesc ?? null,
+        evaluatedBy: session.user.id,
+        evaluatedAt: new Date(),
+      }),
+      loadNamedFireMarshals(session.user.tenantId),
+    ]);
+
+    return NextResponse.json({ ...drill, fireMarshals });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json({ error: "Check the required fields", details: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ error: "Could not save the review" }, { status: 500 });
   }
 }

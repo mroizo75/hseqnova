@@ -6,6 +6,7 @@ import { getAuthMembership } from "@/lib/auth-db";
 import type { Role } from "@prisma/client";
 import { getPermissions } from "@/lib/permissions";
 import { ConstructionComplianceClient } from "@/features/projects/components/construction-compliance-client";
+import { HsFileSection } from "@/features/projects/components/hs-file-section";
 import { loadProjectSummary } from "@/server/queries/projects.queries";
 
 export default async function ProjectConstructionCompliancePage({
@@ -43,6 +44,11 @@ export default async function ProjectConstructionCompliancePage({
       </div>
 
       <ConstructionComplianceClient
+        projectId={project.id}
+        canManage={permissions.canManageConstructionCompliance}
+      />
+
+      <HsFileSection
         projectId={project.id}
         canManage={permissions.canManageConstructionCompliance}
       />

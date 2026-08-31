@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { CdmLegalNote } from "@/features/projects/components/cdm-legal-note";
+import { F10_HSE_URL } from "@/lib/cdm-uk";
 
 type ComplianceData = {
   tenant?: {
@@ -90,7 +92,9 @@ const changeFieldLabels: Record<string, string> = {
   expectedEndDate: "End date",
   maxWorkersSimultaneous: "Maximum workers on site at any one time",
   plannedBusinessesCount: "Planned number of contractors",
-  visibleAtSite: "Displayed on site",
+  visibleAtSite: "Displayed in the site office",
+  localAuthority: "Local authority",
+  clientDutyAcknowledged: "Client declaration of CDM duties",
 };
 
 function formatChangeValue(value: string | null): string {
@@ -145,6 +149,8 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
     designers: "",
     contractors: "",
     visibleAtSite: false,
+    localAuthority: "",
+    clientDutyAcknowledged: false,
   });
 
   const [newEntry, setNewEntry] = useState({
@@ -259,6 +265,8 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
           designers: payload.preNotification.designers ?? "",
           contractors: payload.preNotification.contractors ?? "",
           visibleAtSite: payload.preNotification.visibleAtSite ?? false,
+          localAuthority: payload.preNotification.localAuthority ?? "",
+          clientDutyAcknowledged: payload.preNotification.clientDutyAcknowledged ?? false,
         });
       }
     } catch (error) {
@@ -519,11 +527,14 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
 
   return (
     <div className="space-y-6">
+      <CdmLegalNote />
+
       <Card>
         <CardHeader>
           <CardTitle>Site register</CardTitle>
           <CardDescription>
-            Record everyone working on the site, including CSCS or other competence card numbers.
+            Operational site attendance record. This is not a CDM 2015 duty — F10 is displayed in
+            the site office (reg.6(3)(b)).
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -916,7 +927,17 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
         <CardHeader>
           <CardTitle>F10 notification to HSE</CardTitle>
           <CardDescription>
-            Record the particulars needed for F10 if the work lasts more than 30 working days with more than 20 workers, or exceeds 500 person days.
+            Record the Schedule 1 particulars if the work lasts more than 30 working days with more
+            than 20 workers, or exceeds 500 person days. Submit the notice on the{" "}
+            <a
+              href={F10_HSE_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-2"
+            >
+              HSE F10 form
+            </a>
+            ; this record is not sent automatically.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -1044,6 +1065,15 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
                 }
               />
             </div>
+            <div>
+              <Label>Local authority where the site is located</Label>
+              <Input
+                value={preNotification.localAuthority}
+                onChange={(e) =>
+                  setPreNotification((prev) => ({ ...prev, localAuthority: e.target.value }))
+                }
+              />
+            </div>
           </div>
 
           <div>
@@ -1070,14 +1100,33 @@ export function ConstructionComplianceClient({ projectId, canManage }: Construct
               onChange={(e) => setPreNotification((prev) => ({ ...prev, contractors: e.target.value }))}
             />
           </div>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              checked={preNotification.visibleAtSite}
-              onCheckedChange={(checked) =>
-                setPreNotification((prev) => ({ ...prev, visibleAtSite: checked === true }))
-              }
-            />
-            <span className="text-sm">Updated F10 is displayed on site</span>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={preNotification.clientDutyAcknowledged}
+                onCheckedChange={(checked) =>
+                  setPreNotification((prev) => ({
+                    ...prev,
+                    clientDutyAcknowledged: checked === true,
+                  }))
+                }
+              />
+              <span className="text-sm">
+                The client confirms they are aware of their duties under CDM 2015 (Schedule 1)
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={preNotification.visibleAtSite}
+                onCheckedChange={(checked) =>
+                  setPreNotification((prev) => ({ ...prev, visibleAtSite: checked === true }))
+                }
+              />
+              <span className="text-sm">
+                A copy of the notice is displayed in the site office, where it can be read by any
+                worker engaged in the construction work (CDM 2015 reg.6(3)(b))
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>

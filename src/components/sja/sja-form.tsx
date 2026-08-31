@@ -146,8 +146,23 @@ export function SjaForm({
       return;
     }
 
+    const method = (formData.get("description") as string)?.trim() ?? "";
+    if (method.length < 20) {
+      toast({
+        title: t("toast.methodMissing.title"),
+        description: t("toast.methodMissing.description"),
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
     const validHazards = hazards.filter(
-      (h) => h.activity.trim() && h.hazard.trim() && h.measures.trim()
+      (h) =>
+        h.activity.trim() &&
+        h.hazard.trim() &&
+        h.measures.trim() &&
+        h.consequence.trim(),
     );
 
     if (validHazards.length === 0) {
@@ -378,16 +393,19 @@ export function SjaForm({
 
         <div className="space-y-2">
           <Label htmlFor="description" className="text-base">
-            {t("fields.description.label")}
+            {t("fields.description.label")} *
           </Label>
           <Textarea
             id="description"
             name="description"
             placeholder={t("fields.description.placeholder")}
             defaultValue={initialData?.description}
-            rows={3}
+            rows={4}
+            required
+            minLength={20}
             className="text-base resize-none"
           />
+          <p className="text-xs text-muted-foreground">{t("fields.description.help")}</p>
         </div>
       </div>
 
@@ -511,7 +529,7 @@ export function SjaForm({
               </div>
 
               <div className="space-y-1">
-                <Label className="text-sm">{t("hazards.consequence")}</Label>
+                <Label className="text-sm">{t("hazards.consequence")} *</Label>
                 <Input
                   value={hazard.consequence}
                   onChange={(e) => updateHazard(index, "consequence", e.target.value)}

@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { getAuthContext } from "@/lib/server-authorization";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -35,12 +34,15 @@ import { buildRamsBriefingSnapshot } from "@/features/rams-briefing/lib/rams-bri
 
 export default async function SjaDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.tenantId) {
+  const auth = await getAuthContext();
+  if (!auth) {
     redirect("/login");
   }
 
-  const analysis = await loadSjaById(id, session.user.tenantId);
+  const canReadAll = auth.permissions.canReadSja;
+  const analysis = await loadSjaById(id, auth.tenantId, {
+    createdById: canReadAll ? undefined : auth.userId,
+  });
   if (!analysis) {
     return (
       <div className="text-center py-12">
@@ -51,6 +53,9 @@ export default async function SjaDetailPage({ params }: { params: Promise<{ id: 
       </div>
     );
   }
+
+  const canApprove = auth.permissions.canApproveSja;
+  const canComplete = canApprove || analysis.createdById === auth.userId;
 
   const formatDate = (date: Date | null) => {
     if (!date) return "-";
@@ -68,7 +73,7 @@ export default async function SjaDetailPage({ params }: { params: Promise<{ id: 
 
   let briefings: Awaited<ReturnType<typeof loadRamsBriefings>> = [];
   try {
-    briefings = await loadRamsBriefings(analysis.id, session.user.tenantId);
+    briefings = await loadRamsBriefings(analysis.id, auth.tenantId);
   } catch {
     briefings = [];
   }
@@ -180,7 +185,9 @@ export default async function SjaDetailPage({ params }: { params: Promise<{ id: 
                       </div>
                       {hazard.consequence && (
                         <div>
-                          <p className="text-xs font-medium text-muted-foreground mb-1">Consequence</p>
+                          <p className="text-xs font-medium text-muted-foreground mb-1">
+                            Who might be harmed / how
+                          </p>
                           <p className="text-sm">{hazard.consequence}</p>
                         </div>
                       )}
@@ -338,11 +345,14 @@ export default async function SjaDetailPage({ params }: { params: Promise<{ id: 
             </CardContent>
           </Card>
 
-          <SjaStatusActions
-            analysisId={analysis.id}
-            currentStatus={analysis.status}
-            currentConclusion={analysis.conclusion}
-          />
+          {(canApprove || canComplete) && (
+            <SjaStatusActions
+              analysisId={analysis.id}
+              currentStatus={analysis.status}
+              canApprove={canApprove}
+              canComplete={canComplete}
+            />
+          )}
         </div>
       </div>
     </div>

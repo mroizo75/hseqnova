@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { getAdminDb } from "@/lib/supabase/admin";
+import { getAuthContext } from "@/lib/server-authorization";
 import { getStorage } from "@/lib/storage";
 import { convertDocumentToPDF } from "@/lib/adobe-pdf";
+import { loadDocumentById } from "@/server/queries/documents.queries";
+import { mayOpenDocumentFile } from "@/lib/document-uk";
 
 const DOCX_MIMES = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -11,9 +11,8 @@ const DOCX_MIMES = [
 ];
 
 /**
- * Server dokument for visning i nettleser (PDF).
- * - PDF: streamer originalen med Content-Disposition: inline.
- * - DOCX: konverterer til PDF via Adobe (cacher i storage), streamer PDF med inline.
+ * Stream the current working copy as PDF.
+ * Employees only receive the approved copy (MHSWR 1999 reg.10; HSG65).
  */
 export async function GET(
   _request: NextRequest,
@@ -21,21 +20,24 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const session = await getServerSession(authOptions);
+    const auth = await getAuthContext();
 
-    if (!session?.user?.tenantId) {
+    if (!auth) {
       return NextResponse.json({ error: "Not authorised." }, { status: 401 });
     }
 
-    const tenantId = session.user.tenantId;
-    const { data: document } = await getAdminDb()
-      .from("Document")
-      .select("fileKey, mime, title")
-      .eq("id", id)
-      .eq("tenantId", tenantId)
-      .maybeSingle();
-
-    if (!document) {
+    const document = await loadDocumentById({ id, tenantId: auth.tenantId });
+    if (
+      !document ||
+      !mayOpenDocumentFile({
+        status: document.status,
+        visibleToRoles: document.visibleToRoles,
+        effectiveTo: document.effectiveTo,
+        role: auth.role,
+        canCreateDocuments: auth.permissions.canCreateDocuments,
+        canApproveDocuments: auth.permissions.canApproveDocuments,
+      })
+    ) {
       return NextResponse.json({ error: "Document not found." }, { status: 404 });
     }
 
@@ -52,8 +54,8 @@ export async function GET(
       }
       pdfBuffer = buffer;
     } else if (DOCX_MIMES.includes(document.mime)) {
-      const cacheKey = `${tenantId}/documents/pdf/${id}.pdf`;
-      let cached = await storage.get(cacheKey);
+      const cacheKey = `${auth.tenantId}/documents/pdf/${id}.pdf`;
+      const cached = await storage.get(cacheKey);
 
       if (cached) {
         pdfBuffer = cached;
@@ -68,8 +70,7 @@ export async function GET(
 
         try {
           pdfBuffer = await convertDocumentToPDF(docBuffer, document.mime);
-        } catch (err) {
-          console.error("Adobe DOCX->PDF conversion error:", err);
+        } catch {
           return NextResponse.json(
             { error: "Could not convert the document to PDF." },
             { status: 502 }

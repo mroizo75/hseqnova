@@ -6,13 +6,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ShieldCheck, MapPin, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { getStatusLabel, getStatusClasses } from "@/lib/status-labels";
+import { formatGroupsAtRiskLabels } from "@/lib/risk-mhswr";
 
 export const dynamic = "force-dynamic";
 
 function getRiskColour(score: number) {
-  if (score >= 15) return "bg-red-100 text-red-800 border-red-300";
-  if (score >= 8) return "bg-amber-100 text-amber-800 border-amber-300";
-  if (score >= 4) return "bg-yellow-100 text-yellow-800 border-yellow-300";
+  if (score >= 20) return "bg-red-100 text-red-800 border-red-300";
+  if (score >= 12) return "bg-orange-100 text-orange-800 border-orange-300";
+  if (score >= 6) return "bg-yellow-100 text-yellow-800 border-yellow-300";
   return "bg-green-100 text-green-800 border-green-300";
 }
 
@@ -41,8 +42,8 @@ export default async function EmployeeRisksPage() {
     take: 100,
   });
 
-  const highRisks = risks.filter((r) => r.score >= 15);
-  const mediumRisks = risks.filter((r) => r.score >= 8 && r.score < 15);
+  const highRisks = risks.filter((r) => r.score >= 12);
+  const mediumRisks = risks.filter((r) => r.score >= 6 && r.score < 12);
 
   return (
     <div className="space-y-6">
@@ -87,6 +88,7 @@ export default async function EmployeeRisksPage() {
             const TrendIcon =
               TREND_ICON[risk.trend as keyof typeof TREND_ICON] ?? Minus;
             const statusClasses = getStatusClasses("risk", risk.status);
+            const whoLabels = formatGroupsAtRiskLabels(risk.groupsAtRisk);
 
             return (
               <Card key={risk.id}>
@@ -99,6 +101,11 @@ export default async function EmployeeRisksPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold mb-1 truncate">{risk.title}</h3>
+                      {risk.context ? (
+                        <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                          {risk.context}
+                        </p>
+                      ) : null}
                       <div className="flex flex-wrap items-center gap-2 mb-2">
                         <Badge className={`${statusClasses.bg} ${statusClasses.text} text-xs`}>
                           {getStatusLabel("risk", risk.status)}
@@ -124,9 +131,15 @@ export default async function EmployeeRisksPage() {
                           Likelihood: {risk.likelihood} &times; Consequence: {risk.consequence}
                         </span>
                       </div>
+                      {whoLabels.length > 0 ? (
+                        <p className="text-sm text-muted-foreground mt-2">
+                          <span className="font-medium text-foreground">Who might be harmed:</span>{" "}
+                          {whoLabels.join(", ")}
+                        </p>
+                      ) : null}
                       {risk.existingControls && (
                         <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                          <span className="font-medium text-foreground">Controls:</span>{" "}
+                          <span className="font-medium text-foreground">Existing controls:</span>{" "}
                           {risk.existingControls}
                         </p>
                       )}

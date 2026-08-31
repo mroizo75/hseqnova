@@ -4,26 +4,12 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  FileText,
-  Plus,
-  CheckCircle,
-  Clock,
-  XCircle,
-  FileKey,
-} from "lucide-react";
+import { Plus, CheckCircle, Clock, FileKey } from "lucide-react";
 import Link from "next/link";
 import { listPermitsToWork } from "@/server/actions/permit-to-work.actions";
 import { PermitToWorkStatus } from "@prisma/client";
-
-const PERMIT_TYPE_LABELS: Record<string, string> = {
-  HOT_WORK: "Hot Work",
-  CONFINED_SPACE: "Confined Space",
-  WORKING_AT_HEIGHT: "Working at Height",
-  EXCAVATION: "Excavation",
-  ELECTRICAL: "Electrical",
-  GENERAL: "General",
-};
+import { PermitLegalNote } from "@/features/permits/components/permit-legal-note";
+import { permitTypeLabel } from "@/lib/permit-uk";
 
 const STATUS_STYLES: Record<PermitToWorkStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   DRAFT: { label: "Draft", variant: "secondary" },
@@ -69,7 +55,7 @@ export default async function PermitsPage({
             Permits to Work
           </h1>
           <p className="text-sm text-muted-foreground">
-            Manage permits to work for high-risk activities
+            Written safe systems of work for specified high-risk jobs
           </p>
         </div>
         <Link href="/dashboard/permits/new">
@@ -80,24 +66,7 @@ export default async function PermitsPage({
         </Link>
       </div>
 
-      <Card className="bg-blue-50 border-blue-200">
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-3">
-            <FileText className="h-5 w-5 text-blue-600 mt-0.5" />
-            <div>
-              <p className="font-medium text-blue-900 mb-2">
-                Legal requirements
-              </p>
-              <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                <li>CDM 2015 — permits required for high-risk construction activities</li>
-                <li>HSWA 1974 s.2 — duty to ensure safe systems of work</li>
-                <li>MHSWR 1999 — risk assessments must inform permit conditions</li>
-                <li>Permits must be time-limited and signed off before work begins</li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <PermitLegalNote />
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
         <Card>
@@ -190,7 +159,7 @@ export default async function PermitsPage({
                       <tr key={permit.id} className="border-b last:border-0">
                         <td className="py-3">
                           <Badge variant="outline">
-                            {PERMIT_TYPE_LABELS[permit.type] ?? permit.type}
+                            {permitTypeLabel(permit.type)}
                           </Badge>
                         </td>
                         <td className="py-3 font-medium">{permit.title}</td>

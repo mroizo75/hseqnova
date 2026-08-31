@@ -5,7 +5,7 @@ import {
   createInspectionRecord,
   loadInspectionsForList,
 } from "@/server/queries/inspections.queries";
-import { validateInspectionRecord } from "@/lib/inspection-uk";
+import { validateInspectionRecord, defaultLegalBasisForType } from "@/lib/inspection-uk";
 
 export async function GET() {
   try {
@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
       followUpById: data.followUpById,
       nextInspection: data.nextInspection,
       projectId: data.projectId,
+      legalBasis: data.legalBasis ?? defaultLegalBasisForType(data.type || "VERNERUNDE"),
     });
 
     return createSuccessResponse({ inspection }, "Inspection created", 201);

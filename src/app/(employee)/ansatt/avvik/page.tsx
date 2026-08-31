@@ -37,7 +37,7 @@ export default async function AnsattAvvik() {
   const myIncidents = await prisma.incident.findMany({
     where: {
       tenantId: session.user.tenantId,
-      reportedBy: session.user.name || session.user.email || "Ansatt",
+            reportedBy: session.user.id,
     },
     orderBy: {
       occurredAt: "desc",

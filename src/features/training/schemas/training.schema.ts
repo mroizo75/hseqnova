@@ -1,13 +1,9 @@
 import { z } from "zod";
+import { MHSWR_TRAINING_REASON_KEYS } from "@/lib/training-uk";
 
 /**
- * ISO 9001 - 7.2 Kompetanse
- * 
- * Organisasjonen skal:
- * a) Bestemme nødvendig kompetanse for personer som gjør arbeid som påvirker ytelse og effektivitet
- * b) Sikre at disse personene er kompetente basert på utdanning, opplæring eller erfaring
- * c) Der det er aktuelt, ta tiltak for å anskaffe nødvendig kompetanse og evaluere effektiviteten
- * d) Beholde aktuell dokumentert informasjon som bevis på kompetanse
+ * HSWA 1974 s.2(2)(c) and MHSWR 1999 reg.13.
+ * Keep a record of who was trained, in what, when, and why.
  */
 
 export const createTrainingSchema = z.object({
@@ -20,6 +16,9 @@ export const createTrainingSchema = z.object({
   validUntil: z.date().optional(),
   proofDocKey: z.string().optional(),
   isRequired: z.boolean().default(false),
+  mhswrReason: z.enum(MHSWR_TRAINING_REASON_KEYS, {
+    error: "Say why this training was given (MHSWR 1999 reg.13)",
+  }),
   effectiveness: z.string().optional(),
 });
 
@@ -30,6 +29,7 @@ export const updateTrainingSchema = z.object({
   completedAt: z.date().optional(),
   validUntil: z.date().optional(),
   proofDocKey: z.string().optional(),
+  mhswrReason: z.enum(MHSWR_TRAINING_REASON_KEYS).optional(),
   effectiveness: z.string().optional(),
 });
 
@@ -102,69 +102,70 @@ export function getTrainingStatusColor(status: string): string {
     NOT_STARTED: "bg-gray-100 text-gray-800 border-gray-300",
     COMPLETED: "bg-green-100 text-green-800 border-green-300",
     VALID: "bg-green-100 text-green-800 border-green-300",
-    EXPIRING_SOON: "bg-yellow-100 text-black border-yellow-300", // Sort tekst på gul
+    EXPIRING_SOON: "bg-yellow-100 text-black border-yellow-300",
     EXPIRED: "bg-red-100 text-red-800 border-red-300",
   };
   return colors[status] || "bg-gray-100 text-gray-800 border-gray-300";
 }
 
 /**
- * Standard HMS kurs som bør være i systemet
+ * Standard H&S courses. Keys stay stable so existing records still match.
  */
 export const STANDARD_COURSES = [
   {
     key: "hms-intro",
-    title: "HMS Introduksjon",
-    description: "Grunnleggende HMS-opplæring for alle ansatte",
+    title: "Health and safety induction",
+    description:
+      "Information, instruction and training for new employees (HSWA 1974 s.2(2)(c); MHSWR 1999 reg.13(2)(a)).",
     isRequired: true,
-    validityYears: null, // Ikke utløpsdato
+    validityYears: null,
   },
   {
     key: "working-at-height",
-    title: "Arbeid i høyden",
-    description: "Sikker bruk av stige, stillas og fallutstyr",
+    title: "Working at height",
+    description: "Safe use of ladders, scaffolding and fall-arrest equipment (Work at Height Regulations 2005).",
     isRequired: false,
     validityYears: 3,
   },
   {
     key: "first-aid",
-    title: "Førstehjelp",
-    description: "Grunnleggende førstehjelp og hjerte-lungeredning",
+    title: "First aid",
+    description: "Emergency first aid and resuscitation (Health and Safety (First-Aid) Regulations 1981).",
     isRequired: false,
     validityYears: 2,
   },
   {
     key: "fire-safety",
-    title: "Brannsikkerhet",
-    description: "Brannvernopplæring og bruk av slokkeutstyr",
+    title: "Fire safety",
+    description: "Fire precautions, escape routes and extinguishers (Fire Safety Order 2005 art.21).",
     isRequired: true,
     validityYears: 1,
   },
   {
     key: "chemical-handling",
-    title: "Kjemikaliehåndtering",
-    description: "Sikker håndtering og lagring av kjemikalier",
+    title: "COSHH / hazardous substances",
+    description: "Safe handling and storage of hazardous substances (COSHH 2002).",
     isRequired: false,
     validityYears: 3,
   },
   {
     key: "forklift",
-    title: "Truckførerbevis",
-    description: "Godkjent opplæring for truckkjøring",
+    title: "Lift-truck operator",
+    description: "Operator training before using a lift truck (HSE ACOP L117).",
     isRequired: false,
     validityYears: 5,
   },
   {
     key: "hot-work",
-    title: "Varmt arbeid",
-    description: "Sertifikat for varmt arbeid (sveising, skjæring)",
+    title: "Hot work",
+    description: "Permit and competence for welding, cutting or other hot work.",
     isRequired: false,
     validityYears: 3,
   },
   {
     key: "confined-space",
-    title: "Arbeid i trange rom",
-    description: "Sikkerhet ved arbeid i trange/lukkede rom",
+    title: "Confined spaces",
+    description: "Safe working in confined spaces (Confined Spaces Regulations 1997).",
     isRequired: false,
     validityYears: 3,
   },

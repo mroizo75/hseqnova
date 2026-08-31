@@ -44,6 +44,7 @@ function revalidateSjaPaths(projectId?: string | null, analysisId?: string | nul
   revalidatePath("/ansatt/sja");
   if (analysisId) {
     revalidatePath(`/dashboard/sja/${analysisId}`);
+    revalidatePath(`/ansatt/sja/${analysisId}`);
   }
   if (projectId) {
     revalidatePath(`/dashboard/projects/${projectId}`);
@@ -101,7 +102,14 @@ export async function getSjaAnalysis(id: string) {
 export async function createSjaAnalysis(input: unknown) {
   try {
     await requireTenantModule("sja");
-    const { userId, tenantId, email } = await getRequiredTenantContext();
+    const auth = await getAuthContext();
+    if (!auth) {
+      return { success: false, error: "Unauthorised" };
+    }
+    if (!auth.permissions.canCreateSja) {
+      return { success: false, error: "Not authorised to create RAMS" };
+    }
+    const { userId, tenantId, userEmail: email } = auth;
     const raw = (input ?? {}) as Record<string, unknown>;
     const validated = createSjaSchema.parse({
       ...raw,
@@ -126,7 +134,7 @@ export async function createSjaAnalysis(input: unknown) {
       tenantId,
       sjaNummer,
       title: validated.title,
-      description: validated.description ?? null,
+      description: validated.description,
       workLocation: validated.workLocation,
       plannedDate: validated.plannedDate,
       responsibleName: validated.responsibleName,
@@ -160,7 +168,11 @@ export async function createSjaAnalysis(input: unknown) {
 
 export async function updateSjaAnalysis(input: unknown) {
   try {
-    const { userId, tenantId, email } = await getRequiredTenantContext();
+    const auth = await getAuthContext();
+    if (!auth) {
+      return { success: false, error: "Unauthorised" };
+    }
+    const { userId, tenantId, userEmail: email } = auth;
     const raw = (input ?? {}) as Record<string, unknown>;
     const validated = updateSjaSchema.parse({
       ...raw,
@@ -170,6 +182,17 @@ export async function updateSjaAnalysis(input: unknown) {
     const existing = await loadSjaById(validated.id, tenantId);
     if (!existing) {
       return { success: false, error: "RAMS not found" };
+    }
+
+    const isOwner = existing.createdById === userId;
+    if (!isOwner && !auth.permissions.canReadSja) {
+      return { success: false, error: "RAMS not found" };
+    }
+
+    const concluding =
+      Boolean(validated.conclusion) && validated.conclusion !== "NOT_DECIDED";
+    if (concluding && !auth.permissions.canApproveSja) {
+      return { success: false, error: "Not authorised to approve RAMS" };
     }
 
     const patch: Record<string, unknown> = {};

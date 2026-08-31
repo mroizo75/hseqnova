@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { PLAN_LABELS } from "@/features/hms-tavle/lib/tavle-plan-limits";
 import { ActivateTavleAddonButton } from "@/features/hms-tavle/components/activate-addon-button";
+import { SafetyBoardLegalNote } from "@/features/hms-tavle/components/safety-board-legal-note";
 
 type SubscriptionStatus = "TRIAL" | "ACTIVE" | "EXPIRING_SOON" | "EXPIRED" | "CANCELLED";
 
@@ -119,7 +120,7 @@ export default async function HmsTavleOversiktPage() {
             Digital safety board
           </h1>
           <p className="text-muted-foreground mt-1">
-            Digital site safety board for construction — QR access, subcontractor portal and live HSEQ data
+            Digital site safety board — CDM 2015 site information, QR access and live HSEQ data
           </p>
         </div>
         {hasActiveSub && auth.permissions.canManageHmsTavle && (
@@ -131,6 +132,8 @@ export default async function HmsTavleOversiktPage() {
           </Button>
         )}
       </div>
+
+      <SafetyBoardLegalNote />
 
       {subscription ? (
         <Card>

@@ -19,6 +19,8 @@ import {
   toIso,
   updateExposureRecord,
 } from "@/server/queries/exposure-register.queries";
+import { requireTenantModule } from "@/lib/require-tenant-module";
+import { validateHealthRecord, COSHH_HEALTH_RECORD_YEARS } from "@/lib/health-record-uk";
 import {
   computeRetentionUntilDate,
   deriveExposureStatus,
@@ -31,6 +33,11 @@ function errorMessage(error: unknown, fallback: string): string {
   }
   if (error instanceof Error) return error.message;
   return fallback;
+}
+
+function revalidateHealthRecordPaths() {
+  revalidatePath("/dashboard/exposure-register");
+  revalidatePath("/ansatt/profil");
 }
 
 async function getSessionContext() {
@@ -86,6 +93,7 @@ async function assertTenantScopedExposureRelations(
 
 export async function getExposureRegisters(_tenantId: string) {
   try {
+    await requireTenantModule("chemicals");
     const { tenantId } = await getSessionContext();
     const entries = await loadExposureRegistersForTenant(tenantId);
     return { success: true, data: entries };
@@ -96,6 +104,7 @@ export async function getExposureRegisters(_tenantId: string) {
 
 export async function getExposureRegister(id: string) {
   try {
+    await requireTenantModule("chemicals");
     const { tenantId } = await getSessionContext();
     const entry = await loadExposureById(id, tenantId);
     if (!entry) return { success: false, error: "Not found" };
@@ -115,6 +124,7 @@ export interface CreateExposureRegisterInput {
   employeeId?: string;
   employeeName: string;
   employeeBirthNumber: string;
+  homeAddress: string;
   department?: string;
   jobTitle: string;
   workLocation: string;
@@ -132,6 +142,7 @@ export interface CreateExposureRegisterInput {
   healthCheckRequired: boolean;
   healthCheckDone: boolean;
   healthCheckDate?: Date;
+  fitnessForWork?: string;
   retentionYears: number;
   ruhReportId?: string;
   riskId?: string;
@@ -140,10 +151,26 @@ export interface CreateExposureRegisterInput {
 
 export async function createExposureRegister(input: CreateExposureRegisterInput) {
   try {
+    await requireTenantModule("chemicals");
     const { tenantId, user } = await getSessionContext();
     const nino = normalizeNiNumber(input.employeeBirthNumber);
     if (!isValidNiNumber(nino)) {
       return { success: false, error: "Enter a valid National Insurance number" };
+    }
+
+    const validated = validateHealthRecord({
+      employeeName: input.employeeName,
+      homeAddress: input.homeAddress,
+      exposureAgent: input.exposureAgent,
+      exposureStartDate: input.exposureStartDate,
+      duration: input.duration,
+      ppeUsed: input.ppeUsed,
+      healthCheckRequired: input.healthCheckRequired,
+      healthCheckDone: input.healthCheckDone,
+      fitnessForWork: input.fitnessForWork,
+    });
+    if (validated.ok === false) {
+      return { success: false, error: validated.message };
     }
 
     await assertTenantScopedExposureRelations(tenantId, {
@@ -153,11 +180,13 @@ export async function createExposureRegister(input: CreateExposureRegisterInput)
       riskId: input.riskId,
     });
 
+    const retentionYears = Math.max(input.retentionYears || 0, COSHH_HEALTH_RECORD_YEARS);
     const entry = await insertExposureRegister({
       tenantId,
       employeeId: input.employeeId || null,
       employeeName: input.employeeName,
       employeeBirthNumber: encryptField(nino),
+      homeAddress: input.homeAddress.trim(),
       department: input.department || null,
       jobTitle: input.jobTitle,
       workLocation: input.workLocation,
@@ -169,14 +198,15 @@ export async function createExposureRegister(input: CreateExposureRegisterInput)
       exposureType: input.exposureType,
       exposureStartDate: toIso(input.exposureStartDate),
       exposureEndDate: toIso(input.exposureEndDate ?? null),
-      duration: input.duration || null,
-      ppeUsed: input.ppeUsed || null,
+      duration: input.duration?.trim() || null,
+      ppeUsed: input.ppeUsed?.trim() || null,
       riskAssessmentDone: input.riskAssessmentDone,
       healthCheckRequired: input.healthCheckRequired,
       healthCheckDone: input.healthCheckDone,
       healthCheckDate: toIso(input.healthCheckDate ?? null),
-      retentionYears: input.retentionYears,
-      retentionUntilDate: toIso(computeRetentionUntilDate(input.retentionYears)),
+      fitnessForWork: input.healthCheckRequired ? (input.fitnessForWork ?? null) : null,
+      retentionYears,
+      retentionUntilDate: toIso(computeRetentionUntilDate(retentionYears)),
       status: deriveExposureStatus(input.exposureEndDate),
       ruhReportId: input.ruhReportId || null,
       riskId: input.riskId || null,
@@ -184,7 +214,7 @@ export async function createExposureRegister(input: CreateExposureRegisterInput)
       registeredBy: user.name || user.email,
     });
 
-    revalidatePath("/dashboard/exposure-register");
+    revalidateHealthRecordPaths();
     return { success: true, data: entry };
   } catch (error: unknown) {
     return { success: false, error: errorMessage(error, "Could not create the health record") };
@@ -197,6 +227,7 @@ export type UpdateExposureRegisterInput = Partial<CreateExposureRegisterInput> &
 
 export async function updateExposureRegister(id: string, input: UpdateExposureRegisterInput) {
   try {
+    await requireTenantModule("chemicals");
     const { tenantId } = await getSessionContext();
     const existing = await loadExposureById(id, tenantId);
     if (!existing) return { success: false, error: "Not found" };
@@ -206,6 +237,23 @@ export async function updateExposureRegister(id: string, input: UpdateExposureRe
 
     const resolvedEndDate =
       input.exposureEndDate !== undefined ? input.exposureEndDate || null : existing.exposureEndDate;
+    const healthCheckRequired = input.healthCheckRequired ?? existing.healthCheckRequired;
+    const healthCheckDone = input.healthCheckDone ?? existing.healthCheckDone;
+
+    const validated = validateHealthRecord({
+      employeeName: input.employeeName ?? existing.employeeName,
+      homeAddress: input.homeAddress ?? existing.homeAddress,
+      exposureAgent: input.exposureAgent ?? existing.exposureAgent,
+      exposureStartDate: input.exposureStartDate ?? existing.exposureStartDate,
+      duration: input.duration !== undefined ? input.duration : existing.duration,
+      ppeUsed: input.ppeUsed !== undefined ? input.ppeUsed : existing.ppeUsed,
+      healthCheckRequired,
+      healthCheckDone,
+      fitnessForWork: input.fitnessForWork !== undefined ? input.fitnessForWork : existing.fitnessForWork,
+    });
+    if (validated.ok === false) {
+      return { success: false, error: validated.message };
+    }
 
     await assertTenantScopedExposureRelations(tenantId, {
       employeeId: input.employeeId,
@@ -214,8 +262,14 @@ export async function updateExposureRegister(id: string, input: UpdateExposureRe
       riskId: input.riskId,
     });
 
+    const retentionYears = Math.max(
+      input.retentionYears ?? existing.retentionYears,
+      COSHH_HEALTH_RECORD_YEARS,
+    );
     const patch: Record<string, unknown> = {
       status: deriveExposureStatus(resolvedEndDate, input.status ?? null),
+      retentionYears,
+      retentionUntilDate: computeRetentionUntilDate(retentionYears),
     };
     if (input.employeeId !== undefined) patch.employeeId = input.employeeId || null;
     if (input.employeeName) patch.employeeName = input.employeeName;
@@ -228,6 +282,7 @@ export async function updateExposureRegister(id: string, input: UpdateExposureRe
         return { success: false, error: "Enter a valid National Insurance number" };
       }
     }
+    if (input.homeAddress !== undefined) patch.homeAddress = input.homeAddress.trim();
     if (input.department !== undefined) patch.department = input.department || null;
     if (input.jobTitle) patch.jobTitle = input.jobTitle;
     if (input.workLocation) patch.workLocation = input.workLocation;
@@ -245,16 +300,15 @@ export async function updateExposureRegister(id: string, input: UpdateExposureRe
     if (input.healthCheckRequired !== undefined) patch.healthCheckRequired = input.healthCheckRequired;
     if (input.healthCheckDone !== undefined) patch.healthCheckDone = input.healthCheckDone;
     if (input.healthCheckDate !== undefined) patch.healthCheckDate = input.healthCheckDate || null;
-    if (input.retentionYears !== undefined) {
-      patch.retentionYears = input.retentionYears;
-      patch.retentionUntilDate = computeRetentionUntilDate(input.retentionYears);
+    if (input.fitnessForWork !== undefined) {
+      patch.fitnessForWork = healthCheckRequired ? input.fitnessForWork || null : null;
     }
     if (input.ruhReportId !== undefined) patch.ruhReportId = input.ruhReportId || null;
     if (input.riskId !== undefined) patch.riskId = input.riskId || null;
     if (input.comment !== undefined) patch.comment = input.comment || null;
 
     const updated = await updateExposureRecord(id, tenantId, patch);
-    revalidatePath("/dashboard/exposure-register");
+    revalidateHealthRecordPaths();
     return { success: true, data: updated };
   } catch (error: unknown) {
     return { success: false, error: errorMessage(error, "Could not update the health record") };
@@ -263,6 +317,7 @@ export async function updateExposureRegister(id: string, input: UpdateExposureRe
 
 export async function archiveExposureRegister(id: string) {
   try {
+    await requireTenantModule("chemicals");
     const { tenantId } = await getSessionContext();
     const existing = await loadExposureById(id, tenantId);
     if (!existing) return { success: false, error: "Not found" };
@@ -276,7 +331,7 @@ export async function archiveExposureRegister(id: string) {
     }
 
     await updateExposureRecord(id, tenantId, { status: "ARCHIVED", archivedAt: now });
-    revalidatePath("/dashboard/exposure-register");
+    revalidateHealthRecordPaths();
     return { success: true };
   } catch (error: unknown) {
     return { success: false, error: errorMessage(error, "Could not archive the record") };
@@ -285,6 +340,7 @@ export async function archiveExposureRegister(id: string) {
 
 export async function markExposureInactive(id: string, endDate: Date) {
   try {
+    await requireTenantModule("chemicals");
     const { tenantId } = await getSessionContext();
     const existing = await loadExposureById(id, tenantId);
     if (!existing) return { success: false, error: "Not found" };
@@ -292,9 +348,10 @@ export async function markExposureInactive(id: string, endDate: Date) {
     await updateExposureRecord(id, tenantId, {
       status: "INACTIVE",
       exposureEndDate: endDate,
+      retentionUntilDate: computeRetentionUntilDate(existing.retentionYears),
     });
 
-    revalidatePath("/dashboard/exposure-register");
+    revalidateHealthRecordPaths();
     return { success: true };
   } catch (error: unknown) {
     return { success: false, error: errorMessage(error, "Could not update the record") };

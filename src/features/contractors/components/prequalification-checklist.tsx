@@ -18,6 +18,7 @@ import { Shield, FileText, AlertTriangle, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { registerContractor } from "@/server/actions/contractor.actions";
 import { useRouter } from "next/navigation";
+import { ContractorLegalNote } from "@/features/contractors/components/contractor-legal-note";
 
 const TRADE_CATEGORIES = [
   "General Building",
@@ -55,6 +56,8 @@ interface FormState {
   contactPhone: string;
   address: string;
   tradeCategory: string;
+  workToBeDone: string;
+  hostInformationProvided: boolean;
   hasPublicLiabilityInsurance: boolean;
   publicLiabilityAmount: string;
   publicLiabilityExpiry: string;
@@ -80,6 +83,8 @@ export function PrequalificationChecklist() {
     contactPhone: "",
     address: "",
     tradeCategory: "",
+    workToBeDone: "",
+    hostInformationProvided: false,
     hasPublicLiabilityInsurance: false,
     publicLiabilityAmount: "",
     publicLiabilityExpiry: "",
@@ -113,6 +118,9 @@ export function PrequalificationChecklist() {
     if (!form.companyName.trim()) return toast.error("Company name is required");
     if (!form.contactName.trim()) return toast.error("Contact name is required");
     if (!form.contactEmail.trim()) return toast.error("Contact email is required");
+    if (form.workToBeDone.trim().length < 10) {
+      return toast.error("Describe the work they will do (at least 10 characters)");
+    }
 
     setSubmitting(true);
     try {
@@ -124,6 +132,8 @@ export function PrequalificationChecklist() {
         contactPhone: form.contactPhone || undefined,
         address: form.address || undefined,
         tradeCategory: form.tradeCategory || undefined,
+        workToBeDone: form.workToBeDone,
+        hostInformationProvided: form.hostInformationProvided,
         hasPublicLiabilityInsurance: form.hasPublicLiabilityInsurance,
         publicLiabilityAmount: form.publicLiabilityAmount || undefined,
         publicLiabilityExpiry: form.publicLiabilityExpiry ? new Date(form.publicLiabilityExpiry) : undefined,
@@ -149,6 +159,7 @@ export function PrequalificationChecklist() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+      <ContractorLegalNote />
       {/* Company Details */}
       <Card>
         <CardHeader className="pb-2">
@@ -220,6 +231,18 @@ export function PrequalificationChecklist() {
             </div>
           </div>
           <div className="space-y-1.5">
+            <Label>Work they will do *</Label>
+            <Textarea
+              value={form.workToBeDone}
+              onChange={(e) => updateField("workToBeDone", e.target.value)}
+              placeholder="e.g. Annual boiler service and gas-safe repairs on the Manchester depot"
+              rows={3}
+            />
+            <p className="text-xs text-muted-foreground">
+              INDG368 — identify the job before you select a contractor.
+            </p>
+          </div>
+          <div className="space-y-1.5">
             <Label>Address</Label>
             <Textarea
               value={form.address}
@@ -239,7 +262,10 @@ export function PrequalificationChecklist() {
             Insurance Details
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            Employers&apos; liability insurance is compulsory under the Employers&apos; Liability (Compulsory Insurance) Act 1969.
+            If the contractor has employees they must hold employers&apos; liability insurance
+            (Employers&apos; Liability (Compulsory Insurance) Act 1969). Checking a certificate
+            is good practice — it is their duty, not a named client form. Public liability is
+            not required by health and safety law.
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -282,7 +308,7 @@ export function PrequalificationChecklist() {
                 onCheckedChange={(c) => updateField("hasEmployersLiabilityInsurance", !!c)}
               />
               <Label htmlFor="eli" className="font-medium">
-                Employers&apos; Liability Insurance (compulsory)
+                Employers&apos; liability insurance (contractor&apos;s duty if they have employees)
               </Label>
             </div>
             {form.hasEmployersLiabilityInsurance && (
@@ -309,15 +335,17 @@ export function PrequalificationChecklist() {
         </CardContent>
       </Card>
 
-      {/* H&S Competence — CDM 2015, MHSWR 1999 reg.7 */}
+      {/* H&S competence — INDG368; CDM 2015 reg.8 only for construction */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            Health &amp; Safety Competence
+            Health and safety competence
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            CDM 2015 requires duty holders to ensure contractors are competent. MHSWR 1999 reg.7 requires appointment of competent persons.
+            Ask whether they can do this job safely (INDG368). A written policy is only
+            required if they have five or more employees (HSWA 1974 s.2(3)). Method
+            statements are industry practice, not a named statutory form.
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -356,7 +384,9 @@ export function PrequalificationChecklist() {
             Safety Accreditations
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            Select all accreditation schemes your organisation holds.
+            Optional. The law does not require conformity assessment (HSE). SSIP is one way
+            to show organisational capability for construction work — not proof they can
+            manage this job.
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -403,6 +433,29 @@ export function PrequalificationChecklist() {
               />
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Information from this undertaking (MHSWR regs 11 and 12)</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Give them comprehensible information on the risks from your work, the measures
+            you have taken, and emergency arrangements before they work on your site.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id="host-info"
+              checked={form.hostInformationProvided}
+              onCheckedChange={(c) => updateField("hostInformationProvided", !!c)}
+            />
+            <Label htmlFor="host-info" className="font-normal leading-snug">
+              Site risks, our controls and emergency arrangements have been given to this
+              contractor
+            </Label>
+          </div>
         </CardContent>
       </Card>
 

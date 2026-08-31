@@ -26,8 +26,11 @@ import { getTranslations } from "next-intl/server";
 import {
   loadInspectionDetail,
   loadInspectionPeople,
+  loadInspectionTenantPeople,
   parseParticipantIds,
 } from "@/server/queries/inspections.queries";
+import { InspectionFindingForm } from "@/features/inspections/components/inspection-finding-form";
+import { legalBasisLabel } from "@/lib/inspection-uk";
 
 export const dynamic = "force-dynamic";
 
@@ -106,7 +109,10 @@ export default async function InspectionDetailPage({
   }
 
   const participantIds = parseParticipantIds(inspection.participants);
-  const people = await loadInspectionPeople([inspection.conductedBy, ...participantIds]);
+  const [people, tenantPeople] = await Promise.all([
+    loadInspectionPeople([inspection.conductedBy, ...participantIds]),
+    loadInspectionTenantPeople(tenantId),
+  ]);
   const conductedByUser = people.find((person) => person.id === inspection.conductedBy) ?? null;
   const participants = people.filter((person) => participantIds.includes(person.id));
 
@@ -148,6 +154,12 @@ export default async function InspectionDetailPage({
               <Button className="bg-green-600 hover:bg-green-700" size="sm">
                 <Smartphone className="mr-2 h-4 w-4" />
                 {t("actions.mobileView")}
+              </Button>
+            </Link>
+            <Link href={`/api/inspections/${inspection.id}/report`}>
+              <Button variant="outline" size="sm">
+                <Download className="mr-2 h-4 w-4" />
+                {t("actions.downloadPdf")}
               </Button>
             </Link>
             <Link href={`/dashboard/inspections/${inspection.id}/edit`}>
@@ -269,6 +281,13 @@ export default async function InspectionDetailPage({
                 </div>
               </div>
             ) : null}
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-muted-foreground">Reason for inspection</p>
+                <p className="font-medium">{legalBasisLabel(inspection.legalBasis, inspection.type)}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -368,13 +387,23 @@ export default async function InspectionDetailPage({
 
       {/* Findings */}
       <Card id="funn">
-        <CardHeader>
-          <CardTitle>{t("findings.title")}</CardTitle>
-          <CardDescription>
-            {findingStats.total > 0
-              ? t("findings.registered", { count: findingStats.total })
-              : t("findings.noneDescription")}
-          </CardDescription>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle>{t("findings.title")}</CardTitle>
+            <CardDescription>
+              {findingStats.total > 0
+                ? t("findings.registered", { count: findingStats.total })
+                : t("findings.noneDescription")}
+            </CardDescription>
+          </div>
+          <InspectionFindingForm
+            inspectionId={inspection.id}
+            users={tenantPeople.map((person) => ({
+              id: person.id,
+              name: person.name,
+              email: person.email ?? "",
+            }))}
+          />
         </CardHeader>
         <CardContent>
           {inspection.findings.length === 0 ? (

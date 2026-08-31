@@ -9,15 +9,8 @@ import Link from "next/link";
 import { getPermitToWork } from "@/server/actions/permit-to-work.actions";
 import { PermitStatusActions } from "./permit-status-actions";
 import { PrintButton } from "./print-button";
-
-const PERMIT_TYPE_LABELS: Record<string, string> = {
-  HOT_WORK: "Hot Work",
-  CONFINED_SPACE: "Confined Space",
-  WORKING_AT_HEIGHT: "Working at Height",
-  EXCAVATION: "Excavation",
-  ELECTRICAL: "Electrical",
-  GENERAL: "General",
-};
+import { parsePermitPayload, permitTypeLabel } from "@/lib/permit-uk";
+import { PermitLegalNote } from "@/features/permits/components/permit-legal-note";
 
 const STATUS_STYLES: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   DRAFT: { label: "Draft", variant: "secondary" },
@@ -25,23 +18,6 @@ const STATUS_STYLES: Record<string, { label: string; variant: "default" | "secon
   CLOSED: { label: "Closed", variant: "outline" },
   CANCELLED: { label: "Cancelled", variant: "destructive" },
 };
-
-interface IsolationsData {
-  description?: string;
-  hazards?: string;
-  controlMeasures?: string;
-  isolationsRequired?: string;
-  ppeRequired?: string[];
-}
-
-function parseIsolations(raw: string | null): IsolationsData | null {
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as IsolationsData;
-  } catch {
-    return null;
-  }
-}
 
 export default async function PermitDetailPage({
   params,
@@ -61,7 +37,7 @@ export default async function PermitDetailPage({
   }
 
   const style = STATUS_STYLES[permit.status] ?? STATUS_STYLES.DRAFT;
-  const data = parseIsolations(permit.isolations);
+  const data = parsePermitPayload(permit.isolations);
 
   return (
     <div className="space-y-6 w-full max-w-4xl">
@@ -75,7 +51,7 @@ export default async function PermitDetailPage({
           <div>
             <h1 className="text-xl sm:text-2xl font-bold">{permit.title}</h1>
             <p className="text-sm text-muted-foreground">
-              {PERMIT_TYPE_LABELS[permit.type] ?? permit.type} permit
+              {permitTypeLabel(permit.type)} permit
             </p>
           </div>
         </div>
@@ -87,6 +63,8 @@ export default async function PermitDetailPage({
         </div>
       </div>
 
+      <PermitLegalNote />
+
       <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -96,7 +74,7 @@ export default async function PermitDetailPage({
             <div className="grid grid-cols-2 gap-2 text-sm">
               <span className="text-muted-foreground">Type</span>
               <span className="font-medium">
-                {PERMIT_TYPE_LABELS[permit.type] ?? permit.type}
+                {permitTypeLabel(permit.type)}
               </span>
 
               <span className="text-muted-foreground">Location</span>
@@ -118,6 +96,19 @@ export default async function PermitDetailPage({
               <span className="font-medium">
                 {new Date(permit.createdAt).toLocaleDateString("en-GB")}
               </span>
+
+              {data.issuerName && (
+                <>
+                  <span className="text-muted-foreground">Issued by</span>
+                  <span className="font-medium">{data.issuerName}</span>
+                </>
+              )}
+              {data.acceptorName && (
+                <>
+                  <span className="text-muted-foreground">Person in charge</span>
+                  <span className="font-medium">{data.acceptorName}</span>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -156,7 +147,7 @@ export default async function PermitDetailPage({
         </Card>
       </div>
 
-      {data?.description && (
+      {data.description && (
         <Card>
           <CardHeader>
             <CardTitle>Description of Work</CardTitle>
@@ -167,7 +158,7 @@ export default async function PermitDetailPage({
         </Card>
       )}
 
-      {(data?.hazards || data?.controlMeasures) && (
+      {(data.hazards || data.controlMeasures) && (
         <Card>
           <CardHeader>
             <CardTitle>Hazards &amp; Controls</CardTitle>
@@ -193,7 +184,7 @@ export default async function PermitDetailPage({
         </Card>
       )}
 
-      {data?.isolationsRequired && (
+      {data.isolationsRequired && (
         <Card>
           <CardHeader>
             <CardTitle>Isolations Required</CardTitle>
@@ -204,7 +195,18 @@ export default async function PermitDetailPage({
         </Card>
       )}
 
-      {data?.ppeRequired && data.ppeRequired.length > 0 && (
+      {data.emergencyArrangements && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Emergency and rescue arrangements</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm whitespace-pre-wrap">{data.emergencyArrangements}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {data.ppeRequired.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>PPE Required</CardTitle>

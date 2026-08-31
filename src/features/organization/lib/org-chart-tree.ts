@@ -4,6 +4,8 @@ export type OrgChartTreeNode = {
   title: string;
   name: string | null;
   department: string | null;
+  hsDutyKey: string | null;
+  hsDuty: string | null;
   sortOrder: number;
 };
 

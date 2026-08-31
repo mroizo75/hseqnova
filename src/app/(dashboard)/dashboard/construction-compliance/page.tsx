@@ -10,6 +10,7 @@ import { getPermissions } from "@/lib/permissions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CdmLegalNote } from "@/features/projects/components/cdm-legal-note";
 import { loadCdmOverviewProjects } from "@/server/queries/construction-compliance.queries";
 
 function formatDateOnly(date: Date): string {
@@ -45,8 +46,8 @@ export default async function ConstructionComplianceOverviewPage() {
   });
 
   const projectsWithMissingControl = rows.filter((row) => row.missingDailyCheck).length;
-  const projectsWithoutSha = rows.filter((row) => !row.hasShaPlan).length;
-  const projectsWithoutPreNotification = rows.filter((row) => !row.hasPreNotification).length;
+  const projectsWithoutCpp = rows.filter((row) => !row.hasActiveCpp).length;
+  const projectsMissingF10 = rows.filter((row) => row.f10Missing).length;
 
   return (
     <div className="space-y-6">
@@ -56,27 +57,32 @@ export default async function ConstructionComplianceOverviewPage() {
           CDM 2015 compliance
         </h1>
         <p className="text-muted-foreground">
-          Overview of the Construction Phase Plan, F10 notification and daily check of the site register.
+          Construction Phase Plan, F10 notification (when notifiable) and health and safety file.
         </p>
       </div>
+
+      <CdmLegalNote />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Missing daily check</p>
+            <p className="text-sm text-muted-foreground">Site register check outstanding</p>
             <p className="text-2xl font-bold text-amber-700">{projectsWithMissingControl}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Operational control — not a CDM 2015 duty.
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Projects without a Construction Phase Plan</p>
-            <p className="text-2xl font-bold text-red-700">{projectsWithoutSha}</p>
+            <p className="text-sm text-muted-foreground">Projects without an active Construction Phase Plan</p>
+            <p className="text-2xl font-bold text-red-700">{projectsWithoutCpp}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Projects without F10 notification</p>
-            <p className="text-2xl font-bold text-red-700">{projectsWithoutPreNotification}</p>
+            <p className="text-sm text-muted-foreground">Notifiable projects without a submitted F10</p>
+            <p className="text-2xl font-bold text-red-700">{projectsMissingF10}</p>
           </CardContent>
         </Card>
       </div>
@@ -85,7 +91,8 @@ export default async function ConstructionComplianceOverviewPage() {
         <CardHeader>
           <CardTitle>Projects</CardTitle>
           <CardDescription>
-            Open the project to record and maintain CDM 2015 data.
+            Open the project to record and maintain CDM 2015 data. The daily site register check is
+            an operational control, not a CDM duty.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -106,11 +113,21 @@ export default async function ConstructionComplianceOverviewPage() {
                   </Button>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant={row.hasShaPlan ? "default" : "destructive"}>
-                    {row.hasShaPlan ? "CPP recorded" : "CPP missing"}
+                  <Badge variant={row.hasActiveCpp ? "default" : "destructive"}>
+                    {row.hasActiveCpp ? "CPP active" : "CPP not active"}
                   </Badge>
-                  <Badge variant={row.hasPreNotification ? "default" : "destructive"}>
-                    {row.hasPreNotification ? "F10 notification OK" : "F10 notification missing"}
+                  <Badge
+                    variant={
+                      row.f10Missing ? "destructive" : row.f10Notifiable ? "default" : "secondary"
+                    }
+                  >
+                    {row.f10Missing
+                      ? "F10 not submitted"
+                      : row.f10Submitted
+                        ? "F10 submitted"
+                        : row.f10Notifiable
+                          ? "F10 required"
+                          : "F10 not required"}
                   </Badge>
                   <Badge variant={row.missingDailyCheck ? "destructive" : "secondary"}>
                     {row.missingDailyCheck
@@ -127,7 +144,7 @@ export default async function ConstructionComplianceOverviewPage() {
                     )}
                     Last check: {row.lastCheckDate ? new Date(row.lastCheckDate).toLocaleDateString("en-GB") : "None"}
                   </span>
-                  {!row.hasShaPlan || !row.hasPreNotification ? (
+                  {!row.hasActiveCpp || row.f10Missing ? (
                     <span className="inline-flex items-center gap-1 text-xs text-red-700">
                       <FileWarning className="h-3.5 w-3.5" />
                       Missing mandatory CDM records

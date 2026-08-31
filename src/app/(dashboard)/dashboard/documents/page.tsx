@@ -9,6 +9,7 @@ import { PageHelpDialog } from "@/components/dashboard/page-help-dialog";
 import { helpContent } from "@/lib/help-content";
 import { getTranslations } from "next-intl/server";
 import { loadDocumentsForList } from "@/server/queries/documents.queries";
+import { DocumentLegalNote } from "@/features/documents/components/document-legal-note";
 
 export default async function DocumentsPage() {
   const t = await getTranslations("dashboardDocumentsPage");
@@ -22,7 +23,12 @@ export default async function DocumentsPage() {
     redirect("/dashboard");
   }
 
-  const documents = await loadDocumentsForList(auth.tenantId);
+  const allDocuments = await loadDocumentsForList(auth.tenantId);
+  const canManageDocuments =
+    auth.permissions.canCreateDocuments || auth.permissions.canApproveDocuments;
+  const documents = canManageDocuments
+    ? allDocuments
+    : allDocuments.filter((row) => row.status === "APPROVED");
 
   const stats = {
     total: documents.length,
@@ -50,6 +56,8 @@ export default async function DocumentsPage() {
           </Button>
         )}
       </div>
+
+      <DocumentLegalNote />
 
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <Card>

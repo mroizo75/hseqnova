@@ -1,39 +1,36 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
-import { prisma } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Download, AlertTriangle, Calendar, MapPin, Package } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { normalizePpeFile } from "@/lib/pictograms";
 import { IsocyanateWarning } from "@/components/isocyanate-warning";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
+import { loadChemicalById } from "@/server/queries/chemicals.queries";
+import { loadCoshhAssessmentsForChemical } from "@/server/queries/coshh.queries";
 
 export default async function AnsattChemicalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getServerSession(authOptions);
   const t = await getTranslations("employeeChemicalDetailPage");
-  const locale = await getLocale();
   const dateLocale = "en-GB";
 
   if (!session?.user?.tenantId) {
     redirect("/login");
   }
 
-  const chemical = await prisma.chemical.findUnique({
-    where: {
-      id,
-      tenantId: session.user.tenantId,
-      status: "ACTIVE",
-    },
-  });
-
-  if (!chemical) {
+  const chemical = await loadChemicalById(id, session.user.tenantId);
+  if (!chemical || chemical.status !== "ACTIVE") {
     notFound();
   }
+
+  const assessments = await loadCoshhAssessmentsForChemical(
+    session.user.tenantId,
+    chemical.id,
+  );
 
   const isOverdue = chemical.nextReviewDate && new Date(chemical.nextReviewDate) < new Date();
 
@@ -149,6 +146,50 @@ export default async function AnsattChemicalDetailPage({ params }: { params: Pro
                 </p>
               </CardContent>
             </Card>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("assessments.title")}</CardTitle>
+          <CardDescription>{t("assessments.description")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {assessments.length === 0 ? (
+            <p className="text-sm text-amber-800">{t("assessments.empty")}</p>
+          ) : (
+            assessments.map((assessment) => (
+              <div key={assessment.id} className="space-y-3 border-b last:border-0 pb-4 last:pb-0">
+                <div>
+                  <p className="text-sm text-muted-foreground">{t("assessments.task")}</p>
+                  <p className="font-medium whitespace-pre-wrap">{assessment.taskDescription}</p>
+                </div>
+                {assessment.exposureRoutes && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">{t("assessments.routes")}</p>
+                    <p className="whitespace-pre-wrap">{assessment.exposureRoutes}</p>
+                  </div>
+                )}
+                {assessment.existingControls && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">{t("assessments.controls")}</p>
+                    <p className="whitespace-pre-wrap">{assessment.existingControls}</p>
+                  </div>
+                )}
+                {assessment.additionalControls && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">{t("assessments.further")}</p>
+                    <p className="whitespace-pre-wrap">{assessment.additionalControls}</p>
+                  </div>
+                )}
+                {assessment.healthSurveillance && (
+                  <p className="text-sm font-medium text-orange-800">
+                    {t("assessments.surveillance")}
+                  </p>
+                )}
+              </div>
+            ))
           )}
         </CardContent>
       </Card>

@@ -101,7 +101,7 @@ export function TavleExternalLinks({ tavleId, links: initial, canManage }: Props
                 <Input
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="f.eks. SHA-plan Excel"
+                  placeholder="e.g. Construction phase plan (Excel)"
                 />
               </div>
               <div className="space-y-1.5">

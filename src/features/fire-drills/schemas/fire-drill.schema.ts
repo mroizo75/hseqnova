@@ -42,15 +42,29 @@ export const completeFireDrillSchema = z.object({
   observations: z.string().min(10, "Observations are required (at least 10 characters)"),
 });
 
-export const evaluateFireDrillSchema = z.object({
-  objectivesAchieved: z.enum(["FULL", "PARTIAL", "NOT_ACHIEVED"], {
-    error: "Say whether the objectives were met",
-  }),
-  evaluation: z.string().min(10, "Review notes are required (at least 10 characters)"),
-  improvementPoints: z.string().min(5, "Improvement points are required"),
-  procedureChangesNeeded: z.boolean().default(false),
-  procedureChangesDesc: z.string().optional(),
-});
+export const evaluateFireDrillSchema = z
+  .object({
+    objectivesAchieved: z.enum(["FULL", "PARTIAL", "NOT_ACHIEVED"], {
+      error: "Say whether the objectives were met",
+    }),
+    evaluation: z.string().min(10, "Review notes are required (at least 10 characters)"),
+    improvementPoints: z.string().min(5, "Improvement points are required"),
+    procedureChangesNeeded: z.boolean().default(false),
+    procedureChangesDesc: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.objectivesAchieved !== "FULL" &&
+      (!data.procedureChangesDesc || data.procedureChangesDesc.trim().length < 5)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["procedureChangesDesc"],
+        message:
+          "If the drill was not fully satisfactory, record how the evacuation procedures will be changed (art.15).",
+      });
+    }
+  });
 
 export const updateFireDrillSchema = z.object({
   title: z.string().min(3).optional(),

@@ -150,6 +150,7 @@ export async function createRisk(input: any) {
         context: validated.context,
         description: sanitizeString(validated.description),
         existingControls: sanitizeString(validated.existingControls),
+        groupsAtRisk: sanitizeString(validated.groupsAtRisk),
         location: sanitizeString(validated.location),
         area: sanitizeString(validated.area),
         category: validated.category,
@@ -201,10 +202,11 @@ export async function createRisk(input: any) {
     });
     
     revalidatePath("/dashboard/risks");
+    revalidatePath("/ansatt/risikovurderinger");
     return { success: true, data: risk };
   } catch (error: any) {
     console.error("Create risk error:", error);
-    return { success: false, error: error.message || "Kunne ikke opprette risiko" };
+    return { success: false, error: error.message || "Could not create the risk" };
   }
 }
 
@@ -235,7 +237,7 @@ export async function updateRisk(input: any) {
       .maybeSingle();
     
     if (!existingRisk) {
-      return { success: false, error: "Risiko ikke funnet" };
+      return { success: false, error: "Risk not found" };
     }
     
     // Beregn ny score hvis likelihood eller consequence endres
@@ -258,6 +260,7 @@ export async function updateRisk(input: any) {
     if (validated.context) updateData.context = validated.context;
     if (validated.description !== undefined) updateData.description = sanitizeString(validated.description);
     if (validated.existingControls !== undefined) updateData.existingControls = sanitizeString(validated.existingControls);
+    if (validated.groupsAtRisk !== undefined) updateData.groupsAtRisk = sanitizeString(validated.groupsAtRisk);
     if (validated.location !== undefined) updateData.location = sanitizeString(validated.location);
     if (validated.area !== undefined) updateData.area = sanitizeString(validated.area);
     if (validated.ownerId) updateData.ownerId = validated.ownerId;
@@ -357,11 +360,12 @@ export async function updateRisk(input: any) {
     });
     
     revalidatePath("/dashboard/risks");
+    revalidatePath("/ansatt/risikovurderinger");
     revalidatePath(`/dashboard/risks/${risk.id}`);
     return { success: true, data: risk };
   } catch (error: any) {
     console.error("Update risk error:", error);
-    return { success: false, error: error.message || "Kunne ikke oppdatere risiko" };
+    return { success: false, error: error.message || "Could not update the risk" };
   }
 }
 
@@ -378,7 +382,7 @@ export async function deleteRisk(id: string) {
       .maybeSingle();
     
     if (!risk) {
-      return { success: false, error: "Risiko ikke funnet" };
+      return { success: false, error: "Risk not found" };
     }
     
     const { error } = await getAdminDb().from("Risk").delete().eq("id", id).eq("tenantId", tenantId);
@@ -395,10 +399,11 @@ export async function deleteRisk(id: string) {
     });
     
     revalidatePath("/dashboard/risks");
+    revalidatePath("/ansatt/risikovurderinger");
     return { success: true };
   } catch (error: any) {
     console.error("Delete risk error:", error);
-    return { success: false, error: error.message || "Kunne ikke slette risiko" };
+    return { success: false, error: error.message || "Could not delete the risk" };
   }
 }
 
@@ -425,7 +430,7 @@ export async function getRiskStats(tenantId: string) {
     return { success: true, data: stats };
   } catch (error: any) {
     console.error("Get risk stats error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente statistikk" };
+    return { success: false, error: error.message || "Could not load statistics" };
   }
 }
 
@@ -482,6 +487,7 @@ export async function createRiskAssessment(input: {
     });
 
     revalidatePath("/dashboard/risks");
+    revalidatePath("/ansatt/risikovurderinger");
     revalidatePath(`/dashboard/risks/assessment/${assessment.id}`);
     return { success: true, data: assessment };
   } catch (error: unknown) {
@@ -498,6 +504,7 @@ export async function updateRiskAssessment(input: {
   approvedAt?: string | null;
   reviewedById?: string | null;
   reviewedAt?: string | null;
+  groupsAtRisk?: string | null;
 }) {
   try {
     const { user, tenantId, role } = await getActionContext();
@@ -509,12 +516,12 @@ export async function updateRiskAssessment(input: {
       .eq("id", validated.id)
       .eq("tenantId", tenantId)
       .maybeSingle();
-    if (!existing) return { success: false, error: "Risikovurdering ikke funnet" };
+    if (!existing) return { success: false, error: "Risk assessment not found" };
 
     if (validated.title !== undefined) {
       const permissions = getPermissions(role);
       if (!permissions.canCreateRisks) {
-        return { success: false, error: "Ingen tilgang til å endre tittel på risikovurdering" };
+        return { success: false, error: "No access to change the assessment title" };
       }
     }
 
@@ -528,6 +535,7 @@ export async function updateRiskAssessment(input: {
         approvedAt: validated.approvedAt ? toIso(validated.approvedAt) : validated.approvedAt,
         reviewedById: validated.reviewedById,
         reviewedAt: validated.reviewedAt ? toIso(validated.reviewedAt) : validated.reviewedAt,
+        ...(validated.groupsAtRisk !== undefined && { groupsAtRisk: validated.groupsAtRisk?.trim() || null }),
         updatedAt: new Date().toISOString(),
       })
       .eq("id", validated.id)
@@ -552,9 +560,10 @@ export async function updateRiskAssessment(input: {
 
     revalidatePath(`/dashboard/risks/assessment/${assessment.id}`);
     revalidatePath("/dashboard/risks");
+    revalidatePath("/ansatt/risikovurderinger");
     return { success: true, data: assessment };
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Kunne ikke oppdatere risikovurdering";
+    const message = error instanceof Error ? error.message : "Could not update the risk assessment";
     return { success: false, error: message };
   }
 }
@@ -565,7 +574,7 @@ export async function getRiskAssessments(tenantId: string) {
     const assessments = await loadRiskAssessmentsForList(tenantId);
     return { success: true, data: assessments };
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Kunne ikke hente risikovurderinger";
+    const message = error instanceof Error ? error.message : "Could not load risk assessments";
     return { success: false, error: message };
   }
 }
@@ -574,10 +583,10 @@ export async function getRiskAssessment(assessmentId: string) {
   try {
     const { tenantId } = await getActionContext();
     const assessment = await loadRiskAssessmentDetail(tenantId, assessmentId);
-    if (!assessment) return { success: false, error: "Risikovurdering ikke funnet" };
+    if (!assessment) return { success: false, error: "Risk assessment not found" };
     return { success: true, data: assessment };
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Kunne ikke hente risikovurdering";
+    const message = error instanceof Error ? error.message : "Could not load the risk assessment";
     return { success: false, error: message };
   }
 }
@@ -591,7 +600,7 @@ export async function deleteRiskAssessment(assessmentId: string) {
       .eq("id", assessmentId)
       .eq("tenantId", tenantId)
       .maybeSingle();
-    if (!assessment) return { success: false, error: "Risikovurdering ikke funnet" };
+    if (!assessment) return { success: false, error: "Risk assessment not found" };
 
     const { count } = await getAdminDb()
       .from("Risk")
@@ -613,9 +622,10 @@ export async function deleteRiskAssessment(assessmentId: string) {
     });
 
     revalidatePath("/dashboard/risks");
+    revalidatePath("/ansatt/risikovurderinger");
     return { success: true };
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Kunne ikke slette risikovurdering";
+    const message = error instanceof Error ? error.message : "Could not delete the risk assessment";
     return { success: false, error: message };
   }
 }
@@ -630,14 +640,16 @@ export async function addRiskAssessmentItem(input: {
   category: string;
   assessmentDate?: string | null;
   nextReviewDate?: string | null;
+  whoMightBeHarmed?: string | null;
   beskrivelse?: string | null;
   konsekvens?: string | null;
   existingControls?: string | null;
+  groupsAtRisk?: string | null;
   suggestedMeasures?: string[];
 }) {
   try {
     const { tenantId: ctxTenantId } = await getActionContext();
-    if (input.tenantId !== ctxTenantId) return { success: false, error: "Ugyldig tenant" };
+    if (input.tenantId !== ctxTenantId) return { success: false, error: "Not authorised" };
 
     const { data: assessment } = await getAdminDb()
       .from("RiskAssessment")
@@ -645,19 +657,25 @@ export async function addRiskAssessmentItem(input: {
       .eq("id", input.riskAssessmentId)
       .eq("tenantId", input.tenantId)
       .maybeSingle();
-    if (!assessment) return { success: false, error: "Risikovurdering ikke funnet" };
+    if (!assessment) return { success: false, error: "Risk assessment not found" };
 
     const { likelihood, consequence } = riskLevelToMatrix[input.level];
     const score = likelihood * consequence;
-    const beskrivelseTrimmed = (input.beskrivelse ?? "").trim();
-    const context =
-      beskrivelseTrimmed.length >= 10
-        ? beskrivelseTrimmed
-        : input.title.length >= 10
-          ? input.title
-          : `${input.title} (risikopunkt)`;
+    const context = (input.whoMightBeHarmed ?? input.beskrivelse ?? "").trim();
+    if (context.length < 10) {
+      return {
+        success: false,
+        error: "Record who might be harmed and how (MHSWR 1999 reg.3(6); HSE).",
+      };
+    }
+    const existingControls = (input.existingControls ?? "").trim();
+    if (existingControls.length < 8) {
+      return {
+        success: false,
+        error: "Record existing controls — what you are already doing to control the risk (HSE).",
+      };
+    }
     const riskStatement = (input.konsekvens ?? "").trim() || null;
-    const existingControls = (input.existingControls ?? "").trim() || null;
 
     const normalizedMeasures = (input.suggestedMeasures ?? [])
       .map((item) => item.trim())
@@ -676,6 +694,7 @@ export async function addRiskAssessmentItem(input: {
         context,
         riskStatement,
         existingControls,
+        groupsAtRisk: (input.groupsAtRisk ?? "").trim() || null,
         likelihood,
         consequence,
         score,
@@ -719,10 +738,11 @@ export async function addRiskAssessmentItem(input: {
     }
 
     revalidatePath("/dashboard/risks");
+    revalidatePath("/ansatt/risikovurderinger");
     revalidatePath(`/dashboard/risks/assessment/${input.riskAssessmentId}`);
     return { success: true, data: risk };
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Kunne ikke legge til risikopunkt";
+    const message = error instanceof Error ? error.message : "Could not add the risk item";
     return { success: false, error: message };
   }
 }
@@ -852,6 +872,7 @@ export async function createRiskAssessmentFromStarter(input: {
     }
 
     revalidatePath("/dashboard/risks");
+    revalidatePath("/ansatt/risikovurderinger");
     revalidatePath(`/dashboard/risks/assessment/${assessmentId}`);
     return { success: true, assessmentId };
   } catch (error: unknown) {

@@ -73,8 +73,8 @@ export async function GET(
       localAuthority: "",
 
       injuredPersonName: incident.involvedPersons ?? undefined,
-      injuredPersonOccupation: undefined,
-      injuredPersonEmploymentStatus: "employee",
+      injuredPersonOccupation: incident.injuredPersonOccupation ?? undefined,
+      injuredPersonEmploymentStatus: incident.injuredPersonRole ?? "employee",
 
       incidentType: incident.riddorCategory,
       injuryDescription: incident.injuryDescription ?? incident.injuryType ?? undefined,

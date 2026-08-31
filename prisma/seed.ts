@@ -530,14 +530,14 @@ async function main() {
 
   // Standard HMS-kurs (globale kursmaler tilgjengelige for alle bedrifter)
   const standardCourses = [
-    { courseKey: "hms-intro", title: "HMS Introduksjon", description: "Grunnleggende HMS-opplæring for alle ansatte", provider: null as string | null, isRequired: true, validityYears: null as number | null },
-    { courseKey: "working-at-height", title: "Arbeid i høyden", description: "Sikker bruk av stige, stillas og fallutstyr", provider: null, isRequired: false, validityYears: 3 },
-    { courseKey: "first-aid", title: "Førstehjelp", description: "Grunnleggende førstehjelp og hjerte-lungeredning", provider: "Røde Kors", isRequired: false, validityYears: 2 },
-    { courseKey: "fire-safety", title: "Brannsikkerhet", description: "Brannvernopplæring og bruk av slokkeutstyr", provider: null, isRequired: true, validityYears: 1 },
-    { courseKey: "chemical-handling", title: "Kjemikaliehåndtering", description: "Sikker håndtering og lagring av kjemikalier", provider: null, isRequired: false, validityYears: 3 },
-    { courseKey: "forklift", title: "Truckførerbevis", description: "Godkjent opplæring for truckkjøring", provider: null, isRequired: false, validityYears: 5 },
-    { courseKey: "hot-work", title: "Varmt arbeid", description: "Sertifikat for varmt arbeid (sveising, skjæring)", provider: null, isRequired: false, validityYears: 3 },
-    { courseKey: "confined-space", title: "Arbeid i trange rom", description: "Sikkerhet ved arbeid i trange/lukkede rom", provider: null, isRequired: false, validityYears: 3 },
+    { courseKey: "hms-intro", title: "Health and safety induction", description: "Information, instruction and training for new employees (HSWA 1974 s.2(2)(c); MHSWR 1999 reg.13(2)(a)).", provider: null as string | null, isRequired: true, validityYears: null as number | null },
+    { courseKey: "working-at-height", title: "Working at height", description: "Safe use of ladders, scaffolding and fall-arrest equipment (Work at Height Regulations 2005).", provider: null, isRequired: false, validityYears: 3 },
+    { courseKey: "first-aid", title: "First aid", description: "Emergency first aid and resuscitation (Health and Safety (First-Aid) Regulations 1981).", provider: "St John Ambulance", isRequired: false, validityYears: 2 },
+    { courseKey: "fire-safety", title: "Fire safety", description: "Fire precautions, escape routes and extinguishers (Fire Safety Order 2005 art.21).", provider: null, isRequired: true, validityYears: 1 },
+    { courseKey: "chemical-handling", title: "COSHH / hazardous substances", description: "Safe handling and storage of hazardous substances (COSHH 2002).", provider: null, isRequired: false, validityYears: 3 },
+    { courseKey: "forklift", title: "Lift-truck operator", description: "Operator training before using a lift truck (HSE ACOP L117).", provider: null, isRequired: false, validityYears: 5 },
+    { courseKey: "hot-work", title: "Hot work", description: "Permit and competence for welding, cutting or other hot work.", provider: null, isRequired: false, validityYears: 3 },
+    { courseKey: "confined-space", title: "Confined spaces", description: "Safe working in confined spaces (Confined Spaces Regulations 1997).", provider: null, isRequired: false, validityYears: 3 },
   ];
 
   for (const c of standardCourses) {

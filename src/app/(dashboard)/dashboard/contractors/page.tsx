@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { listContractors } from "@/server/actions/contractor.actions";
 import type { PreQualStatus } from "@prisma/client";
+import { ContractorLegalNote } from "@/features/contractors/components/contractor-legal-note";
 
 const STATUS_STYLES: Record<
   PreQualStatus,
@@ -76,7 +77,8 @@ export default async function ContractorsPage({
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Contractors</h1>
           <p className="text-sm text-muted-foreground">
-            Pre-qualification register — CDM 2015 · MHSWR 1999 reg.7
+            Register, select and brief contractors working in this undertaking (HSWA 1974 s.3;
+            MHSWR 1999 regs 11 and 12).
           </p>
         </div>
         <Button asChild className="w-full sm:w-auto shrink-0">
@@ -86,6 +88,8 @@ export default async function ContractorsPage({
           </Link>
         </Button>
       </div>
+
+      <ContractorLegalNote />
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">

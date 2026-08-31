@@ -27,7 +27,7 @@ export function RiskTrainingRequirements({
   const [showAddDialog, setShowAddDialog] = useState(false);
 
   const handleRemove = async (requirementId: string, courseTitle: string) => {
-    if (!confirm(`Er du sikker på at du vil fjerne kravet om "${courseTitle}"?`)) {
+    if (!confirm(`Remove the requirement for “${courseTitle}”?`)) {
       return;
     }
 
@@ -36,16 +36,16 @@ export function RiskTrainingRequirements({
 
     if (result.success) {
       toast({
-        title: "✅ Opplæringskrav fjernet",
-        description: `"${courseTitle}" er ikke lenger påkrevd for denne risikoen`,
+        title: "Training requirement removed",
+        description: `“${courseTitle}” is no longer required for this risk`,
         className: "bg-green-50 border-green-200",
       });
       router.refresh();
     } else {
       toast({
         variant: "destructive",
-        title: "Feil",
-        description: result.error || "Kunne ikke fjerne opplæringskrav",
+        title: "Could not remove",
+        description: result.error || "The training requirement could not be removed",
       });
     }
 
@@ -59,16 +59,16 @@ export function RiskTrainingRequirements({
           <div className="flex items-center gap-2">
             <GraduationCap className="h-5 w-5 text-blue-600" />
             <div>
-              <CardTitle>Opplæringskrav</CardTitle>
+              <CardTitle>Training required for this risk</CardTitle>
               <CardDescription>
-                Påkrevd opplæring for å håndtere denne risikoen
+                Training needed so people can control this risk (MHSWR 1999 reg.13)
               </CardDescription>
             </div>
           </div>
           {canEdit && (
             <Button onClick={() => setShowAddDialog(true)} size="sm">
               <Plus className="h-4 w-4 mr-2" />
-              Legg til kurs
+              Add course
             </Button>
           )}
         </div>
@@ -77,10 +77,10 @@ export function RiskTrainingRequirements({
         {requirements.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <GraduationCap className="h-12 w-12 mx-auto mb-3 opacity-20" />
-            <p>Ingen opplæringskrav definert</p>
+            <p>No training is required for this risk yet</p>
             {canEdit && (
               <p className="text-sm mt-2">
-                Klikk &quot;Legg til kurs&quot; for å legge til påkrevd opplæring
+                Add a course if this risk needs specific training
               </p>
             )}
           </div>
@@ -98,7 +98,7 @@ export function RiskTrainingRequirements({
                       {req.course?.title || req.courseKey}
                     </h4>
                     {req.isMandatory && (
-                      <Badge variant="destructive">Obligatorisk</Badge>
+                      <Badge variant="destructive">Required</Badge>
                     )}
                   </div>
 
@@ -110,14 +110,14 @@ export function RiskTrainingRequirements({
 
                   {req.course?.duration && (
                     <p className="text-sm text-muted-foreground">
-                      Varighet: {req.course.duration} timer
+                      Duration: {req.course.duration} hours
                     </p>
                   )}
 
                   {req.reason && (
                     <div className="mt-2 text-sm bg-blue-50 text-blue-800 p-2 rounded">
                       <AlertCircle className="h-3 w-3 inline mr-1" />
-                      <strong>Begrunnelse:</strong> {req.reason}
+                      <strong>Reason:</strong> {req.reason}
                     </div>
                   )}
                 </div>

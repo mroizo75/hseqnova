@@ -54,11 +54,11 @@ export const DEFAULT_HMS_PULSE_ITEMS: HmsPulseItem[] = [
   },
   {
     id: "compliance-measures",
-    title: "Tiltak og fristoppfølging",
+    title: "Actions and due dates",
     href: "/dashboard/actions",
     source: "compliance",
     complianceKey: "measures",
-    legalRef: "IK-HMS § 5 nr. 6 og nr. 7",
+    legalRef: "MHSWR 1999 reg.5; HSG245",
   },
   {
     id: "compliance-training",

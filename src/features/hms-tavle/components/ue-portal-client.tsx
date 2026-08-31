@@ -408,7 +408,7 @@ export function UePortalClient({
                 Meld inn nytt
               </Button>
               <Button variant="outline" asChild>
-                <Link href={`/tavle/${publicToken}`}>Tilbake til HMS-tavlen</Link>
+                <Link href={`/tavle/${publicToken}`}>Back to the safety board</Link>
               </Button>
             </div>
           </div>

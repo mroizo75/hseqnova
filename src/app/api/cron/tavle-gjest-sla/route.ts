@@ -14,26 +14,19 @@ import { notifyGuestSlaBreach } from "@/features/hms-tavle/lib/gjesteservice-not
 import { calculateRetentionCutoff } from "@/features/hms-tavle/lib/oversiktsliste-config";
 
 /**
- * Cron-jobb for HMS-tavlen. Kjøres hver time.
+ * Hourly digital safety board jobs.
  *
- * 1. Eskalerer ubehandlede gjestmeldinger som har passert serviceløftet (SLA)
- *    til ledelsen – IK-HMS § 5 krever at avvik faktisk følges opp.
- * 2. Sletter gjestmeldinger eldre enn lagringstiden, inkludert vedlegg
- *    – GDPR art. 5(1)(e) om lagringsbegrensning.
- * 3. Sletter oversiktslister seks måneder etter at arbeidet er avsluttet
- *    – Byggherreforskriften § 15 fjerde ledd, jf. GDPR art. 5(1)(e).
+ * 1. Escalate guest messages past the service promise.
+ * 2. Delete guest messages older than the retention period — UK GDPR storage limitation.
+ * 3. Delete operational site-register rows six months after work ends — not a CDM duty.
  */
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
- * Sletter oversiktslister der oppbevaringsfristen er ute.
- *
- * Byggherreforskriften § 15 krever at listen oppbevares i seks måneder etter at
- * arbeidet er avsluttet – ikke kortere, og ikke uten sluttdato. Sluttdato hentes
- * fra tavlen eller det koblede prosjektet. Mangler den, regnes arbeidet som
- * avsluttet ved siste innsjekk.
+ * Deletes operational site-register rows after the retention period.
+ * Six months after work ends is an operational choice, not a CDM statutory period.
  */
 async function slettUtgaatteOversiktslister(
   now: Date,

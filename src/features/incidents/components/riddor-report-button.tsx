@@ -18,6 +18,7 @@ const DEADLINE_LABELS: Record<string, string> = {
   over_seven_day: "Report within 15 days from day of incapacity",
   occupational_disease: "Report within 10 days of diagnosis",
   dangerous_occurrence: "Report within 10 days",
+  non_worker: "Report within 10 days",
 };
 
 function getDeadlineStatus(dueAt: Date | null): {

@@ -74,6 +74,8 @@ const preNotificationSchema = z.object({
   maxWorkersSimultaneous: z.number().int().positive().optional().nullable(),
   plannedBusinessesCount: z.number().int().positive().optional().nullable(),
   visibleAtSite: z.boolean().optional(),
+  localAuthority: z.string().optional().nullable(),
+  clientDutyAcknowledged: z.boolean().optional(),
 });
 
 const updatePayloadSchema = z.object({
@@ -444,6 +446,8 @@ export async function PUT(
           maxWorkersSimultaneous: payload.preNotification.maxWorkersSimultaneous ?? null,
           plannedBusinessesCount: payload.preNotification.plannedBusinessesCount ?? null,
           visibleAtSite: payload.preNotification.visibleAtSite ?? false,
+          localAuthority: payload.preNotification.localAuthority ?? null,
+          clientDutyAcknowledged: payload.preNotification.clientDutyAcknowledged ?? false,
         },
         update: {
           ...(payload.preNotification.status !== undefined && { status: payload.preNotification.status }),
@@ -500,6 +504,12 @@ export async function PUT(
           }),
           ...(payload.preNotification.visibleAtSite !== undefined && {
             visibleAtSite: payload.preNotification.visibleAtSite,
+          }),
+          ...(payload.preNotification.localAuthority !== undefined && {
+            localAuthority: payload.preNotification.localAuthority,
+          }),
+          ...(payload.preNotification.clientDutyAcknowledged !== undefined && {
+            clientDutyAcknowledged: payload.preNotification.clientDutyAcknowledged,
           }),
         },
       });

@@ -1,19 +1,11 @@
 /**
- * Live HSEQ Nova data for sections on the Digital Safety Board.
- *
- * Gjelder kun tavler på ADDON-plan som er koblet til et prosjekt. Tavlen er
- * offentlig, så her hentes bare det som skal kunne stå på en vegg: statuser,
- * antall og titler på planlagt arbeid. Aldri personopplysninger utover navn på
- * ansvarlig, og aldri innhold i avvik eller funn.
- *
- * Byggherreforskriften § 19 krever at arbeidstakere og verneombud får informasjon
- * om tiltakene for sikkerhet, helse og arbeidsmiljø. Seksjonene her er den
- * informasjonsflaten.
+ * Live HSEQ data for the digital safety board.
+ * Public screens show status, counts and titles — not personal incident content.
+ * CDM 2015: bring site information to people on site (regs 12 and 13).
  */
 
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 
-/** Fixed step count for annual H&S plan progress on the safety board. */
 const ANNUAL_PLAN_STEP_COUNT = 12;
 
 export interface TavleSjaItem {
@@ -60,27 +52,29 @@ export interface TavleLiveData {
   kpi: TavleKpiData | null;
 }
 
-/** Antall dager framover et gyldighetsbevis regnes som «utløper snart». */
 const EXPIRING_SOON_DAYS = 60;
-
 const VERNERUNDE_TYPES = ["VERNERUNDE", "SIKKERHETSVANDRING"] as const;
 
-function toIso(value: Date | null | undefined): string | null {
-  return value ? value.toISOString() : null;
+function toIso(value: unknown): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-/**
- * Henter live-data for seksjonstypene som trenger det. Returnerer tomt objekt
- * for standalone-tavler, som i stedet viser manuelt registrerte tall.
- */
+function parseDate(value: unknown): Date | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 export async function getTavleLiveData(params: {
   tenantId: string;
   projectId: string | null;
   sectionTypes: ReadonlyArray<string>;
 }): Promise<TavleLiveData> {
   const { tenantId, projectId, sectionTypes } = params;
-  const trengs = new Set(sectionTypes);
-  const tomt: TavleLiveData = {
+  const needed = new Set(sectionTypes);
+  const empty: TavleLiveData = {
     sja: [],
     vernerunde: null,
     opplaring: null,
@@ -91,165 +85,224 @@ export async function getTavleLiveData(params: {
   const now = new Date();
 
   const [sja, vernerunde, opplaring, aarshjul, kpi] = await Promise.all([
-    trengs.has("SJA_AKTIVE") ? hentSja(tenantId, projectId) : Promise.resolve(tomt.sja),
-    trengs.has("VERNERUNDE_STATUS")
-      ? hentVernerunde(tenantId, projectId, now)
+    needed.has("SJA_AKTIVE") ? loadSja(tenantId, projectId) : Promise.resolve(empty.sja),
+    needed.has("VERNERUNDE_STATUS")
+      ? loadInspections(tenantId, projectId, now)
       : Promise.resolve(null),
-    trengs.has("OPPLARING_STATUS") ? hentOpplaring(tenantId, now) : Promise.resolve(null),
-    trengs.has("HMS_PLAN_AARSHJUL") ? hentAarshjul(tenantId, now) : Promise.resolve(null),
-    trengs.has("KPI_DASHBOARD") ? hentKpi(tenantId, projectId, now) : Promise.resolve(null),
+    needed.has("OPPLARING_STATUS") ? loadTraining(tenantId, now) : Promise.resolve(null),
+    needed.has("HMS_PLAN_AARSHJUL") ? loadAnnualPlan(tenantId, now) : Promise.resolve(null),
+    needed.has("KPI_DASHBOARD") ? loadKpi(tenantId, projectId, now) : Promise.resolve(null),
   ]);
 
   return { sja, vernerunde, opplaring, aarshjul, kpi };
 }
 
-async function hentSja(tenantId: string, projectId: string | null): Promise<TavleSjaItem[]> {
-  const rader = await prisma.sjaAnalysis.findMany({
-    where: {
-      tenantId,
-      status: "ACTIVE",
-      ...(projectId ? { projectId } : {}),
-    },
-    orderBy: { plannedDate: "asc" },
-    take: 6,
-    select: {
-      id: true,
-      title: true,
-      workLocation: true,
-      responsibleName: true,
-      plannedDate: true,
-    },
-  });
-
-  return rader.map((rad) => ({
-    id: rad.id,
-    title: rad.title,
-    workLocation: rad.workLocation,
-    responsibleName: rad.responsibleName,
-    plannedDate: rad.plannedDate.toISOString(),
+async function loadSja(tenantId: string, projectId: string | null): Promise<TavleSjaItem[]> {
+  let query = getAdminDb()
+    .from("SjaAnalysis")
+    .select("id, title, workLocation, responsibleName, plannedDate")
+    .eq("tenantId", tenantId)
+    .eq("status", "ACTIVE")
+    .order("plannedDate", { ascending: true })
+    .limit(6);
+  if (projectId) query = query.eq("projectId", projectId);
+  const { data } = await query;
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    title: row.title as string,
+    workLocation: (row.workLocation as string) ?? "",
+    responsibleName: (row.responsibleName as string) ?? "",
+    plannedDate: toIso(row.plannedDate) ?? "",
   }));
 }
 
-async function hentVernerunde(
+async function loadInspections(
   tenantId: string,
   projectId: string | null,
-  now: Date
+  now: Date,
 ): Promise<TavleVernerundeData> {
-  const tolvManederSiden = new Date(now);
-  tolvManederSiden.setMonth(tolvManederSiden.getMonth() - 12);
+  const twelveMonthsAgo = new Date(now);
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
-  const basis = {
-    tenantId,
-    type: { in: [...VERNERUNDE_TYPES] },
-    ...(projectId ? { projectId } : {}),
-  };
+  let completedQuery = getAdminDb()
+    .from("Inspection")
+    .select("id, completedDate")
+    .eq("tenantId", tenantId)
+    .in("type", [...VERNERUNDE_TYPES])
+    .eq("status", "COMPLETED")
+    .order("completedDate", { ascending: false })
+    .limit(1);
+  if (projectId) completedQuery = completedQuery.eq("projectId", projectId);
 
-  const [siste, neste, apneFunn, fullforte] = await Promise.all([
-    prisma.inspection.findFirst({
-      where: { ...basis, status: "COMPLETED" },
-      orderBy: { completedDate: "desc" },
-      select: { completedDate: true },
-    }),
-    prisma.inspection.findFirst({
-      where: { ...basis, status: { in: ["PLANNED", "IN_PROGRESS"] }, scheduledDate: { gte: now } },
-      orderBy: { scheduledDate: "asc" },
-      select: { scheduledDate: true },
-    }),
-    prisma.inspectionFinding.count({
-      where: {
-        status: { in: ["OPEN", "IN_PROGRESS"] },
-        inspection: basis,
-      },
-    }),
-    prisma.inspection.count({
-      where: { ...basis, status: "COMPLETED", completedDate: { gte: tolvManederSiden } },
-    }),
+  let nextQuery = getAdminDb()
+    .from("Inspection")
+    .select("scheduledDate")
+    .eq("tenantId", tenantId)
+    .in("type", [...VERNERUNDE_TYPES])
+    .in("status", ["PLANNED", "IN_PROGRESS"])
+    .gte("scheduledDate", now.toISOString())
+    .order("scheduledDate", { ascending: true })
+    .limit(1);
+  if (projectId) nextQuery = nextQuery.eq("projectId", projectId);
+
+  let yearQuery = getAdminDb()
+    .from("Inspection")
+    .select("id", { count: "exact", head: true })
+    .eq("tenantId", tenantId)
+    .in("type", [...VERNERUNDE_TYPES])
+    .eq("status", "COMPLETED")
+    .gte("completedDate", twelveMonthsAgo.toISOString());
+  if (projectId) yearQuery = yearQuery.eq("projectId", projectId);
+
+  const [siste, neste, fullforte, idsRes] = await Promise.all([
+    completedQuery.maybeSingle(),
+    nextQuery.maybeSingle(),
+    yearQuery,
+    projectId
+      ? getAdminDb()
+          .from("Inspection")
+          .select("id")
+          .eq("tenantId", tenantId)
+          .eq("projectId", projectId)
+          .in("type", [...VERNERUNDE_TYPES])
+      : getAdminDb()
+          .from("Inspection")
+          .select("id")
+          .eq("tenantId", tenantId)
+          .in("type", [...VERNERUNDE_TYPES]),
   ]);
 
+  const inspectionIds = (idsRes.data ?? []).map((row) => row.id as string);
+  let openFindings = 0;
+  if (inspectionIds.length > 0) {
+    const { count } = await getAdminDb()
+      .from("InspectionFinding")
+      .select("id", { count: "exact", head: true })
+      .in("inspectionId", inspectionIds)
+      .in("status", ["OPEN", "IN_PROGRESS"]);
+    openFindings = count ?? 0;
+  }
+
   return {
-    lastCompletedAt: toIso(siste?.completedDate),
-    nextPlannedAt: toIso(neste?.scheduledDate),
-    openFindings: apneFunn,
-    completedLast12Months: fullforte,
+    lastCompletedAt: toIso(siste.data?.completedDate),
+    nextPlannedAt: toIso(neste.data?.scheduledDate),
+    openFindings,
+    completedLast12Months: fullforte.count ?? 0,
   };
 }
 
-async function hentOpplaring(tenantId: string, now: Date): Promise<TavleOpplaringData> {
-  const snartUtlopt = new Date(now);
-  snartUtlopt.setDate(snartUtlopt.getDate() + EXPIRING_SOON_DAYS);
+async function loadTraining(tenantId: string, now: Date): Promise<TavleOpplaringData> {
+  const soon = new Date(now);
+  soon.setDate(soon.getDate() + EXPIRING_SOON_DAYS);
 
-  const [totalRegistered, expired, expiringSoon] = await Promise.all([
-    prisma.training.count({ where: { tenantId, completedAt: { not: null } } }),
-    prisma.training.count({
-      where: { tenantId, completedAt: { not: null }, validUntil: { lt: now } },
-    }),
-    prisma.training.count({
-      where: {
-        tenantId,
-        completedAt: { not: null },
-        validUntil: { gte: now, lte: snartUtlopt },
-      },
-    }),
+  const [totalRes, expiredRes, expiringRes] = await Promise.all([
+    getAdminDb()
+      .from("Training")
+      .select("id", { count: "exact", head: true })
+      .eq("tenantId", tenantId)
+      .not("completedAt", "is", null),
+    getAdminDb()
+      .from("Training")
+      .select("id", { count: "exact", head: true })
+      .eq("tenantId", tenantId)
+      .not("completedAt", "is", null)
+      .lt("validUntil", now.toISOString()),
+    getAdminDb()
+      .from("Training")
+      .select("id", { count: "exact", head: true })
+      .eq("tenantId", tenantId)
+      .not("completedAt", "is", null)
+      .gte("validUntil", now.toISOString())
+      .lte("validUntil", soon.toISOString()),
   ]);
 
+  const totalRegistered = totalRes.count ?? 0;
+  const expired = expiredRes.count ?? 0;
   return {
     totalRegistered,
     valid: Math.max(totalRegistered - expired, 0),
-    expiringSoon,
+    expiringSoon: expiringRes.count ?? 0,
     expired,
   };
 }
 
-async function hentAarshjul(tenantId: string, now: Date): Promise<TavleAarshjulData> {
+async function loadAnnualPlan(tenantId: string, now: Date): Promise<TavleAarshjulData> {
   const year = now.getFullYear();
-  const completed = await prisma.hmsAnnualPlanCompletion.count({
-    where: { tenantId, year },
-  });
-
-  return { year, completed, total: ANNUAL_PLAN_STEP_COUNT };
+  const { count } = await getAdminDb()
+    .from("HmsAnnualPlanCompletion")
+    .select("id", { count: "exact", head: true })
+    .eq("tenantId", tenantId)
+    .eq("year", year);
+  return { year, completed: count ?? 0, total: ANNUAL_PLAN_STEP_COUNT };
 }
 
-async function hentKpi(
+async function loadKpi(
   tenantId: string,
   projectId: string | null,
-  now: Date
+  now: Date,
 ): Promise<TavleKpiData> {
-  const manedStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const prosjektFilter = projectId ? { projectId } : {};
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-  const [openIncidents, criticalIncidents, closedThisMonth, openMeasures, sisteHendelse] =
-    await Promise.all([
-      prisma.incident.count({
-        where: { tenantId, ...prosjektFilter, status: { not: "CLOSED" } },
-      }),
-      // Alvorlighetsgrad er 1–5. Fire og fem regnes som kritisk.
-      // Avvik uten satt grad (null) telles ikke som kritiske før leder har vurdert dem.
-      prisma.incident.count({
-        where: { tenantId, ...prosjektFilter, status: { not: "CLOSED" }, severity: { gte: 4 } },
-      }),
-      prisma.incident.count({
-        where: { tenantId, ...prosjektFilter, status: "CLOSED", closedAt: { gte: manedStart } },
-      }),
-      prisma.measure.count({ where: { tenantId, status: { not: "DONE" } } }),
-      prisma.incident.findFirst({
-        where: { tenantId, ...prosjektFilter },
-        orderBy: { occurredAt: "desc" },
-        select: { occurredAt: true },
-      }),
-    ]);
+  let openQ = getAdminDb()
+    .from("Incident")
+    .select("id", { count: "exact", head: true })
+    .eq("tenantId", tenantId)
+    .neq("status", "CLOSED");
+  let criticalQ = getAdminDb()
+    .from("Incident")
+    .select("id", { count: "exact", head: true })
+    .eq("tenantId", tenantId)
+    .neq("status", "CLOSED")
+    .gte("severity", 4);
+  let closedQ = getAdminDb()
+    .from("Incident")
+    .select("id", { count: "exact", head: true })
+    .eq("tenantId", tenantId)
+    .eq("status", "CLOSED")
+    .gte("closedAt", monthStart);
+  let lastQ = getAdminDb()
+    .from("Incident")
+    .select("occurredAt")
+    .eq("tenantId", tenantId)
+    .order("occurredAt", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (projectId) {
+    openQ = openQ.eq("projectId", projectId);
+    criticalQ = criticalQ.eq("projectId", projectId);
+    closedQ = closedQ.eq("projectId", projectId);
+    lastQ = getAdminDb()
+      .from("Incident")
+      .select("occurredAt")
+      .eq("tenantId", tenantId)
+      .eq("projectId", projectId)
+      .order("occurredAt", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+  }
 
-  const daysSinceLastIncident = sisteHendelse
-    ? Math.max(
-        Math.floor((now.getTime() - sisteHendelse.occurredAt.getTime()) / 86_400_000),
-        0
-      )
+  const [openIncidents, criticalIncidents, closedThisMonth, openMeasures, siste] = await Promise.all([
+    openQ,
+    criticalQ,
+    closedQ,
+    getAdminDb()
+      .from("Measure")
+      .select("id", { count: "exact", head: true })
+      .eq("tenantId", tenantId)
+      .neq("status", "DONE"),
+    lastQ,
+  ]);
+
+  const lastDate = parseDate(siste.data?.occurredAt);
+  const daysSinceLastIncident = lastDate
+    ? Math.max(Math.floor((now.getTime() - lastDate.getTime()) / 86_400_000), 0)
     : null;
 
   return {
-    openIncidents,
-    criticalIncidents,
-    closedThisMonth,
-    openMeasures,
+    openIncidents: openIncidents.count ?? 0,
+    criticalIncidents: criticalIncidents.count ?? 0,
+    closedThisMonth: closedThisMonth.count ?? 0,
+    openMeasures: openMeasures.count ?? 0,
     daysSinceLastIncident,
   };
 }

@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 import { uniqueByCourseKey } from "@/features/training/schemas/training.schema";
 import { loadRequiredTrainings, loadTrainingsForTenant } from "@/server/queries/training.queries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,11 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GraduationCap, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { TrainingLegalNote } from "@/features/training/components/training-legal-note";
 
 export default async function AnsattOpplaering() {
   const session = await getServerSession(authOptions);
   const t = await getTranslations("employeeTrainingPage");
-  const locale = await getLocale();
   const dateLocale = "en-GB";
 
   if (!session?.user?.tenantId || !session.user.id) {
@@ -34,13 +34,11 @@ export default async function AnsattOpplaering() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold mb-2 flex items-center gap-2">
+          <h1 className="mb-2 flex items-center gap-2 text-2xl font-bold">
             <GraduationCap className="h-7 w-7 text-blue-600" />
             {t("header.title")}
           </h1>
-          <p className="text-muted-foreground">
-            {t("header.description")}
-          </p>
+          <p className="text-muted-foreground">{t("header.description")}</p>
         </div>
         <Link href="/ansatt/opplaering/ny">
           <Button>
@@ -50,7 +48,9 @@ export default async function AnsattOpplaering() {
         </Link>
       </div>
 
-      {/* Info om godkjenning */}
+      <TrainingLegalNote />
+
+      {/* Approval */}
       <Card className="border-l-4 border-l-blue-500 bg-blue-50">
         <CardContent className="p-4">
           <p className="text-sm text-blue-900">

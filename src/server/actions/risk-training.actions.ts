@@ -39,7 +39,7 @@ export async function addTrainingRequirementToRisk(data: {
     });
 
     if (!risk || risk.tenantId !== tenantId) {
-      return { success: false, error: "Risiko ikke funnet" };
+      return { success: false, error: "Risk not found" };
     }
 
     // Sjekk om kurs eksisterer
@@ -53,7 +53,7 @@ export async function addTrainingRequirementToRisk(data: {
     });
 
     if (!courseTemplate) {
-      return { success: false, error: "Kurs ikke funnet" };
+      return { success: false, error: "Course not found" };
     }
 
     // Opprett kobling
@@ -87,10 +87,10 @@ export async function addTrainingRequirementToRisk(data: {
     console.error("Add training requirement error:", error);
     
     if (error.code === "P2002") {
-      return { success: false, error: "Dette kurset er allerede påkrevd for denne risikoen" };
+      return { success: false, error: "This course is already required for this risk" };
     }
     
-    return { success: false, error: error.message || "Kunne ikke legge til opplæringskrav" };
+    return { success: false, error: error.message || "Could not add the training requirement" };
   }
 }
 
@@ -103,7 +103,7 @@ export async function removeTrainingRequirement(requirementId: string) {
     });
 
     if (!requirement || requirement.tenantId !== tenantId) {
-      return { success: false, error: "Krav ikke funnet" };
+      return { success: false, error: "Requirement not found" };
     }
 
     await prisma.riskTrainingRequirement.delete({
@@ -126,7 +126,7 @@ export async function removeTrainingRequirement(requirementId: string) {
     return { success: true };
   } catch (error: any) {
     console.error("Remove training requirement error:", error);
-    return { success: false, error: error.message || "Kunne ikke fjerne opplæringskrav" };
+    return { success: false, error: error.message || "Could not remove the training requirement" };
   }
 }
 
@@ -142,7 +142,7 @@ export async function updateTrainingRequirement(requirementId: string, data: {
     });
 
     if (!requirement || requirement.tenantId !== tenantId) {
-      return { success: false, error: "Krav ikke funnet" };
+      return { success: false, error: "Requirement not found" };
     }
 
     const updated = await prisma.riskTrainingRequirement.update({
@@ -170,7 +170,7 @@ export async function updateTrainingRequirement(requirementId: string, data: {
     return { success: true, data: updated };
   } catch (error: any) {
     console.error("Update training requirement error:", error);
-    return { success: false, error: error.message || "Kunne ikke oppdatere opplæringskrav" };
+    return { success: false, error: error.message || "Could not update the training requirement" };
   }
 }
 
@@ -207,7 +207,7 @@ export async function getTrainingRequirementsForRisk(riskId: string) {
     return { success: true, data: enrichedRequirements };
   } catch (error: any) {
     console.error("Get training requirements error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente opplæringskrav" };
+    return { success: false, error: error.message || "Could not load training requirements" };
   }
 }
 
@@ -241,7 +241,7 @@ export async function getRisksRequiringTraining(courseKey: string) {
     return { success: true, data: requirements };
   } catch (error: any) {
     console.error("Get risks requiring training error:", error);
-    return { success: false, error: error.message || "Kunne ikke hente risikoer" };
+    return { success: false, error: error.message || "Could not load risks" };
   }
 }
 
@@ -272,7 +272,7 @@ export async function checkTrainingComplianceForRisk(riskId: string) {
     });
 
     if (!risk) {
-      return { success: false, error: "Risiko ikke funnet" };
+      return { success: false, error: "Risk not found" };
     }
 
     // Hent alle ansatte i tenanten
@@ -335,6 +335,6 @@ export async function checkTrainingComplianceForRisk(riskId: string) {
     };
   } catch (error: any) {
     console.error("Check training compliance error:", error);
-    return { success: false, error: error.message || "Kunne ikke sjekke opplæringsstatus" };
+    return { success: false, error: error.message || "Could not check training status" };
   }
 }

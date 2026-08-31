@@ -18,15 +18,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { createPermitToWork } from "@/server/actions/permit-to-work.actions";
-
-const PERMIT_TYPES = [
-  { value: "HOT_WORK", label: "Hot Work" },
-  { value: "CONFINED_SPACE", label: "Confined Space" },
-  { value: "WORKING_AT_HEIGHT", label: "Working at Height" },
-  { value: "EXCAVATION", label: "Excavation" },
-  { value: "ELECTRICAL", label: "Electrical" },
-  { value: "GENERAL", label: "General" },
-];
+import { PERMIT_TYPES, PERMIT_TYPE_KEYS } from "@/lib/permit-uk";
+import { PermitLegalNote } from "@/features/permits/components/permit-legal-note";
 
 const PPE_OPTIONS = [
   "Hard hat",
@@ -55,6 +48,7 @@ export default function NewPermitPage() {
   const [hazards, setHazards] = useState("");
   const [controlMeasures, setControlMeasures] = useState("");
   const [isolations, setIsolations] = useState("");
+  const [emergencyArrangements, setEmergencyArrangements] = useState("");
   const [selectedPpe, setSelectedPpe] = useState<string[]>([]);
 
   function togglePpe(item: string) {
@@ -66,37 +60,33 @@ export default function NewPermitPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-
-    if (!type || !title || !validFrom) {
-      setError("Please complete all required fields.");
-      return;
-    }
-
     setLoading(true);
     try {
-      const isolationsData = JSON.stringify({
-        description: description,
+      const result = await createPermitToWork({
+        type,
+        title,
+        location,
+        validFrom: new Date(validFrom),
+        validTo: validTo ? new Date(validTo) : undefined,
+        description,
         hazards,
         controlMeasures,
         isolationsRequired: isolations,
         ppeRequired: selectedPpe,
+        emergencyArrangements,
       });
 
-      await createPermitToWork({
-        type,
-        title,
-        location: location || undefined,
-        validFrom: new Date(validFrom),
-        validTo: validTo ? new Date(validTo) : undefined,
-        isolations: isolationsData,
-      });
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
 
       router.push("/dashboard/permits");
     } catch (err: unknown) {
       const message =
         err && typeof err === "object" && "message" in err
           ? (err as { message: string }).message
-          : "Failed to create permit";
+          : "Could not create the permit";
       setError(message);
     } finally {
       setLoading(false);
@@ -112,17 +102,19 @@ export default function NewPermitPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">New Permit to Work</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">New permit to work</h1>
           <p className="text-sm text-muted-foreground">
-            Create a permit for controlled high-risk activities
+            Written control for specified high-risk work (HSWA 1974 s.2; HSG250)
           </p>
         </div>
       </div>
 
+      <PermitLegalNote />
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Permit Details</CardTitle>
+            <CardTitle>Permit details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -133,9 +125,9 @@ export default function NewPermitPage() {
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {PERMIT_TYPES.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>
-                        {t.label}
+                    {PERMIT_TYPE_KEYS.map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {PERMIT_TYPES[key]}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -148,28 +140,32 @@ export default function NewPermitPage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Hot work on roof level 3"
+                  required
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="location">Location</Label>
+              <Label htmlFor="location">Location *</Label>
               <Input
                 id="location"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="e.g. Building A, 3rd floor"
+                required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description of work</Label>
+              <Label htmlFor="description">Description of work *</Label>
               <Textarea
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe the work to be carried out..."
+                placeholder="What work will be done, and how..."
                 rows={3}
+                required
+                minLength={10}
               />
             </div>
 
@@ -181,16 +177,21 @@ export default function NewPermitPage() {
                   type="datetime-local"
                   value={validFrom}
                   onChange={(e) => setValidFrom(e.target.value)}
+                  required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="validTo">Valid to</Label>
+                <Label htmlFor="validTo">Valid to *</Label>
                 <Input
                   id="validTo"
                   type="datetime-local"
                   value={validTo}
                   onChange={(e) => setValidTo(e.target.value)}
+                  required
                 />
+                <p className="text-xs text-muted-foreground">
+                  Permits are time-limited (HSG250).
+                </p>
               </div>
             </div>
           </CardContent>
@@ -198,28 +199,30 @@ export default function NewPermitPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Hazards &amp; Controls</CardTitle>
+            <CardTitle>Hazards and controls</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="hazards">Hazards identified</Label>
+              <Label htmlFor="hazards">Hazards identified *</Label>
               <Textarea
                 id="hazards"
                 value={hazards}
                 onChange={(e) => setHazards(e.target.value)}
-                placeholder="List all identified hazards..."
+                placeholder="List the hazards this permit controls..."
                 rows={3}
+                required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="controlMeasures">Control measures</Label>
+              <Label htmlFor="controlMeasures">Control measures *</Label>
               <Textarea
                 id="controlMeasures"
                 value={controlMeasures}
                 onChange={(e) => setControlMeasures(e.target.value)}
-                placeholder="Describe control measures in place..."
+                placeholder="Describe the controls that make the work safe..."
                 rows={3}
+                required
               />
             </div>
 
@@ -229,16 +232,36 @@ export default function NewPermitPage() {
                 id="isolations"
                 value={isolations}
                 onChange={(e) => setIsolations(e.target.value)}
-                placeholder="List any isolations required (electrical, mechanical, etc.)..."
+                placeholder="Electrical, mechanical or process isolations, if any..."
                 rows={3}
               />
             </div>
+
+            {type === "CONFINED_SPACE" && (
+              <div className="space-y-2">
+                <Label htmlFor="emergencyArrangements">
+                  Emergency and rescue arrangements *
+                </Label>
+                <Textarea
+                  id="emergencyArrangements"
+                  value={emergencyArrangements}
+                  onChange={(e) => setEmergencyArrangements(e.target.value)}
+                  placeholder="How people will be rescued, who is on standby, equipment..."
+                  rows={4}
+                  required
+                  minLength={10}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Confined Spaces Regulations 1997 reg.5 — in place before anyone enters.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>PPE Required</CardTitle>
+            <CardTitle>PPE required</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-2">

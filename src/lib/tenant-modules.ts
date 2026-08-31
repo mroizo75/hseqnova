@@ -46,6 +46,7 @@ export const NAV_PERMISSION_TO_MODULE_KEY: Record<string, ModuleKey> = {
   exposureRegister: "chemicals",
   constructionCompliance: "constructionCompliance",
   hmsTavle: "hmsTavle",
+  permits: "permitToWork",
   audits: "audits",
   managementReviews: "audits",
   environment: "environment",

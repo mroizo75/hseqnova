@@ -127,7 +127,7 @@ export function NyTavleForm({ projects, plan }: Props) {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Kobling til prosjekt aktiverer live-data fra SHA-plan, mannskapsliste og avvik.
+                Linking a project shows live construction phase plan, site register and incident data.
               </p>
             </div>
           )}

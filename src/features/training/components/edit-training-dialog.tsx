@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -25,6 +32,10 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import type { Training } from "@prisma/client";
+import {
+  MHSWR_TRAINING_REASON_KEYS,
+  MHSWR_TRAINING_REASONS,
+} from "@/lib/training-uk";
 
 interface EditTrainingDialogProps {
   training: Training & { user?: { name: string | null; email: string } };
@@ -46,6 +57,7 @@ export function EditTrainingDialog({ training, trigger }: EditTrainingDialogProp
   const [validUntil, setValidUntil] = useState(
     training.validUntil ? new Date(training.validUntil).toISOString().split("T")[0] : ""
   );
+  const [mhswrReason, setMhswrReason] = useState(training.mhswrReason ?? "");
   const [newFile, setNewFile] = useState<File | null>(null);
   const [keepExisting, setKeepExisting] = useState(true);
 
@@ -89,6 +101,7 @@ export function EditTrainingDialog({ training, trigger }: EditTrainingDialogProp
         provider: provider !== training.provider ? provider : undefined,
         completedAt: completedAt || undefined,
         validUntil: validUntil || undefined,
+        mhswrReason: mhswrReason || undefined,
         proofDocKey,
       });
 
@@ -181,7 +194,23 @@ export function EditTrainingDialog({ training, trigger }: EditTrainingDialogProp
             </div>
           </div>
 
-          {/* Diplom-seksjon */}
+          <div className="space-y-2">
+            <Label>Why this training was given</Label>
+            <Select value={mhswrReason} onValueChange={setMhswrReason} disabled={loading}>
+              <SelectTrigger>
+                <SelectValue placeholder="MHSWR 1999 reg.13" />
+              </SelectTrigger>
+              <SelectContent>
+                {MHSWR_TRAINING_REASON_KEYS.map((key) => (
+                  <SelectItem key={key} value={key}>
+                    {MHSWR_TRAINING_REASONS[key].label} ({MHSWR_TRAINING_REASONS[key].legalRef})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Certificate */}
           <div className="space-y-2">
             <Label>Certificate / evidence</Label>
 

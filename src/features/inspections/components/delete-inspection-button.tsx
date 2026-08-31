@@ -38,21 +38,21 @@ export function DeleteInspectionButton({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.message || "Kunne ikke slette vernerunden");
+        throw new Error(data.message || "Could not delete the inspection");
       }
 
       toast({
-        title: "Vernerunde slettet",
-        description: `"${inspectionTitle}" er permanent slettet.`,
+        title: "Inspection deleted",
+        description: `"${inspectionTitle}" has been permanently deleted.`,
       });
 
       setOpen(false);
       router.push("/dashboard/inspections");
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
-        title: "Feil ved sletting",
-        description: error.message,
+        title: "Could not delete",
+        description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
     } finally {
@@ -65,20 +65,19 @@ export function DeleteInspectionButton({
       <DialogTrigger asChild>
         <Button variant="destructive" size="sm">
           <Trash2 className="mr-2 h-4 w-4" />
-          Slett
+          Delete
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Slett vernerunde</DialogTitle>
+          <DialogTitle>Delete inspection record</DialogTitle>
           <DialogDescription className="space-y-2 pt-1">
             <span className="block">
-              Er du sikker på at du vil slette{" "}
+              Are you sure you want to delete{" "}
               <strong>&ldquo;{inspectionTitle}&rdquo;</strong>?
             </span>
             <span className="block text-destructive font-medium">
-              Dette vil permanent slette vernerunden og alle tilhørende funn.
-              Handlingen kan ikke angres.
+              This permanently deletes the inspection and all findings. This cannot be undone.
             </span>
           </DialogDescription>
         </DialogHeader>
@@ -88,7 +87,7 @@ export function DeleteInspectionButton({
             onClick={() => setOpen(false)}
             disabled={loading}
           >
-            Avbryt
+            Cancel
           </Button>
           <Button
             variant="destructive"
@@ -96,7 +95,7 @@ export function DeleteInspectionButton({
             disabled={loading}
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            {loading ? "Sletter…" : "Ja, slett permanent"}
+            {loading ? "Deleting…" : "Yes, delete permanently"}
           </Button>
         </DialogFooter>
       </DialogContent>

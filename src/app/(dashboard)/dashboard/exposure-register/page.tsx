@@ -7,6 +7,7 @@ import { FlaskConical, Plus, Users, CheckCircle, Clock, AlertTriangle } from "lu
 import Link from "next/link";
 import { ExposureRegisterList } from "./exposure-register-list";
 import { loadExposureRegistersForTenant } from "@/server/queries/exposure-register.queries";
+import { HealthRecordLegalNote } from "@/features/exposure-register/components/health-record-legal-note";
 import {
   effectiveExposureStatus,
   isHealthSurveillancePending,
@@ -105,23 +106,7 @@ export default async function ExposureRegisterPage() {
         </Card>
       </div>
 
-      <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm">
-        <FlaskConical className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
-        <p className="text-blue-800">
-          <span className="font-semibold">COSHH 2002:</span> keep health records where health
-          surveillance applies (40 years). Also record relevant exposures to carcinogens, lead,
-          asbestos, biological agents and ionising radiation. National Insurance numbers are stored
-          encrypted.{" "}
-          <a
-            href="https://www.hse.gov.uk/coshh/basics/surveillance.htm"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:no-underline"
-          >
-            HSE guidance on health surveillance
-          </a>
-        </p>
-      </div>
+      <HealthRecordLegalNote />
 
       <Card className="overflow-hidden">
         <CardHeader className="border-b bg-gray-50/50 py-4">

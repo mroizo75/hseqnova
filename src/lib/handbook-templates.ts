@@ -88,10 +88,13 @@ const UNIVERSAL_CONTENT: Record<string, string> = {
 <p>Competency, induction and refresher training (including first aid and fire) is tracked in <a href="/dashboard/training">training</a>.</p>`,
 
   s8: `<h3>Arrangements — fire and emergency</h3>
-<p>The responsible person under the Fire Safety Order maintains the fire risk assessment, fire marshals, drills and evacuation. Drills are logged in <a href="/dashboard/fire-drills">fire drills</a>.</p>`,
+<p>The responsible person under the Fire Safety Order maintains one fire safety arrangement: the fire risk assessment (art.9), nominated fire marshals, drills and evacuation (art.15). Assessments: <a href="/dashboard/fire-risk">fire risk assessment</a>. Drills: <a href="/dashboard/fire-drills">fire drills</a>.</p>`,
 
-  s9: `<h3>Arrangements — first aid</h3>
-<p>Adequate first-aid provision is maintained. Named first aiders: {{firstAider}}. First-aid records that relate to workplace injury are also entered in the accident book.</p>`,
+  s7a: `<h3>Arrangements — first aid</h3>
+<p>Adequate and appropriate first-aid equipment, facilities and personnel are provided (Health and Safety (First-Aid) Regulations 1981). Named first aiders: {{firstAider}}. Injuries treated at work are also entered in the accident book.</p>`,
+
+  s9: `<h3>Arrangements — management review</h3>
+<p>Senior management reviews the health and safety arrangements at planned intervals (MHSWR 1999 reg.5). ISO 45001 is optional. Minutes: <a href="/dashboard/management-reviews">management review</a>.</p>`,
 
   s10: `<h3>Arrangements — hazardous substances (COSHH)</h3>
 <p>Where we use hazardous substances, COSHH assessments and SDS are held in the chemicals module (add-on). Health records are retained for 40 years where required.</p>`,

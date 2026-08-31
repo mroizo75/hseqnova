@@ -6,24 +6,26 @@ import { getPermissions } from "@/lib/permissions";
 import { generateBrandedPdf, type PdfSection } from "@/lib/pdf-brand";
 import { format } from "date-fns";
 import { enGB } from "date-fns/locale/en-GB";
+import { applyUkPolicyDefaults } from "@/lib/health-safety-policy";
+import { dutyLabel } from "@/lib/org-chart-duties";
 import type { Role } from "@prisma/client";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.tenantId || !session.user.role) {
-    return NextResponse.json({ error: "Ikke autorisert" }, { status: 401 });
+    return NextResponse.json({ error: "Not authorised" }, { status: 401 });
   }
 
   const permissions = getPermissions(session.user.role as Role);
   if (!permissions.canReadDocuments && !permissions.canReadRoutines) {
-    return NextResponse.json({ error: "Ingen tilgang" }, { status: 403 });
+    return NextResponse.json({ error: "No access" }, { status: 403 });
   }
 
   const tenantId = session.user.tenantId;
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  const [tenant, handbook, riskAssessments, routines, incidents, trainings] =
+  const [tenant, handbook, riskAssessments, routines, incidents, trainings, orgNodes] =
     await Promise.all([
       prisma.tenant.findUniqueOrThrow({
         where: { id: tenantId },
@@ -60,6 +62,11 @@ export async function GET() {
         orderBy: { validUntil: "asc" },
         take: 20,
       }),
+      prisma.orgChartNode.findMany({
+        where: { tenantId },
+        select: { name: true, title: true, hsDutyKey: true, hsDuty: true },
+        orderBy: { sortOrder: "asc" },
+      }),
     ]);
 
   function fmtDate(d: Date | string | null | undefined) {
@@ -67,7 +74,10 @@ export async function GET() {
     return format(new Date(d), "d. MMM yyyy", { locale: enGB });
   }
 
-  // Hent gjeldende versjon: currentVersionId -> nyeste APPROVED -> nyeste uansett
+  // Current version: currentVersionId, then latest APPROVED. Employees never download a draft.
+  const canManagePolicy =
+    permissions.canUpdateSettings || permissions.canApproveDocuments;
+
   let currentVersion = handbook?.currentVersionId
     ? await prisma.handbookVersion.findUnique({
         where: { id: handbook.currentVersionId },
@@ -82,10 +92,10 @@ export async function GET() {
       })
     : null;
 
-  if (!currentVersion && handbook) {
+  if ((!currentVersion || (!canManagePolicy && currentVersion.status !== "APPROVED")) && handbook) {
     currentVersion = await prisma.handbookVersion.findFirst({
-      where: { handbookId: handbook.id },
-      orderBy: { createdAt: "desc" },
+      where: { handbookId: handbook.id, status: "APPROVED" },
+      orderBy: { publishedAt: "desc" },
       include: {
         approvedBy: { select: { name: true } },
         sections: { orderBy: { sortOrder: "asc" } },
@@ -108,26 +118,25 @@ export async function GET() {
   const signatureCount = currentVersion?.signatures?.length ?? 0;
 
   const statusLabel: Record<string, string> = {
-    APPROVED: "Godkjent",
-    DRAFT: "Utkast – ikke godkjent",
-    PENDING_APPROVAL: "Venter på godkjenning",
-    ARCHIVED: "Arkivert",
+    APPROVED: "Published",
+    DRAFT: "Draft — not published",
+    PENDING_APPROVAL: "Ready to publish",
+    ARCHIVED: "Archived",
   };
 
-  // Forside-info
   sections.push({
-    title: "Om bedriften",
-    legalRef: "IK-HMS § 5 nr. 1",
+    title: "About the organisation",
+    legalRef: "HSWA 1974 s.2(3)",
     content: [
       {
         type: "keyvalue",
         pairs: [
-          ["Bedrift", tenant.name],
-          ["Org.nr.", tenant.orgNumber ?? "–"],
-          ["Bransje", tenant.industry ?? "–"],
-          ["Adresse", tenant.address ?? "–"],
-          ["HMS-kontakt", tenant.hmsContactName ?? "–"],
-          ["HMS-telefon", tenant.hmsContactPhone ?? "–"],
+          ["Organisation", tenant.name],
+          ["Company no.", tenant.orgNumber ?? "–"],
+          ["Industry", tenant.industry ?? "–"],
+          ["Address", tenant.address ?? "–"],
+          ["H&S contact", tenant.hmsContactName ?? "–"],
+          ["H&S phone", tenant.hmsContactPhone ?? "–"],
         ],
       },
     ],
@@ -145,26 +154,48 @@ export async function GET() {
     statusContent.push({
       type: "keyvalue",
       pairs: [
-        ["Versjon", currentVersion.version],
+        ["Version", currentVersion.version],
         ["Status", statusLabel[currentVersion.status] ?? currentVersion.status],
-        ["Godkjent av", currentVersion.approvedBy?.name ?? "–"],
-        ["Godkjent dato", currentVersion.status === "APPROVED" ? fmtDate(currentVersion.approvedAt) : "Ikke godkjent"],
-        ["Sist gjennomgått", handbook?.lastReviewedAt ? fmtDate(handbook.lastReviewedAt) : "–"],
-        ["Signert av", `${signatureCount} av ${totalEmployees} ansatte${signatureCount >= totalEmployees && totalEmployees > 0 ? " (alle)" : ""}`],
+        ["Published by", currentVersion.approvedBy?.name ?? "–"],
+        ["Published", currentVersion.status === "APPROVED" ? fmtDate(currentVersion.approvedAt) : "Not published"],
+        ["Last reviewed", handbook?.lastReviewedAt ? fmtDate(handbook.lastReviewedAt) : "–"],
+        ["Employees notified", `${signatureCount} of ${totalEmployees}${signatureCount >= totalEmployees && totalEmployees > 0 ? " (all)" : ""}`],
       ],
     });
   } else {
     statusContent.push({
       type: "alert",
-      text: "Denne HMS-håndboken er ikke versjonskontrollert. Opprett og godkjenn en versjon for å oppfylle kravene i IK-HMS § 5.",
+      text: "This health and safety policy has not been published. Create and publish a version so employees can be given notice of the written policy (HSWA 1974 s.2(3)).",
       severity: "warning",
     });
   }
 
   sections.push({
-    title: "Status og godkjenning",
-    legalRef: "IK-HMS § 5 nr. 8",
+    title: "Status and publication",
+    legalRef: "HSWA 1974 s.2(3)",
     content: statusContent,
+  });
+
+  const namedDuties = orgNodes.filter((node) => node.hsDutyKey && node.name);
+  sections.push({
+    title: "Organisation — who does what",
+    legalRef: "HSWA 1974 s.2(3) Part 2",
+    content: namedDuties.length > 0
+      ? [{
+          type: "table" as const,
+          headers: ["Name", "Position", "H&S duty", "What they do"],
+          rows: namedDuties.map((node) => [
+            node.name ?? "–",
+            node.title,
+            dutyLabel(node.hsDutyKey) ?? "–",
+            node.hsDuty ?? "–",
+          ]),
+        }]
+      : [{
+          type: "alert" as const,
+          text: "No named health and safety duty holders on the organisation chart. HSE asks for names, positions and roles.",
+          severity: "warning" as const,
+        }],
   });
 
   // Dynamiske seksjoner fra versjonskontroll
@@ -172,28 +203,26 @@ export async function GET() {
     for (const section of currentVersion.sections) {
       if (section.parentId) continue;
 
+      const displaySection = applyUkPolicyDefaults(section);
+
       const childSections = currentVersion.sections.filter(
         (s) => s.parentId === section.id,
       );
 
       const contentBlocks: PdfSection["content"] = [];
 
-      if (section.content && section.content.trim() !== "<p></p>") {
-        contentBlocks.push({ type: "html", html: section.content });
+      if (displaySection.content && displaySection.content.trim() !== "<p></p>") {
+        contentBlocks.push({ type: "html", html: displaySection.content });
       }
 
       if (childSections.length > 0) {
         for (const child of childSections) {
+          const displayChild = applyUkPolicyDefaults(child);
           contentBlocks.push({
             type: "html",
-            html: `<h4>${child.sectionNumber} ${child.title}</h4>${child.content}`,
+            html: `<h4>${displayChild.sectionNumber} ${displayChild.title}</h4>${displayChild.content}`,
           });
         }
-      }
-
-      // Annual plan section removed from UK product — skip live progress injection
-      if (section.sectionKey === "s13") {
-        // no-op
       }
 
       if (contentBlocks.length === 0) {
@@ -201,8 +230,8 @@ export async function GET() {
       }
 
       sections.push({
-        title: `${section.sectionNumber}. ${section.title}`,
-        legalRef: section.legalRef ?? undefined,
+        title: `${displaySection.sectionNumber}. ${displaySection.title}`,
+        legalRef: displaySection.legalRef ?? undefined,
         content: contentBlocks,
       });
     }
@@ -210,48 +239,48 @@ export async function GET() {
     // Fallback: live data som før
     sections.push(
       {
-        title: "Risikovurderinger",
-        legalRef: "IK-HMS § 5 nr. 6, AML § 3-1",
+        title: "Risk assessments",
+        legalRef: "MHSWR 1999 reg.3",
         content: riskAssessments.length > 0
           ? [{
               type: "table" as const,
-              headers: ["Tittel", "År", "Sist oppdatert"],
+              headers: ["Title", "Year", "Last updated"],
               rows: riskAssessments.map((r) => [r.title, r.assessmentYear?.toString() ?? "–", fmtDate(r.updatedAt)]),
             }]
-          : [{ type: "alert" as const, text: "Ingen risikovurderinger er registrert ennå.", severity: "info" as const }],
+          : [{ type: "alert" as const, text: "No risk assessments recorded yet.", severity: "info" as const }],
       },
       {
-        title: "Rutiner og prosedyrer",
-        legalRef: "IK-HMS § 5 nr. 7, AML § 3-1",
+        title: "Procedures",
+        legalRef: "HSWA 1974 s.2(3) arrangements",
         content: routines.length > 0
           ? [{
               type: "table" as const,
-              headers: ["Rutine", "Sist gjennomgått", "Neste gjennomgang"],
+              headers: ["Procedure", "Last reviewed", "Next review"],
               rows: routines.map((r) => [r.title, fmtDate(r.lastReviewedAt), fmtDate(r.nextReviewAt)]),
             }]
-          : [{ type: "alert" as const, text: "Ingen aktive rutiner.", severity: "info" as const }],
+          : [{ type: "alert" as const, text: "No active procedures.", severity: "info" as const }],
       },
       {
-        title: "Åpne avvik (siste 30 dager)",
-        legalRef: "AML § 5-2, IK-HMS § 5 nr. 7",
+        title: "Open incidents (last 30 days)",
+        legalRef: "RIDDOR 2013; accident book",
         content: incidents.length > 0
           ? [{
               type: "table" as const,
-              headers: ["Ref.", "Tittel", "Type", "Dato", "Alvorlighet"],
+              headers: ["Ref.", "Title", "Type", "Date", "Severity"],
               rows: incidents.map((i) => [i.avviksnummer ?? "–", i.title, i.type, fmtDate(i.occurredAt), i.severity ?? "–"]),
             }]
-          : [{ type: "alert" as const, text: "Ingen åpne avvik siste 30 dager.", severity: "info" as const }],
+          : [{ type: "alert" as const, text: "No open incidents in the last 30 days.", severity: "info" as const }],
       },
       {
-        title: "Aktive opplæringstiltak",
-        legalRef: "AML § 3-2, IK-HMS § 5 nr. 4",
+        title: "Outstanding training",
+        legalRef: "HSWA 1974 s.2(2)(c)",
         content: trainings.length > 0
           ? [{
               type: "table" as const,
-              headers: ["Opplæringstiltak", "Frist"],
+              headers: ["Training", "Due"],
               rows: trainings.map((t) => [t.title, fmtDate(t.validUntil)]),
             }]
-          : [{ type: "alert" as const, text: "Ingen aktive opplæringstiltak.", severity: "info" as const }],
+          : [{ type: "alert" as const, text: "No outstanding training records.", severity: "info" as const }],
       },
     );
   }
@@ -282,23 +311,23 @@ export async function GET() {
   if (unsignedEmployees.length > 0) {
     signatureContent.push({
       type: "alert",
-      text: `${unsignedEmployees.length} ansatt${unsignedEmployees.length > 1 ? "e" : ""} har ikke signert: ${unsignedEmployees.map((e) => e.user.name ?? e.user.email).join(", ")}`,
+      text: `${unsignedEmployees.length} employee${unsignedEmployees.length > 1 ? "s have" : " has"} not confirmed notification: ${unsignedEmployees.map((e) => e.user.name ?? e.user.email).join(", ")}`,
       severity: versionSignatures.length === 0 ? "danger" : "warning",
     });
   } else if (versionSignatures.length > 0) {
     signatureContent.push({
       type: "alert",
-      text: "Alle ansatte har signert denne versjonen.",
+      text: "All employees have confirmed they have been notified of this version.",
       severity: "info",
     });
   }
 
   sections.push({
-    title: `Signaturliste – ${signatureCount} av ${totalEmployees} signert`,
-    legalRef: "IK-HMS § 5 nr. 8, AML § 3-1",
+    title: `Acknowledgements — ${signatureCount} of ${totalEmployees} notified`,
+    legalRef: "HSWA 1974 s.2(3)",
     content: signatureContent.length > 0
       ? signatureContent
-      : [{ type: "alert" as const, text: "Ingen signaturer registrert for denne versjonen.", severity: "warning" as const }],
+      : [{ type: "alert" as const, text: "No acknowledgements recorded for this version.", severity: "warning" as const }],
   });
 
   // Endringslogg
@@ -313,12 +342,12 @@ export async function GET() {
 
   if (allVersions.length > 1) {
     sections.push({
-      title: "Endringslogg",
-      legalRef: "IK-HMS § 5 nr. 8",
+      title: "Change log",
+      legalRef: "HSWA 1974 s.2(3) — revise as appropriate",
       content: [
         {
           type: "table" as const,
-          headers: ["Versjon", "Status", "Endringsbeskrivelse", "Godkjent av", "Dato", "Signaturer"],
+          headers: ["Version", "Status", "Change note", "Published by", "Date", "Acknowledgements"],
           rows: allVersions.map((v) => [
             v.version,
             statusLabel[v.status] ?? v.status,
@@ -332,29 +361,28 @@ export async function GET() {
     });
   }
 
-  const headerText = branding?.headerText ?? `HMS Håndbok ${new Date().getFullYear()}`;
-  const footerText = branding?.footerText ?? `Konfidensielt – ${tenant.name}`;
+  const headerText = branding?.headerText ?? `Health and safety policy ${new Date().getFullYear()}`;
 
   const pdfBuffer = await generateBrandedPdf({
     type: "formal",
-    reportLabel: "HMS-HÅNDBOK",
-    title: `${headerText} – ${tenant.name}`,
+    reportLabel: "HEALTH AND SAFETY POLICY",
+    title: `${headerText} — ${tenant.name}`,
     subtitle: currentVersion
-      ? `Versjon ${currentVersion.version} · ${statusLabel[currentVersion.status] ?? currentVersion.status} · Generert ${fmtDate(now)} · IK-HMS § 5`
-      : `Generert ${fmtDate(now)} · IK-HMS § 5`,
+      ? `Version ${currentVersion.version} · ${statusLabel[currentVersion.status] ?? currentVersion.status} · Generated ${fmtDate(now)} · HSWA 1974 s.2(3)`
+      : `Generated ${fmtDate(now)} · HSWA 1974 s.2(3)`,
     tenant: {
       name: tenant.name,
       orgNumber: tenant.orgNumber,
       address: tenant.address,
       logoUrl: branding?.logoUrl ?? tenant.logoUrl,
     },
-    generatedBy: session.user.name ?? session.user.email ?? "Ukjent",
+    generatedBy: session.user.name ?? session.user.email ?? "Unknown",
     generatedAt: now,
-    legalReference: "IK-HMS § 5, AML kap. 3",
+    legalReference: "HSWA 1974 s.2(3); HSE INDG259",
     sections,
   });
 
-  const filename = `HMS-handbok-${tenant.name.replace(/[^a-zA-Z0-9æøåÆØÅ]/g, "-")}-${versionLabel}-${format(now, "yyyy-MM-dd")}.pdf`;
+  const filename = `health-and-safety-policy-${tenant.name.replace(/[^a-zA-Z0-9]/g, "-")}-${versionLabel}-${format(now, "yyyy-MM-dd")}.pdf`;
 
   return new NextResponse(new Uint8Array(pdfBuffer), {
     headers: {

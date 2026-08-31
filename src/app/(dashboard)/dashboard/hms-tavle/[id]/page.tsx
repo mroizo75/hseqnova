@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { getAuthContext } from "@/lib/server-authorization";
 import { getAdminDb } from "@/lib/supabase/admin";
 import { TavleAdminClient } from "@/features/hms-tavle/components/tavle-admin-client";
+import { SafetyBoardLegalNote } from "@/features/hms-tavle/components/safety-board-legal-note";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -79,7 +80,7 @@ export default async function TavleAdminPage({ params, searchParams }: Props) {
     if (projectData) {
       const [shaRes, f10Res, rosterRes] = await Promise.all([
         db.from("ConstructionShaPlan").select("id, status, updatedAt, availableOnSite").eq("projectId", projectData.id).maybeSingle(),
-        db.from("ConstructionPreNotification").select("id, status, sentAt").eq("projectId", projectData.id).maybeSingle(),
+        db.from("ConstructionPreNotification").select("id, status, sentAt, expectedStartDate, expectedEndDate, maxWorkersSimultaneous").eq("projectId", projectData.id).maybeSingle(),
         db.from("ConstructionRosterEntry").select("*").eq("projectId", projectData.id).order("createdAt", { ascending: false }).limit(100),
       ]);
       project = {
@@ -141,16 +142,19 @@ export default async function TavleAdminPage({ params, searchParams }: Props) {
   };
 
   return (
-    <TavleAdminClient
-      tavle={JSON.parse(JSON.stringify(fullTavle))}
-      subscription={JSON.parse(JSON.stringify(subscription))}
-      hmsStats={hmsStats}
-      canManage={auth.permissions.canManageHmsTavle}
-      canReview={auth.permissions.canReviewSubmissions}
-      isAddon={subscription.isAddon}
-      appUrl={appUrl}
-      defaultTab={tab}
-      teamMembers={teamMembers}
-    />
+    <div className="space-y-6">
+      <SafetyBoardLegalNote />
+      <TavleAdminClient
+        tavle={JSON.parse(JSON.stringify(fullTavle))}
+        subscription={JSON.parse(JSON.stringify(subscription))}
+        hmsStats={hmsStats}
+        canManage={auth.permissions.canManageHmsTavle}
+        canReview={auth.permissions.canReviewSubmissions}
+        isAddon={subscription.isAddon}
+        appUrl={appUrl}
+        defaultTab={tab}
+        teamMembers={teamMembers}
+      />
+    </div>
   );
 }

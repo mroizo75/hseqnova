@@ -8,6 +8,7 @@ import {
   updateTrainingSchema,
   evaluateTrainingSchema,
 } from "@/features/training/schemas/training.schema";
+import { validateTrainingMhswrReason } from "@/lib/training-uk";
 import { hasTenantFeature } from "@/lib/tenant-features";
 import { runHealthcareTrainingExpiryAlerts } from "@/lib/healthcare-training-alerts";
 import {
@@ -86,6 +87,8 @@ export async function createTraining(input: Record<string, unknown>) {
       validUntil: validated.validUntil,
       proofDocKey: validated.proofDocKey,
       isRequired: validated.isRequired,
+      mhswrReason: validated.mhswrReason,
+      effectiveness: validated.effectiveness,
     });
 
     await logTrainingAction({
@@ -127,6 +130,7 @@ export async function updateTraining(input: Record<string, unknown>) {
       ...(validated.completedAt !== undefined && { completedAt: validated.completedAt }),
       ...(validated.validUntil !== undefined && { validUntil: validated.validUntil }),
       ...(validated.proofDocKey !== undefined && { proofDocKey: validated.proofDocKey }),
+      ...(validated.mhswrReason !== undefined && { mhswrReason: validated.mhswrReason }),
       ...(validated.effectiveness !== undefined && { effectiveness: validated.effectiveness }),
     });
 
@@ -250,12 +254,20 @@ export async function createEmployeeTrainings(input: {
     validUntil?: string;
     proofDocKey?: string;
     isRequired?: boolean;
+    mhswrReason?: string;
   }>;
 }) {
   try {
     const { userId: actorId, tenantId } = await getRequiredTenantContext();
     if (!input.courses || input.courses.length === 0) {
       return { success: false, error: "No courses added" };
+    }
+
+    for (const course of input.courses) {
+      const check = validateTrainingMhswrReason(course.mhswrReason);
+      if (check.ok === false) {
+        return { success: false, error: check.message };
+      }
     }
 
     const created = await insertTrainings(
@@ -269,6 +281,7 @@ export async function createEmployeeTrainings(input: {
         validUntil: course.validUntil,
         proofDocKey: course.proofDocKey,
         isRequired: course.isRequired,
+        mhswrReason: course.mhswrReason,
       })),
     );
 
@@ -299,12 +312,18 @@ export async function createBulkTrainings(input: {
   completedAt?: string;
   validUntil?: string;
   isRequired: boolean;
+  mhswrReason: string;
   participants: Array<{ userId: string; proofDocKey?: string }>;
 }) {
   try {
     const { userId: actorId, tenantId } = await getRequiredTenantContext();
     if (!input.participants || input.participants.length === 0) {
       return { success: false, error: "No participants selected" };
+    }
+
+    const reasonCheck = validateTrainingMhswrReason(input.mhswrReason);
+    if (reasonCheck.ok === false) {
+      return { success: false, error: reasonCheck.message };
     }
 
     const created = await insertTrainings(
@@ -318,6 +337,7 @@ export async function createBulkTrainings(input: {
         validUntil: input.validUntil,
         proofDocKey: participant.proofDocKey,
         isRequired: input.isRequired,
+        mhswrReason: input.mhswrReason,
       })),
     );
 

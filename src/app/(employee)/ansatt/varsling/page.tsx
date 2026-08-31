@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShieldAlert, Lock, Info } from "lucide-react";
 import { WhistleblowingForm } from "./whistleblowing-form";
@@ -13,10 +13,11 @@ export default async function WhistleblowingPage() {
     redirect("/login");
   }
 
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: session.user.tenantId },
-    select: { id: true, slug: true, name: true },
-  });
+  const { data: tenant } = await getAdminDb()
+    .from("Tenant")
+    .select("id, slug, name")
+    .eq("id", session.user.tenantId)
+    .maybeSingle();
 
   if (!tenant) {
     redirect("/ansatt");

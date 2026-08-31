@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { TavlePublicDisplay } from "@/features/hms-tavle/components/tavle-public-display";
 import { getGuestServiceStats } from "@/features/hms-tavle/lib/gjesteservice-stats";
 import { getTavleLiveData } from "@/features/hms-tavle/lib/tavle-live-data";
@@ -13,16 +13,23 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { token } = await params;
-  const tavle = await prisma.hmsTavle.findUnique({
-    where: { publicToken: token },
-    select: { name: true, tenant: { select: { name: true } } },
-  });
+  const db = getAdminDb();
+  const { data: tavle } = await db
+    .from("HmsTavle")
+    .select("name, tenantId")
+    .eq("publicToken", token)
+    .maybeSingle();
+  if (!tavle) return { title: "Digital safety board" };
 
-  if (!tavle) return { title: "HMS Tavle" };
+  const { data: tenant } = await db
+    .from("Tenant")
+    .select("name")
+    .eq("id", tavle.tenantId)
+    .maybeSingle();
 
   return {
-    title: `${tavle.name} – Digital HMS Tavle`,
-    description: `HMS-informasjon for ${tavle.tenant.name}`,
+    title: `${tavle.name} — digital safety board`,
+    description: `Site information for ${tenant?.name ?? "this site"}`,
     robots: { index: false },
   };
 }
@@ -30,57 +37,39 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function PublicTavlePage({ params, searchParams }: Props) {
   const { token } = await params;
   const { kiosk } = await searchParams;
-  const tavle = await prisma.hmsTavle.findUnique({
-    where: { publicToken: token },
-    include: {
-      sections: { where: { isVisible: true }, orderBy: { order: "asc" } },
-      externalLinks: { orderBy: { order: "asc" } },
-      subcontractorPortal: {
-        select: {
-          portalToken: true,
-          allowAvvik: true,
-          allowRuh: true,
-          allowSja: true,
-          allowPdfUpload: true,
-        },
-      },
-      tenant: { select: { name: true } },
-      project: {
-        select: {
-          name: true,
-          location: true,
-          constructionShaPlan: {
-            select: { status: true, availableOnSite: true, updatedAt: true },
-          },
-          constructionPreNotification: { select: { status: true, sentAt: true } },
-        },
-      },
-    },
-  });
+  const db = getAdminDb();
 
-  if (!tavle) notFound();
-  if (!tavle.isPublic) {
+  const { data: tavleRow } = await db
+    .from("HmsTavle")
+    .select("*")
+    .eq("publicToken", token)
+    .maybeSingle();
+
+  if (!tavleRow) notFound();
+  if (!tavleRow.isPublic) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-xl font-bold">Tavle ikke tilgjengelig</h1>
-          <p className="text-muted-foreground mt-2">Denne tavlen er ikke offentlig aktivert.</p>
+          <h1 className="text-xl font-bold">Board not available</h1>
+          <p className="text-muted-foreground mt-2">This board has not been made public.</p>
         </div>
       </div>
     );
   }
 
-  const subscription = await prisma.hmsTavleSubscription.findUnique({
-    where: { tenantId: tavle.tenantId },
-  });
+  const { data: subscription } = await db
+    .from("HmsTavleSubscription")
+    .select("*")
+    .eq("tenantId", tavleRow.tenantId)
+    .maybeSingle();
 
   if (!subscription || subscription.status === "EXPIRED") {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-xl font-bold">Abonnement utløpt</h1>
+          <h1 className="text-xl font-bold">Subscription expired</h1>
           <p className="text-muted-foreground mt-2">
-            HMS Tavle-abonnementet er utløpt. Kontakt prosjektleder.
+            The digital safety board subscription has expired. Contact the site manager.
           </p>
         </div>
       </div>
@@ -88,43 +77,76 @@ export default async function PublicTavlePage({ params, searchParams }: Props) {
   }
 
   const today = new Date().toISOString().slice(0, 10);
-  const checkins = await prisma.tavleCheckin.findMany({
-    where: { tavleId: tavle.id, date: today },
-    orderBy: { checkedInAt: "asc" },
-    select: {
-      id: true,
-      name: true,
-      employer: true,
-      checkedInAt: true,
-      checkedOutAt: true,
-      date: true,
-    },
-  });
+  const [
+    sectionsRes,
+    linksRes,
+    portalRes,
+    tenantRes,
+    checkinsRes,
+  ] = await Promise.all([
+    db.from("HmsTavleSection").select("*").eq("tavleId", tavleRow.id).eq("isVisible", true).order("order", { ascending: true }),
+    db.from("HmsTavleExternalLink").select("*").eq("tavleId", tavleRow.id).order("order", { ascending: true }),
+    db.from("SubcontractorPortal").select("portalToken, allowAvvik, allowRuh, allowSja, allowPdfUpload").eq("tavleId", tavleRow.id).maybeSingle(),
+    db.from("Tenant").select("name").eq("id", tavleRow.tenantId).maybeSingle(),
+    db.from("TavleCheckin").select("id, name, employer, checkedInAt, checkedOutAt, date").eq("tavleId", tavleRow.id).eq("date", today).order("checkedInAt", { ascending: true }),
+  ]);
+
+  let project = null;
+  if (tavleRow.projectId) {
+    const { data: projectData } = await db
+      .from("Project")
+      .select("name, location")
+      .eq("id", tavleRow.projectId)
+      .maybeSingle();
+    if (projectData) {
+      const [shaRes, f10Res] = await Promise.all([
+        db.from("ConstructionShaPlan").select("status, availableOnSite, updatedAt").eq("projectId", tavleRow.projectId).maybeSingle(),
+        db
+          .from("ConstructionPreNotification")
+          .select("status, sentAt, expectedStartDate, expectedEndDate, maxWorkersSimultaneous")
+          .eq("projectId", tavleRow.projectId)
+          .maybeSingle(),
+      ]);
+      project = {
+        ...projectData,
+        constructionShaPlan: shaRes.data,
+        constructionPreNotification: f10Res.data,
+      };
+    }
+  }
+
+  const sections = sectionsRes.data ?? [];
+  const tavle = {
+    ...tavleRow,
+    sections,
+    externalLinks: linksRes.data ?? [],
+    subcontractorPortal: portalRes.data,
+    tenant: tenantRes.data,
+    project,
+  };
 
   const forceKiosk = kiosk === "1";
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://hseqnova.com";
 
-  // Kun anonymiserte tall – aldri saksinnhold på offentlig tavle
-  const harTillitspanel = tavle.sections.some((s) => s.type === "GJESTESERVICE_STATUS");
-  const guestStats = harTillitspanel ? await getGuestServiceStats(tavle.id) : null;
+  const harTillitspanel = sections.some((s) => s.type === "GJESTESERVICE_STATUS");
+  const guestStats = harTillitspanel ? await getGuestServiceStats(tavleRow.id) : null;
 
-  // Live HSEQ Nova data is reserved for plans with full integration
   const liveData =
     getPlanLimits(subscription.plan).hasLiveHmsNovaData
       ? await getTavleLiveData({
-          tenantId: tavle.tenantId,
-          projectId: tavle.projectId,
-          sectionTypes: tavle.sections.map((s) => s.type),
+          tenantId: tavleRow.tenantId,
+          projectId: tavleRow.projectId,
+          sectionTypes: sections.map((s) => s.type),
         })
       : null;
 
   return (
     <TavlePublicDisplay
-      tavle={JSON.parse(JSON.stringify(tavle))}
-      checkins={JSON.parse(JSON.stringify(checkins))}
+      tavle={tavle}
+      checkins={checkinsRes.data ?? []}
       plan={subscription.plan}
       publicToken={token}
-      forceKiosk={forceKiosk || tavle.kioskMode}
+      forceKiosk={forceKiosk || tavleRow.kioskMode}
       appUrl={appUrl}
       guestStats={guestStats}
       liveData={liveData}

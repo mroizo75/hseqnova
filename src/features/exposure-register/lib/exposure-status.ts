@@ -1,7 +1,9 @@
 /**
  * COSHH 2002 reg. 11: health records where health surveillance applies.
- * Keep 40 years.
+ * Keep at least 40 years from the last entry (reg.11(3)).
  */
+import { COSHH_HEALTH_RECORD_YEARS } from "@/lib/health-record-uk";
+
 export type ExposureRegisterStatusValue = "ACTIVE" | "INACTIVE" | "ARCHIVED";
 
 export function deriveExposureStatus(
@@ -34,8 +36,12 @@ export function isHealthSurveillancePending(
   return healthCheckRequired && !healthCheckDone;
 }
 
-export function computeRetentionUntilDate(retentionYears: number, from = new Date()): Date {
+export function computeRetentionUntilDate(
+  retentionYears: number = COSHH_HEALTH_RECORD_YEARS,
+  from = new Date(),
+): Date {
+  const years = Math.max(retentionYears, COSHH_HEALTH_RECORD_YEARS);
   const date = new Date(from);
-  date.setFullYear(date.getFullYear() + retentionYears);
+  date.setFullYear(date.getFullYear() + years);
   return date;
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getAdminDb } from "@/lib/supabase/admin";
 import { createId } from "@/lib/ids";
 import { getActionContext } from "./action-context";
+import { validateFireRiskRecorded } from "@/lib/fire-risk-uk";
 
 function toIso(value: Date | string | null | undefined): string | null {
   if (!value) return null;
@@ -83,6 +84,10 @@ export async function createFireRiskAssessment(input: {
   likelihoodOfFire?: number | null;
   consequenceSeverity?: number | null;
   additionalMeasures?: string | null;
+  responsiblePersonName?: string | null;
+  responsiblePersonAddress?: string | null;
+  assessorName?: string | null;
+  assessorOrganisation?: string | null;
 }) {
   try {
     const { user, tenantId } = await getActionContext();
@@ -120,6 +125,10 @@ export async function createFireRiskAssessment(input: {
         consequenceSeverity: input.consequenceSeverity ?? null,
         overallRiskLevel,
         additionalMeasures: input.additionalMeasures || null,
+        responsiblePersonName: input.responsiblePersonName?.trim() || null,
+        responsiblePersonAddress: input.responsiblePersonAddress?.trim() || null,
+        assessorName: input.assessorName?.trim() || null,
+        assessorOrganisation: input.assessorOrganisation?.trim() || null,
         createdAt: now,
         updatedAt: now,
       })
@@ -162,6 +171,10 @@ export async function updateFireRiskAssessment(
     likelihoodOfFire?: number | null;
     consequenceSeverity?: number | null;
     additionalMeasures?: string | null;
+    responsiblePersonName?: string | null;
+    responsiblePersonAddress?: string | null;
+    assessorName?: string | null;
+    assessorOrganisation?: string | null;
   },
 ) {
   try {
@@ -201,6 +214,16 @@ export async function updateFireRiskAssessment(
     if (input.escapeRoutes !== undefined) updateData.escapeRoutes = input.escapeRoutes?.trim() || null;
     if (input.signage !== undefined) updateData.signage = input.signage?.trim() || null;
     if (input.additionalMeasures !== undefined) updateData.additionalMeasures = input.additionalMeasures;
+    if (input.responsiblePersonName !== undefined) {
+      updateData.responsiblePersonName = input.responsiblePersonName?.trim() || null;
+    }
+    if (input.responsiblePersonAddress !== undefined) {
+      updateData.responsiblePersonAddress = input.responsiblePersonAddress?.trim() || null;
+    }
+    if (input.assessorName !== undefined) updateData.assessorName = input.assessorName?.trim() || null;
+    if (input.assessorOrganisation !== undefined) {
+      updateData.assessorOrganisation = input.assessorOrganisation?.trim() || null;
+    }
 
     const likelihood = input.likelihoodOfFire ?? existing.likelihoodOfFire;
     const severity = input.consequenceSeverity ?? existing.consequenceSeverity;
@@ -208,6 +231,14 @@ export async function updateFireRiskAssessment(
     if (input.consequenceSeverity !== undefined) updateData.consequenceSeverity = input.consequenceSeverity;
     if (likelihood && severity) {
       updateData.overallRiskLevel = calculateOverallRisk(likelihood, severity);
+    }
+
+    if (input.status === "COMPLETED") {
+      const merged = { ...existing, ...updateData };
+      const valid = validateFireRiskRecorded(merged);
+      if (valid.ok === false) {
+        return { success: false as const, error: valid.message };
+      }
     }
 
     const { data, error } = await getAdminDb()
@@ -227,6 +258,47 @@ export async function updateFireRiskAssessment(
     return { success: true as const, data };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Could not update fire risk assessment";
+    return { success: false as const, error: message };
+  }
+}
+
+export async function completeFireRiskAssessment(id: string) {
+  try {
+    const { tenantId } = await getActionContext();
+    const { data: existing } = await getAdminDb()
+      .from("FireRiskAssessment")
+      .select("*")
+      .eq("id", id)
+      .eq("tenantId", tenantId)
+      .maybeSingle();
+
+    if (!existing) {
+      return { success: false as const, error: "Fire risk assessment not found" };
+    }
+
+    const valid = validateFireRiskRecorded(existing);
+    if (valid.ok === false) {
+      return { success: false as const, error: valid.message };
+    }
+
+    const { data, error } = await getAdminDb()
+      .from("FireRiskAssessment")
+      .update({ status: "COMPLETED", updatedAt: new Date().toISOString() })
+      .eq("id", id)
+      .eq("tenantId", tenantId)
+      .select("*")
+      .single();
+
+    if (error || !data) {
+      throw { code: "FIRE_RISK_COMPLETE_FAILED", message: error?.message || "Could not complete fire risk assessment" };
+    }
+
+    revalidatePath("/dashboard/fire-risk");
+    revalidatePath(`/dashboard/fire-risk/${id}`);
+    revalidatePath("/ansatt/brannoevelser");
+    return { success: true as const, data };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Could not complete fire risk assessment";
     return { success: false as const, error: message };
   }
 }

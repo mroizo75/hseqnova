@@ -8,6 +8,7 @@
 
 import { getAdminDb } from "@/lib/supabase/admin";
 import { tenantHasModule } from "@/lib/tenant-modules";
+import { assessOrgChartCoverage } from "@/lib/org-chart-duties";
 
 export interface ComplianceCheckResult {
   key: string;
@@ -160,10 +161,9 @@ export async function calculateComplianceScore(
       .not("nextReviewDate", "is", null),
 
     db
-      .from("Tenant")
-      .select("orgChart")
-      .eq("id", tenantId)
-      .single(),
+      .from("OrgChartNode")
+      .select("id, hsDutyKey, name")
+      .eq("tenantId", tenantId),
   ]);
 
   const checks: ComplianceCheckResult[] = [];
@@ -356,18 +356,22 @@ export async function calculateComplianceScore(
       : `${overdueDocReviews} document(s) overdue for review.`,
   });
 
-  // 13. Organisation chart — HSWA s.2(3)
-  const hasOrgChart = !!(orgChartResult.data as any)?.orgChart;
+  // 13. Organisation chart — HSWA s.2(3) Part 2
+  const orgNodes = orgChartResult.data ?? [];
+  const orgCoverage = assessOrgChartCoverage(orgNodes);
+  const hasNamedDuties = orgCoverage.items.filter((item) => item.ok).length;
   checks.push({
     key: "orgChart",
-    label: "Organisation chart defined",
-    legalRef: "HSWA 1974 s.2(3)",
+    label: "Organisation of health and safety",
+    legalRef: "HSWA 1974 s.2(3); MHSWR 1999 reg.7",
     maxPoints: 5,
-    earnedPoints: hasOrgChart ? 5 : 0,
-    status: hasOrgChart ? "pass" : "fail",
-    detail: hasOrgChart
-      ? "Organisation chart is defined."
-      : "No organisation chart defined. The policy statement must describe the organisation.",
+    earnedPoints: orgCoverage.complete ? 5 : hasNamedDuties > 0 ? 3 : orgNodes.length > 0 ? 1 : 0,
+    status: orgCoverage.complete ? "pass" : orgNodes.length > 0 ? "attention" : "fail",
+    detail: orgCoverage.complete
+      ? "Named MD, competent person, first aider and fire marshal."
+      : orgCoverage.missing.length > 0
+        ? `Missing named: ${orgCoverage.items.filter((item) => !item.ok).map((item) => item.label).join(", ")}.`
+        : "No organisation chart. HSE requires names, positions and roles.",
   });
 
   const totalScore = checks.reduce((sum, c) => sum + c.earnedPoints, 0);

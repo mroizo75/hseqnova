@@ -157,10 +157,22 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
         <Alert className={incident.isFatal ? "border-red-300 bg-red-50" : "border-orange-200 bg-orange-50"}>
           <AlertTriangle className={`h-4 w-4 ${incident.isFatal ? "text-red-600" : "text-orange-600"}`} />
           <AlertDescription className={incident.isFatal ? "text-red-900" : "text-orange-900"}>
-            {getRiddorCategoryLabel(incident.riddorCategory)}
-            {incident.riddorDueAt
-              ? ` ${t("riddor.due")}: ${new Date(incident.riddorDueAt).toLocaleDateString("en-GB")}.`
-              : ""}{" "}
+            {incident.isFatal ? (
+              <>
+                Death arising from work: call the Incident Contact Centre immediately on{" "}
+                <a className="font-semibold underline" href="tel:03453009923">
+                  0345 300 9923
+                </a>
+                . Then complete the online report. Do not wait for the investigation.{" "}
+              </>
+            ) : (
+              <>
+                {getRiddorCategoryLabel(incident.riddorCategory)}
+                {incident.riddorDueAt
+                  ? ` ${t("riddor.due")}: ${new Date(incident.riddorDueAt).toLocaleDateString("en-GB")}.`
+                  : ""}{" "}
+              </>
+            )}
             {t("riddor.reportBeforeInvestigation")} {t("riddor.official")}{" "}
             <a
               href="https://www.hse.gov.uk/riddor/"
@@ -252,6 +264,21 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
               <p className={`text-sm whitespace-pre-wrap ${incident.involvedPersons ? "text-muted-foreground" : "text-amber-700"}`}>
                 {incident.involvedPersons || t("accidentBook.notRecorded")}
               </p>
+              {incident.injuredPersonOccupation && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Occupation: {incident.injuredPersonOccupation}
+                </p>
+              )}
+              {incident.injuredPersonAddress && (
+                <p className="text-sm text-muted-foreground">
+                  Address: {incident.injuredPersonAddress}
+                </p>
+              )}
+              {incident.injuredPersonRole && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {incident.injuredPersonRole.replace(/_/g, " ")}
+                </p>
+              )}
             </div>
             <div>
               <h4 className="font-semibold mb-1">{t("accidentBook.personGivingNotice")}</h4>
@@ -271,6 +298,9 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                 {t("accidentBook.witnesses")}
               </h4>
               <p className="text-sm text-muted-foreground">{incident.witnessName || t("accidentBook.none")}</p>
+              {incident.witnessAddress && (
+                <p className="text-sm text-muted-foreground">{incident.witnessAddress}</p>
+              )}
             </div>
             <div>
               <h4 className="font-semibold mb-1">{t("accidentBook.injuryNature")}</h4>
@@ -403,6 +433,11 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
                     {t("riddor.reference")}: {incident.riddorReference}
                   </p>
                 )}
+                {incident.riddorReportMethod && (
+                  <p className="text-muted-foreground">
+                    Method: {incident.riddorReportMethod === "phone" ? "Telephone (0345 300 9923)" : "Online (hse.gov.uk/riddor)"}
+                  </p>
+                )}
                 <div className="mt-4">
                   <RiddorReportButton
                     incidentId={incident.id}
@@ -451,9 +486,22 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
               currentInjuryType={incident.injuryType}
               currentInjuryDescription={incident.injuryDescription}
               currentSuggestedActions={incident.suggestedActions}
+              currentInjuredPersonOccupation={incident.injuredPersonOccupation}
+              currentInjuredPersonAddress={incident.injuredPersonAddress}
+              currentInjuredPersonRole={incident.injuredPersonRole}
+              currentWitnessName={incident.witnessName}
+              currentWitnessAddress={incident.witnessAddress}
+              currentShareWithSafetyRepsConsent={incident.shareWithSafetyRepsConsent}
+              currentReporterAcknowledged={incident.reporterAcknowledged}
               currentOverSevenDayInjury={incident.overSevenDayInjury}
+              currentOverThreeDayInjury={incident.overThreeDayInjury}
+              currentSpecifiedInjury={incident.specifiedInjury}
+              currentListedOccupationalDisease={incident.listedOccupationalDisease}
+              currentListedDangerousOccurrence={incident.listedDangerousOccurrence}
+              currentNonWorkerTakenToHospital={incident.nonWorkerTakenToHospital}
               currentRiddorReportedAt={incident.riddorReportedAt}
               currentRiddorReference={incident.riddorReference}
+              currentRiddorReportMethod={incident.riddorReportMethod}
               currentLocation={incident.location}
               showProjectFields={showProjectFields}
               users={tenantUsers}

@@ -43,7 +43,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No organisation access" }, { status: 403 });
     }
 
-    const title = (formData.get("title") as string | null)?.trim() ?? "";
     const description = (formData.get("description") as string | null)?.trim() ?? "";
     const type = (formData.get("type") as string | null)?.trim() ?? "";
     const severityStr = (formData.get("severity") as string | null)?.trim() || null;
@@ -56,9 +55,16 @@ export async function POST(request: NextRequest) {
       ? `${description}\n\nContext note: ${contextDetails}`
       : description;
     const occurredAt = occurredAtRaw ? new Date(occurredAtRaw) : new Date(date);
+    const { titleFromDescription } = await import("@/lib/accident-book");
+    const title =
+      (formData.get("title") as string | null)?.trim() || titleFromDescription(enrichedDescription);
+    const accidentBookTypes = new Set(["ULYKKE", "NESTEN", "FARLIG_SITUASJON", "YRKESSYKDOM", "SKADE"]);
 
-    if (!title || !description || !location || !type) {
+    if (!description || !type) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
+    }
+    if (accidentBookTypes.has(type) && !location) {
+      return NextResponse.json({ error: "Place of accident is required." }, { status: 400 });
     }
     if (!allowedEmployeeIncidentTypes.includes(type as IncidentType)) {
       return NextResponse.json({ error: "Invalid incident type." }, { status: 400 });
@@ -106,6 +112,16 @@ export async function POST(request: NextRequest) {
         : undefined,
       projectId: (formData.get("projectId") as string | null) || undefined,
       projectReference: formData.get("projectReference") as string | null,
+      injuredPersonOccupation: formData.get("injuredPersonOccupation") as string | null,
+      injuredPersonAddress: formData.get("injuredPersonAddress") as string | null,
+      injuredPersonRole: formData.get("injuredPersonRole") as string | null,
+      witnessAddress: formData.get("witnessAddress") as string | null,
+      shareWithSafetyRepsConsent: formData.get("shareWithSafetyRepsConsent") === "true",
+      reporterAcknowledged: formData.get("reporterAcknowledged") === "true",
+      nonWorkerTakenToHospital: formData.get("nonWorkerTakenToHospital") === "true",
+      specifiedInjury: formData.get("specifiedInjury") === "true",
+      listedOccupationalDisease: formData.get("listedOccupationalDisease") === "true",
+      listedDangerousOccurrence: formData.get("listedDangerousOccurrence") === "true",
       subcategoryKeys,
     });
 

@@ -125,7 +125,7 @@ export function TaskCenter({ tenantId, userId }: TaskCenterProps) {
                     <TaskRow
                       icon={AlertTriangle}
                       iconClass="text-red-600 bg-red-50"
-                      title={`${tasks.overdueMeasures} forfalte tiltak`}
+                      title={`${tasks.overdueMeasures} overdue actions`}
                       href="/dashboard/actions"
                     />
                   )}
@@ -287,7 +287,7 @@ export function TaskCenter({ tenantId, userId }: TaskCenterProps) {
             className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
           >
             <CheckCircle2 className="h-4 w-4" />
-            <span>{tasks.activeMeasures} tiltak</span>
+            <span>{tasks.activeMeasures} actions</span>
           </Link>
           <Link
             href="/dashboard/meetings"

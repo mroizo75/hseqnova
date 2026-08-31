@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
   ExternalLink,
-  CheckCircle2,
   ChevronDown,
   ChevronUp,
   Pencil,
@@ -39,6 +38,8 @@ interface HandbokSectionExpandedProps {
     legalBasis: string | null;
     priority: number;
   }>;
+  defaultExpanded?: boolean;
+  showModuleLink?: boolean;
 }
 
 export function HandbokSectionExpanded({
@@ -47,9 +48,11 @@ export function HandbokSectionExpanded({
   canEdit,
   annualPlanProgress,
   suggestions = [],
+  defaultExpanded = false,
+  showModuleLink = true,
 }: HandbokSectionExpandedProps) {
   const displaySection = applyUkPolicyDefaults(section);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(displaySection.content);
   const [saving, setSaving] = useState(false);
@@ -104,7 +107,7 @@ export function HandbokSectionExpanded({
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            {displaySection.moduleLink && (
+            {showModuleLink && displaySection.moduleLink && (
               <Button asChild variant="ghost" size="sm" className="shrink-0 gap-1.5">
                 <Link href={displaySection.moduleLink}>
                   Open
@@ -214,6 +217,8 @@ export function HandbokSectionExpanded({
                   section={child}
                   versionStatus={versionStatus}
                   canEdit={canEdit}
+                  defaultExpanded={defaultExpanded}
+                  showModuleLink={showModuleLink}
                   suggestions={[]}
                 />
               ))}

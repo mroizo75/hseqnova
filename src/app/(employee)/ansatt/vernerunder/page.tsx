@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { ShieldCheck, Calendar, MapPin, User, ClipboardList, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { enUS, nb } from "date-fns/locale";
+import { enGB } from "date-fns/locale";
+import { parseParticipantIds } from "@/server/queries/inspections.queries";
+import { inspectionTypeLabel } from "@/lib/inspection-uk";
 
 export const dynamic = "force-dynamic";
 
@@ -45,8 +47,7 @@ function getStatusConfig(
 export default async function AnsattVernerunderPage() {
   const session = await getServerSession(authOptions);
   const t = await getTranslations("employeeInspectionsPage");
-  const locale = await getLocale();
-  const dateLocale = locale === "en" ? enUS : nb;
+  const dateLocale = enGB;
 
   if (!session?.user?.tenantId) {
     redirect("/login");
@@ -55,11 +56,11 @@ export default async function AnsattVernerunderPage() {
   const userId = session.user.id;
   const tenantId = session.user.tenantId;
 
-  // Hent alle vernerunder der brukeren er ansvarlig eller deltaker (AML § 6-2 – verneombud og deltakelse)
+  // SRSCWR 1977: safety representatives and others taking part keep a copy of the record
   const inspections = await prisma.inspection.findMany({
     where: {
       tenantId,
-      type: "VERNERUNDE",
+      type: { not: "BRANNØVELSE" },
       OR: [
         { conductedBy: userId },
         { participants: { contains: userId } },
@@ -120,8 +121,10 @@ export default async function AnsattVernerunderPage() {
             upcoming.map((inspection) => {
               const statusCfg = getStatusConfig(inspection.status, t);
               const isResponsible = inspection.conductedBy === userId;
+              const isTakingPart =
+                isResponsible || parseParticipantIds(inspection.participants).includes(userId);
               const canFill =
-                inspection.formTemplate && !inspection.formSubmission;
+                Boolean(inspection.formTemplate) && !inspection.formSubmission && isTakingPart;
 
               return (
                 <Card key={inspection.id} className="border-l-4 border-l-blue-400">
@@ -130,6 +133,9 @@ export default async function AnsattVernerunderPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <h3 className="font-semibold">{inspection.title}</h3>
+                          <Badge variant="outline" className="text-xs">
+                            {inspectionTypeLabel(inspection.type)}
+                          </Badge>
                           <Badge className={`${statusCfg.className} flex items-center gap-1 text-xs`}>
                             {statusCfg.icon}
                             {statusCfg.label}
@@ -173,7 +179,7 @@ export default async function AnsattVernerunderPage() {
                         </div>
                       </div>
 
-                      {canFill && isResponsible && (
+                      {canFill && (
                         <Link
                           href={`/ansatt/vernerunder/${inspection.id}/fill`}
                           className="shrink-0"
@@ -215,6 +221,9 @@ export default async function AnsattVernerunderPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <h3 className="font-semibold">{inspection.title}</h3>
+                          <Badge variant="outline" className="text-xs">
+                            {inspectionTypeLabel(inspection.type)}
+                          </Badge>
                           <Badge className={`${statusCfg.className} flex items-center gap-1 text-xs`}>
                             {statusCfg.icon}
                             {statusCfg.label}
@@ -238,7 +247,7 @@ export default async function AnsattVernerunderPage() {
                         </div>
                       </div>
 
-                      {inspection.formSubmission && inspection.formTemplate && (
+                      {inspection.status === "COMPLETED" ? (
                         <Link
                           href={`/ansatt/vernerunder/${inspection.id}`}
                           className="shrink-0"
@@ -247,7 +256,7 @@ export default async function AnsattVernerunderPage() {
                             {t("actions.viewReport")}
                           </Button>
                         </Link>
-                      )}
+                      ) : null}
                     </div>
                   </CardContent>
                 </Card>

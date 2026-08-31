@@ -1,6 +1,7 @@
 import { getAdminDb } from "@/lib/supabase/admin";
 import { createId } from "@/lib/ids";
 import { generateSequenceNumber } from "@/lib/sequence";
+import { resolveLegalBasis } from "@/lib/inspection-uk";
 import type {
   FormField,
   FormSubmission,
@@ -311,6 +312,7 @@ export async function createInspectionRecord(input: {
   followUpById?: string | null;
   nextInspection?: string | null;
   projectId?: string | null;
+  legalBasis?: string | null;
 }): Promise<Inspection & { findings: InspectionFinding[] }> {
   const db = getAdminDb();
   let validatedProjectId: string | null = null;
@@ -395,6 +397,7 @@ export async function createInspectionRecord(input: {
       nextInspection: input.nextInspection ? new Date(input.nextInspection).toISOString() : null,
       checklist: selectedTemplate?.checklist ?? selectedFormTemplateChecklist ?? null,
       projectId: validatedProjectId,
+      legalBasis: resolveLegalBasis(input.legalBasis, input.type || "VERNERUNDE"),
       createdAt: now,
       updatedAt: now,
     })
@@ -421,6 +424,7 @@ export async function updateInspectionRecord(input: {
   conductedBy?: string;
   participants?: unknown;
   checklist?: unknown;
+  legalBasis?: string | null;
 }): Promise<Inspection & { findings: InspectionFinding[] }> {
   const db = getAdminDb();
   const { data: existing } = await db
@@ -446,6 +450,9 @@ export async function updateInspectionRecord(input: {
     patch.participants = input.participants ? JSON.stringify(input.participants) : null;
   }
   if (input.checklist !== undefined) patch.checklist = input.checklist;
+  if (input.legalBasis !== undefined) {
+    patch.legalBasis = resolveLegalBasis(input.legalBasis, input.type || "VERNERUNDE");
+  }
 
   const { data: updated, error } = await db
     .from("Inspection")
@@ -663,3 +670,105 @@ export async function loadInspectionFindings(tenantId: string, inspectionId: str
   }
   return ((data ?? []) as Record<string, unknown>[]).map(asFinding);
 }
+
+export async function loadInspectionTenantPeople(tenantId: string): Promise<InspectionPerson[]> {
+  const db = getAdminDb();
+  const { data: memberships } = await db.from("UserTenant").select("userId").eq("tenantId", tenantId);
+  const userIds = [...new Set(((memberships ?? []) as Array<{ userId: string }>).map((row) => row.userId))];
+  if (userIds.length === 0) return [];
+  const { data: users } = await db.from("User").select("id, name, email").in("id", userIds);
+  return ((users ?? []) as InspectionPerson[]).filter((person) => Boolean(person.email));
+}
+
+export type InspectionFormFill = {
+  inspection: Inspection;
+  form: {
+    id: string;
+    title: string;
+    description?: string;
+    requiresSignature: boolean;
+    requiresApproval: boolean;
+    isAnonymous?: boolean;
+    fields: Array<{
+      id: string;
+      type: string;
+      label: string;
+      placeholder?: string;
+      helpText?: string;
+      isRequired: boolean;
+      options?: string[];
+    }>;
+  };
+};
+
+export async function loadInspectionFormForFill(
+  tenantId: string,
+  inspectionId: string,
+): Promise<InspectionFormFill | null> {
+  const db = getAdminDb();
+  const { data: row } = await db
+    .from("Inspection")
+    .select("*")
+    .eq("id", inspectionId)
+    .eq("tenantId", tenantId)
+    .maybeSingle();
+  if (!row) return null;
+  const inspection = asInspection(row as Record<string, unknown>);
+  if (!inspection.formTemplateId) return null;
+
+  const { data: template } = await db
+    .from("FormTemplate")
+    .select("id, title, description, requiresSignature, requiresApproval, allowAnonymousResponses")
+    .eq("id", inspection.formTemplateId)
+    .maybeSingle();
+  if (!template) return null;
+
+  const { data: fields } = await db
+    .from("FormField")
+    .select("id, fieldType, label, placeholder, helpText, isRequired, options")
+    .eq("formTemplateId", inspection.formTemplateId)
+    .order("order", { ascending: true });
+
+  return {
+    inspection,
+    form: {
+      id: template.id as string,
+      title: template.title as string,
+      description: (template.description as string | null) ?? undefined,
+      requiresSignature: Boolean(template.requiresSignature),
+      requiresApproval: Boolean(template.requiresApproval),
+      isAnonymous: Boolean(template.allowAnonymousResponses),
+      fields: ((fields ?? []) as Array<{
+        id: string;
+        fieldType: string;
+        label: string;
+        placeholder: string | null;
+        helpText: string | null;
+        isRequired: boolean;
+        options: string | null;
+      }>).map((field) => {
+        let options: string[] | undefined;
+        if (field.options) {
+          try {
+            const parsed = JSON.parse(field.options) as unknown;
+            options = Array.isArray(parsed)
+              ? parsed.filter((item): item is string => typeof item === "string")
+              : undefined;
+          } catch {
+            options = undefined;
+          }
+        }
+        return {
+          id: field.id,
+          type: field.fieldType,
+          label: field.label,
+          placeholder: field.placeholder ?? undefined,
+          helpText: field.helpText ?? undefined,
+          isRequired: field.isRequired,
+          options,
+        };
+      }),
+    },
+  };
+}
+

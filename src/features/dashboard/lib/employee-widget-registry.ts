@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   ClipboardList,
   ShieldAlert,
+  FileKey,
   type LucideIcon,
 } from "lucide-react";
 
@@ -79,6 +80,17 @@ export const EMPLOYEE_WIDGET_REGISTRY: EmployeeWidgetDefinition[] = [
     adminWidgetId: "sja",
   },
   {
+    id: "emp-permits",
+    label: "Permits to work",
+    description: "Live permits for high-risk work",
+    icon: FileKey,
+    href: "/ansatt/permits",
+    color: "text-amber-700",
+    bgColor: "bg-amber-100",
+    borderColor: "border-amber-300",
+    adminWidgetId: "permits",
+  },
+  {
     id: "emp-risks",
     label: "Risk assessments",
     description: "View workplace risk assessments",
@@ -92,7 +104,7 @@ export const EMPLOYEE_WIDGET_REGISTRY: EmployeeWidgetDefinition[] = [
   {
     id: "emp-chemicals",
     label: "COSHH",
-    description: "Hazardous substances and safety data sheets",
+    description: "Hazardous substances, safety data sheets and COSHH assessments",
     icon: Beaker,
     href: "/ansatt/stoffkartotek",
     color: "text-purple-600",
@@ -115,8 +127,8 @@ export const EMPLOYEE_WIDGET_REGISTRY: EmployeeWidgetDefinition[] = [
   },
   {
     id: "emp-fire-safety",
-    label: "Fire drills",
-    description: "Planned and completed fire drills",
+    label: "Fire safety",
+    description: "Fire risk assessment, marshals and drills",
     icon: Flame,
     href: "/ansatt/brannoevelser",
     color: "text-red-600",

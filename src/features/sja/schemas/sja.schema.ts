@@ -1,5 +1,11 @@
 import { z } from "zod";
 import { SjaStatus, SjaConclusion } from "@prisma/client";
+import {
+  RAMS_HARM_MIN_CHARS,
+  RAMS_HARM_REQUIRED_MESSAGE,
+  RAMS_METHOD_MIN_CHARS,
+  RAMS_METHOD_REQUIRED_MESSAGE,
+} from "@/lib/rams-uk";
 
 const optionalId = z.preprocess(
   (value) => (value === "" || value == null ? undefined : value),
@@ -14,7 +20,7 @@ const optionalId = z.preprocess(
 export const sjaHazardSchema = z.object({
   activity: z.string().min(1, "Activity is required"),
   hazard: z.string().min(1, "Hazard is required"),
-  consequence: z.string().optional(),
+  consequence: z.string().trim().min(RAMS_HARM_MIN_CHARS, RAMS_HARM_REQUIRED_MESSAGE),
   probability: z.number().min(1).max(5).default(1),
   severity: z.number().min(1).max(5).default(1),
   measures: z.string().min(1, "Control measures are required"),
@@ -26,7 +32,7 @@ export const createSjaSchema = z.object({
   tenantId: z.string().min(1),
   projectId: optionalId,
   title: z.string().min(3, "Title must be at least 3 characters"),
-  description: z.string().optional(),
+  description: z.string().trim().min(RAMS_METHOD_MIN_CHARS, RAMS_METHOD_REQUIRED_MESSAGE),
   workLocation: z.string().min(1, "Work location is required"),
   plannedDate: z.date(),
   responsibleName: z.string().min(1, "A competent person must be named"),
@@ -41,7 +47,7 @@ export const createSjaSchema = z.object({
 export const updateSjaSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(3).optional(),
-  description: z.string().optional(),
+  description: z.string().trim().min(RAMS_METHOD_MIN_CHARS, RAMS_METHOD_REQUIRED_MESSAGE).optional(),
   workLocation: z.string().min(1).optional(),
   plannedDate: z.date().optional(),
   responsibleName: z.string().min(1).optional(),

@@ -85,13 +85,13 @@ export function TavleQrSection({
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <QrCode className="h-4 w-4 text-blue-600" />
-              HMS-tavle
+              Safety board
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <QrDisplay url={tavleUrl} label="HMS-tavle" />
+            <QrDisplay url={tavleUrl} label="Safety board" />
             <p className="text-xs text-muted-foreground mt-2">
-              Viser hele tavlen med all HMS-informasjon
+              Shows the site information board
             </p>
           </CardContent>
         </Card>
@@ -101,19 +101,17 @@ export function TavleQrSection({
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Users className="h-4 w-4 text-green-600" />
-                Mannskap innsjekk
+                Site check-in
                 <Badge variant="secondary" className="text-[10px]">
-                  § 15
+                  Operational
                 </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <QrDisplay url={checkinUrl} label="Innsjekk" />
+              <QrDisplay url={checkinUrl} label="Check-in" />
               <p className="text-xs text-muted-foreground mt-2">
-                Elektronisk føring av navn, fødselsdato, arbeidsgiver og HMS-kortnummer
-                etter Byggherreforskriften § 15 bokstav e. Byggherren må selv sørge for
-                opplysningene i bokstav a–d og oppbevare listen i seks måneder etter at
-                arbeidet er avsluttet.
+                Operational site attendance. This is not a CDM 2015 duty. Keep records
+                for six months after work ends.
               </p>
             </CardContent>
           </Card>
@@ -124,13 +122,13 @@ export function TavleQrSection({
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <FileText className="h-4 w-4 text-orange-600" />
-                UE-portal
+                Subcontractor portal
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <QrDisplay url={portalUrl} label="UE-portal" />
+              <QrDisplay url={portalUrl} label="Subcontractor portal" />
               <p className="text-xs text-muted-foreground mt-2">
-                Underentreprenører sender inn avvik, RUH og SJA uten konto
+                Contractors can submit incidents, near misses and RAMS without an account
               </p>
             </CardContent>
           </Card>
@@ -160,7 +158,7 @@ export function TavleQrSection({
                 <GraduationCap className="h-4 w-4 text-teal-600" />
                 Sesongarbeider-intro
                 <Badge variant="secondary" className="text-[10px]">
-                  AML § 3-2
+                  HSWA s.2(2)(c)
                 </Badge>
               </CardTitle>
             </CardHeader>

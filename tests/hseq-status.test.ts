@@ -29,7 +29,12 @@ function healthyInput(overrides: Partial<HseqStatusInput> = {}): HseqStatusInput
     incidents: { openCount: 0, overdueRiddorCount: 0, pendingRiddorCount: 0 },
     actions: { overdueCount: 0, openCount: 2 },
     inspections: { total: 3, overdueCount: 0 },
-    fireDrills: { hasAny: true, completedInLastYear: true },
+    fireDrills: {
+      hasAny: true,
+      completedInLastYear: true,
+      hasRecordedAssessment: true,
+      assessmentReviewOverdue: false,
+    },
     training: { expiredCount: 0 },
     documents: { total: 8 },
     ...overrides,
@@ -93,7 +98,12 @@ describe("control journey", () => {
       risks: { total: 0, criticalCount: 0, overdueReviewCount: 0 },
       documents: { total: 0 },
       inspections: { total: 0, overdueCount: 0 },
-      fireDrills: { hasAny: false, completedInLastYear: false },
+      fireDrills: {
+        hasAny: false,
+        completedInLastYear: false,
+        hasRecordedAssessment: false,
+        assessmentReviewOverdue: false,
+      },
       ...overrides,
     });
   }
@@ -120,11 +130,32 @@ describe("control journey", () => {
     assert.equal(journey.inPlace.some((duty) => duty.key === "policy"), true);
   });
 
+  it("treats a missing fire risk assessment as a fire-safety gap", () => {
+    const report = evaluateHseqStatus(
+      healthyInput({
+        fireDrills: {
+          hasAny: true,
+          completedInLastYear: true,
+          hasRecordedAssessment: false,
+          assessmentReviewOverdue: false,
+        },
+      }),
+    );
+    const fire = report.duties.find((duty) => duty.key === "fireDrills");
+    assert.equal(fire?.level, "gap");
+    assert.match(fire?.headline ?? "", /fire risk assessment/i);
+  });
+
   it("leaves wizard mode once the foundation is on file", () => {
     const journey = buildControlJourney(
       evaluateHseqStatus(
         healthyInput({
-          fireDrills: { hasAny: false, completedInLastYear: false },
+          fireDrills: {
+            hasAny: false,
+            completedInLastYear: false,
+            hasRecordedAssessment: false,
+            assessmentReviewOverdue: false,
+          },
         }),
       ),
     );

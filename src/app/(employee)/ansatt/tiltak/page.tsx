@@ -1,8 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   ListChecks,
@@ -13,37 +12,28 @@ import {
 } from "lucide-react";
 import { format, isPast } from "date-fns";
 import { getStatusLabel, getStatusClasses } from "@/lib/status-labels";
+import { loadMeasuresForTenant } from "@/server/queries/measures.queries";
+import { MeasureLegalNote } from "@/features/measures/components/measure-legal-note";
+import { EmployeeActionUpdate } from "@/features/measures/components/employee-action-update";
 
 export const dynamic = "force-dynamic";
 
 export default async function EmployeeActionsPage() {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.tenantId) {
+  if (!session?.user?.tenantId || !session.user.id) {
     redirect("/login");
   }
 
-  const measures = await prisma.measure.findMany({
-    where: {
-      tenantId: session.user.tenantId,
-      responsibleId: session.user.id,
-    },
-    include: {
-      incident: { select: { title: true } },
-      risk: { select: { title: true } },
-      audit: { select: { title: true } },
-    },
-    orderBy: { dueAt: "asc" },
-    take: 100,
+  const measures = await loadMeasuresForTenant(session.user.tenantId, {
+    responsibleId: session.user.id,
   });
 
   const open = measures.filter(
-    (m) => m.status === "PENDING" || m.status === "IN_PROGRESS",
+    (m) => m.status === "PENDING" || m.status === "IN_PROGRESS" || m.status === "OVERDUE",
   );
-  const overdue = open.filter((m) => isPast(new Date(m.dueAt)));
-  const completed = measures.filter(
-    (m) => m.status === "DONE",
-  );
+  const overdue = open.filter((m) => m.status !== "DONE" && isPast(new Date(m.dueAt)));
+  const completed = measures.filter((m) => m.status === "DONE");
 
   return (
     <div className="space-y-6">
@@ -53,10 +43,12 @@ export default async function EmployeeActionsPage() {
           My Actions
         </h1>
         <p className="text-muted-foreground text-sm">
-          Actions assigned to you from incidents, risk assessments, audits and
-          inspections.
+          Actions assigned to you. Record what you did and close them when the
+          work is complete (MHSWR 1999 reg.5; HSG245).
         </p>
       </div>
+
+      <MeasureLegalNote />
 
       <div className="grid grid-cols-3 gap-4">
         <Card className="border-l-4 border-l-blue-500">
@@ -108,13 +100,13 @@ export default async function EmployeeActionsPage() {
         <div className="space-y-3">
           {measures.map((measure) => {
             const isOverdue =
-              (measure.status === "PENDING" || measure.status === "IN_PROGRESS") &&
-              isPast(new Date(measure.dueAt));
+              measure.status !== "DONE" && isPast(new Date(measure.dueAt));
             const statusClasses = getStatusClasses("measure", measure.status);
-            const source = measure.incident?.title
-              ?? measure.risk?.title
-              ?? measure.audit?.title
-              ?? null;
+            const source =
+              measure.incident?.title ??
+              measure.risk?.title ??
+              measure.audit?.title ??
+              null;
 
             return (
               <Card
@@ -151,6 +143,16 @@ export default async function EmployeeActionsPage() {
                           {measure.description}
                         </p>
                       )}
+                      {measure.effectivenessNote && measure.status === "DONE" ? (
+                        <p className="text-sm mt-2">
+                          <span className="text-muted-foreground">Done: </span>
+                          {measure.effectivenessNote}
+                        </p>
+                      ) : null}
+                      <EmployeeActionUpdate
+                        measureId={measure.id}
+                        status={measure.status}
+                      />
                     </div>
                   </div>
                 </CardContent>

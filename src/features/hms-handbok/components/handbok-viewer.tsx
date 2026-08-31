@@ -44,6 +44,7 @@ interface HandbokViewerProps {
     priority: number;
     targetSectionKey: string | null;
   }>;
+  audience?: "management" | "employee";
 }
 
 function formatDate(d: Date | string | null | undefined) {
@@ -75,7 +76,9 @@ export function HandbokViewer({
   canApprove,
   enabledModules = [],
   suggestions = [],
+  audience = "management",
 }: HandbokViewerProps) {
+  const isEmployee = audience === "employee";
   const enabled = enabledModules;
   const currentVersion = handbook.currentVersion
     ? {
@@ -107,7 +110,7 @@ export function HandbokViewer({
   return (
     <div className="space-y-6">
       {/* Utkast-banner */}
-      {isDraft && (
+      {isDraft && !isEmployee && (
         <div className="flex items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-700 dark:bg-amber-950/30">
           <AlertTriangle className="h-5 w-5 text-amber-600" />
           <div>
@@ -139,11 +142,13 @@ export function HandbokViewer({
             </div>
             <div className="flex flex-wrap gap-2">
               {canManage && <HandbokReviewButton tenantId={tenantId} />}
-              <HandbokSignButton
-                tenantId={tenantId}
-                alreadySigned={alreadySigned}
-                versionId={currentVersion?.id}
-              />
+              {currentVersion && (
+                <HandbokSignButton
+                  tenantId={tenantId}
+                  alreadySigned={alreadySigned}
+                  versionId={currentVersion.id}
+                />
+              )}
               <Button asChild variant="outline" size="sm" className="gap-2">
                 <a href="/api/hms-handbok/pdf" download>
                   <Download className="h-4 w-4" />
@@ -197,7 +202,7 @@ export function HandbokViewer({
           </p>
         </CardContent>
       </Card>
-      {currentVersion && (
+      {currentVersion && !isEmployee && (
         <HandbokVersionBar
           tenantId={tenantId}
           version={currentVersion}
@@ -227,11 +232,15 @@ export function HandbokViewer({
                     key={section.id}
                     section={section}
                     versionStatus={currentVersion.status}
-                    canEdit={canManage}
+                    canEdit={!isEmployee && canManage}
+                    defaultExpanded={isEmployee || part !== "arrangements"}
+                    showModuleLink={!isEmployee}
                     annualPlanProgress={stats.annualPlanProgress}
-                    suggestions={suggestions.filter(
-                      (s) => s.targetSectionKey === section.sectionKey,
-                    )}
+                    suggestions={
+                      isEmployee
+                        ? []
+                        : suggestions.filter((s) => s.targetSectionKey === section.sectionKey)
+                    }
                   />
                 ))}
               </div>
@@ -242,9 +251,13 @@ export function HandbokViewer({
         <Card className="border-dashed">
           <CardContent className="py-8 text-center">
             <BookOpen className="mx-auto h-8 w-8 text-muted-foreground/40" />
-            <p className="mt-3 text-sm font-medium">No sections yet</p>
+            <p className="mt-3 text-sm font-medium">
+              {isEmployee ? "No published policy yet" : "No sections yet"}
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              The health and safety policy has no content yet. Contact support to import an industry template.
+              {isEmployee
+                ? "Your employer has not yet published a written health and safety policy. Where there are five or more employees, HSWA 1974 s.2(3) requires a written statement of policy, organisation and arrangements."
+                : "The health and safety policy has no content yet. Contact support to import an industry template."}
             </p>
           </CardContent>
         </Card>

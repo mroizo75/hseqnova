@@ -4,9 +4,11 @@ import { redirect, notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, AlertTriangle, Flame, Pencil, Clock } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Flame, Clock } from "lucide-react";
 import Link from "next/link";
 import { getFireRiskAssessment } from "@/server/actions/fire-risk.actions";
+import { FireSafetyLegalNote } from "@/features/fire-risk/components/fire-safety-legal-note";
+import { CompleteFireRiskButton } from "@/features/fire-risk/components/complete-fire-risk-button";
 import { format } from "date-fns";
 import { enGB } from "date-fns/locale/en-GB";
 
@@ -116,8 +118,17 @@ export default async function FireRiskDetailPage({
         <div className="flex items-center gap-2 flex-wrap">
           {statusBadge(assessment.status)}
           {riskBadge(assessment.overallRiskLevel)}
+          <Button variant="outline" className="bg-transparent" asChild>
+            <Link href="/dashboard/fire-drills">Fire drills</Link>
+          </Button>
         </div>
       </div>
+
+      <FireSafetyLegalNote />
+
+      {assessment.status !== "COMPLETED" && assessment.status !== "ARCHIVED" ? (
+        <CompleteFireRiskButton id={assessment.id} />
+      ) : null}
 
       {reviewOverdue && (
         <Card className="border-red-200 bg-red-50">
@@ -162,6 +173,18 @@ export default async function FireRiskDetailPage({
               {assessment.reviewDate
                 ? format(new Date(assessment.reviewDate), "d MMMM yyyy", { locale: enGB })
                 : "—"}
+            </div>
+            <div>
+              <span className="text-muted-foreground">Responsible person:</span>{" "}
+              {assessment.responsiblePersonName || "—"}
+            </div>
+            <div>
+              <span className="text-muted-foreground">Responsible person address:</span>{" "}
+              {assessment.responsiblePersonAddress || "—"}
+            </div>
+            <div>
+              <span className="text-muted-foreground">Assessor:</span>{" "}
+              {[assessment.assessorName, assessment.assessorOrganisation].filter(Boolean).join(", ") || "—"}
             </div>
           </CardContent>
         </Card>

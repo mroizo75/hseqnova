@@ -68,7 +68,7 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
       case "incident":
         return "Hendelse";
       case "action":
-        return "Tiltak";
+        return "Action";
       case "audit":
         return "Revisjon";
       case "training":

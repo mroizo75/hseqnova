@@ -7,6 +7,12 @@ import { tenantHasModule } from "@/lib/tenant-modules";
 
 export const HEALTH_SAFETY_POLICY_PATH = "/dashboard/health-safety-policy";
 export const HEALTH_SAFETY_POLICY_LEGACY_PATH = "/dashboard/hms-handbok";
+export const HEALTH_SAFETY_POLICY_EMPLOYEE_PATH = "/ansatt/hms-handbok";
+
+/** Roles that read the policy in the employee portal (HSWA s.2(3) notice). */
+export const POLICY_NOTIFY_EMPLOYEE_ROLES = ["ANSATT", "VERNEOMBUD"] as const;
+/** Roles that manage the written policy from the dashboard. */
+export const POLICY_NOTIFY_MANAGER_ROLES = ["ADMIN", "HMS", "LEDER"] as const;
 
 export type PolicyPart = "statement" | "organisation" | "arrangements";
 
@@ -173,6 +179,24 @@ export const DEFAULT_POLICY_SECTIONS: readonly DefaultPolicySection[] = [
     moduleLink: "/dashboard/fire-drills",
     content: `<p>The responsible person must take general fire precautions, make a fire risk assessment, and provide procedures for serious and imminent danger.</p>
 <p>Fire marshals, extinguishers, escape routes, drills and evacuation are recorded in the fire drills module. Drills are held at intervals that keep the arrangements effective.</p>`,
+  },
+  {
+    sectionKey: "s7a",
+    sectionNumber: "10",
+    title: "First aid",
+    policyPart: "arrangements",
+    legalRef: "Health and Safety (First-Aid) Regulations 1981",
+    sortOrder: 9,
+    moduleLink: null,
+    content: `<p>We provide adequate and appropriate first-aid equipment, facilities and personnel so that employees can be given immediate help if they are injured or taken ill at work (Health and Safety (First-Aid) Regulations 1981).</p>
+<p>What is adequate depends on the workplace, the hazards and the number of people. We assess this as part of our risk assessment.</p>
+<ul>
+  <li>first-aid kits are kept stocked and accessible;</li>
+  <li>appointed persons and/or trained first aiders are named in the organisation chart;</li>
+  <li>employees are told who the first aiders are and where equipment is kept;</li>
+  <li>injuries treated at work are also entered in the accident book where they arise from work.</li>
+</ul>
+<p>There is no separate first-aid module. Names live in the organisation chart; injury records live in the accident book.</p>`,
   },
   {
     sectionKey: "s8",
@@ -359,9 +383,6 @@ export function policySectionNeedsUkSync(stored: {
   }
   if (stored.title !== def.title) return true;
   if ((stored.legalRef ?? "") !== def.legalRef) return true;
-  if (!stored.content.includes("Health and Safety at Work etc. Act 1974") && !stored.content.includes("so far as is reasonably practicable")) {
-    return true;
-  }
   if (NORWEGIAN_POLICY_MARKERS.test(`${stored.title}\n${stored.content}\n${stored.legalRef ?? ""}`)) {
     return true;
   }

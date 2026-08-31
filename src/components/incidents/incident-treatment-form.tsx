@@ -45,9 +45,22 @@ interface IncidentTreatmentFormProps {
   currentInjuryType: string | null;
   currentInjuryDescription: string | null;
   currentSuggestedActions: string | null;
+  currentInjuredPersonOccupation?: string | null;
+  currentInjuredPersonAddress?: string | null;
+  currentInjuredPersonRole?: string | null;
+  currentWitnessName?: string | null;
+  currentWitnessAddress?: string | null;
+  currentShareWithSafetyRepsConsent?: boolean;
+  currentReporterAcknowledged?: boolean;
   currentOverSevenDayInjury: boolean;
+  currentOverThreeDayInjury?: boolean;
+  currentSpecifiedInjury?: boolean;
+  currentListedOccupationalDisease?: boolean;
+  currentListedDangerousOccurrence?: boolean;
+  currentNonWorkerTakenToHospital?: boolean;
   currentRiddorReportedAt?: Date | string | null;
   currentRiddorReference?: string | null;
+  currentRiddorReportMethod?: string | null;
   currentLocation?: string | null;
   showProjectFields?: boolean;
   users: Array<{ id: string; name: string | null; email: string }>;
@@ -97,9 +110,22 @@ export function IncidentTreatmentForm({
   currentInjuryType,
   currentInjuryDescription,
   currentSuggestedActions,
+  currentInjuredPersonOccupation = null,
+  currentInjuredPersonAddress = null,
+  currentInjuredPersonRole = null,
+  currentWitnessName = null,
+  currentWitnessAddress = null,
+  currentShareWithSafetyRepsConsent = false,
+  currentReporterAcknowledged = false,
   currentOverSevenDayInjury,
+  currentOverThreeDayInjury = false,
+  currentSpecifiedInjury = false,
+  currentListedOccupationalDisease = false,
+  currentListedDangerousOccurrence = false,
+  currentNonWorkerTakenToHospital = false,
   currentRiddorReportedAt = null,
   currentRiddorReference = null,
+  currentRiddorReportMethod = null,
   currentLocation = null,
   showProjectFields = false,
   users,
@@ -145,9 +171,22 @@ export function IncidentTreatmentForm({
   const [injuryType, setInjuryType] = useState(currentInjuryType ?? "");
   const [injuryDescription, setInjuryDescription] = useState(currentInjuryDescription ?? "");
   const [suggestedActions, setSuggestedActions] = useState(currentSuggestedActions ?? "");
+  const [injuredPersonOccupation, setInjuredPersonOccupation] = useState(currentInjuredPersonOccupation ?? "");
+  const [injuredPersonAddress, setInjuredPersonAddress] = useState(currentInjuredPersonAddress ?? "");
+  const [injuredPersonRole, setInjuredPersonRole] = useState(currentInjuredPersonRole ?? "employee");
+  const [witnessName, setWitnessName] = useState(currentWitnessName ?? "");
+  const [witnessAddress, setWitnessAddress] = useState(currentWitnessAddress ?? "");
+  const [shareWithSafetyRepsConsent, setShareWithSafetyRepsConsent] = useState(currentShareWithSafetyRepsConsent);
+  const [reporterAcknowledged, setReporterAcknowledged] = useState(currentReporterAcknowledged);
   const [overSevenDayInjury, setOverSevenDayInjury] = useState(currentOverSevenDayInjury);
+  const [overThreeDayInjury, setOverThreeDayInjury] = useState(currentOverThreeDayInjury);
+  const [specifiedInjury, setSpecifiedInjury] = useState(currentSpecifiedInjury);
+  const [listedOccupationalDisease, setListedOccupationalDisease] = useState(currentListedOccupationalDisease);
+  const [listedDangerousOccurrence, setListedDangerousOccurrence] = useState(currentListedDangerousOccurrence);
+  const [nonWorkerTakenToHospital, setNonWorkerTakenToHospital] = useState(currentNonWorkerTakenToHospital);
   const [riddorReportedAt, setRiddorReportedAt] = useState(toDatetimeLocalValue(currentRiddorReportedAt));
   const [riddorReference, setRiddorReference] = useState(currentRiddorReference ?? "");
+  const [riddorReportMethod, setRiddorReportMethod] = useState(currentRiddorReportMethod ?? "");
   const requiresHseCompletion = status !== "OPEN";
   const lostWorkdaysValue = lostWorkdays.trim();
   const isLostWorkdaysInvalid =
@@ -247,14 +286,27 @@ export function IncidentTreatmentForm({
           isEnvironmentalRelease,
           environmentalDescription: environmentalDescription.trim() || null,
           involvedPersons: involvedPersons.trim() || null,
+          injuredPersonOccupation: injuredPersonOccupation.trim() || null,
+          injuredPersonAddress: injuredPersonAddress.trim() || null,
+          injuredPersonRole: injuredPersonRole || null,
+          witnessName: witnessName.trim() || null,
+          witnessAddress: witnessAddress.trim() || null,
+          shareWithSafetyRepsConsent,
+          reporterAcknowledged,
           injuryType: injuryType.trim() || null,
           injuryDescription: injuryDescription.trim() || null,
           suggestedActions: suggestedActions.trim() || null,
           overSevenDayInjury,
+          overThreeDayInjury,
+          specifiedInjury,
+          listedOccupationalDisease,
+          listedDangerousOccurrence,
+          nonWorkerTakenToHospital,
           source,
           location: location.trim() || null,
           riddorReportedAt: riddorReportedAt ? new Date(riddorReportedAt).toISOString() : null,
           riddorReference: riddorReference.trim() || null,
+          riddorReportMethod: riddorReportMethod || null,
         }),
       });
 
@@ -302,12 +354,25 @@ export function IncidentTreatmentForm({
     isEnvironmentalRelease !== currentIsEnvironmentalRelease ||
     environmentalDescription !== (currentEnvironmentalDescription ?? "") ||
     involvedPersons !== (currentInvolvedPersons ?? "") ||
+    injuredPersonOccupation !== (currentInjuredPersonOccupation ?? "") ||
+    injuredPersonAddress !== (currentInjuredPersonAddress ?? "") ||
+    injuredPersonRole !== (currentInjuredPersonRole ?? "employee") ||
+    witnessName !== (currentWitnessName ?? "") ||
+    witnessAddress !== (currentWitnessAddress ?? "") ||
+    shareWithSafetyRepsConsent !== currentShareWithSafetyRepsConsent ||
+    reporterAcknowledged !== currentReporterAcknowledged ||
     injuryType !== (currentInjuryType ?? "") ||
     injuryDescription !== (currentInjuryDescription ?? "") ||
     suggestedActions !== (currentSuggestedActions ?? "") ||
     overSevenDayInjury !== currentOverSevenDayInjury ||
+    overThreeDayInjury !== currentOverThreeDayInjury ||
+    specifiedInjury !== currentSpecifiedInjury ||
+    listedOccupationalDisease !== currentListedOccupationalDisease ||
+    listedDangerousOccurrence !== currentListedDangerousOccurrence ||
+    nonWorkerTakenToHospital !== currentNonWorkerTakenToHospital ||
     riddorReportedAt !== toDatetimeLocalValue(currentRiddorReportedAt) ||
     riddorReference.trim() !== (currentRiddorReference ?? "") ||
+    riddorReportMethod !== (currentRiddorReportMethod ?? "") ||
     source !== (currentSource || "INTERNAL");
 
   return (
@@ -478,22 +543,53 @@ export function IncidentTreatmentForm({
 
       <div className="rounded-lg border p-4 space-y-4">
         <div>
-          <Label className="block font-semibold">People involved and outcome</Label>
+          <Label className="block font-semibold">Accident book (BI 510)</Label>
           <p className="text-xs text-muted-foreground mt-1">
-            Complete during handling when the extent is known (accident book; RIDDOR 2013).
+            Social Security (Claims and Payments) Regulations 1979 — name, occupation, address and nature of injury.
           </p>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="involvedPersons">Injured / involved person *</Label>
-            <Textarea
+            <Label htmlFor="involvedPersons">Injured / involved person — full name *</Label>
+            <Input
               id="involvedPersons"
               value={involvedPersons}
               onChange={(event) => setInvolvedPersons(event.target.value)}
-              rows={3}
-              placeholder="Full name, occupation and address (accident book / BI 510)"
+              placeholder="Full name"
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="injuredPersonOccupation">Occupation *</Label>
+            <Input
+              id="injuredPersonOccupation"
+              value={injuredPersonOccupation}
+              onChange={(event) => setInjuredPersonOccupation(event.target.value)}
+              placeholder="Job title or occupation"
+            />
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="injuredPersonAddress">Address *</Label>
+            <Input
+              id="injuredPersonAddress"
+              value={injuredPersonAddress}
+              onChange={(event) => setInjuredPersonAddress(event.target.value)}
+              placeholder="Home or work address"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Person&apos;s role</Label>
+            <Select value={injuredPersonRole} onValueChange={setInjuredPersonRole}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="employee">Employee</SelectItem>
+                <SelectItem value="contractor">Contractor</SelectItem>
+                <SelectItem value="visitor">Visitor</SelectItem>
+                <SelectItem value="member_of_public">Member of the public</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="injuryType">Injury type</Label>
@@ -507,15 +603,45 @@ export function IncidentTreatmentForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="injuryDescription">Injury description</Label>
+          <Label htmlFor="injuryDescription">Cause and nature of injury *</Label>
           <Textarea
             id="injuryDescription"
             value={injuryDescription}
             onChange={(event) => setInjuryDescription(event.target.value)}
             rows={3}
-            placeholder="Extent of injury, body part and treatment"
+            placeholder="What caused the injury, body part and treatment"
           />
         </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="witnessName">Witness name</Label>
+            <Input id="witnessName" value={witnessName} onChange={(event) => setWitnessName(event.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="witnessAddress">Witness address</Label>
+            <Input id="witnessAddress" value={witnessAddress} onChange={(event) => setWitnessAddress(event.target.value)} />
+          </div>
+        </div>
+
+        <label className="flex items-start gap-2 text-sm">
+          <Checkbox
+            checked={shareWithSafetyRepsConsent}
+            onCheckedChange={(checked) => setShareWithSafetyRepsConsent(!!checked)}
+            className="mt-0.5"
+          />
+          <span>
+            Consent to share this personal information with safety representatives (BI 510; SRSCWR 1977; UK GDPR).
+          </span>
+        </label>
+        <label className="flex items-start gap-2 text-sm">
+          <Checkbox
+            checked={reporterAcknowledged}
+            onCheckedChange={(checked) => setReporterAcknowledged(!!checked)}
+            className="mt-0.5"
+          />
+          <span>This accident book entry is an accurate record of the event.</span>
+        </label>
 
         <div className="space-y-2">
           <Label htmlFor="suggestedActions">Suggested actions</Label>
@@ -531,11 +657,21 @@ export function IncidentTreatmentForm({
 
       <div className="rounded-lg border p-4 space-y-4">
         <div>
-          <Label className="block font-semibold">RIDDOR 2013</Label>
+          <Label className="block font-semibold">RIDDOR 2013 — competent person</Label>
           <p className="text-xs text-muted-foreground mt-1">
-            Report to HSE before the investigation is finished. Record the date and reference here — this does not submit the report.
+            Confirm the legal category. This does not send the report to HSE — record how you reported it.
           </p>
         </div>
+
+        {isFatal && (
+          <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900">
+            Death arising from work: call the Incident Contact Centre immediately on{" "}
+            <a className="font-semibold underline" href="tel:03453009923">
+              0345 300 9923
+            </a>
+            , then complete the online report. Do not wait for the investigation.
+          </div>
+        )}
 
         <div className="grid gap-3 md:grid-cols-2">
           <label className="flex items-center gap-2">
@@ -543,14 +679,56 @@ export function IncidentTreatmentForm({
               checked={isFatal}
               onCheckedChange={(checked) => setIsFatal(!!checked)}
             />
-            <span className="text-sm">Fatality (report without delay)</span>
+            <span className="text-sm">Fatality — report without delay</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <Checkbox
+              checked={specifiedInjury}
+              onCheckedChange={(checked) => setSpecifiedInjury(!!checked)}
+            />
+            <span className="text-sm">Specified injury (Schedule 1) — 10 days</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <Checkbox
+              checked={nonWorkerTakenToHospital}
+              onCheckedChange={(checked) => setNonWorkerTakenToHospital(!!checked)}
+            />
+            <span className="text-sm">Non-worker taken from the scene to hospital</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <Checkbox
+              checked={overSevenDayInjury}
+              onCheckedChange={(checked) => setOverSevenDayInjury(!!checked)}
+            />
+            <span className="text-sm">Over-seven-day injury — report within 15 days</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <Checkbox
+              checked={overThreeDayInjury}
+              onCheckedChange={(checked) => setOverThreeDayInjury(!!checked)}
+            />
+            <span className="text-sm">Over-three-day injury (record only, not reportable)</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <Checkbox
+              checked={listedOccupationalDisease}
+              onCheckedChange={(checked) => setListedOccupationalDisease(!!checked)}
+            />
+            <span className="text-sm">Listed occupational disease (reg. 8)</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <Checkbox
+              checked={listedDangerousOccurrence}
+              onCheckedChange={(checked) => setListedDangerousOccurrence(!!checked)}
+            />
+            <span className="text-sm">Listed dangerous occurrence (Schedule 2)</span>
           </label>
           <label className="flex items-center gap-2">
             <Checkbox
               checked={medicalAttentionRequired}
               onCheckedChange={(checked) => setMedicalAttentionRequired(!!checked)}
             />
-            <span className="text-sm">Medical treatment / specified injury</span>
+            <span className="text-sm">Medical treatment given (not by itself RIDDOR)</span>
           </label>
           <label className="flex items-center gap-2">
             <Checkbox
@@ -565,14 +743,18 @@ export function IncidentTreatmentForm({
             />
             <span className="text-sm">Lost time injury</span>
           </label>
-          <label className="flex items-center gap-2">
-            <Checkbox
-              checked={overSevenDayInjury}
-              onCheckedChange={(checked) => setOverSevenDayInjury(!!checked)}
-            />
-            <span className="text-sm">Over-seven-day injury (report within 15 days)</span>
-          </label>
         </div>
+        <p className="text-xs text-muted-foreground">
+          Specified injuries:{" "}
+          <a
+            href="https://www.hse.gov.uk/riddor/specified-injuries.htm"
+            target="_blank"
+            rel="noreferrer"
+            className="underline"
+          >
+            hse.gov.uk/riddor/specified-injuries
+          </a>
+        </p>
 
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-2">
@@ -593,6 +775,22 @@ export function IncidentTreatmentForm({
             )}
           </div>
           <div className="space-y-2">
+            <Label>How was it reported to HSE?</Label>
+            <Select
+              value={riddorReportMethod || "__none__"}
+              onValueChange={(value) => setRiddorReportMethod(value === "__none__" ? "" : value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Not yet reported" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Not yet reported</SelectItem>
+                <SelectItem value="phone">Telephone — 0345 300 9923</SelectItem>
+                <SelectItem value="online">Online — hse.gov.uk/riddor</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="riddorReportedAt">Date reported to HSE</Label>
             <Input
               id="riddorReportedAt"
@@ -601,13 +799,13 @@ export function IncidentTreatmentForm({
               onChange={(event) => setRiddorReportedAt(event.target.value)}
             />
           </div>
-          <div className="space-y-2 md:col-span-2">
+          <div className="space-y-2">
             <Label htmlFor="riddorReference">HSE / Incident Contact Centre reference</Label>
             <Input
               id="riddorReference"
               value={riddorReference}
               onChange={(event) => setRiddorReference(event.target.value)}
-              placeholder="Reference from hse.gov.uk/riddor"
+              placeholder="Reference from HSE"
             />
           </div>
         </div>

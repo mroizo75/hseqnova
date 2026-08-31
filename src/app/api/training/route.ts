@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { getAuthMembership } from "@/lib/auth-db";
 import { resolveEffectivePermissions } from "@/lib/server-authorization";
 import { insertTraining, loadTrainingsForTenant } from "@/server/queries/training.queries";
+import { validateTrainingMhswrReason } from "@/lib/training-uk";
 import { Role } from "@prisma/client";
 import type { Training } from "@prisma/client";
 
@@ -20,6 +21,7 @@ function toListItem(row: Training) {
     isRequired: row.isRequired,
     evaluatedBy: row.evaluatedBy,
     evaluatedAt: row.evaluatedAt,
+    mhswrReason: row.mhswrReason,
     createdAt: row.createdAt,
   };
 }
@@ -75,11 +77,19 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, description, provider, completedAt, proofDocKey, isRequired, effectiveness } = body;
+    const { title, description, provider, completedAt, proofDocKey, isRequired, effectiveness, mhswrReason } = body;
 
     if (!title || !completedAt) {
       return NextResponse.json(
         { error: "Title and completion date are required", message: "Title and completion date are required" },
+        { status: 400 },
+      );
+    }
+
+    const reasonCheck = validateTrainingMhswrReason(typeof mhswrReason === "string" ? mhswrReason : null);
+    if (reasonCheck.ok === false) {
+      return NextResponse.json(
+        { error: reasonCheck.message, message: reasonCheck.message },
         { status: 400 },
       );
     }
@@ -89,11 +99,12 @@ export async function POST(request: NextRequest) {
       userId: session.user.id,
       title,
       description: description || null,
-      provider: provider || "Custom",
+      provider: provider || "In-house",
       completedAt: new Date(completedAt),
       proofDocKey: proofDocKey || null,
       isRequired: isRequired || false,
       effectiveness: effectiveness !== undefined ? effectiveness : null,
+      mhswrReason: reasonCheck.reason,
       courseKey: `${session.user.tenantId}-${String(title).toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`,
     });
 

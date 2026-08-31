@@ -3,12 +3,14 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Plus, AlertTriangle, CheckCircle, Clock, Activity } from "lucide-react";
+import { FileText, Plus, AlertTriangle, Activity } from "lucide-react";
 import Link from "next/link";
 import { PageHelpDialog } from "@/components/dashboard/page-help-dialog";
 import { helpContent } from "@/lib/help-content";
 import { listCoshhAssessments } from "@/server/actions/coshh.actions";
 import { Badge } from "@/components/ui/badge";
+import { CoshhLegalNote } from "@/features/chemicals/components/coshh-legal-note";
+import { loadChemicalsForTenant } from "@/server/queries/chemicals.queries";
 import {
   Table,
   TableBody,
@@ -44,7 +46,10 @@ export default async function CoshhAssessmentsPage() {
     redirect("/login");
   }
 
+  const tenantId = session.user.tenantId;
   const assessments = await listCoshhAssessments();
+  const chemicals = await loadChemicalsForTenant(tenantId);
+  const chemicalName = new Map(chemicals.map((row) => [row.id, row.productName]));
 
   const stats = {
     total: assessments.length,
@@ -78,26 +83,7 @@ export default async function CoshhAssessmentsPage() {
         </div>
       </div>
 
-      {/* COSHH 2002 legal reference */}
-      <Card className="bg-blue-50 border-blue-200">
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-3">
-            <FileText className="h-5 w-5 text-blue-600 mt-0.5" />
-            <div>
-              <p className="font-medium text-blue-900 mb-2">
-                COSHH 2002 — Control of Substances Hazardous to Health Regulations
-              </p>
-              <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                <li>Assess exposure for every hazardous substance used at work (reg. 6)</li>
-                <li>Prevent or adequately control exposure (reg. 7)</li>
-                <li>Provide information, instruction and training (reg. 12)</li>
-                <li>Arrange health surveillance where the assessment shows it is appropriate (reg. 11)</li>
-                <li>Keep health surveillance records for 40 years (reg. 11(4))</li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <CoshhLegalNote />
 
       {/* Stats cards */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
@@ -163,6 +149,7 @@ export default async function CoshhAssessmentsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Substance</TableHead>
                     <TableHead>Task / activity</TableHead>
                     <TableHead>Existing controls</TableHead>
                     <TableHead>Additional controls</TableHead>
@@ -175,8 +162,16 @@ export default async function CoshhAssessmentsPage() {
                     const overdue = isOverdue(a.reviewDueAt);
                     return (
                       <TableRow key={a.id}>
+                        <TableCell className="font-medium">
+                          {a.chemicalId ? chemicalName.get(a.chemicalId) ?? "—" : "—"}
+                        </TableCell>
                         <TableCell className="font-medium max-w-[250px]">
-                          <span className="line-clamp-2">{a.taskDescription}</span>
+                          <Link
+                            href={`/dashboard/coshh-assessments/${a.id}`}
+                            className="line-clamp-2 hover:underline"
+                          >
+                            {a.taskDescription}
+                          </Link>
                         </TableCell>
                         <TableCell className="max-w-[200px]">
                           <span className="line-clamp-2 text-sm text-muted-foreground">

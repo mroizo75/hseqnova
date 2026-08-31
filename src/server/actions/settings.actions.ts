@@ -10,6 +10,7 @@ import { AuditLog } from "@/lib/audit-log";
 import { assertNoManagerCycle } from "@/lib/incident-notification-routing";
 import { Role } from "@prisma/client";
 import { loadTenantWithSubscription } from "@/server/queries/settings.queries";
+import { validateInviteName } from "@/lib/competent-person-uk";
 
 type SessionUser = {
   id: string;
@@ -607,7 +608,12 @@ type InviteContext = {
 };
 
 async function inviteSingleUser(ctx: InviteContext, data: { email: string; name: string; role: string }): Promise<{ success: true } | { success: false; error: string }> {
-  const normalizedEmail = data.email.toLowerCase().trim();
+    const named = validateInviteName(data.name);
+    if (named.ok === false) {
+      return { success: false, error: named.message };
+    }
+
+    const normalizedEmail = data.email.toLowerCase().trim();
   const db = getAdminDb();
 
   let existingUser = await findUserByEmail(normalizedEmail);
@@ -638,7 +644,7 @@ async function inviteSingleUser(ctx: InviteContext, data: { email: string; name:
       .insert({
         id: userId,
         email: normalizedEmail,
-        name: data.name,
+        name: named.name,
         password: hashedPassword,
         updatedAt: stamp,
       })
@@ -686,7 +692,7 @@ async function inviteSingleUser(ctx: InviteContext, data: { email: string; name:
     const { sendUserInvitationEmail } = await import("@/lib/email-service");
     await sendUserInvitationEmail({
       to: normalizedEmail,
-      userName: data.name,
+      userName: named.name,
       userEmail: normalizedEmail,
       tempPassword,
       companyName: ctx.tenantName,

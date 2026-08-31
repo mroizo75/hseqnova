@@ -34,7 +34,7 @@ export default async function ContractorDetailPage({
         </Link>
         <h1 className="text-xl sm:text-2xl font-bold">Pre-Qualification Review</h1>
         <p className="text-sm text-muted-foreground">
-          Review contractor details and approve or reject pre-qualification.
+          Review selection evidence and record that host information has been given before approval.
         </p>
       </div>
       <PrequalificationReview contractor={contractor} />

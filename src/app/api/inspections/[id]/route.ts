@@ -48,6 +48,7 @@ export async function PATCH(
       conductedBy: data.conductedBy,
       participants: data.participants,
       checklist: data.checklist,
+      legalBasis: data.legalBasis,
     });
     return createSuccessResponse({ inspection }, "Inspection updated");
   } catch (error: unknown) {

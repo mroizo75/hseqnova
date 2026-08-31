@@ -35,7 +35,8 @@ export const createRiskSchema = z.object({
   location: z.string().max(120).optional().nullable(),
   area: z.string().max(120).optional().nullable(),
   description: z.string().max(2000).optional().nullable(),
-  existingControls: z.string().max(2000).optional().nullable(),
+  existingControls: z.string().min(8, "Record existing controls").max(2000),
+  groupsAtRisk: z.string().max(500).optional().nullable(),
   controlFrequency: z.nativeEnum(ControlFrequency).default("ANNUAL"),
   riskStatement: z.string().max(500).optional().nullable(),
   residualLikelihood: z.number().int().min(1).max(5).optional().nullable(),
@@ -65,7 +66,8 @@ export const updateRiskSchema = z.object({
   location: z.string().max(120).optional().nullable(),
   area: z.string().max(120).optional().nullable(),
   description: z.string().max(2000).optional().nullable(),
-  existingControls: z.string().max(2000).optional().nullable(),
+  existingControls: z.string().min(8, "Record existing controls").max(2000).optional().nullable(),
+  groupsAtRisk: z.string().max(500).optional().nullable(),
   controlFrequency: z.nativeEnum(ControlFrequency).optional(),
   riskStatement: z.string().max(500).optional().nullable(),
   residualLikelihood: z.number().int().min(1).max(5).optional().nullable(),
@@ -102,6 +104,7 @@ export const updateRiskAssessmentSchema = z.object({
   approvedAt: z.coerce.date().optional().nullable(),
   reviewedById: optionalRecordId,
   reviewedAt: z.coerce.date().optional().nullable(),
+  groupsAtRisk: z.string().max(500).optional().nullable(),
 });
 
 /** Enkel nivå for risikopunkt i årlig risikovurdering (ISO 45001) */

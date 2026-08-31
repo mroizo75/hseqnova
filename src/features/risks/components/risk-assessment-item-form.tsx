@@ -17,6 +17,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { addRiskAssessmentItem } from "@/server/actions/risk.actions";
 import { useToast } from "@/hooks/use-toast";
 import type { RiskCategory } from "@prisma/client";
+import { GroupsAtRiskFields } from "@/features/risks/components/groups-at-risk-fields";
+import { serializeGroupsAtRisk } from "@/lib/risk-mhswr";
 
 const LEVEL_OPTIONS = [
   { value: "LOW", label: "Low" },
@@ -60,14 +62,31 @@ export function RiskAssessmentItemForm({
     d.setFullYear(d.getFullYear() + 1);
     return d.toISOString().slice(0, 10);
   });
-  const [beskrivelse, setBeskrivelse] = useState("");
+  const [whoMightBeHarmed, setWhoMightBeHarmed] = useState("");
   const [existingControls, setExistingControls] = useState("");
+  const [groupsAtRisk, setGroupsAtRisk] = useState<string[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = title.trim();
     if (trimmed.length < 3) {
       toast({ variant: "destructive", title: "Title must be at least 3 characters" });
+      return;
+    }
+    if (whoMightBeHarmed.trim().length < 10) {
+      toast({
+        variant: "destructive",
+        title: "Who might be harmed is required",
+        description: "Say who could be harmed and how (MHSWR 1999 reg.3(6); HSE).",
+      });
+      return;
+    }
+    if (existingControls.trim().length < 8) {
+      toast({
+        variant: "destructive",
+        title: "Existing controls are required",
+        description: "Record what you are already doing to control the risk (HSE).",
+      });
       return;
     }
     setLoading(true);
@@ -81,14 +100,16 @@ export function RiskAssessmentItemForm({
         category,
         assessmentDate: assessmentDate || null,
         nextReviewDate: nextReviewDate || null,
-        beskrivelse: beskrivelse.trim() || null,
-        existingControls: existingControls.trim() || null,
+        whoMightBeHarmed: whoMightBeHarmed.trim(),
+        existingControls: existingControls.trim(),
+        groupsAtRisk: groupsAtRisk.length ? serializeGroupsAtRisk(groupsAtRisk) : null,
       });
       if (result.success) {
         toast({ title: "Risk item added", className: "bg-green-50 border-green-200" });
         setTitle("");
-        setBeskrivelse("");
+        setWhoMightBeHarmed("");
         setExistingControls("");
+        setGroupsAtRisk([]);
         onAdded?.();
         router.refresh();
       } else {
@@ -146,18 +167,25 @@ export function RiskAssessmentItemForm({
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="item-beskrivelse">Who might be harmed and how</Label>
+            <Label htmlFor="item-who">Who might be harmed and how *</Label>
             <Textarea
-              id="item-beskrivelse"
-              value={beskrivelse}
-              onChange={(e) => setBeskrivelse(e.target.value)}
+              id="item-who"
+              value={whoMightBeHarmed}
+              onChange={(e) => setWhoMightBeHarmed(e.target.value)}
               placeholder="Employees, contractors or others who could be harmed, and how."
               disabled={loading}
               rows={3}
+              required
             />
           </div>
+          <GroupsAtRiskFields
+            idPrefix="item-who-groups"
+            value={groupsAtRisk}
+            onChange={setGroupsAtRisk}
+            disabled={loading}
+          />
           <div className="space-y-2">
-            <Label htmlFor="item-controls">Existing controls</Label>
+            <Label htmlFor="item-controls">Existing controls *</Label>
             <Textarea
               id="item-controls"
               value={existingControls}
@@ -165,6 +193,7 @@ export function RiskAssessmentItemForm({
               placeholder="What is already in place: training, PPE, guarding, permits, supervision."
               disabled={loading}
               rows={3}
+              required
             />
           </div>
           <div className="grid gap-4 md:grid-cols-3">

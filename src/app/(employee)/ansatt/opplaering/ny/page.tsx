@@ -11,6 +11,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { GraduationCap, Upload, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  MHSWR_TRAINING_REASON_KEYS,
+  MHSWR_TRAINING_REASONS,
+} from "@/lib/training-uk";
 
 export default function NyKompetansePage() {
   const t = useTranslations("employeeTrainingNewPage");
@@ -21,6 +32,7 @@ export default function NyKompetansePage() {
     description: "",
     provider: "",
     completedAt: "",
+    mhswrReason: "",
     certificateFile: null as File | null,
   });
 
@@ -42,7 +54,7 @@ export default function NyKompetansePage() {
 
     try {
       // Valider
-      if (!formData.title || !formData.completedAt) {
+      if (!formData.title || !formData.completedAt || !formData.mhswrReason) {
         toast.error(t("errors.requiredFields"));
         setIsLoading(false);
         return;
@@ -65,7 +77,7 @@ export default function NyKompetansePage() {
         }
 
         const uploadData = await uploadRes.json();
-        proofDocKey = uploadData.fileKey;
+        proofDocKey = uploadData.key ?? uploadData.fileKey;
       }
 
       // Opprett opplæring
@@ -74,6 +86,7 @@ export default function NyKompetansePage() {
         description: formData.description || undefined,
         provider: formData.provider || undefined,
         completedAt: new Date(formData.completedAt).toISOString(),
+        mhswrReason: formData.mhswrReason,
         proofDocKey: proofDocKey || undefined,
         isRequired: false,
         effectiveness: null, // Venter på godkjenning
@@ -176,7 +189,29 @@ export default function NyKompetansePage() {
               />
             </div>
 
-            {/* Gjennomført dato */}
+            <div className="space-y-2">
+              <Label>
+                {t("form.fields.mhswrReason.label")} <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={formData.mhswrReason}
+                onValueChange={(value) => setFormData({ ...formData, mhswrReason: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("form.fields.mhswrReason.placeholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {MHSWR_TRAINING_REASON_KEYS.map((key) => (
+                    <SelectItem key={key} value={key}>
+                      {MHSWR_TRAINING_REASONS[key].label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">{t("form.fields.mhswrReason.help")}</p>
+            </div>
+
+            {/* Completion date */}
             <div className="space-y-2">
               <Label htmlFor="completedAt">
                 {t("form.fields.completedAt.label")} <span className="text-red-500">*</span>

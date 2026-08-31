@@ -163,6 +163,19 @@ export async function PUT(
     const estimatedDamageCost = parseNullableNumber(body.estimatedDamageCost);
     const isEnvironmentalRelease = parseBoolean(body.isEnvironmentalRelease);
     const overSevenDayInjury = parseBoolean(body.overSevenDayInjury);
+    const overThreeDayInjury = parseBoolean(body.overThreeDayInjury);
+    const specifiedInjury = parseBoolean(body.specifiedInjury);
+    const listedOccupationalDisease = parseBoolean(body.listedOccupationalDisease);
+    const listedDangerousOccurrence = parseBoolean(body.listedDangerousOccurrence);
+    const nonWorkerTakenToHospital = parseBoolean(body.nonWorkerTakenToHospital);
+    const shareWithSafetyRepsConsent = parseBoolean(body.shareWithSafetyRepsConsent);
+    const reporterAcknowledged = parseBoolean(body.reporterAcknowledged);
+    const injuredPersonOccupation = parseNullableText(body.injuredPersonOccupation);
+    const injuredPersonAddress = parseNullableText(body.injuredPersonAddress);
+    const injuredPersonRole = parseNullableText(body.injuredPersonRole);
+    const witnessName = parseNullableText(body.witnessName);
+    const witnessAddress = parseNullableText(body.witnessAddress);
+    const riddorReportMethod = parseNullableText(body.riddorReportMethod);
     const environmentalDescription =
       typeof body.environmentalDescription === "string"
         ? body.environmentalDescription.trim() || null
@@ -200,7 +213,7 @@ export async function PUT(
 
     const { data: existingIncident } = await db
       .from("Incident")
-      .select("id, title, type, severity, isRestrictedWork, responsibleId, avviksnummer, occurredAt, injuryType, medicalAttentionRequired, isFatal, isLostTimeIncident, lostWorkdays, overSevenDayInjury")
+      .select("id, title, type, severity, isRestrictedWork, responsibleId, avviksnummer, occurredAt, injuryType, medicalAttentionRequired, isFatal, isLostTimeIncident, lostWorkdays, overSevenDayInjury, specifiedInjury, listedOccupationalDisease, listedDangerousOccurrence, nonWorkerTakenToHospital")
       .eq("id", id)
       .eq("tenantId", tenantId)
       .maybeSingle();
@@ -211,19 +224,21 @@ export async function PUT(
 
     const mergedType = type ?? existingIncident.type;
     const mergedFatal = isFatal ?? existingIncident.isFatal;
-    const mergedLti = isLostTimeIncident ?? existingIncident.isLostTimeIncident;
     const mergedLostDays = lostWorkdays === undefined ? existingIncident.lostWorkdays : lostWorkdays;
     const mergedOverSeven = overSevenDayInjury ?? existingIncident.overSevenDayInjury;
-    const mergedInjuryType = injuryType === undefined ? existingIncident.injuryType : injuryType;
-    const mergedMedical = medicalAttentionRequired ?? existingIncident.medicalAttentionRequired;
+    const mergedSpecified = specifiedInjury ?? existingIncident.specifiedInjury;
+    const mergedDisease = listedOccupationalDisease ?? existingIncident.listedOccupationalDisease;
+    const mergedDangerous = listedDangerousOccurrence ?? existingIncident.listedDangerousOccurrence;
+    const mergedNonWorker = nonWorkerTakenToHospital ?? existingIncident.nonWorkerTakenToHospital;
     const riddor = assessRiddor({
       type: mergedType,
       isFatal: mergedFatal ?? false,
-      isLostTimeIncident: mergedLti ?? false,
-      lostWorkdays: mergedLostDays,
+      specifiedInjury: mergedSpecified ?? false,
       overSevenDayInjury: mergedOverSeven ?? false,
-      injuryType: mergedInjuryType,
-      medicalAttentionRequired: mergedMedical ?? false,
+      lostWorkdays: mergedLostDays,
+      listedOccupationalDisease: mergedDisease ?? false,
+      listedDangerousOccurrence: mergedDangerous ?? false,
+      nonWorkerTakenToHospital: mergedNonWorker ?? false,
       occurredAt: new Date(existingIncident.occurredAt),
     });
 
@@ -280,6 +295,22 @@ export async function PUT(
         injuryType,
         injuryDescription,
         suggestedActions,
+        injuredPersonOccupation,
+        injuredPersonAddress,
+        injuredPersonRole,
+        witnessName,
+        witnessAddress,
+        shareWithSafetyRepsConsent:
+          shareWithSafetyRepsConsent === undefined ? undefined : shareWithSafetyRepsConsent,
+        reporterAcknowledged: reporterAcknowledged === undefined ? undefined : reporterAcknowledged,
+        specifiedInjury: specifiedInjury === undefined ? undefined : specifiedInjury,
+        listedOccupationalDisease:
+          listedOccupationalDisease === undefined ? undefined : listedOccupationalDisease,
+        listedDangerousOccurrence:
+          listedDangerousOccurrence === undefined ? undefined : listedDangerousOccurrence,
+        nonWorkerTakenToHospital:
+          nonWorkerTakenToHospital === undefined ? undefined : nonWorkerTakenToHospital,
+        overThreeDayInjury: overThreeDayInjury === undefined ? undefined : overThreeDayInjury,
         location,
         source: source ?? undefined,
         overSevenDayInjury: overSevenDayInjury === undefined ? undefined : overSevenDayInjury,
@@ -293,6 +324,7 @@ export async function PUT(
               ? riddorReportedAt.toISOString()
               : null,
         riddorReference: riddorReference === undefined ? undefined : riddorReference,
+        riddorReportMethod: riddorReportMethod === undefined ? undefined : riddorReportMethod,
         accidentBookEntry: riddor.accidentBookEntry,
         updatedAt: new Date().toISOString(),
       })

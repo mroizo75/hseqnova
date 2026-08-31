@@ -1,9 +1,8 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
-import { prisma } from "@/lib/db";
 import { FormFiller } from "@/components/shared/form-filler";
+import { loadInspectionFormForFill, parseParticipantIds } from "@/server/queries/inspections.queries";
 
 export const dynamic = "force-dynamic";
 
@@ -14,61 +13,30 @@ interface PageProps {
 export default async function FillInspectionFormPage({ params }: PageProps) {
   const { inspectionId } = await params;
   const session = await getServerSession(authOptions);
-  const t = await getTranslations("employeeInspectionsPage");
 
   if (!session?.user?.tenantId) {
     redirect("/login");
   }
 
-  const userId = session.user.id;
-  const tenantId = session.user.tenantId;
-
-  const inspection = await prisma.inspection.findFirst({
-    where: {
-      id: inspectionId,
-      tenantId,
-    },
-    include: {
-      formTemplate: {
-        include: {
-          fields: {
-            orderBy: { order: "asc" },
-          },
-        },
-      },
-    },
-  });
-
-  if (!inspection || !inspection.formTemplate) {
+  const filled = await loadInspectionFormForFill(session.user.tenantId, inspectionId);
+  if (!filled) {
     notFound();
   }
 
-  const { formTemplate } = inspection;
-
-  const form = {
-    id: formTemplate.id,
-    title: formTemplate.title,
-    description: formTemplate.description ?? undefined,
-    requiresSignature: formTemplate.requiresSignature,
-    requiresApproval: formTemplate.requiresApproval,
-    isAnonymous: formTemplate.allowAnonymousResponses,
-    fields: formTemplate.fields.map((field) => ({
-      id: field.id,
-      type: field.fieldType,
-      label: field.label,
-      placeholder: field.placeholder ?? undefined,
-      helpText: field.helpText ?? undefined,
-      isRequired: field.isRequired,
-      options: field.options ? JSON.parse(field.options as string) : undefined,
-    })),
-  };
+  const participantIds = parseParticipantIds(filled.inspection.participants);
+  const mayFill =
+    filled.inspection.conductedBy === session.user.id ||
+    participantIds.includes(session.user.id);
+  if (!mayFill) {
+    notFound();
+  }
 
   return (
     <FormFiller
-      form={form}
-      userId={userId}
-      tenantId={tenantId}
-      inspectionId={inspection.id}
+      form={filled.form}
+      userId={session.user.id}
+      tenantId={session.user.tenantId}
+      inspectionId={filled.inspection.id}
       returnUrl="/ansatt/vernerunder"
     />
   );

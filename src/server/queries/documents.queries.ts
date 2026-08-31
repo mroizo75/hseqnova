@@ -1,5 +1,6 @@
 import { getAdminDb } from "@/lib/supabase/admin";
 import type { Document, DocumentTemplate, DocumentVersion, DocumentSignature } from "@prisma/client";
+import { employeeMaySeeDocument } from "@/lib/document-uk";
 
 export type DocumentListPerson = { id: string; name: string | null; email: string | null };
 export type DocumentListTemplate = { id: string; name: string };
@@ -7,6 +8,7 @@ export type DocumentListTemplate = { id: string; name: string };
 export type DocumentListItem = Document & {
   owner: DocumentListPerson | null;
   template: DocumentListTemplate | null;
+  hasPendingRevision: boolean;
 };
 
 export type DocumentFormUser = {
@@ -58,13 +60,18 @@ export async function loadDocumentsForList(tenantId: string): Promise<DocumentLi
   const ownerIds = [...new Set(documents.map((doc) => doc.ownerId).filter(Boolean))] as string[];
   const templateIds = [...new Set(documents.map((doc) => doc.templateId).filter(Boolean))] as string[];
 
-  const [{ data: owners }, { data: templates }] = await Promise.all([
+  const [{ data: owners }, { data: templates }, { data: pendingVersions }] = await Promise.all([
     ownerIds.length > 0
       ? db.from("User").select("id, name, email").in("id", ownerIds)
       : Promise.resolve({ data: [] as DocumentListPerson[] }),
     templateIds.length > 0
       ? db.from("DocumentTemplate").select("id, name").in("id", templateIds)
       : Promise.resolve({ data: [] as DocumentListTemplate[] }),
+    db
+      .from("DocumentVersion")
+      .select("documentId")
+      .eq("tenantId", tenantId)
+      .is("approvedAt", null),
   ]);
 
   const ownerById = new Map(
@@ -73,11 +80,15 @@ export async function loadDocumentsForList(tenantId: string): Promise<DocumentLi
   const templateById = new Map(
     ((templates ?? []) as DocumentListTemplate[]).map((template) => [template.id, template])
   );
+  const pendingIds = new Set(
+    ((pendingVersions ?? []) as Array<{ documentId: string }>).map((row) => row.documentId),
+  );
 
   return documents.map((doc) => ({
     ...doc,
     owner: doc.ownerId ? ownerById.get(doc.ownerId) ?? null : null,
     template: doc.templateId ? templateById.get(doc.templateId) ?? null : null,
+    hasPendingRevision: pendingIds.has(doc.id) && doc.status === "APPROVED",
   }));
 }
 
@@ -213,4 +224,95 @@ export async function loadDocumentDetail(input: {
     approvedByUser: document.approvedBy ? peopleById.get(document.approvedBy) ?? null : null,
     owner: document.ownerId ? peopleById.get(document.ownerId) ?? null : null,
   };
+}
+
+export async function loadTenantRole(userId: string, tenantId: string): Promise<string | null> {
+  const { data, error } = await getAdminDb()
+    .from("UserTenant")
+    .select("role")
+    .eq("userId", userId)
+    .eq("tenantId", tenantId)
+    .maybeSingle();
+  if (error) {
+    throw { code: "DOCUMENT_ROLE_FAILED", message: error.message };
+  }
+  return data?.role ? String(data.role) : null;
+}
+
+export type PublishedDocument = Document & {
+  approvedByUser: DocumentListPerson | null;
+};
+
+export async function loadPublishedDocumentsForRole(
+  tenantId: string,
+  role: string,
+): Promise<PublishedDocument[]> {
+  const db = getAdminDb();
+  const { data: rows, error } = await db
+    .from("Document")
+    .select("*")
+    .eq("tenantId", tenantId)
+    .eq("status", "APPROVED")
+    .order("updatedAt", { ascending: false })
+    .limit(200);
+  if (error) {
+    throw { code: "DOCUMENT_LIST_FAILED", message: error.message };
+  }
+
+  const visible = ((rows ?? []) as Record<string, unknown>[])
+    .map(asDocument)
+    .filter((doc) =>
+      employeeMaySeeDocument({
+        status: doc.status,
+        visibleToRoles: doc.visibleToRoles,
+        role,
+        effectiveTo: doc.effectiveTo,
+      }),
+    )
+    .slice(0, 50);
+
+  const approverIds = [...new Set(visible.map((doc) => doc.approvedBy).filter(Boolean))] as string[];
+  let approverById = new Map<string, DocumentListPerson>();
+  if (approverIds.length > 0) {
+    const { data: people } = await db.from("User").select("id, name, email").in("id", approverIds);
+    approverById = new Map(
+      ((people ?? []) as DocumentListPerson[]).map((person) => [person.id, person]),
+    );
+  }
+
+  return visible.map((doc) => ({
+    ...doc,
+    approvedByUser: doc.approvedBy ? approverById.get(doc.approvedBy) ?? null : null,
+  }));
+}
+
+export async function loadPublishedDocumentForRole(input: {
+  id: string;
+  tenantId: string;
+  role: string;
+}): Promise<PublishedDocument | null> {
+  const document = await loadDocumentById({ id: input.id, tenantId: input.tenantId });
+  if (
+    !document ||
+    !employeeMaySeeDocument({
+      status: document.status,
+      visibleToRoles: document.visibleToRoles,
+      role: input.role,
+      effectiveTo: document.effectiveTo,
+    })
+  ) {
+    return null;
+  }
+
+  let approvedByUser: DocumentListPerson | null = null;
+  if (document.approvedBy) {
+    const { data: person } = await getAdminDb()
+      .from("User")
+      .select("id, name, email")
+      .eq("id", document.approvedBy)
+      .maybeSingle();
+    approvedByUser = (person as DocumentListPerson | null) ?? null;
+  }
+
+  return { ...document, approvedByUser };
 }

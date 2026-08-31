@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { User, FlaskConical, AlertTriangle, Info, Download } from "lucide-react";
 import Link from "next/link";
 import { ProfileForm } from "@/components/ansatt/profile-form";
+import { loadExposuresForEmployee } from "@/server/queries/exposure-register.queries";
+import { fitnessForWorkLabel } from "@/lib/health-record-uk";
 
 const EXPOSURE_TYPE_KEYS: Record<string, string> = {
   INHALATION: "exposure.types.INHALATION",
@@ -23,10 +25,9 @@ const EXPOSURE_TYPE_KEYS: Record<string, string> = {
 export default async function AnsattProfil() {
   const session = await getServerSession(authOptions);
   const t = await getTranslations("employeeProfilePage");
-  const locale = await getLocale();
   const dateLocale = "en-GB";
 
-  if (!session?.user?.id) {
+  if (!session?.user?.id || !session.user.tenantId) {
     redirect("/login");
   }
 
@@ -48,27 +49,9 @@ export default async function AnsattProfil() {
         },
       },
     }),
-    prisma.exposureRegister.findMany({
-      where: {
-        employeeId: session.user.id,
-        status: { not: "ARCHIVED" },
-      },
-      select: {
-        id: true,
-        exposureAgent: true,
-        exposureType: true,
-        exposureStartDate: true,
-        exposureEndDate: true,
-        ppeUsed: true,
-        healthCheckRequired: true,
-        healthCheckDone: true,
-        healthCheckDate: true,
-        retentionUntilDate: true,
-        status: true,
-        chemical: { select: { productName: true, casNumber: true } },
-      },
-      orderBy: { exposureStartDate: "desc" },
-    }),
+    loadExposuresForEmployee(session.user.tenantId, session.user.id).then((rows) =>
+      rows.filter((row) => row.status !== "ARCHIVED"),
+    ),
   ]);
 
   if (!user) {
@@ -229,18 +212,14 @@ export default async function AnsattProfil() {
                     {entry.healthCheckRequired && (
                       <div
                         className={`text-xs rounded px-2 py-1 ${
-                          entry.healthCheckDone
-                            ? "bg-green-50 text-green-800"
-                            : "bg-yellow-50 text-yellow-800"
+                          entry.fitnessForWork === "UNFIT" || !entry.healthCheckDone
+                            ? "bg-yellow-50 text-yellow-800"
+                            : "bg-green-50 text-green-800"
                         }`}
                       >
-                        {entry.healthCheckDone
-                          ? t("exposure.healthCheck.done", {
-                              date: entry.healthCheckDate
-                                ? `: ${entry.healthCheckDate.toLocaleDateString(dateLocale)}`
-                                : "",
-                            })
-                          : t("exposure.healthCheck.pending")}
+                        {t("exposure.healthCheck.fitness", {
+                          fitness: fitnessForWorkLabel(entry.fitnessForWork),
+                        })}
                       </div>
                     )}
 

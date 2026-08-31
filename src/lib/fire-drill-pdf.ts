@@ -1,32 +1,19 @@
 /**
- * PDF-generator for brannøvelsesrapport
- *
- * Hjemmel: Forskrift om brannforebygging § 12 og § 13
- * Uses professional HSEQ Nova branding via pdf-brand.ts
+ * Fire drill record — Fire Safety Order 2005 arts 15, 21 and 22.
+ * Kept by the responsible person. Not submitted to the HSE.
  */
 
 import { generateBrandedPdf, type PdfSection } from "@/lib/pdf-brand";
 import { format } from "date-fns";
 import { enGB } from "date-fns/locale/en-GB";
-
-const TYPE_LABELS: Record<string, string> = {
-  EVACUATION: "Evakueringsøvelse",
-  FIRE_SUPPRESSION: "Slokkeopplæring",
-  ALARM_TEST: "Brannalarmtest",
-  FULL_SCALE: "Fullskalaøvelse",
-};
-
-const OBJECTIVES_ACHIEVED_LABELS: Record<string, string> = {
-  FULL: "Ja — alle mål nådd",
-  PARTIAL: "Delvis — noen mål nådd",
-  NOT_ACHIEVED: "Nei — mål ikke nådd",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  PLANNED: "Planlagt",
-  COMPLETED: "Gjennomført",
-  CANCELLED: "Avbrutt",
-};
+import {
+  FIRE_DRILL_STATUS_LABELS,
+  FIRE_DRILL_TYPE_LABELS,
+  OBJECTIVES_ACHIEVED_LABELS,
+  fireDrillTypeLabel,
+  formatEvacuationTime,
+  type NamedFireMarshal,
+} from "@/lib/fire-drill-uk";
 
 export interface FireDrillReportData {
   id: string;
@@ -38,6 +25,7 @@ export interface FireDrillReportData {
   completedAt: Date | null;
   location: string;
   responsibleName: string;
+  fireMarshals: NamedFireMarshal[];
   objectives: string;
   scenario: string | null;
   riskAssessment: string | null;
@@ -51,6 +39,8 @@ export interface FireDrillReportData {
   procedureChangesDesc: string | null;
   evaluatedByName: string | null;
   evaluatedAt: Date | null;
+  sharedPremises?: boolean | null;
+  buildingOwnerName?: string | null;
   measures: Array<{
     title: string;
     status: string;
@@ -62,49 +52,69 @@ export interface FireDrillReportData {
   tenantLogoUrl?: string | null;
 }
 
-function formatEvacTime(seconds: number): string {
-  if (seconds < 60) return `${seconds} sekunder`;
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return s > 0 ? `${m} min ${s} sek` : `${m} minutter`;
-}
-
 function fmtDate(d: Date | null | undefined) {
   if (!d) return "–";
-  return format(new Date(d), "d. MMMM yyyy", { locale: enGB });
+  return format(new Date(d), "d MMMM yyyy", { locale: enGB });
+}
+
+function fmtDateTime(d: Date | null | undefined) {
+  if (!d) return "–";
+  return format(new Date(d), "d MMMM yyyy, HH:mm", { locale: enGB });
 }
 
 export async function generateFireDrillReport(data: FireDrillReportData): Promise<Buffer> {
+  const marshalLine =
+    data.fireMarshals.length > 0
+      ? data.fireMarshals.map((marshal) => `${marshal.name} (${marshal.title})`).join(", ")
+      : "Not named on the organisation chart";
+
   const sections: PdfSection[] = [
     {
-      title: "Informasjon",
-      legalRef: "Brannforebyggingsforskriften § 13",
+      title: "Drill record",
+      legalRef: "Fire Safety Order 2005 arts 15, 21 and 22",
       content: [
         {
           type: "keyvalue",
           pairs: [
-            ["Øvelsestype", TYPE_LABELS[data.drillType] ?? data.drillType],
-            ["Status", STATUS_LABELS[data.status] ?? data.status],
-            ["Varslet/uvarslet", data.isAnnounced ? "Varslet" : "Uvarslet"],
-            ["Planlagt dato", fmtDate(data.plannedDate)],
-            ...(data.completedAt ? [["Gjennomført", fmtDate(data.completedAt)] as [string, string]] : []),
-            ["Sted", data.location],
-            ["Øvingsleder", data.responsibleName],
+            ["Type", FIRE_DRILL_TYPE_LABELS[data.drillType as keyof typeof FIRE_DRILL_TYPE_LABELS] ?? data.drillType],
+            [
+              "Status",
+              FIRE_DRILL_STATUS_LABELS[data.status as keyof typeof FIRE_DRILL_STATUS_LABELS] ?? data.status,
+            ],
+            ["Announced", data.isAnnounced ? "Yes" : "No — unannounced"],
+            ["Planned", fmtDateTime(data.plannedDate)],
+            ...(data.completedAt ? [["Carried out", fmtDateTime(data.completedAt)] as [string, string]] : []),
+            ["Premises / location", data.location],
+            ["Person in charge", data.responsibleName],
+            ["Nominated fire marshals (art.15(1)(b))", marshalLine],
             ...(data.actualParticipantCount != null
-              ? [["Antall deltakere", String(data.actualParticipantCount)] as [string, string]]
+              ? [["People taking part", String(data.actualParticipantCount)] as [string, string]]
               : []),
             ...(data.evacuationTimeSeconds != null
-              ? [["Evakueringstid", formatEvacTime(data.evacuationTimeSeconds)] as [string, string]]
+              ? [["Time to evacuate", formatEvacuationTime(data.evacuationTimeSeconds)] as [string, string]]
               : []),
             ...(data.objectivesAchieved
-              ? [["Mål nådd", OBJECTIVES_ACHIEVED_LABELS[data.objectivesAchieved] ?? data.objectivesAchieved] as [string, string]]
+              ? [[
+                  "Outcome",
+                  OBJECTIVES_ACHIEVED_LABELS[
+                    data.objectivesAchieved as keyof typeof OBJECTIVES_ACHIEVED_LABELS
+                  ] ?? data.objectivesAchieved,
+                ] as [string, string]]
+              : []),
+            ...(data.sharedPremises
+              ? [[
+                  "Shared premises (art.22)",
+                  data.buildingOwnerName
+                    ? `Co-ordinated with ${data.buildingOwnerName}`
+                    : "Yes — more than one responsible person",
+                ] as [string, string]]
               : []),
           ] as [string, string][],
         },
       ],
     },
     {
-      title: "Mål for øvelsen",
+      title: "Objectives",
       content: [{ type: "paragraph", text: data.objectives }],
     },
   ];
@@ -118,39 +128,40 @@ export async function generateFireDrillReport(data: FireDrillReportData): Promis
 
   if (data.riskAssessment) {
     sections.push({
-      title: "Risikovurdering",
+      title: "Link to the fire risk assessment",
       content: [{ type: "paragraph", text: data.riskAssessment }],
     });
   }
 
   if (data.observations) {
     sections.push({
-      title: "Observasjoner under øvelsen",
+      title: "Observations",
       content: [{ type: "paragraph", text: data.observations }],
     });
   }
 
   if (data.evaluation) {
     sections.push({
-      title: "Evaluering",
+      title: "Review",
       content: [{ type: "paragraph", text: data.evaluation }],
     });
   }
 
   if (data.improvementPoints) {
     sections.push({
-      title: "Forbedringspunkter",
+      title: "Improvements",
       content: [{ type: "paragraph", text: data.improvementPoints }],
     });
   }
 
   if (data.procedureChangesNeeded) {
     sections.push({
-      title: "Prosedyreendringer nødvendig",
+      title: "Changes to evacuation procedures",
+      legalRef: "Fire Safety Order 2005 art.15",
       content: [
         {
           type: "alert",
-          text: data.procedureChangesDesc ?? "Prosedyreendringer er nødvendig – se detaljer.",
+          text: data.procedureChangesDesc ?? "Procedure changes are required — see the actions.",
           severity: "warning",
         },
       ],
@@ -159,16 +170,16 @@ export async function generateFireDrillReport(data: FireDrillReportData): Promis
 
   if (data.measures.length > 0) {
     sections.push({
-      title: "Oppfølgingstiltak",
+      title: "Follow-up actions",
       content: [
         {
           type: "table",
-          headers: ["Tiltak", "Status", "Frist", "Ansvarlig"],
-          rows: data.measures.map((m) => [
-            m.title,
-            m.status,
-            fmtDate(m.dueAt),
-            m.responsibleName ?? "–",
+          headers: ["Action", "Status", "Due", "Owner"],
+          rows: data.measures.map((measure) => [
+            measure.title,
+            measure.status,
+            fmtDate(measure.dueAt),
+            measure.responsibleName ?? "–",
           ]),
         },
       ],
@@ -177,7 +188,7 @@ export async function generateFireDrillReport(data: FireDrillReportData): Promis
 
   if (data.evaluatedByName) {
     sections.push({
-      title: "Evaluert av",
+      title: "Reviewed by",
       content: [
         {
           type: "signature-block",
@@ -194,9 +205,9 @@ export async function generateFireDrillReport(data: FireDrillReportData): Promis
 
   return generateBrandedPdf({
     type: "operational",
-    reportLabel: "Brannøvelsesrapport",
+    reportLabel: "Fire drill record",
     title: data.title,
-    subtitle: `${TYPE_LABELS[data.drillType] ?? data.drillType} · ${fmtDate(data.completedAt ?? data.plannedDate)}`,
+    subtitle: `${fireDrillTypeLabel(data.drillType)} · ${fmtDateTime(data.completedAt ?? data.plannedDate)}`,
     tenant: {
       name: data.tenantName,
       orgNumber: data.tenantOrgNumber,
@@ -204,7 +215,8 @@ export async function generateFireDrillReport(data: FireDrillReportData): Promis
     },
     generatedBy: data.responsibleName,
     generatedAt: new Date(),
-    legalReference: "Brannforebyggingsforskriften § 12 og § 13",
+    legalReference:
+      "Regulatory Reform (Fire Safety) Order 2005 arts 15, 21 and 22. Internal record — not submitted to the HSE.",
     sections,
   });
 }

@@ -99,6 +99,14 @@ export function normalizeDutyHolders(input: CdmDutyHolderInput[]): CdmDutyHolder
   return normalized;
 }
 
+export function hasMoreThanOneContractor(input: CdmDutyHolderInput[]): boolean {
+  return (
+    normalizeDutyHolders(input).filter(
+      (holder) => holder.role === "PRINCIPAL_CONTRACTOR" || holder.role === "CONTRACTOR",
+    ).length >= 2
+  );
+}
+
 export function validateDutyHolders(input: CdmDutyHolderInput[]): {
   ok: boolean;
   message: string | null;
@@ -118,6 +126,24 @@ export function validateDutyHolders(input: CdmDutyHolderInput[]): {
       message: "Client organisation is required (CDM 2015 — the person for whom the project is carried out).",
       holders,
     };
+  }
+  if (hasMoreThanOneContractor(holders)) {
+    if (!holders.find((holder) => holder.role === "PRINCIPAL_DESIGNER")) {
+      return {
+        ok: false,
+        message:
+          "Appoint a principal designer (CDM 2015 reg.5 — required where more than one contractor will work on the project).",
+        holders,
+      };
+    }
+    if (!holders.find((holder) => holder.role === "PRINCIPAL_CONTRACTOR")) {
+      return {
+        ok: false,
+        message:
+          "Appoint a principal contractor (CDM 2015 reg.5 — required where more than one contractor will work on the project).",
+        holders,
+      };
+    }
   }
   return { ok: true, message: null, holders };
 }

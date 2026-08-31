@@ -12,9 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { FileText, Download, CheckCircle, Trash2, Upload, Calendar, Edit, FileDown } from "lucide-react";
+import { FileText, Download, CheckCircle, Trash2, Upload, Calendar, Edit, FileDown, Archive } from "lucide-react";
 import Link from "next/link";
-import { deleteDocument, getDocumentDownloadUrl, approveDocument, convertDocumentToPDFAction } from "@/server/actions/document.actions";
+import { deleteDocument, getDocumentDownloadUrl, approveDocument, archiveDocument, convertDocumentToPDFAction } from "@/server/actions/document.actions";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +30,7 @@ type DocumentWithMeta = Document & {
     id: string;
     name: string;
   } | null;
+  hasPendingRevision?: boolean;
 };
 
 interface DocumentListProps {
@@ -124,6 +125,29 @@ export function DocumentList({ documents, tenantId, currentUserId }: DocumentLis
         variant: "destructive",
         title: t("toasts.approveError.title"),
         description: result.error || t("toasts.approveError.description"),
+      });
+    }
+    setLoading(null);
+  };
+
+  const handleArchive = async (id: string, title: string) => {
+    if (!confirm(t("confirmArchive", { title }))) {
+      return;
+    }
+
+    setLoading(id);
+    const result = await archiveDocument(id);
+    if (result.success) {
+      toast({
+        title: t("toasts.archived.title"),
+        description: t("toasts.archived.description", { title }),
+      });
+      router.refresh();
+    } else {
+      toast({
+        variant: "destructive",
+        title: t("toasts.archiveError.title"),
+        description: result.error || t("toasts.archiveError.description"),
       });
     }
     setLoading(null);
@@ -300,7 +324,7 @@ export function DocumentList({ documents, tenantId, currentUserId }: DocumentLis
                     </Link>
                   </Button>
                   
-                  {doc.status === "DRAFT" && (
+                  {(doc.status === "DRAFT" || doc.hasPendingRevision) && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -322,6 +346,18 @@ export function DocumentList({ documents, tenantId, currentUserId }: DocumentLis
                       <Link href={`/dashboard/documents/${doc.id}/new-version`}>
                         <Upload className="h-4 w-4" />
                       </Link>
+                    </Button>
+                  )}
+
+                  {doc.status === "APPROVED" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleArchive(doc.id, doc.title)}
+                      disabled={loading === doc.id}
+                      title={t("actions.archive")}
+                    >
+                      <Archive className="h-4 w-4" />
                     </Button>
                   )}
 
@@ -466,7 +502,7 @@ export function DocumentList({ documents, tenantId, currentUserId }: DocumentLis
                       </Link>
                     </Button>
                     
-                    {doc.status === "DRAFT" && (
+                    {(doc.status === "DRAFT" || doc.hasPendingRevision) && (
                       <Button
                         variant="default"
                         size="sm"
@@ -485,6 +521,18 @@ export function DocumentList({ documents, tenantId, currentUserId }: DocumentLis
                           <Upload className="h-4 w-4 mr-2" />
                           {t("actions.newVersion")}
                         </Link>
+                      </Button>
+                    )}
+
+                    {doc.status === "APPROVED" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-transparent"
+                        onClick={() => handleArchive(doc.id, doc.title)}
+                        disabled={loading === doc.id}
+                      >
+                        <Archive className="h-4 w-4" />
                       </Button>
                     )}
 

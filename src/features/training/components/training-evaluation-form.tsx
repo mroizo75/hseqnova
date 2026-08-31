@@ -13,7 +13,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Card, CardContent } from "@/components/ui/card";
 import { evaluateTraining } from "@/server/actions/training.actions";
 import { useToast } from "@/hooks/use-toast";
 import { ClipboardCheck } from "lucide-react";
@@ -51,8 +50,8 @@ export function TrainingEvaluationForm({
 
     if (result.success) {
       toast({
-        title: "✅ Evaluering registrert",
-        description: "Effektivitetsvurderingen er dokumentert",
+        title: "Review recorded",
+        description: "Whether the training was effective is now on the record",
         className: "bg-green-50 border-green-200",
       });
       setOpen(false);
@@ -60,8 +59,8 @@ export function TrainingEvaluationForm({
     } else {
       toast({
         variant: "destructive",
-        title: "Feil",
-        description: result.error || "Kunne ikke registrere evaluering",
+        title: "Could not save the review",
+        description: result.error || "The review could not be saved",
       });
     }
 
@@ -74,73 +73,42 @@ export function TrainingEvaluationForm({
         {trigger || (
           <Button variant="outline">
             <ClipboardCheck className="mr-2 h-4 w-4" />
-            Evaluer effektivitet
+            Review effectiveness
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Evaluer effektivitet av opplæring</DialogTitle>
+          <DialogTitle>Was the training effective?</DialogTitle>
           <DialogDescription>
-            ISO 9001 - 7.2: Evaluer om opplæringen har gitt ønsket kompetanse og effekt
+            HSE: ask whether the training is relevant and effective, and whether
+            refresher training is needed.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Card className="bg-blue-50 border-blue-200">
-            <CardContent className="pt-4">
-              <p className="text-sm font-medium text-blue-900 mb-2">
-                📚 Kurs: {trainingTitle}
-              </p>
-              <p className="text-sm text-blue-800">
-                Vurder om opplæringen har hatt ønsket effekt. Har den ansatte tilegnet seg
-                nødvendig kompetanse? Brukes kunnskapen i praksis?
-              </p>
-            </CardContent>
-          </Card>
+          <p className="text-sm text-muted-foreground">Course: {trainingTitle}</p>
 
           <div className="space-y-2">
-            <Label htmlFor="effectiveness">Effektivitetsvurdering *</Label>
+            <Label htmlFor="effectiveness">Review *</Label>
             <Textarea
               id="effectiveness"
               name="effectiveness"
               rows={6}
-              placeholder="Beskriv hvordan opplæringen har påvirket den ansattes kompetanse og arbeidsprestasjon. Eksempel: 'Den ansatte viser god forståelse for HMS-prosedyrer og anvender kunnskapen aktivt i det daglige arbeidet. Opplæringen vurderes som effektiv.'"
+              placeholder="Does the employee understand what is required? Are they working as trained? Is further training needed?"
               required
               disabled={loading}
               minLength={20}
             />
-            <p className="text-sm text-muted-foreground">
-              Minimum 20 tegn. Vær konkret og beskrivende.
-            </p>
+            <p className="text-sm text-muted-foreground">At least 20 characters.</p>
           </div>
 
-          <Card className="bg-amber-50 border-amber-200">
-            <CardContent className="pt-4">
-              <p className="text-sm font-medium text-amber-900 mb-2">
-                💡 Veiledning for evaluering:
-              </p>
-              <ul className="text-sm text-amber-800 space-y-1 list-disc list-inside">
-                <li>Har den ansatte demonstrert økt kompetanse?</li>
-                <li>Brukes kunnskapen i praktisk arbeid?</li>
-                <li>Har opplæringen bidratt til færre avvik/hendelser?</li>
-                <li>Er det behov for ytterligere opplæring?</li>
-                <li>Anbefales kurset til andre ansatte?</li>
-              </ul>
-            </CardContent>
-          </Card>
-
           <div className="flex justify-end gap-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={loading}
-            >
-              Avbryt
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={loading}>
+              Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Lagrer..." : "Registrer evaluering"}
+              {loading ? "Saving..." : "Save review"}
             </Button>
           </div>
         </form>
@@ -148,4 +116,3 @@ export function TrainingEvaluationForm({
     </Dialog>
   );
 }
-

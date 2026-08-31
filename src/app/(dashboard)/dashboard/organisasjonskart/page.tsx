@@ -31,7 +31,8 @@ export default async function OrgChartPage() {
             Organisation chart
           </h1>
           <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-            Hierarchical overview of roles, responsibilities and organisation (HSWA s.2)
+            Names, positions and health and safety roles (HSWA 1974 s.2(3) Part 2). Required in the
+            written policy where there are five or more employees. Employees see this on the policy page.
           </p>
         </div>
       </div>
@@ -43,6 +44,8 @@ export default async function OrgChartPage() {
           title: n.title,
           name: n.name,
           department: n.department,
+          hsDutyKey: n.hsDutyKey ?? null,
+          hsDuty: n.hsDuty ?? null,
           sortOrder: n.sortOrder,
         }))}
         canManage={permissions.canManageUsers}

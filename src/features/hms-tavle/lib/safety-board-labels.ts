@@ -1,5 +1,5 @@
 export const SAFETY_BOARD_SECTION_LABELS: Record<string, string> = {
-  SHA_PLAN: "Construction phase plan / H&S file",
+  SHA_PLAN: "Construction phase plan",
   MANNSKAPSLISTE: "Daily site register",
   AVVIK_STATISTIKK: "Accident tally (no personal data)",
   RUH_LISTE: "Near miss / incident list",

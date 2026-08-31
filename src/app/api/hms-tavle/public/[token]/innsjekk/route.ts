@@ -1,17 +1,17 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { createId } from "@/lib/ids";
 import { createErrorResponse, createSuccessResponse, handleApiError, ErrorCodes } from "@/lib/validations/api";
 import { z } from "zod";
 import { emitTavleUpdate } from "@/lib/tavle-events";
 import { normalizeOrgNr } from "@/features/hms-tavle/lib/oversiktsliste-config";
 
 /**
- * Innsjekk og utsjekk til oversiktslisten – Byggherreforskriften § 15.
- * Feltene speiler bokstav c–e: arbeidsgiver, organisasjonsnummer, navn,
- * fødselsdato og HMS-kortnummer.
+ * Operational site check-in / check-out.
+ * Not a CDM 2015 duty. Used for access control on the board.
  */
 const checkinSchema = z.object({
-  name: z.string().min(2, "Navn er påkrevd"),
+  name: z.string().min(2, "Name is required"),
   employer: z.string().optional(),
   employerOrgNr: z.string().optional(),
   hmsCardNr: z.string().optional(),
@@ -20,23 +20,29 @@ const checkinSchema = z.object({
 });
 
 const checkoutSchema = z.object({
-  checkinId: z.string().min(1, "Innsjekk-ID er påkrevd"),
+  checkinId: z.string().min(1, "Check-in id is required"),
 });
 
-/** Felles tilgangskontroll: tavlen må være offentlig og abonnementet aktivt. */
-async function hentTilgjengeligTavle(token: string) {
-  const tavle = await prisma.hmsTavle.findUnique({ where: { publicToken: token } });
+async function loadPublicBoard(token: string) {
+  const db = getAdminDb();
+  const { data: tavle } = await db
+    .from("HmsTavle")
+    .select("*")
+    .eq("publicToken", token)
+    .maybeSingle();
   if (!tavle || !tavle.isPublic) {
-    return { error: createErrorResponse(ErrorCodes.NOT_FOUND, "Tavle ikke funnet", 404) };
+    return { error: createErrorResponse(ErrorCodes.NOT_FOUND, "Board not found", 404) };
   }
 
-  const subscription = await prisma.hmsTavleSubscription.findUnique({
-    where: { tenantId: tavle.tenantId },
-  });
+  const { data: subscription } = await db
+    .from("HmsTavleSubscription")
+    .select("*")
+    .eq("tenantId", tavle.tenantId)
+    .maybeSingle();
 
   if (!subscription || subscription.status === "EXPIRED") {
     return {
-      error: createErrorResponse("SUBSCRIPTION_EXPIRED", "Tavle-abonnementet er utløpt", 402),
+      error: createErrorResponse("SUBSCRIPTION_EXPIRED", "The digital safety board subscription has expired", 402),
     };
   }
 
@@ -44,7 +50,7 @@ async function hentTilgjengeligTavle(token: string) {
     return {
       error: createErrorResponse(
         ErrorCodes.FORBIDDEN,
-        "QR-innsjekk krever Standard- eller høyere plan",
+        "QR check-in requires the Standard plan or higher",
         403
       ),
     };
@@ -59,7 +65,7 @@ export async function POST(
 ) {
   try {
     const { token } = await params;
-    const { tavle, error } = await hentTilgjengeligTavle(token);
+    const { tavle, error } = await loadPublicBoard(token);
     if (error) return error;
 
     const body = await req.json();
@@ -67,18 +73,27 @@ export async function POST(
     if (!parsed.success) return createErrorResponse(ErrorCodes.VALIDATION_ERROR, parsed.error.issues[0].message, 400);
 
     const today = new Date().toISOString().slice(0, 10);
-    const checkin = await prisma.tavleCheckin.create({
-      data: {
+    const now = new Date().toISOString();
+    const { data: checkin, error: insertError } = await getAdminDb()
+      .from("TavleCheckin")
+      .insert({
+        id: createId(),
         tavleId: tavle.id,
         name: parsed.data.name,
-        employer: parsed.data.employer,
+        employer: parsed.data.employer ?? null,
         employerOrgNr: normalizeOrgNr(parsed.data.employerOrgNr),
-        hmsCardNr: parsed.data.hmsCardNr,
-        birthDate: parsed.data.birthDate,
-        phone: parsed.data.phone,
+        hmsCardNr: parsed.data.hmsCardNr ?? null,
+        birthDate: parsed.data.birthDate ?? null,
+        phone: parsed.data.phone ?? null,
         date: today,
-      },
-    });
+        checkedInAt: now,
+      })
+      .select("*")
+      .single();
+
+    if (insertError) {
+      throw { code: "CHECKIN_FAILED", message: insertError.message };
+    }
 
     emitTavleUpdate(token);
 
@@ -88,17 +103,13 @@ export async function POST(
   }
 }
 
-/**
- * Utsjekk. § 15 krever at listen kontrolleres og oppdateres daglig, slik at den
- * viser hvem som faktisk er på plassen. Kun dagens egen innsjekk kan lukkes.
- */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const { token } = await params;
-    const { tavle, error } = await hentTilgjengeligTavle(token);
+    const { tavle, error } = await loadPublicBoard(token);
     if (error) return error;
 
     const body = await req.json();
@@ -106,23 +117,32 @@ export async function PATCH(
     if (!parsed.success) return createErrorResponse(ErrorCodes.VALIDATION_ERROR, parsed.error.issues[0].message, 400);
 
     const today = new Date().toISOString().slice(0, 10);
-    const eksisterende = await prisma.tavleCheckin.findFirst({
-      where: { id: parsed.data.checkinId, tavleId: tavle.id, date: today },
-      select: { id: true, checkedOutAt: true },
-    });
+    const { data: existing } = await getAdminDb()
+      .from("TavleCheckin")
+      .select("id, checkedOutAt")
+      .eq("id", parsed.data.checkinId)
+      .eq("tavleId", tavle.id)
+      .eq("date", today)
+      .maybeSingle();
 
-    if (!eksisterende) {
-      return createErrorResponse(ErrorCodes.NOT_FOUND, "Fant ingen innsjekk for i dag", 404);
+    if (!existing) {
+      return createErrorResponse(ErrorCodes.NOT_FOUND, "No check-in found for today", 404);
     }
 
-    if (eksisterende.checkedOutAt) {
+    if (existing.checkedOutAt) {
       return createSuccessResponse({ alreadyCheckedOut: true });
     }
 
-    const checkin = await prisma.tavleCheckin.update({
-      where: { id: eksisterende.id },
-      data: { checkedOutAt: new Date() },
-    });
+    const { data: checkin, error: updateError } = await getAdminDb()
+      .from("TavleCheckin")
+      .update({ checkedOutAt: new Date().toISOString() })
+      .eq("id", existing.id)
+      .select("*")
+      .single();
+
+    if (updateError) {
+      throw { code: "CHECKOUT_FAILED", message: updateError.message };
+    }
 
     emitTavleUpdate(token);
 

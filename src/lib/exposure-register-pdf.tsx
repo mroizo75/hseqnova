@@ -7,6 +7,7 @@ import {
   Font,
   renderToBuffer,
 } from "@react-pdf/renderer";
+import { fitnessForWorkLabel } from "@/lib/health-record-uk";
 
 // Bruk innebygde skrifter (ingen nettlasting)
 Font.registerHyphenationCallback((word) => [word]);
@@ -439,6 +440,8 @@ export interface ExposureEntry {
   healthCheckRequired: boolean;
   healthCheckDone: boolean;
   healthCheckDate: Date | string | null;
+  fitnessForWork?: string | null;
+  homeAddress?: string | null;
   retentionUntilDate: Date | string;
   status: string;
   comment: string | null;
@@ -531,10 +534,10 @@ function ExposureDocument({ employeeName, companyName, generatedAt, entries }: D
             <View style={styles.legalDot} />
             <Text style={styles.legalText}>
               <Text style={styles.legalBold}>Legal basis: </Text>
-              This document is issued under the employee&apos;s right of access to their own
-              personal data (UK GDPR / DPA 2018). Health records required by COSHH 2002 are kept
-              for 40 years and may be produced as evidence of occupational disease or for HSE
-              inspection. The document is confidential and should be stored securely.
+              This document is the employee’s personal health record (COSHH 2002
+              reg.11(4)(a)). It is kept for 40 years from the last entry. It is
+              not sent to the HSE in the ordinary course. Clinical test results
+              are not included — those stay with occupational health.
             </Text>
           </View>
 
@@ -545,10 +548,9 @@ function ExposureDocument({ employeeName, companyName, generatedAt, entries }: D
               <Text style={styles.sectionTitle}>Legal references</Text>
             </View>
             {[
-              "COSHH 2002 regulation 11 — health surveillance and health records (40 years)",
-              "Control of Lead at Work 2002 / Control of Asbestos Regulations 2012 — 40-year records",
-              "UK REACH — substances of very high concern (SVHC)",
-              "HSE: health surveillance for hazardous substances",
+              "COSHH 2002 regulation 11 — health surveillance and health records (40 years from last entry)",
+              "HSE: name, home address, National Insurance number, substance or process, protective measures, fitness for work",
+              "UK GDPR / DPA 2018 — personal data; medical records stay with occupational health",
             ].map((ref, i) => (
               <View key={i} style={{ flexDirection: "row", gap: 5, marginBottom: 3 }}>
                 <Text style={{ fontSize: 8, color: BRAND.blue, marginTop: 1 }}>›</Text>
@@ -642,6 +644,13 @@ function ExposureDocument({ employeeName, companyName, generatedAt, entries }: D
                       <Text style={styles.fieldLabel}>HEALTH SURVEILLANCE</Text>
                       <Text style={healthStyle}>{healthLabel}</Text>
                     </View>
+                    {entry.fitnessForWork && (
+                      <Field
+                        label="Fitness for work"
+                        value={fitnessForWorkLabel(entry.fitnessForWork)}
+                        size="full"
+                      />
+                    )}
 
                     {/* Oppbevaring */}
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 6 }}>

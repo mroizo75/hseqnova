@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { loadSjaAnalysesForTenant, loadSjaTemplates } from "@/server/queries/sja.queries";
+import { RamsLegalNote } from "@/features/sja/components/rams-legal-note";
 import {
   getSjaStatusColor,
   getSjaConclusionColor,
@@ -99,6 +100,8 @@ export default async function AnsattSja() {
           </Link>
         </div>
       </div>
+
+      <RamsLegalNote />
 
       <div className="grid grid-cols-3 gap-4">
         <Card className="border-l-4 border-l-gray-400">
@@ -198,9 +201,10 @@ export default async function AnsattSja() {
                   : 0;
 
                 return (
-                  <div
+                  <Link
                     key={sja.id}
-                    className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                    href={`/ansatt/sja/${sja.id}`}
+                    className="block p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
@@ -267,7 +271,7 @@ export default async function AnsattSja() {
                         )}
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

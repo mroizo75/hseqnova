@@ -33,6 +33,8 @@ interface PreNotificationData {
   maxWorkersSimultaneous?: number | null;
   plannedBusinessesCount?: number | null;
   visibleAtSite?: boolean | null;
+  localAuthority?: string | null;
+  clientDutyAcknowledged?: boolean | null;
 }
 
 export interface PreNotificationRequirementResult {
@@ -187,6 +189,12 @@ export function validatePreNotificationForSubmission(
     missingFields.push("Principal Designer / Principal Contractor");
   }
   if (!hasText(preNotification?.contractors)) missingFields.push("Contractors");
+  if (!hasText(preNotification?.localAuthority)) {
+    missingFields.push("Local authority (CDM 2015 Schedule 1)");
+  }
+  if (preNotification?.clientDutyAcknowledged !== true) {
+    missingFields.push("Client declaration of CDM duties (Schedule 1)");
+  }
   if (preNotification?.visibleAtSite !== true) {
     missingFields.push("F10 copy displayed on site");
   }

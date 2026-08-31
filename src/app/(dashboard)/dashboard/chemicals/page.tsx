@@ -10,6 +10,7 @@ import { PageHelpDialog } from "@/components/dashboard/page-help-dialog";
 import { helpContent } from "@/lib/help-content";
 import { getTranslations } from "next-intl/server";
 import { loadChemicalsForTenant } from "@/server/queries/chemicals.queries";
+import { CoshhLegalNote } from "@/features/chemicals/components/coshh-legal-note";
 import {
   isChemicalReviewDueSoon,
   isChemicalReviewOverdue,
@@ -78,25 +79,7 @@ export default async function ChemicalsPage({
         </div>
       </div>
 
-      <Card className="bg-blue-50 border-blue-200">
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-3">
-            <FileText className="h-5 w-5 text-blue-600 mt-0.5" />
-            <div>
-              <p className="font-medium text-blue-900 mb-2">
-                {t("requirements.title")}
-              </p>
-              <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                <li>{t("requirements.r1")}</li>
-                <li>{t("requirements.r2")}</li>
-                <li>{t("requirements.r3")}</li>
-                <li>{t("requirements.r4")}</li>
-                <li>{t("requirements.r5")}</li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <CoshhLegalNote />
 
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         <Card>

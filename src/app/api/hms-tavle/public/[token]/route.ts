@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { createErrorResponse, createSuccessResponse, handleApiError, ErrorCodes } from "@/lib/validations/api";
 import { getGuestServiceStats } from "@/features/hms-tavle/lib/gjesteservice-stats";
 import { getTavleLiveData } from "@/features/hms-tavle/lib/tavle-live-data";
@@ -11,70 +11,93 @@ export async function GET(
 ) {
   try {
     const { token } = await params;
-    const tavle = await prisma.hmsTavle.findUnique({
-      where: { publicToken: token },
-      include: {
-        sections: { where: { isVisible: true }, orderBy: { order: "asc" } },
-        externalLinks: { orderBy: { order: "asc" } },
-        subcontractorPortal: {
-          select: {
-            portalToken: true,
-            allowAvvik: true,
-            allowRuh: true,
-            allowSja: true,
-            allowPdfUpload: true,
-          },
-        },
-        tenant: { select: { name: true, isTavleOnly: true } },
-        project: {
-          select: {
-            name: true,
-            location: true,
-            constructionShaPlan: { select: { status: true, availableOnSite: true, updatedAt: true } },
-            constructionPreNotification: { select: { status: true, sentAt: true } },
-          },
-        },
-      },
-    });
+    const db = getAdminDb();
 
-    if (!tavle) return createErrorResponse(ErrorCodes.NOT_FOUND, "Tavle ikke funnet", 404);
-    if (!tavle.isPublic) return createErrorResponse(ErrorCodes.FORBIDDEN, "Tavle er ikke offentlig tilgjengelig", 403);
+    const { data: tavleRow } = await db
+      .from("HmsTavle")
+      .select("*")
+      .eq("publicToken", token)
+      .maybeSingle();
 
-    const subscription = await prisma.hmsTavleSubscription.findUnique({
-      where: { tenantId: tavle.tenantId },
-    });
+    if (!tavleRow) return createErrorResponse(ErrorCodes.NOT_FOUND, "Board not found", 404);
+    if (!tavleRow.isPublic) {
+      return createErrorResponse(ErrorCodes.FORBIDDEN, "This board is not public", 403);
+    }
+
+    const { data: subscription } = await db
+      .from("HmsTavleSubscription")
+      .select("*")
+      .eq("tenantId", tavleRow.tenantId)
+      .maybeSingle();
 
     if (!subscription || subscription.status === "EXPIRED") {
-      return createErrorResponse("SUBSCRIPTION_EXPIRED", "Tavle-abonnementet er utløpt", 402);
+      return createErrorResponse(
+        "SUBSCRIPTION_EXPIRED",
+        "The digital safety board subscription has expired",
+        402
+      );
     }
 
     const today = new Date().toISOString().slice(0, 10);
-    const checkins =
+    const [sectionsRes, linksRes, portalRes, tenantRes, checkinsRes] = await Promise.all([
+      db.from("HmsTavleSection").select("*").eq("tavleId", tavleRow.id).eq("isVisible", true).order("order", { ascending: true }),
+      db.from("HmsTavleExternalLink").select("*").eq("tavleId", tavleRow.id).order("order", { ascending: true }),
+      db.from("SubcontractorPortal").select("portalToken, allowAvvik, allowRuh, allowSja, allowPdfUpload").eq("tavleId", tavleRow.id).maybeSingle(),
+      db.from("Tenant").select("name, isTavleOnly").eq("id", tavleRow.tenantId).maybeSingle(),
       subscription.plan !== "ENKEL"
-        ? await prisma.tavleCheckin.findMany({
-            where: { tavleId: tavle.id, date: today },
-            orderBy: { checkedInAt: "asc" },
-            select: { id: true, name: true, employer: true, checkedInAt: true, checkedOutAt: true },
-          })
-        : [];
+        ? db.from("TavleCheckin").select("id, name, employer, checkedInAt, checkedOutAt").eq("tavleId", tavleRow.id).eq("date", today).order("checkedInAt", { ascending: true })
+        : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
+    ]);
 
-    // Tillitspanel: kun aggregerte tall, aldri rader med saksinnhold
-    const harTillitspanel = tavle.sections.some((s) => s.type === "GJESTESERVICE_STATUS");
-    const guestStats = harTillitspanel ? await getGuestServiceStats(tavle.id) : null;
+    let project = null;
+    if (tavleRow.projectId) {
+      const { data: projectData } = await db
+        .from("Project")
+        .select("name, location")
+        .eq("id", tavleRow.projectId)
+        .maybeSingle();
+      if (projectData) {
+        const [shaRes, f10Res] = await Promise.all([
+          db.from("ConstructionShaPlan").select("status, availableOnSite, updatedAt").eq("projectId", tavleRow.projectId).maybeSingle(),
+          db
+            .from("ConstructionPreNotification")
+            .select("status, sentAt, expectedStartDate, expectedEndDate, maxWorkersSimultaneous")
+            .eq("projectId", tavleRow.projectId)
+            .maybeSingle(),
+        ]);
+        project = {
+          ...projectData,
+          constructionShaPlan: shaRes.data,
+          constructionPreNotification: f10Res.data,
+        };
+      }
+    }
 
-    // Live HSEQ Nova data is reserved for plans with full integration
+    const sections = sectionsRes.data ?? [];
+    const tavle = {
+      ...tavleRow,
+      sections,
+      externalLinks: linksRes.data ?? [],
+      subcontractorPortal: portalRes.data,
+      tenant: tenantRes.data,
+      project,
+    };
+
+    const harTillitspanel = sections.some((s) => s.type === "GJESTESERVICE_STATUS");
+    const guestStats = harTillitspanel ? await getGuestServiceStats(tavleRow.id) : null;
+
     const liveData =
       getPlanLimits(subscription.plan).hasLiveHmsNovaData
         ? await getTavleLiveData({
-            tenantId: tavle.tenantId,
-            projectId: tavle.projectId,
-            sectionTypes: tavle.sections.map((s) => s.type),
+            tenantId: tavleRow.tenantId,
+            projectId: tavleRow.projectId,
+            sectionTypes: sections.map((s) => s.type),
           })
         : null;
 
     return createSuccessResponse({
       tavle,
-      checkins,
+      checkins: checkinsRes.data ?? [],
       plan: subscription.plan,
       guestStats,
       liveData,

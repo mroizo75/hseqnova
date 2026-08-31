@@ -27,6 +27,12 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { InspectionLegalNote } from "@/features/inspections/components/inspection-legal-note";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  defaultLegalBasisForType,
+  INSPECTION_LEGAL_BASIS,
+  INSPECTION_LEGAL_BASIS_KEYS,
+  type InspectionLegalBasisKey,
+} from "@/lib/inspection-uk";
 
 interface TenantUser {
   user: {
@@ -71,6 +77,7 @@ export default function NewInspectionPage() {
     title: "",
     description: "",
     type: "VERNERUNDE",
+    legalBasis: defaultLegalBasisForType("VERNERUNDE") as InspectionLegalBasisKey,
     scheduledDate: "",
     location: "",
     conductedBy: "",
@@ -146,6 +153,7 @@ export default function NewInspectionPage() {
         title: formData.title,
         description: formData.description,
         type: formData.type,
+        legalBasis: formData.legalBasis,
         scheduledDate: formData.scheduledDate,
         location: formData.location,
         conductedBy: formData.conductedBy,
@@ -234,7 +242,13 @@ export default function NewInspectionPage() {
                 </Label>
                 <Select
                   value={formData.type}
-                  onValueChange={(value) => setFormData({ ...formData, type: value })}
+                  onValueChange={(value) =>
+                    setFormData({
+                      ...formData,
+                      type: value,
+                      legalBasis: defaultLegalBasisForType(value),
+                    })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -247,6 +261,32 @@ export default function NewInspectionPage() {
                     <SelectItem value="ANDRE">{t("types.other")}</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="legalBasis">
+                  Reason for inspection <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={formData.legalBasis}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, legalBasis: value as InspectionLegalBasisKey })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INSPECTION_LEGAL_BASIS_KEYS.map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {INSPECTION_LEGAL_BASIS[key].label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {INSPECTION_LEGAL_BASIS[formData.legalBasis].legalRef}
+                </p>
               </div>
 
               <div className="space-y-2">

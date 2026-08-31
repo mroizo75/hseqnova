@@ -108,7 +108,9 @@ export default async function RiskAssessmentPage({
           approvedAt: assessment.approvedAt,
           reviewedById: assessment.reviewedById,
           reviewedAt: assessment.reviewedAt,
+          groupsAtRisk: assessment.groupsAtRisk,
         }}
+        risks={assessment.risks}
         users={userList}
       />
 

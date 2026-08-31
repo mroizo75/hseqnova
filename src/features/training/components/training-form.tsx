@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -21,11 +20,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Card, CardContent } from "@/components/ui/card";
 import { createTraining } from "@/server/actions/training.actions";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Upload } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { CourseTemplate } from "@prisma/client";
+import {
+  MHSWR_TRAINING_REASON_KEYS,
+  MHSWR_TRAINING_REASONS,
+} from "@/lib/training-uk";
+import { TrainingLegalNote } from "@/features/training/components/training-legal-note";
 
 interface TrainingFormProps {
   tenantId: string;
@@ -44,6 +47,7 @@ export function TrainingForm({ tenantId, users, courseTemplates, trigger, open: 
   const setOpen = onOpenChange ?? setInternalOpen;
   const [loading, setLoading] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<string>("");
+  const [mhswrReason, setMhswrReason] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const uploadCertificate = async (file: File): Promise<string | null> => {
@@ -68,8 +72,8 @@ export function TrainingForm({ tenantId, users, courseTemplates, trigger, open: 
         if (!key) {
           toast({
             variant: "destructive",
-            title: "Opplasting feilet",
-            description: "Kunne ikke laste opp sertifikatet. Prøv igjen.",
+            title: "Upload failed",
+            description: "The certificate could not be uploaded. Try again.",
           });
           setLoading(false);
           return;
@@ -83,9 +87,10 @@ export function TrainingForm({ tenantId, users, courseTemplates, trigger, open: 
         courseKey: formData.get("courseKey") as string,
         title: formData.get("title") as string,
         provider: formData.get("provider") as string,
-        completedAt: formData.get("completedAt") as string || undefined,
-        validUntil: formData.get("validUntil") as string || undefined,
+        completedAt: (formData.get("completedAt") as string) || undefined,
+        validUntil: (formData.get("validUntil") as string) || undefined,
         isRequired: formData.get("isRequired") === "true",
+        mhswrReason,
         proofDocKey,
       };
 
@@ -93,8 +98,8 @@ export function TrainingForm({ tenantId, users, courseTemplates, trigger, open: 
 
       if (result.success) {
         toast({
-          title: "Kompetanse registrert",
-          description: "Kurset er dokumentert i systemet",
+          title: "Training recorded",
+          description: "The course is now on the employee’s record",
           className: "bg-green-50 border-green-200",
         });
         setOpen(false);
@@ -102,22 +107,22 @@ export function TrainingForm({ tenantId, users, courseTemplates, trigger, open: 
       } else {
         toast({
           variant: "destructive",
-          title: "Feil",
-          description: result.error || "Kunne ikke registrere opplæring",
+          title: "Could not record training",
+          description: result.error || "The record could not be saved",
         });
       }
-    } catch (error) {
+    } catch {
       toast({
         variant: "destructive",
-        title: "Uventet feil",
-        description: "Noe gikk galt",
+        title: "Unexpected error",
+        description: "Something went wrong",
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const selectedCourseInfo = courseTemplates.find(c => c.courseKey === selectedCourse);
+  const selectedCourseInfo = courseTemplates.find((c) => c.courseKey === selectedCourse);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -126,26 +131,26 @@ export function TrainingForm({ tenantId, users, courseTemplates, trigger, open: 
           {trigger || (
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              Registrer opplæring
+              Record training
             </Button>
           )}
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add competence</DialogTitle>
+          <DialogTitle>Record training</DialogTitle>
           <DialogDescription>
-            Record a course or qualification for one employee, with optional certificate.
+            Who was trained, in what, when, and why — HSWA 1974 s.2(2)(c) / MHSWR 1999 reg.13.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="userId">Ansatt *</Label>
+              <Label htmlFor="userId">Employee *</Label>
               <Select name="userId" required disabled={loading}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg ansatt" />
+                  <SelectValue placeholder="Select employee" />
                 </SelectTrigger>
                 <SelectContent>
                   {users.map((user) => (
@@ -158,7 +163,7 @@ export function TrainingForm({ tenantId, users, courseTemplates, trigger, open: 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="courseKey">Kurs *</Label>
+              <Label htmlFor="courseKey">Course *</Label>
               <Select
                 name="courseKey"
                 required
@@ -166,7 +171,7 @@ export function TrainingForm({ tenantId, users, courseTemplates, trigger, open: 
                 value={selectedCourse}
                 onValueChange={(value) => {
                   setSelectedCourse(value);
-                  const course = courseTemplates.find(c => c.courseKey === value);
+                  const course = courseTemplates.find((c) => c.courseKey === value);
                   if (course) {
                     const form = document.querySelector("form") as HTMLFormElement;
                     const titleInput = form?.querySelector('[name="title"]') as HTMLInputElement;
@@ -185,16 +190,16 @@ export function TrainingForm({ tenantId, users, courseTemplates, trigger, open: 
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg kurs" />
+                  <SelectValue placeholder="Select course" />
                 </SelectTrigger>
                 <SelectContent>
                   {courseTemplates.map((course) => (
                     <SelectItem key={course.id} value={course.courseKey}>
                       {course.title}
-                      {course.isGlobal && " (Standard HMS)"}
+                      {course.isGlobal && " (standard H&S)"}
                     </SelectItem>
                   ))}
-                  <SelectItem value="custom">Egendefinert kurs</SelectItem>
+                  <SelectItem value="custom">Custom course</SelectItem>
                 </SelectContent>
               </Select>
               {selectedCourseInfo && (
@@ -204,30 +209,46 @@ export function TrainingForm({ tenantId, users, courseTemplates, trigger, open: 
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="title">Kurstittel *</Label>
+            <Label htmlFor="title">Course title *</Label>
             <Input
               id="title"
               name="title"
-              placeholder="F.eks. Førstehjelp grunnkurs"
+              placeholder="e.g. First aid"
               required
               disabled={loading}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="provider">Kursleverandør *</Label>
+            <Label htmlFor="provider">Provider *</Label>
             <Input
               id="provider"
               name="provider"
-              placeholder="F.eks. Røde Kors, BHT, Internt"
+              placeholder="e.g. St John Ambulance, in-house"
               required
               disabled={loading}
             />
           </div>
 
+          <div className="space-y-2">
+            <Label>Why this training was given *</Label>
+            <Select value={mhswrReason} onValueChange={setMhswrReason} required disabled={loading}>
+              <SelectTrigger>
+                <SelectValue placeholder="MHSWR 1999 reg.13 — recruitment, new risk, or refresher" />
+              </SelectTrigger>
+              <SelectContent>
+                {MHSWR_TRAINING_REASON_KEYS.map((key) => (
+                  <SelectItem key={key} value={key}>
+                    {MHSWR_TRAINING_REASONS[key].label} ({MHSWR_TRAINING_REASONS[key].legalRef})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="completedAt">Gjennomført dato</Label>
+              <Label htmlFor="completedAt">Completed date</Label>
               <Input
                 id="completedAt"
                 name="completedAt"
@@ -238,7 +259,7 @@ export function TrainingForm({ tenantId, users, courseTemplates, trigger, open: 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="validUntil">Gyldig til</Label>
+              <Label htmlFor="validUntil">Valid until</Label>
               <Input
                 id="validUntil"
                 name="validUntil"
@@ -247,13 +268,13 @@ export function TrainingForm({ tenantId, users, courseTemplates, trigger, open: 
                 min={new Date().toISOString().split("T")[0]}
               />
               <p className="text-xs text-muted-foreground">
-                La stå tom hvis kurset ikke utløper
+                Leave blank if the course does not expire
               </p>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="proofDoc">Dokumentert bevis (sertifikat)</Label>
+            <Label htmlFor="proofDoc">Certificate or other evidence</Label>
             <Input
               id="proofDoc"
               name="proofDoc"
@@ -263,13 +284,8 @@ export function TrainingForm({ tenantId, users, courseTemplates, trigger, open: 
               accept=".pdf,.jpg,.jpeg,.png"
             />
             {selectedFile && (
-              <p className="text-sm text-muted-foreground">
-                Valgt: {selectedFile.name}
-              </p>
+              <p className="text-sm text-muted-foreground">Selected: {selectedFile.name}</p>
             )}
-            <p className="text-xs text-muted-foreground">
-              Last opp sertifikat, kursbevis eller annet dokumentert bevis
-            </p>
           </div>
 
           <div className="flex items-center space-x-2">
@@ -282,33 +298,18 @@ export function TrainingForm({ tenantId, users, courseTemplates, trigger, open: 
               className="h-4 w-4"
             />
             <Label htmlFor="isRequired" className="font-normal">
-              Obligatorisk kurs for alle ansatte
+              Required for all employees
             </Label>
           </div>
 
-          <Card className="bg-blue-50 border-blue-200">
-            <CardContent className="pt-4">
-              <p className="text-sm font-medium text-blue-900 mb-2">📋 ISO 9001 - 7.2 Kompetanse</p>
-              <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                <li>Dokumenter kompetanse basert på opplæring</li>
-                <li>Last opp sertifikat som bevis</li>
-                <li>Sett utløpsdato for kurs som må fornyes</li>
-                <li>System varsler når kurs skal fornyes</li>
-              </ul>
-            </CardContent>
-          </Card>
+          <TrainingLegalNote />
 
           <div className="flex justify-end gap-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={loading}
-            >
-              Avbryt
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={loading}>
+              Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Registrerer..." : "Registrer opplæring"}
+            <Button type="submit" disabled={loading || !mhswrReason}>
+              {loading ? "Saving..." : "Record training"}
             </Button>
           </div>
         </form>
@@ -316,4 +317,3 @@ export function TrainingForm({ tenantId, users, courseTemplates, trigger, open: 
     </Dialog>
   );
 }
-

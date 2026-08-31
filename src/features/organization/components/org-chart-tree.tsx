@@ -18,14 +18,23 @@ import {
   createOrgChartNode,
   updateOrgChartNode,
   deleteOrgChartNode,
+  seedMissingHsRoles,
 } from "@/server/actions/org-chart.actions";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Building2 } from "lucide-react";
+import { Plus, Edit, Trash2, Building2, CheckCircle2, AlertTriangle } from "lucide-react";
 import {
   buildOrgChartTree,
   type OrgChartTreeBranch,
   type OrgChartTreeNode,
 } from "@/features/organization/lib/org-chart-tree";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  ORG_HS_DUTIES,
+  assessOrgChartCoverage,
+  dutyLabel,
+  dutyRequiresName,
+  type OrgHsDutyKey,
+} from "@/lib/org-chart-duties";
 
 interface OrgChartTreeProps {
   nodes: OrgChartTreeNode[];
@@ -129,7 +138,14 @@ function ChartBox({
       <div className="group relative inline-flex flex-col items-center">
         <div className="relative min-w-[140px] max-w-[200px] rounded-lg bg-[#2b6f7e] px-5 py-3 text-center text-white shadow-md transition-shadow hover:shadow-lg">
           <p className="text-sm font-semibold leading-tight">{node.title}</p>
-          {node.name ? <p className="mt-0.5 text-xs text-white/80">{node.name}</p> : null}
+          {node.name ? <p className="mt-0.5 text-xs text-white/80">{node.name}</p> : (
+            dutyLabel(node.hsDutyKey) ? (
+              <p className="mt-0.5 text-xs text-amber-200">Name not set</p>
+            ) : null
+          )}
+          {dutyLabel(node.hsDutyKey) ? (
+            <p className="mt-0.5 text-[10px] text-white/70">{dutyLabel(node.hsDutyKey)}</p>
+          ) : null}
           {node.department ? <p className="mt-0.5 text-[10px] text-white/60">{node.department}</p> : null}
 
           {canManage ? (
@@ -169,7 +185,7 @@ function MobileOrgNode({
   isRoot?: boolean;
 }) {
   const { isPending, handleDelete } = useNodeDelete(node);
-  const subtitle = [node.name, node.department].filter(Boolean).join(" · ");
+  const subtitle = [node.name, dutyLabel(node.hsDutyKey), node.department].filter(Boolean).join(" · ");
 
   return (
     <li className={isRoot ? "mobile-org-root" : undefined}>
@@ -223,27 +239,28 @@ function NodeDialog({
   const [title, setTitle] = useState(editNode?.title ?? "");
   const [name, setName] = useState(editNode?.name ?? "");
   const [department, setDepartment] = useState(editNode?.department ?? "");
+  const [hsDutyKey, setHsDutyKey] = useState<string>(editNode?.hsDutyKey ?? "");
+  const [hsDuty, setHsDuty] = useState(editNode?.hsDuty ?? "");
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const nameRequired = dutyRequiresName(hsDutyKey || null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
+    if (nameRequired && !name.trim()) return;
 
     startTransition(async () => {
+      const payload = {
+        title: title.trim(),
+        name: name.trim() || null,
+        department: department.trim() || null,
+        hsDutyKey: (hsDutyKey || null) as OrgHsDutyKey | null,
+        hsDuty: hsDuty.trim() || null,
+      };
       const result = editNode
-        ? await updateOrgChartNode({
-            id: editNode.id,
-            title: title.trim(),
-            name: name.trim() || null,
-            department: department.trim() || null,
-          })
-        : await createOrgChartNode({
-            parentId: parentId ?? null,
-            title: title.trim(),
-            name: name.trim() || null,
-            department: department.trim() || null,
-          });
+        ? await updateOrgChartNode({ id: editNode.id, ...payload })
+        : await createOrgChartNode({ parentId: parentId ?? null, ...payload });
 
       if (result.success) {
         toast({ title: editNode ? "Updated" : "Created" });
@@ -252,6 +269,8 @@ function NodeDialog({
           setTitle("");
           setName("");
           setDepartment("");
+          setHsDutyKey("");
+          setHsDuty("");
         }
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
@@ -266,6 +285,8 @@ function NodeDialog({
         setTitle(editNode.title);
         setName(editNode.name ?? "");
         setDepartment(editNode.department ?? "");
+        setHsDutyKey(editNode.hsDutyKey ?? "");
+        setHsDuty(editNode.hsDuty ?? "");
       }
     }}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -291,12 +312,52 @@ function NodeDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="node-name">Person's name</Label>
+              <Label htmlFor="node-duty-key">Health and safety duty</Label>
+              <select
+                id="node-duty-key"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                value={hsDutyKey}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setHsDutyKey(next);
+                  const meta = ORG_HS_DUTIES.find((duty) => duty.key === next);
+                  if (meta && !editNode) {
+                    if (!title.trim()) setTitle(meta.defaultTitle);
+                    if (!hsDuty.trim()) setHsDuty(meta.defaultDuty);
+                  }
+                }}
+              >
+                <option value="">None — organisational role only</option>
+                {ORG_HS_DUTIES.map((duty) => (
+                  <option key={duty.key} value={duty.key}>
+                    {duty.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                HSE Part 2: names, positions and roles of people with specific health and safety responsibility.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="node-name">
+                Person&apos;s name{nameRequired ? " *" : ""}
+              </Label>
               <Input
                 id="node-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Jane Smith"
+                required={nameRequired}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="node-duty">What they do for health and safety</Label>
+              <Textarea
+                id="node-duty"
+                value={hsDuty}
+                onChange={(e) => setHsDuty(e.target.value)}
+                rows={3}
+                placeholder="e.g. Appointed competent person under MHSWR reg.7"
               />
             </div>
             <div className="space-y-2">
@@ -313,7 +374,7 @@ function NodeDialog({
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending || !title.trim()}>
+            <Button type="submit" disabled={isPending || !title.trim() || (nameRequired && !name.trim())}>
               {editNode ? "Save" : "Create"}
             </Button>
           </DialogFooter>
@@ -476,10 +537,65 @@ const chartStyles = `
 export function OrgChartTree({ nodes, canManage }: OrgChartTreeProps) {
   const tree = buildOrgChartTree(nodes);
   const isEmpty = tree.length === 0;
+  const coverage = assessOrgChartCoverage(nodes);
+  const [seeding, startSeed] = useTransition();
+  const { toast } = useToast();
+
+  function handleSeed() {
+    startSeed(async () => {
+      const result = await seedMissingHsRoles();
+      if (result.success) {
+        toast({
+          title: result.added ? "Roles added" : "Nothing to add",
+          description: result.added
+            ? "Add the person's name on each role. HSE asks for names, not just titles."
+            : "Core health and safety roles are already on the chart.",
+        });
+      } else {
+        toast({ title: "Error", description: result.error, variant: "destructive" });
+      }
+    });
+  }
 
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: chartStyles }} />
+
+      <Card className={coverage.complete ? "border-l-4 border-l-emerald-600" : "border-l-4 border-l-amber-500"}>
+        <CardContent className="py-4 text-sm space-y-3">
+          <p className="font-medium">HSWA 1974 s.2(3) Part 2 — who does what</p>
+          <p className="text-muted-foreground">
+            List the names, positions and roles of people with specific health and safety responsibility (HSE).
+            Employees must be able to see this. A competent person is required by MHSWR reg.7. First-aiders
+            must be named under the First-Aid Regulations 1981 reg.4.
+          </p>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {coverage.items.map((item) => (
+              <li key={item.key} className="flex items-start gap-2">
+                {item.ok ? (
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                ) : (
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                )}
+                <span>
+                  <span className="font-medium">{item.label}</span>
+                  <span className="block text-xs text-muted-foreground">{item.legalRef}</span>
+                  {!item.ok && (
+                    <span className="block text-xs text-amber-800">
+                      {item.present ? "Add the person's name." : "Not on the chart yet."}
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {canManage && coverage.absent.length > 0 ? (
+            <Button variant="outline" size="sm" onClick={handleSeed} disabled={seeding}>
+              {seeding ? "Adding…" : "Add missing H&S roles"}
+            </Button>
+          ) : null}
+        </CardContent>
+      </Card>
 
       {isEmpty ? (
         <Card>

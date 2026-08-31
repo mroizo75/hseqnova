@@ -15,13 +15,15 @@ import type { SjaStatus, SjaConclusion } from "@prisma/client";
 interface SjaStatusActionsProps {
   analysisId: string;
   currentStatus: SjaStatus;
-  currentConclusion: SjaConclusion;
+  canApprove: boolean;
+  canComplete: boolean;
 }
 
 export function SjaStatusActions({
   analysisId,
   currentStatus,
-  currentConclusion,
+  canApprove,
+  canComplete,
 }: SjaStatusActionsProps) {
   const t = useTranslations("employeeSjaStatusActions");
   const router = useRouter();
@@ -66,7 +68,7 @@ export function SjaStatusActions({
         <CardTitle className="text-sm">{t("title")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {currentStatus === "DRAFT" && (
+        {currentStatus === "DRAFT" && canApprove && (
           <>
             <div className="space-y-2">
               <Label className="text-sm">{t("commentLabel")}</Label>
@@ -114,7 +116,7 @@ export function SjaStatusActions({
           </>
         )}
 
-        {currentStatus === "ACTIVE" && (
+        {currentStatus === "ACTIVE" && canComplete && (
           <Button
             onClick={() => handleAction("COMPLETED")}
             disabled={isUpdating}

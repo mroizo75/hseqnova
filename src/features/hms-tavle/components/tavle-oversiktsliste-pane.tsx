@@ -34,29 +34,24 @@ interface Props {
   hasCheckin: boolean;
 }
 
-function iDag(): string {
+function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function forrigeMaaned(): string {
-  const dato = new Date();
-  dato.setMonth(dato.getMonth() - 1);
-  return dato.toISOString().slice(0, 10);
+function lastMonthIso(): string {
+  const date = new Date();
+  date.setMonth(date.getMonth() - 1);
+  return date.toISOString().slice(0, 10);
 }
 
-function formaterKlokke(verdi: string | null): string {
-  if (!verdi) return "–";
-  return new Date(verdi).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+function formatTime(value: string | null): string {
+  if (!value) return "–";
+  return new Date(value).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
-/**
- * Oversiktslisten – Byggherreforskriften § 15.
- * Gir historikk og nedlastbar CSV slik at listen kan vises til arbeidsgiver,
- * verneombud, Arbeidstilsynet og skattemyndighetene, jf. § 15 fjerde ledd.
- */
 export function TavleOversiktslistePane({ tavleId, hasCheckin }: Props) {
-  const [from, setFrom] = useState(forrigeMaaned());
-  const [to, setTo] = useState(iDag());
+  const [from, setFrom] = useState(lastMonthIso());
+  const [to, setTo] = useState(todayIso());
   const [rader, setRader] = useState<CheckinRad[]>([]);
   const [site, setSite] = useState<SiteInfo | null>(null);
   const [truncated, setTruncated] = useState(false);
@@ -69,12 +64,12 @@ export function TavleOversiktslistePane({ tavleId, hasCheckin }: Props) {
         `/api/hms-tavle/${tavleId}/oversiktsliste?from=${from}&to=${to}`
       );
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Kunne ikke hente oversiktslisten");
+      if (!res.ok) throw new Error(json.error ?? "Could not load the site register");
       setRader(json.data?.checkins ?? []);
       setSite(json.data?.site ?? null);
       setTruncated(Boolean(json.data?.truncated));
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not load the site register");
     } finally {
       setLaster(false);
     }
@@ -94,7 +89,7 @@ export function TavleOversiktslistePane({ tavleId, hasCheckin }: Props) {
         <CardContent className="p-6 text-center space-y-2">
           <Users className="h-8 w-8 text-muted-foreground mx-auto" />
           <p className="text-sm text-muted-foreground">
-            QR-innsjekk krever Standard-plan eller høyere.
+            QR check-in requires the Standard plan or higher.
           </p>
         </CardContent>
       </Card>
@@ -110,34 +105,34 @@ export function TavleOversiktslistePane({ tavleId, hasCheckin }: Props) {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="font-semibold">Oversiktsliste</h3>
+        <h3 className="font-semibold">Site register</h3>
         <p className="text-sm text-muted-foreground">
-          Byggherreforskriften § 15. Listen skal kontrolleres og oppdateres daglig, kunne
-          vises til arbeidsgiver, verneombud, Arbeidstilsynet og skattemyndighetene, og
-          oppbevares i {OVERSIKTSLISTE_RETENTION_MONTHS} måneder etter at arbeidet er avsluttet.
+          Operational attendance record — not a CDM 2015 duty. Keep it for
+          {" "}{OVERSIKTSLISTE_RETENTION_MONTHS} months after work ends (UK GDPR storage
+          limitation).
         </p>
       </div>
 
       {site && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Opplysninger om plassen – § 15 bokstav a og b</CardTitle>
+            <CardTitle className="text-sm">Site details</CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
             <div>
-              <p className="text-xs text-muted-foreground">Bygge-/anleggsplass</p>
+              <p className="text-xs text-muted-foreground">Site</p>
               <p className="font-medium break-words">{site.siteName}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Adresse</p>
+              <p className="text-xs text-muted-foreground">Address</p>
               <p className={site.siteAddress ? "font-medium break-words" : "text-orange-600"}>
-                {site.siteAddress ?? "Mangler – fyll inn i Innstillinger"}
+                {site.siteAddress ?? "Missing — add it in Settings"}
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Byggherre</p>
+              <p className="text-xs text-muted-foreground">Client</p>
               <p className={site.clientName ? "font-medium break-words" : "text-orange-600"}>
-                {site.clientName ?? "Mangler – fyll inn i Innstillinger"}
+                {site.clientName ?? "Missing — add it in Settings"}
               </p>
             </div>
           </CardContent>
@@ -148,7 +143,7 @@ export function TavleOversiktslistePane({ tavleId, hasCheckin }: Props) {
         <CardContent className="p-4 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="oversiktsliste-fra">Fra dato</Label>
+              <Label htmlFor="oversiktsliste-fra">From</Label>
               <Input
                 id="oversiktsliste-fra"
                 type="date"
@@ -158,23 +153,23 @@ export function TavleOversiktslistePane({ tavleId, hasCheckin }: Props) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="oversiktsliste-til">Til dato</Label>
+              <Label htmlFor="oversiktsliste-til">To</Label>
               <Input
                 id="oversiktsliste-til"
                 type="date"
                 value={to}
                 min={from}
-                max={iDag()}
+                max={todayIso()}
                 onChange={(e) => setTo(e.target.value)}
               />
             </div>
             <div className="flex items-end gap-2">
               <Button variant="outline" className="bg-transparent" onClick={hentListe} disabled={laster}>
-                {laster ? "Henter..." : "Oppdater"}
+                {laster ? "Loading…" : "Refresh"}
               </Button>
               <Button onClick={lastNedCsv} disabled={rader.length === 0}>
                 <Download className="h-4 w-4 mr-1.5" />
-                Last ned CSV
+                Download CSV
               </Button>
             </div>
           </div>
@@ -182,17 +177,17 @@ export function TavleOversiktslistePane({ tavleId, hasCheckin }: Props) {
           <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <CalendarCheck className="h-3.5 w-3.5" />
-              {rader.length} registrering(er) over {dagerIListen} dag(er)
+              {rader.length} record(s) over {dagerIListen} day(s)
             </span>
             {manglerFelter > 0 && (
               <span className="inline-flex items-center gap-1 text-orange-600">
                 <AlertTriangle className="h-3.5 w-3.5" />
-                {manglerFelter} rad(er) mangler fødselsdato, organisasjonsnummer eller HMS-kortnummer
+                {manglerFelter} row(s) missing date of birth, company number or competence card
               </span>
             )}
             {truncated && (
               <span className="text-orange-600">
-                Viser de nyeste radene. Snevre inn datoene for full oversikt.
+                Showing the newest rows. Narrow the dates for the full list.
               </span>
             )}
           </div>
@@ -202,7 +197,7 @@ export function TavleOversiktslistePane({ tavleId, hasCheckin }: Props) {
       {rader.length === 0 ? (
         <Card>
           <CardContent className="p-6 text-center text-sm text-muted-foreground">
-            Ingen innsjekk i valgt periode.
+            No check-ins in this period.
           </CardContent>
         </Card>
       ) : (
@@ -212,14 +207,14 @@ export function TavleOversiktslistePane({ tavleId, hasCheckin }: Props) {
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-xs text-muted-foreground">
                   <tr>
-                    <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Dato</th>
-                    <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Navn</th>
-                    <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Fødselsdato</th>
-                    <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Arbeidsgiver</th>
-                    <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Org.nr</th>
-                    <th className="text-left font-medium px-3 py-2 whitespace-nowrap">HMS-kort</th>
-                    <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Inn</th>
-                    <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Ut</th>
+                    <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Date</th>
+                    <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Name</th>
+                    <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Date of birth</th>
+                    <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Employer</th>
+                    <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Company number</th>
+                    <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Competence card</th>
+                    <th className="text-left font-medium px-3 py-2 whitespace-nowrap">In</th>
+                    <th className="text-left font-medium px-3 py-2 whitespace-nowrap">Out</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -228,22 +223,22 @@ export function TavleOversiktslistePane({ tavleId, hasCheckin }: Props) {
                       <td className="px-3 py-2 whitespace-nowrap">{rad.date}</td>
                       <td className="px-3 py-2">{rad.name}</td>
                       <td className="px-3 py-2 whitespace-nowrap">
-                        {rad.birthDate ?? <span className="text-orange-600">Mangler</span>}
+                        {rad.birthDate ?? <span className="text-orange-600">Missing</span>}
                       </td>
                       <td className="px-3 py-2">{rad.employer ?? "–"}</td>
                       <td className="px-3 py-2 whitespace-nowrap">
-                        {rad.employerOrgNr ?? <span className="text-orange-600">Mangler</span>}
+                        {rad.employerOrgNr ?? <span className="text-orange-600">Missing</span>}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
-                        {rad.hmsCardNr ?? <span className="text-orange-600">Mangler</span>}
+                        {rad.hmsCardNr ?? <span className="text-orange-600">Missing</span>}
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap">{formaterKlokke(rad.checkedInAt)}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{formatTime(rad.checkedInAt)}</td>
                       <td className="px-3 py-2 whitespace-nowrap">
                         {rad.checkedOutAt ? (
-                          formaterKlokke(rad.checkedOutAt)
-                        ) : rad.date === iDag() ? (
+                          formatTime(rad.checkedOutAt)
+                        ) : rad.date === todayIso() ? (
                           <Badge variant="secondary" className="text-[10px]">
-                            På plassen
+                            On site
                           </Badge>
                         ) : (
                           "–"

@@ -23,6 +23,11 @@ import { format } from "date-fns";
 import { enGB } from "date-fns/locale";
 import { Search, X, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { isValidNiNumber, niNumberStatus, normalizeNiNumber } from "@/features/exposure-register/lib/ni-number";
+import { HealthRecordLegalNote } from "@/features/exposure-register/components/health-record-legal-note";
+import {
+  FITNESS_FOR_WORK,
+  type FitnessForWork,
+} from "@/lib/health-record-uk";
 
 const EXPOSURE_TYPE_OPTIONS: { value: ExposureType; label: string }[] = [
   { value: "INHALATION", label: "Inhalation" },
@@ -70,6 +75,7 @@ type ExistingEntry = {
   employeeId: string | null;
   employeeName: string;
   employeeBirthNumber: string;
+  homeAddress: string | null;
   department: string | null;
   jobTitle: string;
   workLocation: string;
@@ -87,6 +93,7 @@ type ExistingEntry = {
   healthCheckRequired: boolean;
   healthCheckDone: boolean;
   healthCheckDate: Date | null;
+  fitnessForWork: string | null;
   retentionYears: number;
   ruhReportId: string | null;
   riskId: string | null;
@@ -116,6 +123,7 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
   const [employeeName, setEmployeeName] = useState(existing?.employeeName ?? "");
   const [employeeBirthNumber, setEmployeeBirthNumber] = useState(existing?.employeeBirthNumber ?? "");
   const [birthNumberConfirm, setBirthNumberConfirm] = useState(existing?.employeeBirthNumber ?? "");
+  const [homeAddress, setHomeAddress] = useState(existing?.homeAddress ?? "");
   const [internalEmployeeNumber, setInternalEmployeeNumber] = useState(() => {
     if (existing?.employeeId) {
       return employees.find((e) => e.id === existing.employeeId)?.employeeNumber ?? "";
@@ -160,6 +168,10 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
   const [healthCheckRequired, setHealthCheckRequired] = useState(existing?.healthCheckRequired ?? false);
   const [healthCheckDone, setHealthCheckDone] = useState(existing?.healthCheckDone ?? false);
   const [healthCheckDate, setHealthCheckDate] = useState(toDateInput(existing?.healthCheckDate));
+  const [fitnessForWork, setFitnessForWork] = useState<FitnessForWork | "">(
+    (existing?.fitnessForWork as FitnessForWork | null) ??
+      (existing?.healthCheckRequired ? "PENDING" : ""),
+  );
 
   const [retentionYears, setRetentionYears] = useState(existing?.retentionYears ?? 40);
   const [ruhReportId, setRuhReportId] = useState(existing?.ruhReportId ?? "");
@@ -209,13 +221,20 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
     }
     if (!jobTitle.trim()) return setError("Job title is required");
     if (!workLocation.trim()) return setError("Workplace is required");
+    if (!homeAddress.trim()) return setError("Home address is required");
     if (!exposureAgent.trim()) return setError("Substance or agent is required");
     if (!exposureStartDate) return setError("Exposure start date is required");
+    if (!duration.trim()) return setError("Say how often they are exposed");
+    if (!ppeUsed.trim()) return setError("Record the protective measures provided");
+    if (healthCheckRequired && !fitnessForWork) {
+      return setError("Record the fitness-for-work statement");
+    }
 
     const input: CreateExposureRegisterInput = {
       employeeId: employeeId || undefined,
       employeeName: employeeName.trim(),
       employeeBirthNumber: employeeBirthNumber.trim(),
+      homeAddress: homeAddress.trim(),
       department: department.trim() || undefined,
       jobTitle: jobTitle.trim(),
       workLocation: workLocation.trim(),
@@ -233,6 +252,7 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
       healthCheckRequired,
       healthCheckDone,
       healthCheckDate: healthCheckDate ? new Date(healthCheckDate) : undefined,
+      fitnessForWork: healthCheckRequired ? fitnessForWork || undefined : undefined,
       retentionYears,
       ruhReportId: ruhReportId || undefined,
       riskId: riskId || undefined,
@@ -257,6 +277,7 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <HealthRecordLegalNote />
       {error && (
         <div className="rounded-md bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
           {error}
@@ -393,6 +414,20 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
                   </>
                 );
               })()}
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="homeAddress">Home address *</Label>
+              <Textarea
+                id="homeAddress"
+                value={homeAddress}
+                onChange={(e) => setHomeAddress(e.target.value)}
+                placeholder="House number, street, town, postcode"
+                rows={2}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                HSE health-record particular — name, home address and National Insurance number
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="department">Department</Label>
@@ -543,12 +578,13 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="duration">Duration (hours/days/years)</Label>
+            <Label htmlFor="duration">How often (hours / days / weeks) *</Label>
             <Input
               id="duration"
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
               placeholder="e.g. 3 days/week, 2 hours/day"
+              required
             />
           </div>
         </CardContent>
@@ -560,12 +596,13 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="ppeUsed">PPE used</Label>
+            <Label htmlFor="ppeUsed">Protective measures provided *</Label>
             <Input
               id="ppeUsed"
               value={ppeUsed}
               onChange={(e) => setPpeUsed(e.target.value)}
-              placeholder="e.g. gloves, goggles, P3 respirator"
+              placeholder="e.g. local exhaust ventilation, nitrile gloves, P3 respirator"
+              required
             />
           </div>
 
@@ -574,7 +611,15 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
               <Checkbox
                 id="healthCheckRequired"
                 checked={healthCheckRequired}
-                onCheckedChange={(v) => setHealthCheckRequired(Boolean(v))}
+                onCheckedChange={(v) => {
+                  const required = Boolean(v);
+                  setHealthCheckRequired(required);
+                  if (required && !fitnessForWork) setFitnessForWork("PENDING");
+                  if (!required) {
+                    setFitnessForWork("");
+                    setHealthCheckDone(false);
+                  }
+                }}
               />
               <Label htmlFor="healthCheckRequired" className="cursor-pointer">
                 Health surveillance required (COSHH 2002)
@@ -583,6 +628,28 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
 
             {healthCheckRequired && (
               <div className="ml-7 space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="fitnessForWork">Fitness for work *</Label>
+                  <Select
+                    value={fitnessForWork || "PENDING"}
+                    onValueChange={(value) => setFitnessForWork(value as FitnessForWork)}
+                  >
+                    <SelectTrigger id="fitnessForWork">
+                      <SelectValue placeholder="Select the occupational health conclusion" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(FITNESS_FOR_WORK) as FitnessForWork[]).map((key) => (
+                        <SelectItem key={key} value={key}>
+                          {FITNESS_FOR_WORK[key]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Record the conclusion only. Do not store spirometry, blood results or other clinical notes.
+                  </p>
+                </div>
+
                 <div className="flex items-center gap-3">
                   <Checkbox
                     id="healthCheckDone"
@@ -831,7 +898,7 @@ export function ExposureRegisterForm({ employees, chemicals, ruhReports = [], ri
               id="comment"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Any further details about the exposure..."
+              placeholder="Further details about the work. Do not record clinical test results."
               rows={3}
             />
           </div>

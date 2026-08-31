@@ -131,11 +131,14 @@ async function attachRelated(tenantId: string, rows: Measure[]): Promise<Measure
 
 export async function loadMeasuresForTenant(
   tenantId: string,
-  opts?: { riskId?: string },
+  opts?: { riskId?: string; responsibleId?: string },
 ): Promise<MeasureListItem[]> {
   let query = getAdminDb().from("Measure").select("*").eq("tenantId", tenantId);
   if (opts?.riskId) {
     query = query.eq("riskId", opts.riskId);
+  }
+  if (opts?.responsibleId) {
+    query = query.eq("responsibleId", opts.responsibleId);
   }
   const { data, error } = await query.order("status", { ascending: true }).order("dueAt", { ascending: true });
   if (error) {

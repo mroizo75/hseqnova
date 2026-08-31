@@ -1,5 +1,7 @@
 import { getAdminDb } from "@/lib/supabase/admin";
 import { createId } from "@/lib/ids";
+import { evaluatePreNotificationRequirement } from "@/lib/construction-compliance-rules";
+import { isF10Submitted } from "@/lib/cdm-uk";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -72,6 +74,8 @@ export type PreNotificationRow = Record<string, unknown> & {
   maxWorkersSimultaneous: number | null;
   plannedBusinessesCount: number | null;
   visibleAtSite: boolean;
+  localAuthority: string | null;
+  clientDutyAcknowledged: boolean;
 };
 
 export type RosterEntryRow = {
@@ -120,8 +124,10 @@ export type CdmOverviewProject = {
   id: string;
   name: string;
   location: string | null;
-  hasShaPlan: boolean;
-  hasPreNotification: boolean;
+  hasActiveCpp: boolean;
+  f10Notifiable: boolean;
+  f10Submitted: boolean;
+  f10Missing: boolean;
   activeWorkers: number;
   lastCheckDate: Date | null;
 };
@@ -147,6 +153,8 @@ function asPreNotification(row: Record<string, unknown>): PreNotificationRow {
     maxWorkersSimultaneous: row.maxWorkersSimultaneous == null ? null : Number(row.maxWorkersSimultaneous),
     plannedBusinessesCount: row.plannedBusinessesCount == null ? null : Number(row.plannedBusinessesCount),
     visibleAtSite: asBool(row.visibleAtSite),
+    localAuthority: (row.localAuthority as string | null) ?? null,
+    clientDutyAcknowledged: asBool(row.clientDutyAcknowledged),
     createdAt: parseDate(row.createdAt) ?? new Date(0),
     updatedAt: parseDate(row.updatedAt) ?? new Date(0),
   } as unknown as PreNotificationRow;
@@ -516,8 +524,11 @@ export async function loadCdmOverviewProjects(tenantId: string): Promise<CdmOver
   const db = getAdminDb();
   const [projects, shaPlans, notifications, roster, checks] = await Promise.all([
     db.from("Project").select("id, name, location").eq("tenantId", tenantId).order("name", { ascending: true }),
-    db.from("ConstructionShaPlan").select("projectId").eq("tenantId", tenantId),
-    db.from("ConstructionPreNotification").select("projectId").eq("tenantId", tenantId),
+    db.from("ConstructionShaPlan").select("projectId, status").eq("tenantId", tenantId),
+    db
+      .from("ConstructionPreNotification")
+      .select("projectId, status, expectedStartDate, expectedEndDate, maxWorkersSimultaneous")
+      .eq("tenantId", tenantId),
     db.from("ConstructionRosterEntry").select("projectId").eq("tenantId", tenantId).eq("isActive", true),
     db.from("ConstructionRosterDailyCheck").select("projectId, checkedDate").eq("tenantId", tenantId),
   ]);
@@ -527,8 +538,20 @@ export async function loadCdmOverviewProjects(tenantId: string): Promise<CdmOver
   if (roster.error) throw { code: "CDM_OVERVIEW_FAILED", message: roster.error.message };
   if (checks.error) throw { code: "CDM_OVERVIEW_FAILED", message: checks.error.message };
 
-  const shaIds = new Set((shaPlans.data ?? []).map((row) => row.projectId as string));
-  const f10Ids = new Set((notifications.data ?? []).map((row) => row.projectId as string));
+  const cppByProject = new Map(
+    (shaPlans.data ?? []).map((row) => [row.projectId as string, String(row.status ?? "")]),
+  );
+  const f10ByProject = new Map(
+    (notifications.data ?? []).map((row) => [
+      row.projectId as string,
+      {
+        status: String(row.status ?? ""),
+        expectedStartDate: parseDate(row.expectedStartDate),
+        expectedEndDate: parseDate(row.expectedEndDate),
+        maxWorkersSimultaneous: row.maxWorkersSimultaneous == null ? null : Number(row.maxWorkersSimultaneous),
+      },
+    ]),
+  );
   const activeByProject = new Map<string, number>();
   for (const row of roster.data ?? []) {
     const projectId = row.projectId as string;
@@ -545,15 +568,28 @@ export async function loadCdmOverviewProjects(tenantId: string): Promise<CdmOver
     }
   }
 
-  return (projects.data ?? []).map((row) => ({
-    id: row.id as string,
-    name: row.name as string,
-    location: (row.location as string | null) ?? null,
-    hasShaPlan: shaIds.has(row.id as string),
-    hasPreNotification: f10Ids.has(row.id as string),
-    activeWorkers: activeByProject.get(row.id as string) ?? 0,
-    lastCheckDate: lastCheckByProject.get(row.id as string) ?? null,
-  }));
+  return (projects.data ?? []).map((row) => {
+    const f10 = f10ByProject.get(row.id as string);
+    const notifiable = f10
+      ? evaluatePreNotificationRequirement({
+          expectedStartDate: f10.expectedStartDate,
+          expectedEndDate: f10.expectedEndDate,
+          maxWorkersSimultaneous: f10.maxWorkersSimultaneous,
+        }).isRequired
+      : false;
+    const submitted = f10 ? isF10Submitted(f10.status) : false;
+    return {
+      id: row.id as string,
+      name: row.name as string,
+      location: (row.location as string | null) ?? null,
+      hasActiveCpp: cppByProject.get(row.id as string) === "ACTIVE",
+      f10Notifiable: notifiable,
+      f10Submitted: submitted,
+      f10Missing: notifiable && !submitted,
+      activeWorkers: activeByProject.get(row.id as string) ?? 0,
+      lastCheckDate: lastCheckByProject.get(row.id as string) ?? null,
+    };
+  });
 }
 
 function serializeDates(patch: Record<string, unknown>): Record<string, unknown> {

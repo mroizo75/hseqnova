@@ -290,6 +290,7 @@ export async function insertTraining(input: {
   validUntil?: Date | string | null;
   proofDocKey?: string | null;
   isRequired?: boolean;
+  mhswrReason?: string | null;
   effectiveness?: string | null;
 }): Promise<Training> {
   const now = nowIso();
@@ -307,6 +308,7 @@ export async function insertTraining(input: {
       validUntil: toIso(input.validUntil ?? null),
       proofDocKey: input.proofDocKey ?? null,
       isRequired: input.isRequired ?? false,
+      mhswrReason: input.mhswrReason ?? null,
       effectiveness: input.effectiveness ?? null,
       createdAt: now,
       updatedAt: now,
@@ -335,6 +337,7 @@ export async function insertTrainings(
     validUntil: toIso(input.validUntil ?? null),
     proofDocKey: input.proofDocKey ?? null,
     isRequired: input.isRequired ?? false,
+    mhswrReason: input.mhswrReason ?? null,
     effectiveness: input.effectiveness ?? null,
     createdAt: now,
     updatedAt: now,

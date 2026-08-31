@@ -12,13 +12,20 @@ import { getAdminDb } from "@/lib/supabase/admin";
 import { createId } from "@/lib/ids";
 import {
   DEFAULT_POLICY_SECTIONS as DEFAULT_SECTIONS,
+  HEALTH_SAFETY_POLICY_EMPLOYEE_PATH,
   HEALTH_SAFETY_POLICY_LEGACY_PATH,
   HEALTH_SAFETY_POLICY_PATH,
+  POLICY_NOTIFY_EMPLOYEE_ROLES,
+  POLICY_NOTIFY_MANAGER_ROLES,
   applyUkPolicyDefaults,
   policySectionNeedsUkSync,
 } from "@/lib/health-safety-policy";
 
-const POLICY_REVALIDATE_PATHS = [HEALTH_SAFETY_POLICY_PATH, HEALTH_SAFETY_POLICY_LEGACY_PATH] as const;
+const POLICY_REVALIDATE_PATHS = [
+  HEALTH_SAFETY_POLICY_PATH,
+  HEALTH_SAFETY_POLICY_LEGACY_PATH,
+  HEALTH_SAFETY_POLICY_EMPLOYEE_PATH,
+] as const;
 
 function revalidatePolicyPaths() {
   for (const path of POLICY_REVALIDATE_PATHS) {
@@ -181,6 +188,7 @@ async function seedDefaultVersion(handbookId: string, tenantId: string) {
 }
 
 async function syncUkPolicySections(
+  versionId: string,
   sections: Array<{
     id: string;
     sectionKey: string;
@@ -213,7 +221,29 @@ async function syncUkPolicySections(
       .eq("id", section.id);
     if (!error) updated += 1;
   }
-  return updated;
+
+  const existingKeys = new Set(sections.map((section) => section.sectionKey));
+  const missing = DEFAULT_SECTIONS.filter((section) => !existingKeys.has(section.sectionKey));
+  let inserted = 0;
+  if (missing.length > 0) {
+    const { error } = await db.from("HandbookSection").insert(
+      missing.map((section) => ({
+        id: createId(),
+        versionId,
+        sectionKey: section.sectionKey,
+        sectionNumber: section.sectionNumber,
+        title: section.title,
+        content: section.content,
+        legalRef: section.legalRef,
+        sortOrder: section.sortOrder,
+        moduleLink: section.moduleLink,
+        updatedAt: now,
+      })),
+    );
+    if (!error) inserted = missing.length;
+  }
+
+  return updated + inserted;
 }
 
 function buildSectionTree(sections: Array<{
@@ -254,7 +284,7 @@ function buildSectionTree(sections: Array<{
     }
   }
 
-  roots.sort((a, b) => a.sortOrder - b.sortOrder);
+  roots.sort((a, b) => a.sortOrder - b.sortOrder || a.sectionKey.localeCompare(b.sectionKey));
   for (const node of map.values()) {
     node.children.sort((a, b) => a.sortOrder - b.sortOrder);
   }
@@ -264,21 +294,51 @@ function buildSectionTree(sections: Array<{
 
 // ── Actions ──────────────────────────────────────────────────────────────────
 
-export async function getHandbookData(tenantId: string): Promise<{
+export async function getHandbookData(
+  tenantId: string,
+  options?: { publishedOnly?: boolean },
+): Promise<{
   success: true;
   handbook: HandbookData;
   stats: LiveHandbookStats;
 } | { success: false; error: string }> {
   try {
-    await getOrCreateHandbook(tenantId);
+    if (!options?.publishedOnly) {
+      await getOrCreateHandbook(tenantId);
+    }
     const db = getAdminDb();
 
     const { data: fullHandbook, error: handbookError } = await db
       .from("HmsHandbook")
       .select("*")
       .eq("tenantId", tenantId)
-      .single();
-    if (handbookError || !fullHandbook) {
+      .maybeSingle();
+    if (!fullHandbook) {
+      if (options?.publishedOnly) {
+        return {
+          success: true,
+          handbook: {
+            id: "",
+            tenantId,
+            lastReviewedAt: null,
+            reviewedByName: null,
+            currentVersion: null,
+            signatures: [],
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          stats: {
+            activeRiskAssessments: 0,
+            activeRoutines: 0,
+            openIncidentsLast30d: 0,
+            activeTrainings: 0,
+            lastIncidentAt: null,
+            lastRiskReviewAt: null,
+            lastRoutineReviewAt: null,
+            annualPlanProgress: null,
+          },
+        };
+      }
       throw handbookError ?? { message: "Handbook not found" };
     }
 
@@ -304,7 +364,25 @@ export async function getHandbookData(tenantId: string): Promise<{
       reviewedByName = reviewer?.name ?? null;
     }
 
-    const versionId = fullHandbook.currentVersionId as string | null;
+    let versionId = fullHandbook.currentVersionId as string | null;
+    if (options?.publishedOnly && versionId) {
+      const { data: currentRow } = await db
+        .from("HandbookVersion")
+        .select("status")
+        .eq("id", versionId)
+        .maybeSingle();
+      if (currentRow?.status !== "APPROVED") {
+        const { data: published } = await db
+          .from("HandbookVersion")
+          .select("id")
+          .eq("handbookId", fullHandbook.id)
+          .eq("status", "APPROVED")
+          .order("publishedAt", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        versionId = (published?.id as string | undefined) ?? null;
+      }
+    }
     let currentVersion: {
       id: string;
       version: string;
@@ -336,9 +414,12 @@ export async function getHandbookData(tenantId: string): Promise<{
           .select("*")
           .eq("versionId", version.id)
           .order("sortOrder", { ascending: true });
-        if (sections && sections.length > 0) {
+        const sectionRows = sections ?? [];
+        let loadedSections = sectionRows;
+        if (!options?.publishedOnly) {
           const synced = await syncUkPolicySections(
-            sections.map((row) => ({
+            version.id as string,
+            sectionRows.map((row) => ({
               id: row.id as string,
               sectionKey: row.sectionKey as string,
               sectionNumber: String(row.sectionNumber ?? ""),
@@ -354,7 +435,7 @@ export async function getHandbookData(tenantId: string): Promise<{
               .eq("versionId", version.id)
               .order("sortOrder", { ascending: true });
             if (refreshed) {
-              sections.splice(0, sections.length, ...refreshed);
+              loadedSections = refreshed;
             }
           }
         }
@@ -371,11 +452,30 @@ export async function getHandbookData(tenantId: string): Promise<{
             .maybeSingle();
           approvedByName = approver?.name ?? null;
         }
+        if (options?.publishedOnly) {
+          const existingKeys = new Set(
+            loadedSections.map((row) => row.sectionKey as string),
+          );
+          for (const def of DEFAULT_SECTIONS) {
+            if (existingKeys.has(def.sectionKey)) continue;
+            loadedSections.push({
+              id: `virtual-${def.sectionKey}`,
+              sectionKey: def.sectionKey,
+              sectionNumber: def.sectionNumber,
+              title: def.title,
+              content: def.content,
+              legalRef: def.legalRef,
+              sortOrder: def.sortOrder,
+              moduleLink: def.moduleLink,
+              parentId: null,
+            });
+          }
+        }
         currentVersion = {
           ...version,
           approvedByName,
           signatures: versionSignatures ?? [],
-          sections: (sections ?? []) as Array<{
+          sections: loadedSections as Array<{
             id: string;
             sectionKey: string;
             sectionNumber: string;
@@ -502,14 +602,14 @@ export async function createNewDraft(
       return { success: false, error: "Not authorised" };
     }
     const permissions = getPermissions(session.user.role as import("@prisma/client").Role);
-    if (!permissions.canUpdateSettings) return { success: false, error: "Ingen tilgang" };
+    if (!permissions.canUpdateSettings) return { success: false, error: "No access" };
 
     const handbook = await getOrCreateHandbook(tenantId);
 
     const existingDraft = await prisma.handbookVersion.findFirst({
       where: { handbookId: handbook.id, status: "DRAFT" },
     });
-    if (existingDraft) return { success: false, error: "Det finnes allerede et utkast (v" + existingDraft.version + ")" };
+    if (existingDraft) return { success: false, error: "A draft already exists (v" + existingDraft.version + ")" };
 
     const currentVersion = handbook.currentVersionId
       ? await prisma.handbookVersion.findUnique({
@@ -585,11 +685,11 @@ export async function updateDraftSection(
       return { success: false, error: "Not authorised" };
     }
     if (section.version.status !== "DRAFT") {
-      return { success: false, error: "Kan kun redigere seksjoner i utkast" };
+      return { success: false, error: "Only draft sections can be edited" };
     }
 
     const permissions = getPermissions(session.user.role as import("@prisma/client").Role);
-    if (!permissions.canUpdateSettings) return { success: false, error: "Ingen tilgang" };
+    if (!permissions.canUpdateSettings) return { success: false, error: "No access" };
 
     await prisma.handbookSection.update({
       where: { id: sectionId },
@@ -626,7 +726,7 @@ export async function submitForApproval(
       return { success: false, error: "Not authorised" };
     }
     if (version.status !== "DRAFT") {
-      return { success: false, error: "Kun utkast kan sendes til godkjenning" };
+      return { success: false, error: "Only a draft can be sent for publication" };
     }
 
     await prisma.handbookVersion.update({
@@ -637,7 +737,7 @@ export async function submitForApproval(
     notifyUsersByRoles(version.handbook.tenantId, ["ADMIN", "HMS"], {
       type: "HANDBOOK_APPROVAL_REQUESTED",
       title: "Health and safety policy needs approval",
-      message: `Versjon ${version.version} er sendt til godkjenning`,
+      message: `Version ${version.version} is ready to publish.`,
       link: HEALTH_SAFETY_POLICY_PATH,
     }).catch(() => {});
 
@@ -660,7 +760,7 @@ export async function approveVersion(
 
     const permissions = getPermissions(session.user.role as import("@prisma/client").Role);
     if (!permissions.canUpdateSettings && !permissions.canApproveDocuments) {
-      return { success: false, error: "Kun admin/HMS kan godkjenne" };
+      return { success: false, error: "Only an administrator or HSE manager can publish" };
     }
 
     const version = await prisma.handbookVersion.findUniqueOrThrow({
@@ -672,7 +772,7 @@ export async function approveVersion(
       return { success: false, error: "Not authorised" };
     }
     if (version.status !== "PENDING_APPROVAL") {
-      return { success: false, error: "Versjonen er ikke til godkjenning" };
+      return { success: false, error: "This version is not waiting to be published" };
     }
 
     // Arkiver tidligere godkjent versjon
@@ -703,10 +803,17 @@ export async function approveVersion(
       },
     });
 
-    notifyUsersByRoles(version.handbook.tenantId, ["EMPLOYEE", "VERNEOMBUD", "HMS", "ADMIN"], {
+    notifyUsersByRoles(version.handbook.tenantId, [...POLICY_NOTIFY_EMPLOYEE_ROLES], {
       type: "HANDBOOK_NEW_VERSION",
-      title: "New health and safety policy version published",
-      message: `Versjon ${version.version} er godkjent – vennligst les og signer`,
+      title: "Health and safety policy updated",
+      message: `Version ${version.version} has been published. Please read it and confirm you have been notified (HSWA 1974 s.2(3)).`,
+      link: HEALTH_SAFETY_POLICY_EMPLOYEE_PATH,
+    }).catch(() => {});
+
+    notifyUsersByRoles(version.handbook.tenantId, [...POLICY_NOTIFY_MANAGER_ROLES], {
+      type: "HANDBOOK_NEW_VERSION",
+      title: "Health and safety policy published",
+      message: `Version ${version.version} is now the current written policy.`,
       link: HEALTH_SAFETY_POLICY_PATH,
     }).catch(() => {});
 
@@ -719,7 +826,7 @@ export async function approveVersion(
 
 const rejectDraftSchema = z.object({
   versionId: z.string().min(1),
-  rejectedNote: z.string().min(1, "Begrunnelse er påkrevd"),
+  rejectedNote: z.string().min(1, "A reason is required"),
 });
 
 export async function rejectDraft(
@@ -732,7 +839,7 @@ export async function rejectDraft(
 
     const permissions = getPermissions(session.user.role as import("@prisma/client").Role);
     if (!permissions.canUpdateSettings && !permissions.canApproveDocuments) {
-      return { success: false, error: "Kun admin/HMS kan avvise" };
+      return { success: false, error: "Only an administrator or HSE manager can reject a draft" };
     }
 
     const version = await prisma.handbookVersion.findUniqueOrThrow({
@@ -744,7 +851,7 @@ export async function rejectDraft(
       return { success: false, error: "Not authorised" };
     }
     if (version.status !== "PENDING_APPROVAL") {
-      return { success: false, error: "Versjonen er ikke til godkjenning" };
+      return { success: false, error: "This version is not waiting to be published" };
     }
 
     await prisma.handbookVersion.update({
@@ -814,7 +921,7 @@ export async function markHandbookReviewed(
       return { success: false, error: "Not authorised" };
     }
     const permissions = getPermissions(session.user.role as import("@prisma/client").Role);
-    if (!permissions.canReadDocuments) return { success: false, error: "Ingen tilgang" };
+    if (!permissions.canReadDocuments) return { success: false, error: "No access" };
 
     await getOrCreateHandbook(tenantId);
     const { error } = await getAdminDb()
@@ -1003,7 +1110,7 @@ export async function applyHandbookTemplate(
 
     return { success: true, sectionsUpdated: updatedCount };
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Ukjent feil";
+    const message = e instanceof Error ? e.message : "Unknown error";
     return { success: false, error: message };
   }
 }

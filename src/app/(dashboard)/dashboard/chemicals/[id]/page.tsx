@@ -12,6 +12,7 @@ import { IsocyanateWarning } from "@/components/isocyanate-warning";
 import { ChemicalRiskSuggestions } from "@/components/chemical-risk-suggestions";
 import { ExposureRegisterWarning } from "@/components/exposure-register-warning";
 import { countActiveExposuresForChemical, loadChemicalById } from "@/server/queries/chemicals.queries";
+import { loadCoshhAssessmentsForChemical } from "@/server/queries/coshh.queries";
 import { isChemicalReviewOverdue } from "@/features/chemicals/lib/chemical-review";
 
 export default async function ChemicalDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -23,9 +24,10 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
   }
 
   const tenantId = session.user.tenantId;
-  const [chemical, exposureCount] = await Promise.all([
+  const [chemical, exposureCount, assessments] = await Promise.all([
     loadChemicalById(id, tenantId),
     countActiveExposuresForChemical(id, tenantId),
+    loadCoshhAssessmentsForChemical(tenantId, id),
   ]);
 
   if (!chemical) {
@@ -338,6 +340,40 @@ export default async function ChemicalDetailPage({ params }: { params: Promise<{
                 </p>
               </CardContent>
             </Card>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div>
+            <CardTitle>COSHH assessments</CardTitle>
+            <CardDescription>
+              Significant findings for work with this substance (COSHH 2002 reg.6)
+            </CardDescription>
+          </div>
+          <Link href={`/dashboard/coshh-assessments/new?chemicalId=${chemical.id}`}>
+            <Button size="sm" variant="outline">New assessment</Button>
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {assessments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No COSHH assessment is recorded. An SDS is not a substitute (COSHH 2002).
+            </p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {assessments.map((assessment) => (
+                <li key={assessment.id}>
+                  <Link
+                    href={`/dashboard/coshh-assessments/${assessment.id}`}
+                    className="font-medium hover:underline"
+                  >
+                    {assessment.taskDescription}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           )}
         </CardContent>
       </Card>

@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthContext } from "@/lib/server-authorization";
 import { getAdminDb } from "@/lib/supabase/admin";
 import { getStorage } from "@/lib/storage";
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const session = await getServerSession(authOptions);
+    const auth = await getAuthContext();
 
-    if (!session?.user?.tenantId) {
+    if (!auth) {
       return NextResponse.json({ error: "Not authorised." }, { status: 401 });
+    }
+
+    if (!auth.permissions.canCreateDocuments && !auth.permissions.canApproveDocuments) {
+      return NextResponse.json({ error: "Document version not found." }, { status: 404 });
     }
 
     const { data: version } = await getAdminDb()
@@ -32,7 +35,7 @@ export async function GET(
       .eq("id", version.documentId)
       .maybeSingle();
 
-    if (!document || document.tenantId !== session.user.tenantId) {
+    if (!document || document.tenantId !== auth.tenantId) {
       return NextResponse.json({ error: "Document version not found." }, { status: 404 });
     }
 

@@ -1,29 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { getAdminDb } from "@/lib/supabase/admin";
+import { getAuthContext } from "@/lib/server-authorization";
 import { getStorage } from "@/lib/storage";
+import { loadDocumentById } from "@/server/queries/documents.queries";
+import { mayOpenDocumentFile } from "@/lib/document-uk";
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const session = await getServerSession(authOptions);
+    const auth = await getAuthContext();
 
-    if (!session?.user?.tenantId) {
+    if (!auth) {
       return NextResponse.json({ error: "Not authorised." }, { status: 401 });
     }
 
-    const { data: document } = await getAdminDb()
-      .from("Document")
-      .select("fileKey")
-      .eq("id", id)
-      .eq("tenantId", session.user.tenantId)
-      .maybeSingle();
-
-    if (!document) {
+    const document = await loadDocumentById({ id, tenantId: auth.tenantId });
+    if (
+      !document ||
+      !mayOpenDocumentFile({
+        status: document.status,
+        visibleToRoles: document.visibleToRoles,
+        effectiveTo: document.effectiveTo,
+        role: auth.role,
+        canCreateDocuments: auth.permissions.canCreateDocuments,
+        canApproveDocuments: auth.permissions.canApproveDocuments,
+      })
+    ) {
       return NextResponse.json({ error: "Document not found." }, { status: 404 });
     }
 

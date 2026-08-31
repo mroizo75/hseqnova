@@ -58,11 +58,11 @@ export function CourseTemplatesManager({ tenantId, globalCourses, tenantCourses 
         body: JSON.stringify(editingCourse ? { ...data, id: editingCourse.id } : data),
       });
 
-      if (!response.ok) throw new Error("Kunne ikke lagre kursmal");
+      if (!response.ok) throw new Error("Could not save the course template");
 
       toast({
-        title: editingCourse ? "Kursmal oppdatert" : "Kursmal opprettet",
-        description: `${data.title} er nå tilgjengelig for opplæringsregistrering`,
+        title: editingCourse ? "Course template updated" : "Course template created",
+        description: `${data.title} is now available when recording training`,
       });
 
       setDialogOpen(false);
@@ -70,8 +70,8 @@ export function CourseTemplatesManager({ tenantId, globalCourses, tenantCourses 
       router.refresh();
     } catch (error) {
       toast({
-        title: "Feil",
-        description: error instanceof Error ? error.message : "Kunne ikke lagre kursmal",
+        title: "Could not save",
+        description: error instanceof Error ? error.message : "Could not save the course template",
         variant: "destructive",
       });
     } finally {
@@ -80,25 +80,25 @@ export function CourseTemplatesManager({ tenantId, globalCourses, tenantCourses 
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Er du sikker på at du vil slette denne kursmalen?")) return;
+    if (!confirm("Delete this course template?")) return;
 
     try {
       const response = await fetch(`/api/course-templates?id=${id}`, {
         method: "DELETE",
       });
 
-      if (!response.ok) throw new Error("Kunne ikke slette kursmal");
+      if (!response.ok) throw new Error("Could not delete the course template");
 
       toast({
-        title: "Kursmal slettet",
-        description: "Kursmalen er fjernet",
+        title: "Course template deleted",
+        description: "The template has been removed",
       });
 
       router.refresh();
     } catch (error) {
       toast({
-        title: "Feil",
-        description: error instanceof Error ? error.message : "Kunne ikke slette kursmal",
+        title: "Could not delete",
+        description: error instanceof Error ? error.message : "Could not delete the course template",
         variant: "destructive",
       });
     }
@@ -106,7 +106,7 @@ export function CourseTemplatesManager({ tenantId, globalCourses, tenantCourses 
 
   return (
     <div className="space-y-6">
-      {/* Standard HMS-kurs – globale kursmaler (f.eks. førstehjelp, brannvern) som alle bedrifter får. Vis kun hvis det finnes noen. */}
+      {/* Standard H&S courses — global templates available to every organisation. */}
       {globalCourses.length > 0 && (
       <Card>
         <CardHeader>
@@ -114,10 +114,10 @@ export function CourseTemplatesManager({ tenantId, globalCourses, tenantCourses 
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Globe className="h-5 w-5 text-blue-600" />
-                Standard HMS-kurs
+                Standard H&S courses
               </CardTitle>
               <CardDescription>
-                Felles kursmaler for alle bedrifter (f.eks. førstehjelp, brannvern). Kan ikke redigeres her.
+                Shared templates for every organisation (for example first aid and fire safety). They cannot be edited here.
               </CardDescription>
             </div>
           </div>
@@ -142,12 +142,12 @@ export function CourseTemplatesManager({ tenantId, globalCourses, tenantCourses 
                 <div className="flex flex-wrap gap-2 mt-2">
                   {course.isRequired && (
                     <Badge variant="destructive" className="text-xs">
-                      Obligatorisk
+                      Required
                     </Badge>
                   )}
                   {course.validityYears && (
                     <Badge variant="outline" className="text-xs">
-                      Gyldig i {course.validityYears} år
+                      Valid for {course.validityYears} years
                     </Badge>
                   )}
                   {course.provider && (
@@ -163,56 +163,56 @@ export function CourseTemplatesManager({ tenantId, globalCourses, tenantCourses 
       </Card>
       )}
 
-      {/* Bedriftens egne kurs */}
+      {/* Organisation-specific courses */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Bedriftens egne kurs</CardTitle>
+              <CardTitle>Your organisation’s courses</CardTitle>
               <CardDescription>
-                Spesifikke kurs for din bedrift (f.eks. maskinkurs, bransjespesifikt)
+                Courses specific to this organisation
               </CardDescription>
             </div>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={() => setEditingCourse(null)}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Legg til kurs
+                  Add course
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>
-                    {editingCourse ? "Rediger kursmal" : "Legg til ny kursmal"}
+                    {editingCourse ? "Edit course template" : "Add a course template"}
                   </DialogTitle>
                   <DialogDescription>
-                    Definer et kurs som er spesifikt for din bedrift
+                    Define a course used in this organisation
                   </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="courseKey">Kurskode *</Label>
+                      <Label htmlFor="courseKey">Course code *</Label>
                       <Input
                         id="courseKey"
                         name="courseKey"
-                        placeholder="f.eks. gravemask in-opplering"
+                        placeholder="e.g. excavator-training"
                         defaultValue={editingCourse?.courseKey || ""}
                         required
                         disabled={loading}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Unik identifikator (bruk små bokstaver og bindestrek)
+                        Unique identifier (lowercase and hyphens)
                       </p>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="title">Kurstittel *</Label>
+                      <Label htmlFor="title">Course title *</Label>
                       <Input
                         id="title"
                         name="title"
-                        placeholder="f.eks. Gravemaskinkurs"
+                        placeholder="e.g. Excavator training"
                         defaultValue={editingCourse?.title || ""}
                         required
                         disabled={loading}
@@ -221,11 +221,11 @@ export function CourseTemplatesManager({ tenantId, globalCourses, tenantCourses 
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="description">Beskrivelse</Label>
+                    <Label htmlFor="description">Description</Label>
                     <Textarea
                       id="description"
                       name="description"
-                      placeholder="Kort beskrivelse av kurset"
+                      placeholder="Short description of the course"
                       defaultValue={editingCourse?.description || ""}
                       disabled={loading}
                       rows={3}
@@ -234,30 +234,30 @@ export function CourseTemplatesManager({ tenantId, globalCourses, tenantCourses 
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="provider">Leverandør</Label>
+                      <Label htmlFor="provider">Provider</Label>
                       <Input
                         id="provider"
                         name="provider"
-                        placeholder="f.eks. NLF Maskin"
+                        placeholder="e.g. in-house"
                         defaultValue={editingCourse?.provider || ""}
                         disabled={loading}
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="validityYears">Gyldighet (år)</Label>
+                      <Label htmlFor="validityYears">Validity (years)</Label>
                       <Input
                         id="validityYears"
                         name="validityYears"
                         type="number"
                         min="1"
                         max="10"
-                        placeholder="f.eks. 5"
+                        placeholder="e.g. 5"
                         defaultValue={editingCourse?.validityYears || ""}
                         disabled={loading}
                       />
                       <p className="text-xs text-muted-foreground">
-                        La stå tom hvis kurset ikke utløper
+                        Leave blank if the course does not expire
                       </p>
                     </div>
                   </div>
@@ -269,7 +269,7 @@ export function CourseTemplatesManager({ tenantId, globalCourses, tenantCourses 
                       defaultChecked={editingCourse?.isRequired || false}
                       disabled={loading}
                     />
-                    <Label htmlFor="isRequired">Obligatorisk kurs for alle ansatte</Label>
+                    <Label htmlFor="isRequired">Required for all employees</Label>
                   </div>
 
                   <div className="flex justify-end gap-2 pt-4">
@@ -282,10 +282,10 @@ export function CourseTemplatesManager({ tenantId, globalCourses, tenantCourses 
                       }}
                       disabled={loading}
                     >
-                      Avbryt
+                      Cancel
                     </Button>
                     <Button type="submit" disabled={loading}>
-                      {loading ? "Lagrer..." : editingCourse ? "Oppdater" : "Opprett"}
+                      {loading ? "Saving..." : editingCourse ? "Update" : "Create"}
                     </Button>
                   </div>
                 </form>
@@ -298,11 +298,11 @@ export function CourseTemplatesManager({ tenantId, globalCourses, tenantCourses 
             <div className="text-center py-12">
               <GraduationCap className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
               <p className="text-muted-foreground mb-4">
-                Ingen egne kurs registrert enda
+                No organisation-specific courses yet
               </p>
               <Button onClick={() => setDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
-                Legg til ditt første kurs
+                Add your first course
               </Button>
             </div>
           ) : (
@@ -346,12 +346,12 @@ export function CourseTemplatesManager({ tenantId, globalCourses, tenantCourses 
                   <div className="flex flex-wrap gap-2 mt-2">
                     {course.isRequired && (
                       <Badge variant="destructive" className="text-xs">
-                        Obligatorisk
+                        Required
                       </Badge>
                     )}
                     {course.validityYears && (
                       <Badge variant="outline" className="text-xs">
-                        Gyldig i {course.validityYears} år
+                        Valid for {course.validityYears} years
                       </Badge>
                     )}
                     {course.provider && (

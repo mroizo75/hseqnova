@@ -37,6 +37,10 @@ import {
   Zap,
 } from "lucide-react";
 import type { CourseTemplate } from "@prisma/client";
+import {
+  MHSWR_TRAINING_REASON_KEYS,
+  MHSWR_TRAINING_REASONS,
+} from "@/lib/training-uk";
 
 interface BulkTrainingFormProps {
   tenantId: string;
@@ -88,6 +92,7 @@ export function BulkTrainingForm({
   );
   const [validUntil, setValidUntil] = useState("");
   const [isRequired, setIsRequired] = useState(false);
+  const [mhswrReason, setMhswrReason] = useState("");
 
   // Step 2 state
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
@@ -161,6 +166,7 @@ export function BulkTrainingForm({
     setCompletedAt(new Date().toISOString().split("T")[0]);
     setValidUntil("");
     setIsRequired(false);
+    setMhswrReason("");
     setSelectedUserIds(new Set());
     setDiplomaFiles(new Map());
     setSearch("");
@@ -174,7 +180,8 @@ export function BulkTrainingForm({
   const canProceedStep1 =
     courseKey.trim().length > 0 &&
     title.trim().length >= 3 &&
-    provider.trim().length >= 2;
+    provider.trim().length >= 2 &&
+    mhswrReason.length > 0;
 
   const canProceedStep2 = selectedUserIds.size > 0;
 
@@ -221,6 +228,7 @@ export function BulkTrainingForm({
         completedAt: completedAt || undefined,
         validUntil: validUntil || undefined,
         isRequired,
+        mhswrReason,
         participants,
       });
 
@@ -235,15 +243,15 @@ export function BulkTrainingForm({
       } else {
         toast({
           variant: "destructive",
-          title: "Feil",
+          title: "Could not record the training",
           description: result.error || "Could not record the training",
         });
       }
     } catch {
       toast({
         variant: "destructive",
-        title: "Uventet feil",
-        description: "Noe gikk galt under registreringen",
+        title: "Unexpected error",
+        description: "Something went wrong while saving",
       });
     } finally {
       setLoading(false);
@@ -320,7 +328,7 @@ export function BulkTrainingForm({
                       {c.title}
                       {c.isGlobal && (
                         <span className="text-muted-foreground ml-1 text-xs">
-                          (Standard HMS)
+                          (standard H&S)
                         </span>
                       )}
                     </SelectItem>
@@ -351,6 +359,22 @@ export function BulkTrainingForm({
                 onChange={(e) => setProvider(e.target.value)}
                 placeholder="e.g. St John Ambulance"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Why this training was given *</Label>
+              <Select value={mhswrReason} onValueChange={setMhswrReason}>
+                <SelectTrigger>
+                  <SelectValue placeholder="MHSWR 1999 reg.13 — recruitment, new risk, or refresher" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MHSWR_TRAINING_REASON_KEYS.map((key) => (
+                    <SelectItem key={key} value={key}>
+                      {MHSWR_TRAINING_REASONS[key].label} ({MHSWR_TRAINING_REASONS[key].legalRef})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

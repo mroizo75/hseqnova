@@ -1,6 +1,8 @@
 import { getAdminDb } from "@/lib/supabase/admin";
 import { createId } from "@/lib/ids";
 import type { FireDrillStatus, FireDrillType } from "@/features/fire-drills/schemas/fire-drill.schema";
+import { namedFireMarshals, type NamedFireMarshal } from "@/lib/fire-drill-uk";
+import { loadOrgChartNodes } from "@/server/queries/org-chart.queries";
 
 export type FireDrillMeasureSummary = {
   id: string;
@@ -363,4 +365,10 @@ export async function loadUsersById(
 export async function loadTenantName(tenantId: string): Promise<string> {
   const { data } = await getAdminDb().from("Tenant").select("name").eq("id", tenantId).maybeSingle();
   return String(data?.name ?? "Company");
+}
+
+/** Nominated competent persons to implement evacuation — FSO 2005 art.15(1)(b). */
+export async function loadNamedFireMarshals(tenantId: string): Promise<NamedFireMarshal[]> {
+  const nodes = await loadOrgChartNodes(tenantId);
+  return namedFireMarshals(nodes);
 }

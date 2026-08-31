@@ -52,6 +52,7 @@ export function usePermissions() {
         hmsTavle: false,
         employeeReviews: false,
         support: false,
+        permits: false,
       },
     };
   }

@@ -10,35 +10,28 @@ import {
   loadInspectionsForReport,
   loadTenantBranding,
 } from "@/server/queries/inspections.queries";
-
-const TYPE_LABELS: Record<string, string> = {
-  VERNERUNDE: "Vernerunde",
-  HMS_INSPEKSJON: "HMS-inspeksjon",
-  SHA_PLAN: "SHA-plan",
-  SIKKERHETSVANDRING: "Sikkerhetsvandring",
-  ANDRE: "Annet",
-};
+import { inspectionTypeLabel } from "@/lib/inspection-uk";
 
 const STATUS_LABELS: Record<string, string> = {
-  PLANNED: "Planlagt",
-  IN_PROGRESS: "Pågår",
-  COMPLETED: "Fullført",
-  CANCELLED: "Avbrutt",
+  PLANNED: "Planned",
+  IN_PROGRESS: "In progress",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
 };
 
 const FINDING_STATUS_LABELS: Record<string, string> = {
-  OPEN: "Åpen",
-  IN_PROGRESS: "Under arbeid",
-  RESOLVED: "Løst",
-  CLOSED: "Lukket",
+  OPEN: "Open",
+  IN_PROGRESS: "In progress",
+  RESOLVED: "Resolved",
+  CLOSED: "Closed",
 };
 
 const SEVERITY_LABELS: Record<number, string> = {
-  1: "Lav",
-  2: "Moderat",
-  3: "Betydelig",
-  4: "Alvorlig",
-  5: "Kritisk",
+  1: "Low",
+  2: "Moderate",
+  3: "Significant",
+  4: "Serious",
+  5: "Critical",
 };
 
 const SEVERITY_COLORS: Record<number, string> = {
@@ -139,9 +132,9 @@ function svgMonthlyTrend(
     ${dots(pointsInsp, "#14532d")}${dots(pointsFnd, "#dc2626")}
     ${xLabels}
     <rect x="${width - 160}" y="${padT}" width="12" height="3" fill="#14532d" rx="1"/>
-    <text x="${width - 144}" y="${padT + 4}" font-size="10" fill="#374151" font-family="Arial">Inspeksjoner</text>
+    <text x="${width - 144}" y="${padT + 4}" font-size="10" fill="#374151" font-family="Arial">Inspections</text>
     <rect x="${width - 160}" y="${padT + 14}" width="12" height="3" fill="#dc2626" rx="1"/>
-    <text x="${width - 144}" y="${padT + 18}" font-size="10" fill="#374151" font-family="Arial">Funn</text>
+    <text x="${width - 144}" y="${padT + 18}" font-size="10" fill="#374151" font-family="Arial">Findings</text>
   </svg>`;
 }
 
@@ -203,14 +196,14 @@ function buildReportHtml(data: {
     summary.total > 0 ? Math.round((summary.completed / summary.total) * 100) : 0;
 
   const statsCards = [
-    { label: "Totalt", value: summary.total, color: "#14532d" },
-    { label: "Fullført", value: summary.completed, color: "#22c55e" },
-    { label: "Planlagt", value: summary.planned, color: "#3b82f6" },
-    { label: "Pågår", value: summary.inProgress, color: "#f59e0b" },
-    { label: "Totale funn", value: summary.totalFindings, color: "#6b7280" },
-    { label: "Åpne funn", value: summary.openFindings, color: "#dc2626" },
-    { label: "Kritiske funn", value: summary.criticalFindings, color: "#b91c1c" },
-    { label: "Gjennomføringsgrad", value: `${completionRate} %`, color: "#14532d" },
+    { label: "Total", value: summary.total, color: "#14532d" },
+    { label: "Completed", value: summary.completed, color: "#22c55e" },
+    { label: "Planned", value: summary.planned, color: "#3b82f6" },
+    { label: "In progress", value: summary.inProgress, color: "#f59e0b" },
+    { label: "Total findings", value: summary.totalFindings, color: "#6b7280" },
+    { label: "Open findings", value: summary.openFindings, color: "#dc2626" },
+    { label: "Critical findings", value: summary.criticalFindings, color: "#b91c1c" },
+    { label: "Completion rate", value: `${completionRate} %`, color: "#14532d" },
   ];
 
   const statsHtml = statsCards
@@ -336,7 +329,7 @@ function buildReportHtml(data: {
     <td style="padding:24px 30px 18px;vertical-align:middle;width:60%;">
       ${tenantLogoHtml || `<div style="font-size:14px;font-weight:700;color:#0f172a;">${data.tenantName}</div>`}
       ${tenantLogoHtml ? `<div style="margin-top:4px;"><div style="font-size:14px;font-weight:700;color:#0f172a;">${data.tenantName}</div></div>` : ""}
-      ${data.tenantOrgNumber ? `<div style="font-size:10px;color:#64748b;margin-top:2px;">Org.nr. ${data.tenantOrgNumber}</div>` : ""}
+      ${data.tenantOrgNumber ? `<div style="font-size:10px;color:#64748b;margin-top:2px;">Company no. ${data.tenantOrgNumber}</div>` : ""}
     </td>
     <td style="padding:24px 30px 18px;vertical-align:middle;width:40%;text-align:right;">
       ${hmsLogoHtml}
@@ -347,64 +340,64 @@ function buildReportHtml(data: {
 
 <!-- Tittel-blokk -->
 <div style="padding:20px 30px 18px;border-bottom:1px solid #e2e8f0;">
-  <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#16a34a;margin-bottom:6px;">Inspeksjonsrapport</div>
+  <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#16a34a;margin-bottom:6px;">Inspection report</div>
   <div style="font-size:22px;font-weight:800;color:#0f172a;line-height:1.2;">${data.periodLabel}</div>
   <table style="margin-top:12px;border-collapse:collapse;" cellpadding="0" cellspacing="0">
     <tr>
-      <td style="font-size:10px;color:#64748b;padding-right:24px;">Generert: <strong style="color:#1e293b;">${data.generatedAt}</strong></td>
-      <td style="font-size:10px;color:#64748b;">Hjemmel: <strong style="color:#1e293b;">AML § 5-1, § 5-2, IK-HMS § 5</strong></td>
+      <td style="font-size:10px;color:#64748b;padding-right:24px;">Generated: <strong style="color:#1e293b;">${data.generatedAt}</strong></td>
+      <td style="font-size:10px;color:#64748b;">Legal basis: <strong style="color:#1e293b;">MHSWR 1999 reg.5; SRSCWR 1977 regs 5–6</strong></td>
     </tr>
   </table>
 </div>
 
 <!-- OPPSUMMERING -->
 <div class="section" style="padding:0 30px;">
-  <h2>Oppsummering</h2>
+  <h2>Summary</h2>
   <table style="width:100%;border-collapse:separate;border-spacing:10px 0;"><tr>${statsHtml}</tr></table>
 </div>
 
 <!-- ANALYSER -->
 <div class="section" style="padding:0 30px;">
-  <h2>Analyse</h2>
+  <h2>Analysis</h2>
   <table style="width:100%;border-collapse:collapse;"><tr>
     <td style="width:50%;padding-right:16px;vertical-align:top;">
-      <h3>Inspeksjonsstatus</h3>
+      <h3>Inspection status</h3>
       <div class="chart-wrap">${statusChartSvg}</div>
     </td>
     <td style="width:50%;padding-left:16px;vertical-align:top;">
-      <h3>Funn per alvorlighetsgrad</h3>
+      <h3>Findings by severity</h3>
       <div class="chart-wrap">${severityChartSvg}</div>
     </td>
   </tr></table>
   <table style="width:100%;border-collapse:collapse;margin-top:16px;"><tr>
     <td style="width:50%;padding-right:16px;vertical-align:top;">
-      <h3>Funnstatus</h3>
+      <h3>Finding status</h3>
       <div class="chart-wrap">${findingStatusSvg}</div>
     </td>
     <td style="width:50%;padding-left:16px;vertical-align:top;">
-      <h3>Funn per inspeksjonstype</h3>
+      <h3>Findings by inspection type</h3>
       <div class="chart-wrap">${typeChartSvg}</div>
     </td>
   </tr></table>
-  ${trendSvg ? `<div style="margin-top:16px;"><h3>Månedlig trend – inspeksjoner og funn</h3><div class="chart-wrap">${trendSvg}</div></div>` : ""}
+  ${trendSvg ? `<div style="margin-top:16px;"><h3>Monthly trend — inspections and findings</h3><div class="chart-wrap">${trendSvg}</div></div>` : ""}
 </div>
 
 <!-- INSPEKSJONER TABELL -->
 <div class="section page-break" style="padding:0 30px;">
-  <h2>Inspeksjoner i perioden (${data.inspections.length})</h2>
+  <h2>Inspections in the period (${data.inspections.length})</h2>
   ${
     data.inspections.length === 0
-      ? `<p class="no-data">Ingen inspeksjoner funnet i valgt periode.</p>`
+      ? `<p class="no-data">No inspections in the selected period.</p>`
       : `<table>
     <thead><tr>
-      <th style="width:22%">Tittel</th>
+      <th style="width:22%">Title</th>
       <th>Type</th>
-      <th>Planlagt</th>
-      <th>Gjennomført</th>
-      <th>Lokasjon</th>
+      <th>Planned</th>
+      <th>Completed</th>
+      <th>Location</th>
       <th>Status</th>
-      <th>Gjennomført av</th>
-      <th>Funn (åpne/tot.)</th>
+      <th>Inspected by</th>
+      <th>Findings (open/total)</th>
     </tr></thead>
     <tbody>${inspRowsHtml}</tbody>
   </table>`
@@ -415,46 +408,45 @@ function buildReportHtml(data: {
 ${
   openCount > 0
     ? `<div class="section" style="padding:0 30px;">
-  <h2 style="color:#b91c1c;border-color:#fca5a5;">Åpne tiltak og funn som krever oppfølging (${openCount})</h2>
+  <h2 style="color:#b91c1c;border-color:#fca5a5;">Open findings requiring follow-up (${openCount})</h2>
   <div style="background-color:#fff8f0;border:1px solid #fde8c8;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:12px;color:#92400e;">
-    Disse funnene er registrert som åpne eller under arbeid. Ledelsen bør følge opp at tiltak gjennomføres innen frist.
-    Jf. AML § 3-1 og IK-HMS-forskriften § 5.
+    These findings are open or in progress. The employer should decide the action and explain in writing if action is not appropriate or will be delayed (HSE F2533; L146).
   </div>
   <table>
     <thead style="background:#b91c1c !important;"><tr>
-      <th style="background:#b91c1c">Inspeksjon</th>
-      <th style="background:#b91c1c">Funn</th>
-      <th style="background:#b91c1c">Alvorlighet</th>
-      <th style="background:#b91c1c">Ansvarlig</th>
-      <th style="background:#b91c1c">Frist</th>
-      <th style="background:#b91c1c">Beskrivelse</th>
+      <th style="background:#b91c1c">Inspection</th>
+      <th style="background:#b91c1c">Finding</th>
+      <th style="background:#b91c1c">Severity</th>
+      <th style="background:#b91c1c">Responsible</th>
+      <th style="background:#b91c1c">Due</th>
+      <th style="background:#b91c1c">Particulars</th>
     </tr></thead>
     <tbody>${openFindingRowsHtml}</tbody>
   </table>
 </div>`
     : `<div class="section" style="padding:0 30px;">
   <div style="background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;font-size:13px;color:#166534;">
-    Ingen åpne funn som krever umiddelbar oppfølging i valgt periode.
+    No open findings requiring follow-up in the selected period.
   </div>
 </div>`
 }
 
 <!-- ALLE FUNN -->
 <div class="section page-break" style="padding:0 30px;">
-  <h2>Alle registrerte funn og tiltak (${data.findings.length})</h2>
+  <h2>All recorded findings and actions (${data.findings.length})</h2>
   ${
     data.findings.length === 0
-      ? `<p class="no-data">Ingen funn registrert i valgt periode.</p>`
+      ? `<p class="no-data">No findings recorded in the selected period.</p>`
       : `<table>
     <thead><tr>
-      <th>Inspeksjon</th>
-      <th style="width:20%">Funn</th>
-      <th>Alvorlighet</th>
+      <th>Inspection</th>
+      <th style="width:20%">Finding</th>
+      <th>Severity</th>
       <th>Status</th>
-      <th>Lokasjon</th>
-      <th>Ansvarlig</th>
-      <th>Frist</th>
-      <th>Tiltak/Merknad</th>
+      <th>Location</th>
+      <th>Responsible</th>
+      <th>Due</th>
+      <th>Employer response</th>
     </tr></thead>
     <tbody>${findingRowsHtml}</tbody>
   </table>`
@@ -466,7 +458,7 @@ ${
   <table style="width:100%;border-collapse:collapse;" cellpadding="0" cellspacing="0">
     <tr>
       <td style="padding:8px 30px;font-size:9px;color:#94a3b8;"><span class="footer-brand">HSEQ Nova</span> · hseqnova.com</td>
-      <td style="padding:8px 30px;font-size:9px;color:#94a3b8;text-align:right;">${data.tenantName} · Generert ${data.generatedAt}</td>
+      <td style="padding:8px 30px;font-size:9px;color:#94a3b8;text-align:right;">${data.tenantName} · Generated ${data.generatedAt}</td>
     </tr>
   </table>
 </div>
@@ -478,7 +470,7 @@ ${
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.tenantId) {
-    return new NextResponse("Ikke autorisert", { status: 401 });
+    return new NextResponse("Unauthorised", { status: 401 });
   }
 
   const { tenantId } = session.user;
@@ -494,7 +486,7 @@ export async function GET(req: NextRequest) {
   const periodLabel =
     month !== null
       ? format(refDate, "MMMM yyyy", { locale: enGB }).replace(/^./, (c) => c.toUpperCase())
-      : `Årsrapport ${year}`;
+      : `Annual report ${year}`;
 
   const inspections = await loadInspectionsForReport(tenantId, startDate, endDate);
 
@@ -555,7 +547,7 @@ export async function GET(req: NextRequest) {
     .map((t) => {
       const ins = inspections.filter((i) => i.type === t);
       return {
-        label: TYPE_LABELS[t],
+        label: inspectionTypeLabel(t),
         inspections: ins.length,
         findings: ins.reduce((s, i) => s + i.findings.length, 0),
       };
@@ -596,7 +588,7 @@ export async function GET(req: NextRequest) {
     monthlyTrend,
     inspections: inspections.map((ins) => ({
       title: ins.title,
-      type: TYPE_LABELS[ins.type] ?? ins.type,
+      type: inspectionTypeLabel(ins.type),
       status: ins.status,
       scheduledDate: format(new Date(ins.scheduledDate), "d. MMM yyyy", { locale: enGB }),
       completedDate: ins.completedDate

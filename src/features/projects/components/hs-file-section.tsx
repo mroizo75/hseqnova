@@ -167,8 +167,9 @@ export function HsFileSection({ projectId, canManage }: HsFileSectionProps) {
           Health &amp; Safety File
         </CardTitle>
         <CardDescription>
-          CDM 2015 reg.12(5) &mdash; the client must ensure a health and safety file is prepared
-          for each project, kept available for inspection, and revised as necessary.
+          The principal designer prepares the health and safety file during pre-construction and
+          passes it to the client at the end of the project (CDM 2015 reg.12(5)–(10)). The client
+          keeps it available for later work.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

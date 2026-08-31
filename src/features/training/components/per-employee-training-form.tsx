@@ -37,6 +37,10 @@ import {
   Search,
 } from "lucide-react";
 import type { CourseTemplate } from "@prisma/client";
+import {
+  MHSWR_TRAINING_REASON_KEYS,
+  MHSWR_TRAINING_REASONS,
+} from "@/lib/training-uk";
 
 interface PerEmployeeTrainingFormProps {
   tenantId: string;
@@ -55,6 +59,7 @@ interface CourseRow {
   completedAt: string;
   validUntil: string;
   isRequired: boolean;
+  mhswrReason: string;
   file: File | null;
 }
 
@@ -69,6 +74,7 @@ function makeRow(id: string): CourseRow {
     completedAt: new Date().toISOString().split("T")[0],
     validUntil: "",
     isRequired: false,
+    mhswrReason: "",
     file: null,
   };
 }
@@ -163,7 +169,7 @@ export function PerEmployeeTrainingForm({
 
   const canProceedStep1 = !!selectedUserId;
   const canProceedStep2 = rows.every(
-    (r) => r.courseKey && r.title.length >= 3 && r.provider.length >= 2
+    (r) => r.courseKey && r.title.length >= 3 && r.provider.length >= 2 && r.mhswrReason
   ) && rows.length > 0;
 
   const uploadFile = async (file: File): Promise<string | null> => {
@@ -192,6 +198,7 @@ export function PerEmployeeTrainingForm({
             completedAt: row.completedAt || undefined,
             validUntil: row.validUntil || undefined,
             isRequired: row.isRequired,
+            mhswrReason: row.mhswrReason,
             proofDocKey,
           };
         })
@@ -388,7 +395,7 @@ export function PerEmployeeTrainingForm({
                               {c.title}
                               {c.isGlobal && (
                                 <span className="text-muted-foreground ml-1 text-xs">
-                                  (HMS)
+                                  (H&S)
                                 </span>
                               )}
                             </SelectItem>
@@ -418,6 +425,26 @@ export function PerEmployeeTrainingForm({
                         placeholder="e.g. St John Ambulance"
                         disabled={loading}
                       />
+                    </div>
+
+                    <div className="col-span-2 space-y-1">
+                      <Label className="text-xs">Why this training was given *</Label>
+                      <Select
+                        value={row.mhswrReason}
+                        onValueChange={(v) => updateRow(row.rowId, { mhswrReason: v })}
+                        disabled={loading}
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="MHSWR 1999 reg.13" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MHSWR_TRAINING_REASON_KEYS.map((key) => (
+                            <SelectItem key={key} value={key}>
+                              {MHSWR_TRAINING_REASONS[key].label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div className="space-y-1">

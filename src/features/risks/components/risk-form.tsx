@@ -34,6 +34,8 @@ import {
   LIKELIHOOD_SCALE,
   RISK_LEVEL_LABELS,
 } from "@/features/risks/utils/risk-labels";
+import { GroupsAtRiskFields } from "@/features/risks/components/groups-at-risk-fields";
+import { parseGroupsAtRisk, serializeGroupsAtRisk } from "@/lib/risk-mhswr";
 
 interface RiskFormProps {
   tenantId: string;
@@ -124,6 +126,9 @@ export function RiskForm({
   const [residualConsequence, setResidualConsequence] = useState<number | null>(
     risk?.residualConsequence ?? null
   );
+  const [groupsAtRisk, setGroupsAtRisk] = useState<string[]>(
+    parseGroupsAtRisk(risk?.groupsAtRisk),
+  );
 
   useEffect(() => {
     if (!nextReviewTouched) {
@@ -159,9 +164,17 @@ export function RiskForm({
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setLoading(true);
-
     const formData = new FormData(e.currentTarget);
+    const existingControls = (formData.get("existingControls") as string | null)?.trim() ?? "";
+    if (existingControls.length < 8) {
+      toast({
+        variant: "destructive",
+        title: "Existing controls are required",
+        description: "Record what you are already doing to control the risk (HSE).",
+      });
+      return;
+    }
+    setLoading(true);
 
     const payload = {
       title: formData.get("title") as string,
@@ -174,7 +187,8 @@ export function RiskForm({
       location: formData.get("location") as string,
       area: risk?.area ?? null,
       description: formData.get("description") as string,
-      existingControls: formData.get("existingControls") as string,
+      existingControls,
+      groupsAtRisk: groupsAtRisk.length ? serializeGroupsAtRisk(groupsAtRisk) : null,
       controlFrequency,
       nextReviewDate: nextReviewDate || undefined,
       riskStatement: risk?.riskStatement ?? null,
@@ -342,8 +356,15 @@ export function RiskForm({
               defaultValue={risk?.existingControls ?? ""}
               disabled={loading}
               rows={3}
+              required
             />
           </div>
+          <GroupsAtRiskFields
+            idPrefix="risk-who"
+            value={groupsAtRisk}
+            onChange={setGroupsAtRisk}
+            disabled={loading}
+          />
           <div className="space-y-2">
             <Label htmlFor="description">{t("fields.description.label")}</Label>
             <Textarea

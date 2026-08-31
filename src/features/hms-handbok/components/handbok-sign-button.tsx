@@ -38,7 +38,7 @@ export function HandbokSignButton({ tenantId, alreadySigned, versionId }: Handbo
       setOpen(false);
       setComment("");
     } else {
-      toast({ title: "Feil", description: result.error, variant: "destructive" });
+      toast({ title: "Error", description: result.error, variant: "destructive" });
     }
   }
 

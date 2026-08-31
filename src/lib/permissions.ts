@@ -936,6 +936,7 @@ export function getVisibleNavItems(role: Role) {
     exposureRegister: perms.canReadExposureRegister,
     constructionCompliance: perms.canReadConstructionCompliance,
     hmsTavle: perms.canViewHmsTavle || perms.canManageHmsTavle,
+    permits: perms.canReadSja || perms.canReadConstructionCompliance,
     employeeReviews: perms.canReadOwnEmployeeReviews || perms.canReadAllEmployeeReviews,
     support: true, // Alle innloggede brukere kan kontakte HMS-representanter
     benchmark: true, // Alle kan se benchmark (krever opt-in for data)
@@ -963,7 +964,7 @@ export function getRoleDisplayName(role: Role): string {
 export function getRoleDescription(role: Role): string {
   const descriptions: Record<Role, string> = {
     ADMIN: "Full access for this company",
-    HMS: "Competent person. Runs the HSEQ system day to day",
+    HMS: "Runs the HSEQ system day to day. The named competent person is on the organisation chart (MHSWR 1999 reg.7).",
     LEDER: "Manages their team and owns actions on their sites",
     VERNEOMBUD: "Safety representative. Can report incidents, inspect and consult",
     ANSATT: "Can report incidents, complete forms and read the policy",

@@ -26,6 +26,58 @@ export function inspectionTypeLabel(type: string): string {
   return INSPECTION_TYPE_LABELS[type as InspectionTypeKey] ?? type;
 }
 
+/** Why the inspection is taking place. Prisma type enum stays Norwegian. */
+export const INSPECTION_LEGAL_BASIS = {
+  monitoring: {
+    label: "Employer monitoring",
+    legalRef: "MHSWR 1999 reg.5",
+  },
+  safety_rep: {
+    label: "Safety representative inspection (three-monthly)",
+    legalRef: "SRSCWR 1977 reg.5(1)",
+  },
+  after_change: {
+    label: "Inspection after a substantial change in work",
+    legalRef: "SRSCWR 1977 reg.5(2)",
+  },
+  after_accident: {
+    label: "Inspection after a notifiable accident, occurrence or disease",
+    legalRef: "SRSCWR 1977 reg.6",
+  },
+  cdm_monitor: {
+    label: "Construction phase monitoring",
+    legalRef: "CDM 2015",
+  },
+} as const;
+
+export type InspectionLegalBasisKey = keyof typeof INSPECTION_LEGAL_BASIS;
+
+export const INSPECTION_LEGAL_BASIS_KEYS = Object.keys(
+  INSPECTION_LEGAL_BASIS,
+) as InspectionLegalBasisKey[];
+
+export function defaultLegalBasisForType(type: string): InspectionLegalBasisKey {
+  if (type === "SIKKERHETSVANDRING") return "safety_rep";
+  if (type === "SHA_PLAN") return "cdm_monitor";
+  return "monitoring";
+}
+
+export function resolveLegalBasis(
+  raw: string | null | undefined,
+  type: string,
+): InspectionLegalBasisKey {
+  if (raw && raw in INSPECTION_LEGAL_BASIS) {
+    return raw as InspectionLegalBasisKey;
+  }
+  return defaultLegalBasisForType(type);
+}
+
+export function legalBasisLabel(raw: string | null | undefined, type: string): string {
+  const key = resolveLegalBasis(raw, type);
+  const meta = INSPECTION_LEGAL_BASIS[key];
+  return `${meta.label} (${meta.legalRef})`;
+}
+
 export interface InspectionRecordInput {
   scheduledDate?: string | null;
   location?: string | null;

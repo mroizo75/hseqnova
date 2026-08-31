@@ -98,7 +98,7 @@ const FAQS = [
   {
     question: "What does the digital safety board show?",
     answer:
-      "The board displays the information CDM 2015 expects at the site entrance: F10 notification, construction phase plan summary, current RAMS, named roles (first aider, fire marshal), accident and near-miss tally, emergency procedures and site rules. Personal names are kept off the public screen.",
+      "The board can show the construction phase plan, site rules, named roles, current RAMS, accident tally and F10 status. CDM 2015 does not require a digital board — it requires that people on site can see the rules, receive an induction, and (if notifiable) read the F10 notice in the site office. Personal names stay off the public screen.",
   },
   {
     question: "Do I need the full HSEQ Nova system to use the safety board?",
@@ -272,12 +272,13 @@ function WhatTheBoard() {
           What the board displays
         </p>
         <h2 className="mt-3 font-display text-3xl font-medium tracking-tight md:text-4xl">
-          Everything CDM 2015 expects at a site entrance
+          Site rules, induction and F10 — where people can see them
         </h2>
         <p className="mt-4 text-base leading-relaxed text-[hsl(var(--home-ink)/0.72)]">
-          CDM 2015 requires the principal contractor to display site rules and ensure
-          workers and visitors know the emergency procedures. A digital board keeps that
-          information current — not a whiteboard photo from the first week on site.
+          CDM 2015 does not require a digital board. The principal contractor must bring
+          site rules to everyone&apos;s attention, give a suitable induction, and display
+          the F10 notice in the site office when the project is notifiable. A digital
+          board keeps that information current.
         </p>
       </div>
       <div className="mx-auto mt-12 max-w-3xl">

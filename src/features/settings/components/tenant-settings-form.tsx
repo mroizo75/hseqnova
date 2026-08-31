@@ -181,11 +181,15 @@ export function TenantSettingsForm({ tenant, isAdmin }: TenantSettingsFormProps)
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ShieldAlert className="h-5 w-5 text-orange-600" />
-            Competent person
+            H&S contact
           </CardTitle>
           <CardDescription>
-            MHSWR 1999 reg.7: the person appointed to assist with health and safety. Shown to
-            employees as the HSE contact.
+            Shown to employees as who to ring. The legal appointment (MHSWR 1999
+            reg.7) is the named competent person on the{" "}
+            <a href="/dashboard/organisasjonskart" className="underline underline-offset-2">
+              organisation chart
+            </a>
+            . Prefer a person in employment if they are competent.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

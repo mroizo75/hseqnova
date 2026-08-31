@@ -25,7 +25,7 @@ export function UpcomingDeadlines({ deadlines }: UpcomingDeadlinesProps) {
   const getTypeLabel = (type: string) => {
     switch (type) {
       case "action":
-        return "Tiltak";
+        return "Action";
       case "audit":
         return "Revisjon";
       case "training":

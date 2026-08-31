@@ -557,8 +557,9 @@ export function UserManagement({ users, currentUserId, isAdmin }: UserManagement
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground">
-                        HSE manager is the competent person (MHSWR 1999 reg.7). Safety
-                        representative is SRSCWR 1977 / HSCER 1996.
+                        HSE manager is system access. Name the competent person on the
+                        organisation chart (MHSWR 1999 reg.7). Safety representative is
+                        SRSCWR 1977 / HSCER 1996.
                       </p>
                     </div>
 

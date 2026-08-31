@@ -1,15 +1,10 @@
 /**
- * Oversiktslisten på Digital HMS Tavle – Byggherreforskriften § 15.
- *
- * § 15 krever at byggherren fører en elektronisk oversiktsliste som kontrolleres
- * og oppdateres daglig, at den inneholder opplysningene i bokstav a–e, at den kan
- * vises til arbeidsgiver, verneombud, Arbeidstilsynet og skattemyndighetene, og at
- * den oppbevares i seks måneder etter at arbeidet er avsluttet.
- *
- * Filen er klient-trygg: ingen Prisma-import, kun rene typer og funksjoner.
+ * Site register export for the digital safety board.
+ * Operational access record — not a CDM 2015 duty.
+ * Retention of six months after work ends matches the CDM roster operational period.
  */
 
-/** Oppbevaringstid etter at arbeidet er avsluttet – Byggherreforskriften § 15. */
+/** Operational retention after work ends — not a CDM statutory period. */
 export const OVERSIKTSLISTE_RETENTION_MONTHS = 6;
 
 /**
@@ -32,10 +27,8 @@ export interface OversiktslisteRad {
 }
 
 export interface OversiktslisteKontekst {
-  /** § 15 bokstav a – navn og adresse på bygge- eller anleggsplassen */
   siteName: string;
   siteAddress: string | null;
-  /** § 15 bokstav b – navn på byggherren */
   clientName: string | null;
 }
 
@@ -77,28 +70,25 @@ function formaterTidspunkt(verdi: Date | null): string {
 }
 
 /**
- * Bygger oversiktslisten som CSV for framvisning til arbeidsgiver, verneombud,
- * Arbeidstilsynet og skattemyndighetene, jf. § 15 fjerde ledd.
- *
- * Semikolon som skilletegn og BOM slik at Excel med norsk lokalitet åpner filen rett.
+ * CSV for the operational site register. British English headers.
  */
 export function buildOversiktslisteCsv(
   rader: ReadonlyArray<OversiktslisteRad>,
   kontekst: OversiktslisteKontekst
 ): string {
   const kolonner = [
-    "Bygge-/anleggsplass",
-    "Adresse",
-    "Byggherre",
-    "Dato",
-    "Navn",
-    "Fødselsdato",
-    "Arbeidsgiver",
-    "Organisasjonsnummer",
-    "HMS-kortnummer",
-    "Telefon",
-    "Innsjekket",
-    "Utsjekket",
+    "Site",
+    "Address",
+    "Client",
+    "Date",
+    "Name",
+    "Date of birth",
+    "Employer",
+    "Company number",
+    "Competence card number",
+    "Telephone",
+    "Checked in",
+    "Checked out",
   ];
 
   const linjer = rader.map((rad) =>

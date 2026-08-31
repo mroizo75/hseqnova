@@ -123,7 +123,7 @@ export function TavleAdminClient({
     }
   }
 
-  /** Lagrer opplysningene oversiktslisten krever – Byggherreforskriften § 15. */
+  /** Saves operational site register fields. Not a CDM 2015 duty. */
   async function saveOversiktslisteInfo() {
     setSavingSiteInfo(true);
     try {
@@ -330,7 +330,7 @@ export function TavleAdminClient({
           {tavle.project?.constructionShaPlan && (
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">SHA-plan – Byggherreforskriften § 7+8</CardTitle>
+                <CardTitle className="text-sm">Construction phase plan — CDM 2015 reg.12</CardTitle>
               </CardHeader>
               <CardContent className="flex items-center justify-between p-4 pt-0">
                 <div className="flex items-center gap-2">
@@ -341,13 +341,13 @@ export function TavleAdminClient({
                   )}
                   <span className="text-sm">
                     {tavle.project.constructionShaPlan.status === "ACTIVE"
-                      ? "Godkjent og aktiv"
-                      : "Under arbeid"}
+                      ? "Active"
+                      : "Draft — not yet the working plan"}
                   </span>
                 </div>
                 <Button size="sm" variant="outline" asChild>
                   <Link href={`/dashboard/projects/${tavle.projectId}/construction-compliance`}>
-                    Se SHA-plan
+                    Open CDM records
                   </Link>
                 </Button>
               </CardContent>
@@ -553,42 +553,42 @@ export function TavleAdminClient({
             </CardContent>
           </Card>
 
-          {/* Oversiktslisten – Byggherreforskriften § 15 */}
+          {/* Site register — operational, not a CDM duty */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Users className="h-4 w-4" /> Oversiktsliste
+                <Users className="h-4 w-4" /> Site register
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Byggherreforskriften § 15 krever at oversiktslisten inneholder plassens adresse
-                og byggherrens navn, og at den oppbevares i seks måneder etter at arbeidet er
-                avsluttet. Settes sluttdato, slettes listen automatisk når fristen er ute.
+                Operational site attendance record. This is not a CDM 2015 duty.
+                Keep records for six months after work ends. Set an end date to
+                start that retention period.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="site-address">Bygge-/anleggsplassens adresse</Label>
+                  <Label htmlFor="site-address">Site address</Label>
                   <Input
                     id="site-address"
                     value={siteAddress}
                     onChange={(e) => setSiteAddress(e.target.value)}
-                    placeholder="Storgata 1, 0155 Oslo"
+                    placeholder="12 Site Lane, Manchester"
                     disabled={!canManage}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="client-name">Byggherrens navn</Label>
+                  <Label htmlFor="client-name">Client name</Label>
                   <Input
                     id="client-name"
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
-                    placeholder="Byggherre AS"
+                    placeholder="North West Developments Ltd"
                     disabled={!canManage}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="work-ended">Arbeidet avsluttet</Label>
+                  <Label htmlFor="work-ended">Work finished</Label>
                   <Input
                     id="work-ended"
                     type="date"
@@ -597,13 +597,13 @@ export function TavleAdminClient({
                     disabled={!canManage}
                   />
                   <p className="text-xs text-muted-foreground">
-                    La stå tom mens arbeidet pågår.
+                    Leave blank while work is ongoing.
                   </p>
                 </div>
               </div>
               {canManage && (
                 <Button size="sm" onClick={saveOversiktslisteInfo} disabled={savingSiteInfo}>
-                  {savingSiteInfo ? "Lagrer..." : "Lagre"}
+                  {savingSiteInfo ? "Saving..." : "Save"}
                 </Button>
               )}
             </CardContent>

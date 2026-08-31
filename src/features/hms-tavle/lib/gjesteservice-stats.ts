@@ -6,7 +6,7 @@
  * kan utledes av gjester som står foran tavlen (GDPR art. 5).
  */
 
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { TRUST_PANEL_MIN_VOLUME } from "./gjesteservice-config";
 
 export interface GuestServiceStats {
@@ -28,22 +28,28 @@ function median(values: number[]): number | null {
 }
 
 export async function getGuestServiceStats(tavleId: string): Promise<GuestServiceStats> {
-  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  const rows = await prisma.tavleGuestSubmission.findMany({
-    where: { tavleId, createdAt: { gte: cutoff } },
-    select: { status: true, createdAt: true, respondedAt: true },
-  });
+  const { data } = await getAdminDb()
+    .from("TavleGuestSubmission")
+    .select("status, createdAt, respondedAt")
+    .eq("tavleId", tavleId)
+    .gte("createdAt", cutoff);
 
+  const rows = data ?? [];
   const responseTimes = rows
-    .filter((row) => row.respondedAt !== null)
-    .map((row) => Math.round((row.respondedAt!.getTime() - row.createdAt.getTime()) / 60_000));
+    .filter((row) => row.respondedAt != null)
+    .map((row) => {
+      const created = new Date(String(row.createdAt)).getTime();
+      const responded = new Date(String(row.respondedAt)).getTime();
+      return Math.round((responded - created) / 60_000);
+    });
 
   const total = rows.length;
 
   return {
     total,
-    resolved: rows.filter((row) => RESOLVED_STATUSES.includes(row.status)).length,
+    resolved: rows.filter((row) => RESOLVED_STATUSES.includes(String(row.status))).length,
     medianResponseMinutes: median(responseTimes),
     visible: total >= TRUST_PANEL_MIN_VOLUME,
   };

@@ -1,11 +1,12 @@
 /**
- * PDF Generator for Inspections (Vernerunde/HMS-inspeksjoner)
- * Uses professional HSEQ Nova branding via pdf-brand.ts
+ * PDF for a workplace inspection record (HSE F2534 / F2533).
+ * Kept internally. Not submitted to the HSE.
  */
 
 import { generateBrandedPdf, type PdfSection } from "@/lib/pdf-brand";
 import { format } from "date-fns";
 import { enGB } from "date-fns/locale/en-GB";
+import { inspectionTypeLabel, legalBasisLabel } from "@/lib/inspection-uk";
 
 interface InspectionData {
   id: string;
@@ -18,6 +19,7 @@ interface InspectionData {
   location?: string | null;
   conductedBy: string;
   participants?: string | null;
+  legalBasis?: string | null;
   tenantName?: string;
   tenantOrgNumber?: string | null;
   tenantLogoUrl?: string | null;
@@ -34,39 +36,36 @@ interface InspectionData {
   }>;
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  VERNERUNDE: "Vernerunde",
-  HMS_INSPEKSJON: "HMS-inspeksjon",
-  SHA_PLAN: "SHA-plan",
-  SIKKERHETSVANDRING: "Sikkerhetsvandring",
-  ANDRE: "Annet",
-};
-
 const STATUS_LABELS: Record<string, string> = {
-  PLANNED: "Planlagt",
-  IN_PROGRESS: "Pågår",
-  COMPLETED: "Fullført",
-  CANCELLED: "Avbrutt",
+  PLANNED: "Planned",
+  IN_PROGRESS: "In progress",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
 };
 
 const FINDING_STATUS_LABELS: Record<string, string> = {
-  OPEN: "Åpen",
-  IN_PROGRESS: "Under arbeid",
-  RESOLVED: "Løst",
-  CLOSED: "Lukket",
+  OPEN: "Open",
+  IN_PROGRESS: "In progress",
+  RESOLVED: "Resolved",
+  CLOSED: "Closed",
 };
 
 const SEVERITY_LABELS: Record<number, string> = {
-  1: "Lav",
-  2: "Middels-lav",
-  3: "Middels",
-  4: "Middels-høy",
-  5: "Kritisk",
+  1: "Low",
+  2: "Moderate",
+  3: "Significant",
+  4: "Serious",
+  5: "Critical",
 };
 
 function fmtDate(d: Date | null | undefined) {
   if (!d) return "–";
-  return format(new Date(d), "d. MMMM yyyy", { locale: enGB });
+  return format(new Date(d), "d MMMM yyyy", { locale: enGB });
+}
+
+function fmtDateTime(d: Date | null | undefined) {
+  if (!d) return "–";
+  return format(new Date(d), "d MMMM yyyy, HH:mm", { locale: enGB });
 }
 
 export async function generateInspectionReport(inspection: InspectionData): Promise<Buffer> {
@@ -74,21 +73,31 @@ export async function generateInspectionReport(inspection: InspectionData): Prom
 
   const sections: PdfSection[] = [
     {
-      title: "Informasjon",
+      title: "Inspection record",
+      legalRef: "HSE F2534; MHSWR 1999 reg.5; SRSCWR 1977 regs 5–6",
       content: [
         {
           type: "keyvalue",
           pairs: [
-            ["Type", TYPE_LABELS[inspection.type] ?? inspection.type],
+            ["Type", inspectionTypeLabel(inspection.type)],
+            ["Legal basis", legalBasisLabel(inspection.legalBasis, inspection.type)],
             ["Status", STATUS_LABELS[inspection.status] ?? inspection.status],
-            ["Planlagt dato", fmtDate(inspection.scheduledDate)],
-            ...(inspection.completedDate ? [["Gjennomført", fmtDate(inspection.completedDate)] as [string, string]] : []),
-            ["Lokasjon", inspection.location ?? "–"],
-            ["Gjennomført av", inspection.conductedBy],
-            ...(inspection.participants ? [["Deltakere", inspection.participants] as [string, string]] : []),
-            ["Antall funn", String(inspection.findings.length)],
-            ["Åpne funn", String(openFindings)],
+            ["Date and time", fmtDateTime(inspection.scheduledDate)],
+            ...(inspection.completedDate
+              ? [["Completed", fmtDate(inspection.completedDate)] as [string, string]]
+              : []),
+            ["Area of workplace", inspection.location ?? "–"],
+            ["Inspector / safety representative", inspection.conductedBy],
+            ...(inspection.participants
+              ? [["Employer or others taking part", inspection.participants] as [string, string]]
+              : []),
+            ["Findings", String(inspection.findings.length)],
+            ["Open findings", String(openFindings)],
           ],
+        },
+        {
+          type: "paragraph",
+          text: "This record does not imply that conditions are safe and healthy or that welfare arrangements are satisfactory.",
         },
         ...(inspection.description
           ? [{ type: "paragraph" as const, text: inspection.description }]
@@ -99,12 +108,12 @@ export async function generateInspectionReport(inspection: InspectionData): Prom
 
   if (inspection.findings.length > 0) {
     sections.push({
-      title: "Funn og avvik",
-      legalRef: "AML § 3-1, IK-HMS § 5",
+      title: "Unsafe or unhealthy conditions notified",
+      legalRef: "HSE F2533",
       content: [
         {
           type: "table",
-          headers: ["#", "Funn", "Alvorlighet", "Status", "Frist"],
+          headers: ["#", "Finding", "Severity", "Status", "Due"],
           rows: inspection.findings.map((f, i) => [
             i + 1,
             f.title,
@@ -117,16 +126,16 @@ export async function generateInspectionReport(inspection: InspectionData): Prom
     });
 
     sections.push({
-      title: "Detaljert beskrivelse av funn",
+      title: "Particulars of the matters notified",
       content: inspection.findings.flatMap((f, i) => [
         {
           type: "keyvalue" as const,
           pairs: [
             [`${i + 1}. ${f.title}`, ""],
-            ["Alvorlighet", SEVERITY_LABELS[f.severity] ?? String(f.severity)],
+            ["Severity", SEVERITY_LABELS[f.severity] ?? String(f.severity)],
             ["Status", FINDING_STATUS_LABELS[f.status] ?? f.status],
-            ...(f.location ? [["Lokasjon", f.location] as [string, string]] : []),
-            ...(f.dueDate ? [["Frist", fmtDate(f.dueDate)] as [string, string]] : []),
+            ...(f.location ? [["Location observed", f.location] as [string, string]] : []),
+            ...(f.dueDate ? [["Due date for action", fmtDate(f.dueDate)] as [string, string]] : []),
           ] as [string, string][],
         },
         { type: "paragraph" as const, text: f.description },
@@ -139,7 +148,7 @@ export async function generateInspectionReport(inspection: InspectionData): Prom
       content: [
         {
           type: "alert",
-          text: `${openFindings} funn er fortsatt åpne og krever oppfølging.`,
+          text: `${openFindings} finding(s) still need employer action. Explain in writing if action is not appropriate or will be delayed (HSE F2533 / L146).`,
           severity: "warning",
         },
       ],
@@ -148,9 +157,9 @@ export async function generateInspectionReport(inspection: InspectionData): Prom
 
   return generateBrandedPdf({
     type: "formal",
-    reportLabel: TYPE_LABELS[inspection.type] ?? "Inspeksjon",
+    reportLabel: inspectionTypeLabel(inspection.type),
     title: inspection.title,
-    subtitle: `${STATUS_LABELS[inspection.status] ?? inspection.status} · ${fmtDate(inspection.scheduledDate)}`,
+    subtitle: `${STATUS_LABELS[inspection.status] ?? inspection.status} · ${fmtDateTime(inspection.scheduledDate)}`,
     tenant: {
       name: inspection.tenantName ?? "HSEQ Nova",
       orgNumber: inspection.tenantOrgNumber,
@@ -158,7 +167,7 @@ export async function generateInspectionReport(inspection: InspectionData): Prom
     },
     generatedBy: inspection.conductedBy,
     generatedAt: new Date(),
-    legalReference: "AML § 3-1, IK-HMS § 5",
+    legalReference: "MHSWR 1999 reg.5; SRSCWR 1977 regs 5–6; HSE F2534 / F2533. Internal record — not submitted to the HSE.",
     sections,
   });
 }

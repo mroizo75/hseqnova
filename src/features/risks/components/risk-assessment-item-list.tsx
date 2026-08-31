@@ -15,6 +15,7 @@ import Link from "next/link";
 import { calculateRiskScore } from "@/features/risks/schemas/risk.schema";
 import type { Risk } from "@prisma/client";
 import { RISK_CATEGORY_LABELS, RISK_LEVEL_LABELS, formatRiskDate } from "@/features/risks/utils/risk-labels";
+import { formatGroupsAtRiskLabels } from "@/lib/risk-mhswr";
 
 interface RiskAssessmentItemListProps {
   risks: (Risk & { owner?: { id: string; name: string | null; email: string | null } | null })[];
@@ -43,9 +44,20 @@ export function RiskAssessmentItemList({ risks }: RiskAssessmentItemListProps) {
       <TableBody>
         {risks.map((risk) => {
           const { level, bgColor } = calculateRiskScore(risk.likelihood, risk.consequence);
+          const whoLabels = formatGroupsAtRiskLabels(risk.groupsAtRisk);
           return (
             <TableRow key={risk.id}>
-              <TableCell className="font-medium">{risk.title}</TableCell>
+              <TableCell>
+                <p className="font-medium">{risk.title}</p>
+                {risk.context ? (
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{risk.context}</p>
+                ) : null}
+                {whoLabels.length > 0 ? (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Who: {whoLabels.join(", ")}
+                  </p>
+                ) : null}
+              </TableCell>
               <TableCell>
                 <Badge variant="secondary" className={bgColor}>
                   {RISK_LEVEL_LABELS[level]}

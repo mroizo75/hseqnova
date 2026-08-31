@@ -6,7 +6,7 @@ import {
   uniqueByCourseKey,
 } from "../src/features/training/schemas/training.schema";
 import { createId } from "../src/lib/ids";
-import { PERSONNEL_DOCUMENT_TYPES } from "../src/lib/training-uk";
+import { PERSONNEL_DOCUMENT_TYPES, validateTrainingMhswrReason } from "../src/lib/training-uk";
 
 describe("training status", () => {
   it("treats completed training without expiry as completed", () => {
@@ -46,8 +46,10 @@ describe("createTrainingSchema ids", () => {
       courseKey: "first-aid",
       title: "First aid",
       provider: "St John Ambulance",
+      mhswrReason: "recruitment",
     });
     assert.equal(parsed.courseKey, "first-aid");
+    assert.equal(parsed.mhswrReason, "recruitment");
   });
 });
 
@@ -56,5 +58,18 @@ describe("personnel documents", () => {
     assert.equal(PERSONNEL_DOCUMENT_TYPES[0].key, "cv");
     assert.equal(PERSONNEL_DOCUMENT_TYPES[0].expires, false);
     assert.equal(PERSONNEL_DOCUMENT_TYPES[1].title, "Diploma / qualification");
+  });
+});
+
+describe("MHSWR training reason", () => {
+  it("requires a reg.13 reason", () => {
+    const missing = validateTrainingMhswrReason(null);
+    assert.equal(missing.ok, false);
+  });
+
+  it("accepts recruitment as induction", () => {
+    const ok = validateTrainingMhswrReason("recruitment");
+    assert.equal(ok.ok, true);
+    if (ok.ok) assert.equal(ok.reason, "recruitment");
   });
 });

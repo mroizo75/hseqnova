@@ -47,6 +47,7 @@ const INCIDENT_TYPE_LABELS: Record<string, string> = {
   over_seven_day: "Over-seven-day incapacitation (reg. 4)",
   occupational_disease: "Occupational disease (reg. 8)",
   dangerous_occurrence: "Dangerous occurrence (Schedule 2)",
+  non_worker: "Injury to a non-worker taken to hospital",
 };
 
 const EMPLOYMENT_STATUS_LABELS: Record<string, string> = {

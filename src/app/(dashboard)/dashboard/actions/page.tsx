@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MeasureForm } from "@/features/measures/components/measure-form";
 import { MeasureList } from "@/features/measures/components/measure-list";
+import { MeasureLegalNote } from "@/features/measures/components/measure-legal-note";
 import { ListTodo, Clock, CheckCircle, AlertTriangle } from "lucide-react";
 import { PageHelpDialog } from "@/components/dashboard/page-help-dialog";
 import { helpContent } from "@/lib/help-content";
@@ -63,6 +64,8 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
           users={tenantUsers}
         />
       </div>
+
+      <MeasureLegalNote />
       {selectedProject ? (
         <div className="rounded border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">
           {t("projectInfo")} <strong>{selectedProject.name}</strong>

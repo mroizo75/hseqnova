@@ -79,7 +79,7 @@ export function SjaCreateTemplateButton({ tenantId }: SjaCreateTemplateButtonPro
     const formData = new FormData(e.currentTarget);
 
     const validHazards = hazards.filter(
-      (h) => h.activity.trim() && h.hazard.trim() && h.measures.trim()
+      (h) => h.activity.trim() && h.hazard.trim() && h.measures.trim() && h.consequence.trim()
     );
 
     if (validHazards.length === 0) {

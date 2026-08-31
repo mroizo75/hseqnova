@@ -137,7 +137,8 @@ export function MeasureForm({
         <DialogHeader>
           <DialogTitle>Add further action</DialogTitle>
           <DialogDescription>
-            Extra control needed to reduce the risk — person responsible and due date (MHSWR 1999).
+            Extra control — what will be done, who is responsible, and when (MHSWR 1999
+            reg.5; HSG245).
           </DialogDescription>
         </DialogHeader>
 
@@ -263,11 +264,11 @@ export function MeasureForm({
           </div>
 
           <div className="rounded-lg bg-muted/40 border p-4">
-            <p className="text-sm font-medium mb-2">Further action</p>
+            <p className="text-sm font-medium mb-2">HSG245 — what, who, when</p>
             <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-              <li>Name a <strong>person responsible</strong></li>
+              <li>Say <strong>what</strong> will be done</li>
+              <li>Name the <strong>person responsible</strong></li>
               <li>Set a realistic <strong>due date</strong></li>
-              <li>After it is done, update the <strong>residual risk</strong></li>
             </ul>
           </div>
 

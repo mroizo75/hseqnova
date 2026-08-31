@@ -34,21 +34,21 @@ import { HmsTavlePlan } from "@prisma/client";
 const STANDALONE_PLANS: HmsTavlePlan[] = ["ENKEL", "STANDARD", "AVANSERT"];
 
 const PLAN_HIGHLIGHTS: Record<HmsTavlePlan, string[]> = {
-  ENKEL: ["1 tavle", "Kontaktinfo og beredskap", "SHA-plan lenke", "Dokumenthub"],
+  ENKEL: ["1 board", "Contacts and emergency", "Construction phase plan link", "Document hub"],
   STANDARD: [
-    "3 tavler",
-    "QR-innsjekk (§ 15)",
-    "UE-portal",
-    "Gjesteservice med QR og statussporing",
-    "Avvik og mannskapsliste",
-    "Yr.no-integrering",
+    "3 boards",
+    "QR check-in (operational)",
+    "Contractor portal",
+    "Visitor service with QR and tracking",
+    "Incidents and site register",
+    "Weather",
   ],
   AVANSERT: [
-    "Ubegrensede tavler",
-    "Kiosk-modus for storskjerm",
-    "Lovkrav-sjekkliste",
-    "KPI-dashboard",
-    "AI-innsikt",
+    "Unlimited boards",
+    "Kiosk mode for a large screen",
+    "CDM / legal checklist",
+    "KPI dashboard",
+    "AI insight",
   ],
   ADDON: [],
 };

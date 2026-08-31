@@ -5,16 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Flame,
   Plus,
   AlertTriangle,
-  CheckCircle,
   Clock,
   FileText,
   Building2,
 } from "lucide-react";
 import Link from "next/link";
 import { listFireRiskAssessments } from "@/server/actions/fire-risk.actions";
+import { FireSafetyLegalNote } from "@/features/fire-risk/components/fire-safety-legal-note";
 import { format } from "date-fns";
 import { enGB } from "date-fns/locale/en-GB";
 
@@ -70,45 +69,25 @@ export default async function FireRiskPage() {
     <div className="space-y-6 w-full">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold truncate">Fire Risk Assessments</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold truncate">Fire risk assessments</h1>
           <p className="text-sm text-muted-foreground">
-            Regulatory Reform (Fire Safety) Order 2005 — Article 9
+            Fire Safety Order 2005 art.9 — same arrangement as fire drills (art.15)
           </p>
         </div>
-        <Link href="/dashboard/fire-risk/new">
-          <Button className="w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" />
-            New assessment
+        <div className="flex gap-2">
+          <Button variant="outline" className="bg-transparent" asChild>
+            <Link href="/dashboard/fire-drills">Fire drills</Link>
           </Button>
-        </Link>
+          <Button className="w-full sm:w-auto" asChild>
+            <Link href="/dashboard/fire-risk/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New assessment
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      <Card className="bg-blue-50 border-blue-200">
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-3">
-            <Flame className="h-5 w-5 text-blue-600 mt-0.5" />
-            <div>
-              <p className="font-medium text-blue-900 mb-2">
-                Legal requirement
-              </p>
-              <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                <li>
-                  The responsible person must carry out a fire risk assessment (Article 9)
-                </li>
-                <li>
-                  Assessments must be reviewed regularly and when changes occur
-                </li>
-                <li>
-                  General fire precautions must be implemented to reduce risk to life
-                </li>
-                <li>
-                  Records must be kept where 5 or more persons are employed
-                </li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <FireSafetyLegalNote />
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
         <Card>

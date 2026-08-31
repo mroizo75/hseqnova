@@ -261,6 +261,13 @@ export async function createIncident(input: Record<string, unknown>) {
       isFatal: parseBoolean(input.isFatal) ?? false,
       isLostTimeIncident: parseBoolean(input.isLostTimeIncident) ?? false,
       isRestrictedWork: parseBoolean(input.isRestrictedWork) ?? false,
+      shareWithSafetyRepsConsent: parseBoolean(input.shareWithSafetyRepsConsent) ?? false,
+      reporterAcknowledged: parseBoolean(input.reporterAcknowledged) ?? false,
+      specifiedInjury: parseBoolean(input.specifiedInjury) ?? false,
+      listedOccupationalDisease: parseBoolean(input.listedOccupationalDisease) ?? false,
+      listedDangerousOccurrence: parseBoolean(input.listedDangerousOccurrence) ?? false,
+      nonWorkerTakenToHospital: parseBoolean(input.nonWorkerTakenToHospital) ?? false,
+      overThreeDayInjury: parseBoolean(input.overThreeDayInjury) ?? false,
       responseDeadline: parseOptionalDate(input.responseDeadline),
       customerSatisfaction: parseOptionalNumber(input.customerSatisfaction),
       subcategoryKeys: Array.isArray(input.subcategoryKeys) ? input.subcategoryKeys : [],
@@ -291,11 +298,12 @@ export async function createIncident(input: Record<string, unknown>) {
     const riddor = assessRiddor({
       type: validated.type,
       isFatal: validated.isFatal ?? false,
-      isLostTimeIncident: validated.isLostTimeIncident ?? false,
-      lostWorkdays: validated.lostWorkdays,
+      specifiedInjury: validated.specifiedInjury ?? false,
       overSevenDayInjury: Boolean(input.overSevenDayInjury),
-      injuryType: validated.injuryType,
-      medicalAttentionRequired: validated.medicalAttentionRequired ?? false,
+      lostWorkdays: validated.lostWorkdays,
+      listedOccupationalDisease: validated.listedOccupationalDisease ?? false,
+      listedDangerousOccurrence: validated.listedDangerousOccurrence ?? false,
+      nonWorkerTakenToHospital: validated.nonWorkerTakenToHospital ?? false,
       occurredAt: validated.occurredAt,
     });
 
@@ -336,6 +344,17 @@ export async function createIncident(input: Record<string, unknown>) {
         involvedPersons: sanitizeString(validated.involvedPersons),
         injuryDescription: sanitizeString(validated.injuryDescription),
         suggestedActions: sanitizeString(validated.suggestedActions),
+        injuredPersonOccupation: sanitizeString(validated.injuredPersonOccupation),
+        injuredPersonAddress: sanitizeString(validated.injuredPersonAddress),
+        injuredPersonRole: validated.injuredPersonRole ?? null,
+        witnessAddress: sanitizeString(validated.witnessAddress),
+        shareWithSafetyRepsConsent: validated.shareWithSafetyRepsConsent ?? false,
+        reporterAcknowledged: validated.reporterAcknowledged ?? false,
+        specifiedInjury: validated.specifiedInjury ?? false,
+        listedOccupationalDisease: validated.listedOccupationalDisease ?? false,
+        listedDangerousOccurrence: validated.listedDangerousOccurrence ?? false,
+        nonWorkerTakenToHospital: validated.nonWorkerTakenToHospital ?? false,
+        overThreeDayInjury: validated.overThreeDayInjury ?? false,
         isFatal: validated.isFatal ?? false,
         isLostTimeIncident: validated.isLostTimeIncident ?? false,
         lostWorkdays: validated.lostWorkdays ?? null,
@@ -664,6 +683,31 @@ export async function closeIncident(input: Record<string, unknown>) {
       .select("status")
       .eq("incidentId", validated.id)
       .eq("tenantId", tenantId);
+
+    const { data: existing } = await db
+      .from("Incident")
+      .select("*")
+      .eq("id", validated.id)
+      .eq("tenantId", tenantId)
+      .maybeSingle();
+    if (!existing) {
+      return { success: false, error: "Incident not found" };
+    }
+
+    const { canCloseUkIncident } = await import("@/lib/incident-uk-handling");
+    if (
+      !canCloseUkIncident({
+        ...existing,
+        riddorReportable: Boolean(existing.riddorReportable),
+        measures: (measures ?? []).map((measure) => ({ status: String(measure.status) })),
+        status: String(existing.status),
+      })
+    ) {
+      return {
+        success: false,
+        error: "Complete the accident book and RIDDOR fields, and the investigation, before closing.",
+      };
+    }
 
     const loop = evaluateIncidentCloseLoop({
       measureStatuses: (measures ?? []).map((measure) => String(measure.status)),

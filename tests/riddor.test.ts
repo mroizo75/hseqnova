@@ -25,4 +25,41 @@ describe("assessRiddor", () => {
     assert.equal(result.category, "over_seven_day");
     assert.equal(result.dueAt?.getUTCDate(), 16);
   });
+
+  it("does not auto-flag occupational disease without a listed diagnosis", () => {
+    const result = assessRiddor({
+      type: "YRKESSYKDOM",
+      occurredAt: new Date("2026-08-01T08:00:00Z"),
+    });
+    assert.equal(result.reportable, false);
+    assert.equal(result.category, null);
+  });
+
+  it("flags a listed occupational disease", () => {
+    const result = assessRiddor({
+      type: "YRKESSYKDOM",
+      listedOccupationalDisease: true,
+      occurredAt: new Date("2026-08-01T08:00:00Z"),
+    });
+    assert.equal(result.reportable, true);
+    assert.equal(result.category, "occupational_disease");
+  });
+
+  it("flags a non-worker taken to hospital", () => {
+    const result = assessRiddor({
+      type: "ULYKKE",
+      nonWorkerTakenToHospital: true,
+      occurredAt: new Date("2026-08-01T08:00:00Z"),
+    });
+    assert.equal(result.reportable, true);
+    assert.equal(result.category, "non_worker");
+  });
+
+  it("does not treat keyword-like injury text as a specified injury", () => {
+    const result = assessRiddor({
+      type: "ULYKKE",
+      occurredAt: new Date("2026-08-01T08:00:00Z"),
+    });
+    assert.equal(result.reportable, false);
+  });
 });

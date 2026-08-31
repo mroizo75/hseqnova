@@ -65,9 +65,9 @@ export const HSEQ_DUTY_DEFINITIONS: readonly HseqDutyDefinition[] = [
   },
   {
     key: "fireDrills",
-    title: "Fire drills",
-    legalRef: "Fire Safety Order 2005",
-    href: "/dashboard/fire-drills",
+    title: "Fire safety",
+    legalRef: "FSO 2005 arts 9 and 15",
+    href: "/dashboard/fire-risk",
     moduleKey: "fireDrills",
   },
   {
@@ -114,15 +114,15 @@ export const HSEQ_DUTY_DEFINITIONS: readonly HseqDutyDefinition[] = [
   },
   {
     key: "audits",
-    title: "Audits",
-    legalRef: "ISO 45001",
+    title: "Internal audit",
+    legalRef: "ISO 45001 — voluntary, not a GB duty",
     href: "/dashboard/audits",
     moduleKey: "audits",
   },
   {
     key: "environment",
     title: "Environment",
-    legalRef: "ISO 14001",
+    legalRef: "ISO 14001 — voluntary overlay",
     href: "/dashboard/environment",
     moduleKey: "environment",
   },
@@ -156,7 +156,12 @@ export interface HseqStatusInput {
   incidents: { openCount: number; overdueRiddorCount: number; pendingRiddorCount: number };
   actions: { overdueCount: number; openCount: number };
   inspections: { total: number; overdueCount: number };
-  fireDrills: { hasAny: boolean; completedInLastYear: boolean };
+  fireDrills: {
+    hasAny: boolean;
+    completedInLastYear: boolean;
+    hasRecordedAssessment: boolean;
+    assessmentReviewOverdue: boolean;
+  };
   training: { expiredCount: number };
   documents: { total: number };
   sja?: { total: number };
@@ -353,24 +358,31 @@ function evaluateInspections(
 function evaluateFireDrills(
   input: HseqStatusInput["fireDrills"],
 ): Pick<HseqDutyStatus, "level" | "headline" | "detail"> {
-  if (!input.hasAny) {
+  if (!input.hasRecordedAssessment) {
     return {
       level: "gap",
-      headline: "No drills recorded",
-      detail: "The responsible person must plan and record fire drills.",
+      headline: "No recorded fire risk assessment",
+      detail: "The responsible person must record a suitable and sufficient assessment (art.9).",
     };
   }
-  if (!input.completedInLastYear) {
+  if (input.assessmentReviewOverdue) {
+    return {
+      level: "attention",
+      headline: "Fire risk assessment review overdue",
+      detail: "Keep the assessment up to date (art.9(3)).",
+    };
+  }
+  if (!input.hasAny || !input.completedInLastYear) {
     return {
       level: "attention",
       headline: "No drill in 12 months",
-      detail: "HSE expects regular drills. Record the next one.",
+      detail: "Drills test the fire risk assessment (art.15). Record the next one.",
     };
   }
   return {
     level: "on_track",
-    headline: "Drilled this year",
-    detail: "A completed drill is on record in the last 12 months.",
+    headline: "Assessment and drill current",
+    detail: "A recorded assessment and a drill in the last 12 months.",
   };
 }
 
@@ -523,9 +535,9 @@ function evaluateAudits(
   }
   if (input.total === 0) {
     return {
-      level: "attention",
-      headline: "No audits scheduled",
-      detail: "Internal audit is how the system is checked.",
+      level: "on_track",
+      headline: "ISO overlay unused",
+      detail: "Internal audit is ISO 45001 — not a GB legal duty. MHSWR reg.5 review is management review.",
     };
   }
   return {
@@ -540,9 +552,9 @@ function evaluateEnvironment(
 ): Pick<HseqDutyStatus, "level" | "headline" | "detail"> {
   if (input.total === 0) {
     return {
-      level: "gap",
-      headline: "No aspects recorded",
-      detail: "Identify significant environmental aspects and keep them under review.",
+      level: "on_track",
+      headline: "ISO overlay unused",
+      detail: "ISO 14001 is voluntary. It is not a GB health and safety duty.",
     };
   }
   return {
@@ -662,7 +674,7 @@ const PHASE_DEFS: ReadonlyArray<{
   {
     id: "operations",
     title: "Day to day",
-    gain: "The accident book, inspections, drills and training are running.",
+    gain: "The accident book, inspections, fire safety and training are running.",
     keys: ["incidents", "actions", "inspections", "fireDrills", "training"],
   },
   {
@@ -686,7 +698,7 @@ const DUTY_GAIN: Record<HseqDutyKey, string> = {
   incidents: "Accident book under control",
   actions: "Actions on time",
   inspections: "Inspections running",
-  fireDrills: "Fire drills this year",
+  fireDrills: "Fire safety current",
   training: "Competence current",
   documents: "Arrangements written down",
   sja: "RAMS on file",
@@ -721,8 +733,8 @@ const DUTY_ACTION: Record<HseqDutyKey, Partial<Record<HseqDutyLevel, string>>> =
     attention: "Complete overdue workplace inspections",
   },
   fireDrills: {
-    gap: "Record a fire drill",
-    attention: "Record this year's fire drill",
+    gap: "Record the fire risk assessment",
+    attention: "Review the fire risk assessment or record this year’s drill",
   },
   training: {
     attention: "Renew expired training",
@@ -759,7 +771,7 @@ const DUTY_WHY: Record<HseqDutyKey, string> = {
   incidents: "Then the accident book and RIDDOR reporting are under control.",
   actions: "Then corrective actions are on time.",
   inspections: "Then workplace inspections show the arrangements are working.",
-  fireDrills: "Then the responsible person has a recorded drill this year.",
+  fireDrills: "Then fire safety is recorded: assessment (art.9) and a drill this year (art.15).",
   training: "Then competence records are current (HSWA s.2(2)(c)).",
   documents: "Then the arrangements are written down and versioned.",
   sja: "Then task-specific method statements sit with the assessment.",
