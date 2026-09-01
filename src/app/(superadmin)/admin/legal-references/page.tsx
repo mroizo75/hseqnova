@@ -21,6 +21,7 @@ import {
   createLegalReference,
   updateLegalReference,
   deleteLegalReference,
+  type LegalReferenceRow,
 } from "@/server/actions/legal-reference.actions";
 import { useToast } from "@/hooks/use-toast";
 import { SUPPORTED_INDUSTRIES } from "@/lib/pricing";
@@ -43,7 +44,7 @@ function industriesToLabel(industries: unknown): string {
 
 export default function AdminLegalReferencesPage() {
   const { toast } = useToast();
-  const [refs, setRefs] = useState<Array<{ id: string; title: string; paragraphRef: string | null; description: string; sourceUrl: string; industries: unknown; sortOrder: number; lastVerifiedAt: Date | null }>>([]);
+  const [refs, setRefs] = useState<LegalReferenceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);

@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { getAdminDb } from "@/lib/supabase/admin";
 import { createId } from "@/lib/ids";
 
-type LegalReferenceRow = {
+export type LegalReferenceRow = {
   id: string;
   title: string;
   paragraphRef: string | null;
