@@ -2,8 +2,13 @@ import { getAdminDb } from "@/lib/supabase/admin";
 import { createId } from "@/lib/ids";
 import { getAddonPack, monthlyTotalGbp, type AddonPack } from "@/lib/billing-catalog";
 import { getStripe } from "@/lib/stripe";
+import { needsPaymentGate, parseSignupCheckoutMetadata } from "@/lib/signup-checkout";
 import {
+  coverageStillActive,
+  isFailedRenewal,
   isPaidCancelPeriodExpired,
+  isVoluntaryCancel,
+  paidUntilFromInvoice,
   shouldKeepAccessAfterCancel,
   shouldRestoreSuspendedTenant,
   stripePaidUntilUnix,
@@ -282,6 +287,65 @@ function periodIsoFromUnix(unix: number | null): string | null {
   return unix ? new Date(unix * 1000).toISOString() : null;
 }
 
+function addDaysIso(days: number): string {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+async function loadStripePaidCoverage(input: {
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+}): Promise<{ until: number | null; source: StripePeriodSource | null }> {
+  if (!input.stripeCustomerId && !input.stripeSubscriptionId) {
+    return { until: null, source: null };
+  }
+
+  let source: StripePeriodSource | null = null;
+  try {
+    const stripe = getStripe();
+    if (input.stripeSubscriptionId) {
+      try {
+        source = await stripe.subscriptions.retrieve(input.stripeSubscriptionId, {
+          expand: ["items.data"],
+        });
+      } catch {
+        source = null;
+      }
+    }
+    if (!source && input.stripeCustomerId) {
+      const list = await stripe.subscriptions.list({
+        customer: input.stripeCustomerId,
+        status: "all",
+        limit: 10,
+        expand: ["data.items.data"],
+      });
+      source =
+        list.data.find((row) => row.status === "active" || row.status === "trialing") ??
+        list.data.find((row) => isVoluntaryCancel(row) && shouldKeepAccessAfterCancel(row)) ??
+        list.data[0] ??
+        null;
+    }
+
+    let until = source ? stripePaidUntilUnix(source) : null;
+    if (input.stripeCustomerId) {
+      const invoices = await stripe.invoices.list({
+        customer: input.stripeCustomerId,
+        status: "paid",
+        limit: 10,
+        expand: ["data.lines"],
+      });
+      for (const invoice of invoices.data) {
+        const invoiceUntil = paidUntilFromInvoice(invoice);
+        if (invoiceUntil && (until === null || invoiceUntil > until)) {
+          until = invoiceUntil;
+        }
+      }
+    }
+    return { until, source };
+  } catch {
+    return { until: source ? stripePaidUntilUnix(source) : null, source };
+  }
+}
+
 export async function applyStripeSubscriptionAccess(input: {
   stripeCustomerId: string;
   subscription: StripePeriodSource & { id?: string };
@@ -289,20 +353,44 @@ export async function applyStripeSubscriptionAccess(input: {
   const db = getAdminDb();
   const { data: tenant, error } = await db
     .from("Tenant")
-    .select("id, status, onboardingStatus")
+    .select("id, status, onboardingStatus, stripeSubscriptionId")
     .eq("stripeCustomerId", input.stripeCustomerId)
     .maybeSingle();
   if (error) {
     throw { code: "TENANT_LOOKUP_FAILED", message: error.message };
   }
-  if (!tenant?.id || tenant.onboardingStatus === "NOT_STARTED") return;
+  if (!tenant?.id) return;
+
+  const coverage = await loadStripePaidCoverage({
+    stripeCustomerId: input.stripeCustomerId,
+    stripeSubscriptionId: input.subscription.id ?? (tenant.stripeSubscriptionId as string | null),
+  });
+  const source = coverage.source ?? input.subscription;
+  const untilUnix = coverage.until ?? stripePaidUntilUnix(source);
+  const keep =
+    shouldKeepAccessAfterCancel(source) ||
+    (isVoluntaryCancel(source) && coverageStillActive(untilUnix));
 
   const now = nowIso();
-  const periodEnd = periodIsoFromUnix(stripePaidUntilUnix(input.subscription));
-  const periodStart = periodIsoFromUnix(stripePeriodStartUnix(input.subscription));
+  const periodEnd = periodIsoFromUnix(untilUnix) ?? (keep ? addDaysIso(32) : null);
+  const periodStart = periodIsoFromUnix(stripePeriodStartUnix(source));
   const subscriptionId = input.subscription.id ?? null;
 
-  if (shouldKeepAccessAfterCancel(input.subscription)) {
+  if (tenant.onboardingStatus === "NOT_STARTED" && keep) {
+    const signup = parseSignupCheckoutMetadata(
+      (source as { metadata?: Record<string, string> }).metadata,
+    );
+    await activatePaidSignup({
+      tenantId: tenant.id,
+      addonIds: signup?.addonIds ?? [],
+      stripeCustomerId: input.stripeCustomerId,
+      stripeSubscriptionId: subscriptionId,
+    });
+  } else if (tenant.onboardingStatus === "NOT_STARTED") {
+    return;
+  }
+
+  if (keep) {
     if (tenant.status === "SUSPENDED" || tenant.status === "TRIAL" || tenant.status === "ACTIVE") {
       const { error: tenantError } = await db
         .from("Tenant")
@@ -323,7 +411,7 @@ export async function applyStripeSubscriptionAccess(input: {
     return;
   }
 
-  const status = (input.subscription.status ?? "").toLowerCase();
+  const status = (source.status ?? "").toLowerCase();
   const cancelled = status === "canceled" || status === "cancelled";
   if (!cancelled) return;
 
@@ -412,12 +500,31 @@ export async function suspendExpiredCancelledSubscriptions(): Promise<number> {
   return ended;
 }
 
-export async function ensureTenantPaidAccess(tenant: {
-  id: string;
-  status: string | null;
+export async function shouldSuspendOnPaymentFailed(input: {
+  stripeCustomerId: string;
   stripeSubscriptionId?: string | null;
 }): Promise<boolean> {
-  if (tenant.status !== "SUSPENDED") return true;
+  const coverage = await loadStripePaidCoverage(input);
+  if (coverage.source && isVoluntaryCancel(coverage.source)) return false;
+  if (coverage.source && isFailedRenewal(coverage.source)) return true;
+  if (coverageStillActive(coverage.until) && coverage.source && isVoluntaryCancel(coverage.source)) {
+    return false;
+  }
+  return true;
+}
+
+export type TenantProductAccess = "ok" | "pay" | "suspended";
+
+export async function resolveTenantProductAccess(tenant: {
+  id: string;
+  status: string | null;
+  onboardingStatus?: string | null;
+  stripeSubscriptionId?: string | null;
+  stripeCustomerId?: string | null;
+}): Promise<TenantProductAccess> {
+  if (!needsPaymentGate(tenant) && tenant.status !== "SUSPENDED") {
+    return "ok";
+  }
 
   const db = getAdminDb();
   const { data: local } = await db
@@ -426,14 +533,10 @@ export async function ensureTenantPaidAccess(tenant: {
     .eq("tenantId", tenant.id)
     .maybeSingle();
 
-  let stripe: StripePeriodSource | null = null;
-  if (tenant.stripeSubscriptionId) {
-    try {
-      stripe = await getStripe().subscriptions.retrieve(tenant.stripeSubscriptionId);
-    } catch {
-      stripe = null;
-    }
-  }
+  const coverage = await loadStripePaidCoverage({
+    stripeCustomerId: tenant.stripeCustomerId,
+    stripeSubscriptionId: tenant.stripeSubscriptionId,
+  });
 
   const localState = local
     ? {
@@ -442,7 +545,38 @@ export async function ensureTenantPaidAccess(tenant: {
       }
     : null;
 
-  if (!shouldRestoreSuspendedTenant(localState, stripe)) return false;
+  const paidNow =
+    shouldRestoreSuspendedTenant(localState, coverage.source, Date.now(), coverage.until) ||
+    (coverage.source?.status === "active" || coverage.source?.status === "trialing");
+
+  if (needsPaymentGate(tenant)) {
+    if (!paidNow) return "pay";
+    const signup = parseSignupCheckoutMetadata(
+      (coverage.source as { metadata?: Record<string, string> } | null)?.metadata,
+    );
+    await activatePaidSignup({
+      tenantId: tenant.id,
+      addonIds: signup?.addonIds ?? [],
+      stripeCustomerId: tenant.stripeCustomerId,
+      stripeSubscriptionId: tenant.stripeSubscriptionId ?? (coverage.source as { id?: string } | null)?.id,
+    });
+    if (coverage.source && isVoluntaryCancel(coverage.source)) {
+      await syncLocalSubscriptionAccess(tenant.id, {
+        cancelAtPeriodEnd: true,
+        status: "ACTIVE",
+        currentPeriodEnd: periodIsoFromUnix(coverage.until) ?? addDaysIso(32),
+        currentPeriodStart: periodIsoFromUnix(coverage.source ? stripePeriodStartUnix(coverage.source) : null),
+        stripeSubscriptionId: tenant.stripeSubscriptionId ?? null,
+      });
+    }
+    return "ok";
+  }
+
+  if (tenant.status !== "SUSPENDED") return "ok";
+
+  if (!shouldRestoreSuspendedTenant(localState, coverage.source, Date.now(), coverage.until)) {
+    return "suspended";
+  }
 
   const now = nowIso();
   const { error } = await db
@@ -456,9 +590,9 @@ export async function ensureTenantPaidAccess(tenant: {
   await syncLocalSubscriptionAccess(tenant.id, {
     cancelAtPeriodEnd: true,
     status: "ACTIVE",
-    currentPeriodEnd: stripe ? periodIsoFromUnix(stripePaidUntilUnix(stripe)) : localState?.currentPeriodEnd,
-    currentPeriodStart: stripe ? periodIsoFromUnix(stripePeriodStartUnix(stripe)) : null,
+    currentPeriodEnd: periodIsoFromUnix(coverage.until) ?? localState?.currentPeriodEnd ?? addDaysIso(32),
+    currentPeriodStart: coverage.source ? periodIsoFromUnix(stripePeriodStartUnix(coverage.source)) : null,
     stripeSubscriptionId: tenant.stripeSubscriptionId ?? null,
   });
-  return true;
+  return "ok";
 }

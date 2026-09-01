@@ -145,9 +145,32 @@ export async function createBillingPortalSession(input: {
   }
 
   const stripe = getStripe();
+  let configuration: string | undefined;
+  try {
+    const configs = await stripe.billingPortal.configurations.list({ limit: 10 });
+    const current = configs.data.find((row) => row.is_default) ?? configs.data[0];
+    if (current) {
+      if (current.features.subscription_cancel?.mode !== "at_period_end") {
+        await stripe.billingPortal.configurations.update(current.id, {
+          features: {
+            subscription_cancel: {
+              enabled: true,
+              mode: "at_period_end",
+              proration_behavior: "none",
+            },
+          },
+        });
+      }
+      configuration = current.id;
+    }
+  } catch {
+    configuration = undefined;
+  }
+
   const session = await stripe.billingPortal.sessions.create({
     customer: tenant.stripeCustomerId as string,
     return_url: input.returnUrl,
+    ...(configuration ? { configuration } : {}),
   });
   if (!session.url) {
     throw { code: "STRIPE_PORTAL_FAILED", message: "Could not open the billing portal" };

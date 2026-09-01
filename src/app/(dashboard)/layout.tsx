@@ -10,8 +10,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { SessionUser } from "@/types";
 import { DashboardProviders } from "@/components/dashboard-providers";
 import { OfflineSyncBannerWrapper } from "@/components/offline-sync-banner-wrapper";
-import { needsPaymentGate } from "@/lib/signup-checkout";
-import { ensureTenantPaidAccess } from "@/server/queries/billing.queries";
+import { resolveTenantProductAccess } from "@/server/queries/billing.queries";
 
 export default async function DashboardLayout({
   children,
@@ -40,13 +39,14 @@ export default async function DashboardLayout({
   if (tenantId) {
     const { data: tenant } = await getAdminDb()
       .from("Tenant")
-      .select("id, isTavleOnly, onboardingStatus, stripeSubscriptionId, status")
+      .select("id, isTavleOnly, onboardingStatus, stripeSubscriptionId, stripeCustomerId, status")
       .eq("id", tenantId)
       .maybeSingle();
-    if (tenant && needsPaymentGate(tenant)) {
+    const access = tenant ? await resolveTenantProductAccess(tenant) : "ok";
+    if (access === "pay") {
       redirect("/register?pay=1");
     }
-    if (tenant && !(await ensureTenantPaidAccess(tenant))) {
+    if (access === "suspended") {
       redirect("/suspended");
     }
     isTavleOnly = Boolean(tenant?.isTavleOnly);

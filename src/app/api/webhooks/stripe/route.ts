@@ -7,6 +7,7 @@ import {
   activatePaidSignup,
   applyStripeSubscriptionAccess,
   loadEnabledBillingModuleKeys,
+  shouldSuspendOnPaymentFailed,
   syncLiveStripeSubscription,
   upsertSubscriptionTotal,
 } from "@/server/queries/billing.queries";
@@ -17,6 +18,14 @@ import Stripe from "stripe";
 function stripeRefId(value: string | { id: string } | null | undefined): string | null {
   if (!value) return null;
   return typeof value === "string" ? value : value.id;
+}
+
+async function hydrateSubscription(subscription: Stripe.Subscription): Promise<Stripe.Subscription> {
+  try {
+    return await getStripe().subscriptions.retrieve(subscription.id, { expand: ["items.data"] });
+  } catch {
+    return subscription;
+  }
 }
 
 async function handleSignupFromMetadata(
@@ -132,7 +141,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.created") {
-    const subscription = event.data.object as Stripe.Subscription;
+    const subscription = await hydrateSubscription(event.data.object as Stripe.Subscription);
     const customerId = stripeRefId(subscription.customer);
     const isLive =
       subscription.status === "active" ||
@@ -165,7 +174,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (event.type === "customer.subscription.deleted") {
-    const subscription = event.data.object as Stripe.Subscription;
+    const subscription = await hydrateSubscription(event.data.object as Stripe.Subscription);
     const customerId = stripeRefId(subscription.customer);
     if (customerId) {
       await applyStripeSubscriptionAccess({ stripeCustomerId: customerId, subscription });
@@ -176,13 +185,21 @@ export async function POST(request: NextRequest) {
     const invoice = event.data.object as Stripe.Invoice;
     const customerId = stripeRefId(invoice.customer);
     if (customerId) {
-      const now = new Date().toISOString();
       const { data: tenant } = await db
         .from("Tenant")
-        .select("id, status")
+        .select("id, status, stripeSubscriptionId")
         .eq("stripeCustomerId", customerId)
         .maybeSingle();
-      if (tenant && tenant.status !== "SUSPENDED" && tenant.status !== "CANCELLED") {
+      const shouldSuspend =
+        tenant &&
+        tenant.status !== "SUSPENDED" &&
+        tenant.status !== "CANCELLED" &&
+        (await shouldSuspendOnPaymentFailed({
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: (tenant.stripeSubscriptionId as string | null) ?? null,
+        }));
+      if (shouldSuspend && tenant) {
+        const now = new Date().toISOString();
         await db
           .from("Tenant")
           .update({ status: "SUSPENDED", suspendedAt: now, updatedAt: now })

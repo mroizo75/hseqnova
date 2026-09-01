@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getAdminDb } from "@/lib/supabase/admin";
 import { RegisterForm } from "@/features/signup/components/register-form";
-import { needsPaymentGate } from "@/lib/signup-checkout";
+import { resolveTenantProductAccess } from "@/server/queries/billing.queries";
 import { getCanonicalUrl, ROBOTS_CONFIG } from "@/lib/seo-config";
 
 export const metadata: Metadata = {
@@ -27,10 +28,17 @@ export default async function RegisterPage({
   if (tenantId) {
     const { data } = await getAdminDb()
       .from("Tenant")
-      .select("onboardingStatus, stripeSubscriptionId, status")
+      .select("id, onboardingStatus, stripeSubscriptionId, stripeCustomerId, status")
       .eq("id", tenantId)
       .maybeSingle();
-    unpaid = Boolean(data && needsPaymentGate(data));
+    const access = data ? await resolveTenantProductAccess(data) : "pay";
+    if (access === "ok") {
+      redirect("/dashboard");
+    }
+    if (access === "suspended") {
+      redirect("/suspended");
+    }
+    unpaid = access === "pay";
   }
 
   const mode = params.pay === "1" || unpaid ? "pay" : "signup";
