@@ -2,6 +2,8 @@
 
 import { z, ZodError } from "zod";
 import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { loadAdminTenantDetails } from "@/server/queries/admin.queries";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
@@ -99,33 +101,31 @@ async function requirePrivilegedUser() {
     return null;
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    select: {
-      id: true,
-      isSuperAdmin: true,
-      isSupport: true,
-    },
-  });
+  const { data: user, error } = await getAdminDb()
+    .from("User")
+    .select("id, isSuperAdmin, isSupport")
+    .eq("email", session.user.email)
+    .maybeSingle();
 
-  if (!user || (!user.isSuperAdmin && !user.isSupport)) {
+  if (error || !user || (!user.isSuperAdmin && !user.isSupport)) {
     return null;
   }
 
-  return user;
+  return user as { id: string; isSuperAdmin: boolean; isSupport: boolean };
 }
 
 async function requireSuperAdmin() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return null;
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    select: { id: true, isSuperAdmin: true },
-  });
+  const { data: user, error } = await getAdminDb()
+    .from("User")
+    .select("id, isSuperAdmin")
+    .eq("email", session.user.email)
+    .maybeSingle();
 
-  if (!user?.isSuperAdmin) return null;
-  return user;
+  if (error || !user?.isSuperAdmin) return null;
+  return user as { id: string; isSuperAdmin: boolean };
 }
 
 function mapAiSeverityToValues(
@@ -174,27 +174,24 @@ export async function getTenantIndustryPackageStatus(tenantId: string) {
       return { success: false, error: "Access denied" };
     }
 
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: {
-        id: true,
-        industry: true,
-        simpleMenuItems: true,
-      },
-    });
-
-    if (!tenant) {
+    const db = getAdminDb();
+    const { data: tenant, error: tenantError } = await db
+      .from("Tenant")
+      .select("id, industry, simpleMenuItems")
+      .eq("id", tenantId)
+      .maybeSingle();
+    if (tenantError || !tenant) {
       return { success: false, error: "Organisation not found" };
     }
 
-    const industryPackage = getIndustryPackage(tenant.industry);
+    const industryPackage = getIndustryPackage(tenant.industry as string | null);
     if (!industryPackage) {
       return {
         success: true,
         data: {
           hasPackage: false,
-          industry: tenant.industry || null,
-          industryLabel: tenant.industry ? getIndustryLabel(tenant.industry) : null,
+          industry: (tenant.industry as string | null) || null,
+          industryLabel: tenant.industry ? getIndustryLabel(tenant.industry as string) : null,
         },
       };
     }
@@ -204,42 +201,20 @@ export async function getTenantIndustryPackageStatus(tenantId: string) {
     const expectedInspectionTemplates = industryPackage.inspectionTemplates.map((item) => item.name);
     const expectedCourseKeys = industryPackage.courseTemplates.map((item) => item.courseKey);
 
-    const [riskMatches, sjaMatches, inspectionMatches, courseMatches, allLegalReferences] =
-      await Promise.all([
-        prisma.risk.findMany({
-          where: {
-            tenantId,
-            title: { in: expectedRiskTitles },
-          },
-          select: { title: true },
-        }),
-        prisma.sjaTemplate.findMany({
-          where: {
-            tenantId,
-            isActive: true,
-            name: { in: expectedSjaTemplates },
-          },
-          select: { name: true },
-        }),
-        prisma.inspectionTemplate.findMany({
-          where: {
-            tenantId,
-            name: { in: expectedInspectionTemplates },
-          },
-          select: { name: true },
-        }),
-        prisma.courseTemplate.findMany({
-          where: {
-            tenantId,
-            courseKey: { in: expectedCourseKeys },
-            isActive: true,
-          },
-          select: { courseKey: true },
-        }),
-        prisma.legalReference.findMany({
-          orderBy: { sortOrder: "asc" },
-        }),
-      ]);
+    const empty = "__none__";
+    const [riskRes, sjaRes, inspectionRes, courseRes, legalRes] = await Promise.all([
+      db.from("Risk").select("title").eq("tenantId", tenantId).in("title", expectedRiskTitles.length ? expectedRiskTitles : [empty]),
+      db.from("SjaTemplate").select("name").eq("tenantId", tenantId).eq("isActive", true).in("name", expectedSjaTemplates.length ? expectedSjaTemplates : [empty]),
+      db.from("InspectionTemplate").select("name").eq("tenantId", tenantId).in("name", expectedInspectionTemplates.length ? expectedInspectionTemplates : [empty]),
+      db.from("CourseTemplate").select("courseKey").eq("tenantId", tenantId).eq("isActive", true).in("courseKey", expectedCourseKeys.length ? expectedCourseKeys : [empty]),
+      db.from("LegalReference").select("title, paragraphRef, industries").order("sortOrder", { ascending: true }),
+    ]);
+
+    const riskMatches = riskRes.data ?? [];
+    const sjaMatches = sjaRes.data ?? [];
+    const inspectionMatches = inspectionRes.data ?? [];
+    const courseMatches = courseRes.data ?? [];
+    const allLegalReferences = legalRes.data ?? [];
 
     const legalReferencesForIndustry = allLegalReferences.filter((reference) => {
       const industries = Array.isArray(reference.industries)
@@ -256,10 +231,10 @@ export async function getTenantIndustryPackageStatus(tenantId: string) {
       legalReferencesForIndustry.map((reference) => `${reference.title}::${reference.paragraphRef || ""}`)
     );
 
-    const existingRiskTitles = new Set(riskMatches.map((item) => item.title));
-    const existingSjaTemplateNames = new Set(sjaMatches.map((item) => item.name));
-    const existingInspectionTemplateNames = new Set(inspectionMatches.map((item) => item.name));
-    const existingCourseKeys = new Set(courseMatches.map((item) => item.courseKey));
+    const existingRiskTitles = new Set(riskMatches.map((item) => String(item.title)));
+    const existingSjaTemplateNames = new Set(sjaMatches.map((item) => String(item.name)));
+    const existingInspectionTemplateNames = new Set(inspectionMatches.map((item) => String(item.name)));
+    const existingCourseKeys = new Set(courseMatches.map((item) => String(item.courseKey)));
     const selectedSimpleMenuItems = Array.isArray(tenant.simpleMenuItems)
       ? (tenant.simpleMenuItems as string[])
       : [];
@@ -739,68 +714,12 @@ export async function applyAiRiskSuggestionsForTenant(input: {
  */
 export async function getTenantDetails(tenantId: string) {
   try {
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      include: {
-        subscription: true,
-        users: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                emailVerified: true,
-                createdAt: true,
-              },
-            },
-          },
-          orderBy: {
-            createdAt: "desc",
-          },
-        },
-        invoices: {
-          orderBy: {
-            createdAt: "desc",
-          },
-          take: 10,
-        },
-        offers: {
-          orderBy: {
-            createdAt: "desc",
-          },
-          take: 5,
-        },
-        activities: {
-          orderBy: {
-            createdAt: "desc",
-          },
-          take: 50,
-        },
-        _count: {
-          select: {
-            users: true,
-            documents: true,
-            incidents: true,
-            risks: true,
-          },
-        },
-        managementReviews: {
-          orderBy: {
-            reviewDate: "desc",
-          },
-          take: 1,
-        },
-      },
-    });
-
+    const tenant = await loadAdminTenantDetails(tenantId);
     if (!tenant) {
       return { success: false, error: "Organisation not found" };
     }
-
     return { success: true, data: tenant };
-  } catch (error) {
-    console.error("Get tenant details error:", error);
+  } catch {
     return { success: false, error: "Could not fetch organisation details" };
   }
 }

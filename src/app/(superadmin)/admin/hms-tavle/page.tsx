@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { loadAdminTavleSubscriptions } from "@/server/queries/admin.queries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -34,20 +34,7 @@ function daysUntil(date: Date): number {
 }
 
 export default async function SuperadminHmsTavlePage() {
-  const subscriptions = await prisma.hmsTavleSubscription.findMany({
-    include: {
-      tenant: {
-        select: {
-          name: true,
-          contactEmail: true,
-          orgNumber: true,
-          isTavleOnly: true,
-          _count: { select: { hmsTavler: true } },
-        },
-      },
-    },
-    orderBy: { endsAt: "asc" },
-  });
+  const subscriptions = await loadAdminTavleSubscriptions();
 
   const stats = {
     total: subscriptions.length,
@@ -126,8 +113,8 @@ export default async function SuperadminHmsTavlePage() {
                         {sub.isAddon ? "Add-on" : "Standalone"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-sm">{PLAN_LABELS[sub.plan]}</TableCell>
-                    <TableCell>{statusBadge(sub.status)}</TableCell>
+                    <TableCell className="text-sm">{PLAN_LABELS[sub.plan as keyof typeof PLAN_LABELS] ?? String(sub.plan)}</TableCell>
+                    <TableCell>{statusBadge(sub.status as HmsTavleSubscriptionStatus)}</TableCell>
                     <TableCell>
                       <div>
                         <p className={`text-sm ${isExpiringSoon ? "text-orange-600 font-medium" : ""}`}>

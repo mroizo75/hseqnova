@@ -6,9 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { loadAdminTenantDetails } from "@/server/queries/admin.queries";
 import {
-  getTenantDetails,
   getTenantIndustryPackageStatus,
   toggleTenantStatus,
 } from "@/server/actions/tenant.actions";
@@ -53,21 +52,12 @@ export const metadata = {
 
 async function TenantDetails({ id }: { id: string }) {
   const session = await getServerSession(authOptions);
-  const currentUser = session?.user?.email
-    ? await prisma.user.findUnique({
-        where: { email: session.user.email },
-        select: { isSuperAdmin: true },
-      })
-    : null;
-  const isSuperAdmin = currentUser?.isSuperAdmin ?? false;
+  const isSuperAdmin = Boolean(session?.user?.isSuperAdmin);
+  const tenant = await loadAdminTenantDetails(id);
 
-  const result = await getTenantDetails(id);
-
-  if (!result.success || !result.data) {
+  if (!tenant) {
     notFound();
   }
-
-  const tenant = result.data;
   const adminUser = tenant.users.find((ut) => ut.role === "ADMIN")?.user;
   const hasSubscription = !!tenant.subscription;
   const lastManagementReview = tenant.managementReviews?.[0];

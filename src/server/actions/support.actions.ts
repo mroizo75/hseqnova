@@ -12,6 +12,7 @@ import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { withAuditLog } from "@/lib/audit-log";
 import { sendEmail } from "@/lib/email";
 import { getRequiredTenantContext } from "@/lib/tenant-context";
@@ -65,22 +66,23 @@ async function requireStaffUser() {
     return null;
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      isSuperAdmin: true,
-      isSupport: true,
-    },
-  });
+  const { data: user, error } = await getAdminDb()
+    .from("User")
+    .select("id, name, email, isSuperAdmin, isSupport")
+    .eq("email", session.user.email)
+    .maybeSingle();
 
-  if (!user || (!user.isSuperAdmin && !user.isSupport)) {
+  if (error || !user || (!user.isSuperAdmin && !user.isSupport)) {
     return null;
   }
 
-  return user;
+  return user as {
+    id: string;
+    name: string | null;
+    email: string;
+    isSuperAdmin: boolean;
+    isSupport: boolean;
+  };
 }
 
 async function nextTicketNumber(retries = 3): Promise<string> {
@@ -410,64 +412,132 @@ export async function listAdminSupportTickets(filters?: {
   try {
     const staff = await requireStaffUser();
     if (!staff) {
-      return fail("FORBIDDEN", "Ingen tilgang");
+      return fail("FORBIDDEN", "Access denied");
     }
 
+    const db = getAdminDb();
     const status = filters?.status && filters.status !== "ALL" ? filters.status : undefined;
+    let query = db.from("SupportTicket").select("*").order("lastMessageAt", { ascending: false });
+    if (status) {
+      query = query.eq("status", status);
+    }
+    const { data: tickets, error } = await query;
+    if (error) {
+      throw { code: "TICKET_LIST_FAILED", message: error.message };
+    }
 
-    const tickets = await prisma.supportTicket.findMany({
-      where: status ? { status } : undefined,
-      orderBy: [{ status: "asc" }, { lastMessageAt: "desc" }],
-      include: {
-        tenant: { select: { id: true, name: true, orgNumber: true } },
-        createdBy: { select: { id: true, name: true, email: true } },
-        assignedTo: { select: { id: true, name: true, email: true } },
-        _count: { select: { messages: true } },
-        messages: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
-          select: { body: true, createdAt: true, senderType: true },
-        },
-      },
+    const rows = tickets ?? [];
+    const tenantIds = [...new Set(rows.map((row) => row.tenantId as string))];
+    const userIds = [
+      ...new Set(
+        rows.flatMap((row) => [row.createdById as string, row.assignedToId as string | null].filter(Boolean) as string[]),
+      ),
+    ];
+    const ticketIds = rows.map((row) => row.id as string);
+
+    const [tenantsRes, usersRes, messagesRes] = await Promise.all([
+      tenantIds.length
+        ? db.from("Tenant").select("id, name, orgNumber").in("id", tenantIds)
+        : Promise.resolve({ data: [], error: null }),
+      userIds.length
+        ? db.from("User").select("id, name, email").in("id", userIds)
+        : Promise.resolve({ data: [], error: null }),
+      ticketIds.length
+        ? db.from("SupportMessage").select("ticketId, body, createdAt, senderType").in("ticketId", ticketIds).order("createdAt", { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    if (tenantsRes.error || usersRes.error || messagesRes.error) {
+      throw { code: "TICKET_HYDRATE_FAILED", message: tenantsRes.error?.message ?? usersRes.error?.message ?? messagesRes.error?.message ?? "hydrate failed" };
+    }
+
+    const tenantById = new Map((tenantsRes.data ?? []).map((tenant) => [tenant.id as string, tenant]));
+    const userById = new Map((usersRes.data ?? []).map((user) => [user.id as string, user]));
+    const lastByTicket = new Map<string, { body: string; createdAt: string; senderType: string }>();
+    const countByTicket = new Map<string, number>();
+    for (const message of messagesRes.data ?? []) {
+      const ticketId = message.ticketId as string;
+      countByTicket.set(ticketId, (countByTicket.get(ticketId) ?? 0) + 1);
+      if (!lastByTicket.has(ticketId)) {
+        lastByTicket.set(ticketId, {
+          body: String(message.body),
+          createdAt: String(message.createdAt),
+          senderType: String(message.senderType),
+        });
+      }
+    }
+
+    const hydrated = rows.map((row) => {
+      const last = lastByTicket.get(row.id as string);
+      return {
+        ...row,
+        lastMessageAt: new Date(row.lastMessageAt as string),
+        tenant: tenantById.get(row.tenantId as string) ?? { id: row.tenantId, name: "Organisation", orgNumber: null },
+        createdBy: userById.get(row.createdById as string) ?? { id: row.createdById, name: null, email: "" },
+        assignedTo: row.assignedToId ? userById.get(row.assignedToId as string) ?? null : null,
+        _count: { messages: countByTicket.get(row.id as string) ?? 0 },
+        messages: last ? [last] : [],
+      };
     });
 
-    return { success: true, data: tickets };
+    return { success: true, data: hydrated };
   } catch {
-    return fail("INTERNAL", "Kunne ikke hente support-saker");
+    return fail("INTERNAL", "Could not load support tickets");
   }
 }
 
 export async function getSupportTicketForAdmin(
-  ticketId: string
+  ticketId: string,
 ): Promise<ActionResult<unknown>> {
   try {
     const staff = await requireStaffUser();
     if (!staff) {
-      return fail("FORBIDDEN", "Ingen tilgang");
+      return fail("FORBIDDEN", "Access denied");
     }
 
-    const ticket = await prisma.supportTicket.findUnique({
-      where: { id: ticketId },
-      include: {
-        tenant: { select: { id: true, name: true, orgNumber: true } },
-        createdBy: { select: { id: true, name: true, email: true } },
-        assignedTo: { select: { id: true, name: true, email: true } },
-        messages: {
-          orderBy: { createdAt: "asc" },
-          include: {
-            sender: { select: { id: true, name: true, email: true } },
-          },
-        },
-      },
-    });
-
+    const db = getAdminDb();
+    const { data: ticket, error } = await db.from("SupportTicket").select("*").eq("id", ticketId).maybeSingle();
+    if (error) {
+      throw { code: "TICKET_LOOKUP_FAILED", message: error.message };
+    }
     if (!ticket) {
-      return fail("NOT_FOUND", "Saken ble ikke funnet");
+      return fail("NOT_FOUND", "Ticket not found");
     }
 
-    return { success: true, data: ticket };
+    const [{ data: tenant }, { data: createdBy }, { data: assignedTo }, { data: messages }] = await Promise.all([
+      db.from("Tenant").select("id, name, orgNumber").eq("id", ticket.tenantId as string).maybeSingle(),
+      db.from("User").select("id, name, email").eq("id", ticket.createdById as string).maybeSingle(),
+      ticket.assignedToId
+        ? db.from("User").select("id, name, email").eq("id", ticket.assignedToId as string).maybeSingle()
+        : Promise.resolve({ data: null }),
+      db.from("SupportMessage").select("*").eq("ticketId", ticketId).order("createdAt", { ascending: true }),
+    ]);
+
+    const senderIds = [...new Set((messages ?? []).map((row) => row.senderUserId as string))];
+    const { data: senders } = senderIds.length
+      ? await db.from("User").select("id, name, email").in("id", senderIds)
+      : { data: [] };
+    const senderById = new Map((senders ?? []).map((user) => [user.id as string, user]));
+
+    return {
+      success: true,
+      data: {
+        ...ticket,
+        tenant: tenant ?? { name: "Organisation", orgNumber: null },
+        createdBy: createdBy ?? { name: null, email: "" },
+        assignedTo: assignedTo ?? null,
+        messages: (messages ?? []).map((row) => ({
+          ...row,
+          createdAt: new Date(row.createdAt as string),
+          sender: senderById.get(row.senderUserId as string) ?? {
+            id: row.senderUserId,
+            name: null,
+            email: "",
+          },
+        })),
+      },
+    };
   } catch {
-    return fail("INTERNAL", "Kunne ikke hente sak");
+    return fail("INTERNAL", "Could not load the ticket");
   }
 }
 

@@ -2,42 +2,21 @@ import { getServerSession } from "next-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, Users, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { loadAdminOverviewStats } from "@/server/queries/admin.queries";
 
 export default async function SuperAdminDashboard() {
   const session = await getServerSession(authOptions);
-  const currentUser = session?.user?.email
-    ? await prisma.user.findUnique({
-        where: { email: session.user.email },
-        select: { isSuperAdmin: true },
-      })
-    : null;
-
-  if (!currentUser?.isSuperAdmin) {
+  if (!session?.user?.email) {
+    redirect("/login");
+  }
+  if (!session.user.isSuperAdmin && !session.user.isSupport) {
     redirect("/login");
   }
 
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  const [activeTenants, totalUsers, incidentsThisMonth, openActions] =
-    await Promise.all([
-      prisma.tenant.count({
-        where: {
-          status: { in: ["ACTIVE", "TRIAL"] },
-          deletedAt: null,
-        },
-      }),
-      prisma.user.count(),
-      prisma.incident.count({
-        where: { createdAt: { gte: thirtyDaysAgo } },
-      }),
-      prisma.measure.count({
-        where: { status: { in: ["PENDING", "IN_PROGRESS", "OVERDUE"] } },
-      }),
-    ]);
+  const { activeTenants, totalUsers, incidentsThisMonth, openActions } =
+    await loadAdminOverviewStats();
 
   return (
     <div className="space-y-8">
