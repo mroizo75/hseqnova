@@ -1,4 +1,4 @@
-import { getStripe, UK_VAT_PERCENT, DEFAULT_CURRENCY } from "@/lib/stripe";
+import { getStripe, UK_VAT_PERCENT } from "@/lib/stripe";
 import { getAdminDb } from "@/lib/supabase/admin";
 
 export async function createOrGetStripeCustomer(tenantId: string): Promise<string> {
@@ -43,27 +43,49 @@ export async function createCheckoutSession(input: {
   cancelUrl: string;
   metadata?: Record<string, string>;
 }): Promise<{ url: string }> {
-  const customerId = await createOrGetStripeCustomer(input.tenantId);
   const stripe = getStripe();
 
-  const session = await stripe.checkout.sessions.create({
-    customer: customerId,
-    mode: "subscription",
-    line_items: input.priceIds.map((price) => ({ price, quantity: 1 })),
-    success_url: input.successUrl,
-    cancel_url: input.cancelUrl,
-    automatic_tax: { enabled: true },
-    metadata: { tenantId: input.tenantId, vatPercent: String(UK_VAT_PERCENT), ...input.metadata },
-    subscription_data: {
-      metadata: { tenantId: input.tenantId, ...input.metadata },
-    },
-    currency: DEFAULT_CURRENCY,
-  });
+  const openSession = async (customerId: string) => {
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: "subscription",
+      line_items: input.priceIds.map((price) => ({ price, quantity: 1 })),
+      success_url: input.successUrl,
+      cancel_url: input.cancelUrl,
+      automatic_tax: { enabled: true },
+      metadata: { tenantId: input.tenantId, vatPercent: String(UK_VAT_PERCENT), ...input.metadata },
+      subscription_data: {
+        metadata: { tenantId: input.tenantId, ...input.metadata },
+      },
+      ...(input.billingMethod === "DIRECT_DEBIT"
+        ? { payment_method_types: ["bacs_debit"] as const }
+        : {}),
+    });
+    if (!session.url) {
+      throw { code: "STRIPE_CHECKOUT_FAILED", message: "Could not create Stripe Checkout session" };
+    }
+    return { url: session.url };
+  };
 
-  if (!session.url) {
-    throw { code: "STRIPE_CHECKOUT_FAILED", message: "Could not create Stripe Checkout session" };
+  try {
+    return await openSession(await createOrGetStripeCustomer(input.tenantId));
+  } catch (error) {
+    const message =
+      error && typeof error === "object" && "message" in error && typeof error.message === "string"
+        ? error.message
+        : "";
+    if (!/no such customer/i.test(message)) {
+      throw error;
+    }
+    const { error: clearError } = await getAdminDb()
+      .from("Tenant")
+      .update({ stripeCustomerId: null, updatedAt: new Date().toISOString() })
+      .eq("id", input.tenantId);
+    if (clearError) {
+      throw { code: "TENANT_UPDATE_FAILED", message: clearError.message };
+    }
+    return openSession(await createOrGetStripeCustomer(input.tenantId));
   }
-  return { url: session.url };
 }
 
 export async function addPriceToExistingSubscription(input: {

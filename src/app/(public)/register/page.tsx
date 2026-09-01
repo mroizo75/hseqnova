@@ -27,7 +27,7 @@ export default async function RegisterPage({
   if (tenantId) {
     const { data } = await getAdminDb()
       .from("Tenant")
-      .select("onboardingStatus, stripeSubscriptionId")
+      .select("onboardingStatus, stripeSubscriptionId, status")
       .eq("id", tenantId)
       .maybeSingle();
     unpaid = Boolean(data && needsPaymentGate(data));

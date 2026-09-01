@@ -42,11 +42,11 @@ export default async function DashboardLayout({
       .select("isTavleOnly, onboardingStatus, stripeSubscriptionId, status")
       .eq("id", tenantId)
       .maybeSingle();
-    if (tenant?.status === "SUSPENDED") {
-      redirect("/suspended");
-    }
     if (tenant && needsPaymentGate(tenant)) {
       redirect("/register?pay=1");
+    }
+    if (tenant?.status === "SUSPENDED") {
+      redirect("/suspended");
     }
     isTavleOnly = Boolean(tenant?.isTavleOnly);
   }

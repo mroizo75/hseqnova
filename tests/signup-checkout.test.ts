@@ -3,11 +3,14 @@ import assert from "node:assert/strict";
 import { HSEQ_CORE } from "../src/lib/billing-catalog";
 import {
   SIGNUP_FLOW,
+  COMPANY_NUMBER_IN_USE_MESSAGE,
   buildSignupMetadata,
   needsPaymentGate,
   normalizeCompanyNumber,
   parseSignupAddonIds,
   parseSignupCheckoutMetadata,
+  pickResumableSignupTenant,
+  publicCheckoutError,
   resolveSignupPriceIds,
   serializeSignupAddonIds,
 } from "../src/lib/signup-checkout";
@@ -46,10 +49,50 @@ describe("self-serve signup checkout", () => {
   it("gates unpaid self-serve tenants only", () => {
     assert.equal(needsPaymentGate({ onboardingStatus: "NOT_STARTED", stripeSubscriptionId: null }), true);
     assert.equal(
-      needsPaymentGate({ onboardingStatus: "NOT_STARTED", stripeSubscriptionId: "sub_123" }),
-      false,
+      needsPaymentGate({
+        onboardingStatus: "NOT_STARTED",
+        stripeSubscriptionId: "sub_incomplete",
+        status: "TRIAL",
+      }),
+      true,
+    );
+    assert.equal(
+      needsPaymentGate({ onboardingStatus: "NOT_STARTED", status: "SUSPENDED" }),
+      true,
     );
     assert.equal(needsPaymentGate({ onboardingStatus: "COMPLETED", stripeSubscriptionId: null }), false);
+    assert.equal(needsPaymentGate({ onboardingStatus: "ADMIN_CREATED" }), false);
+    assert.equal(needsPaymentGate({ onboardingStatus: "NOT_STARTED", status: "ACTIVE" }), false);
     assert.equal(normalizeCompanyNumber(" sc 123456 "), "SC123456");
+  });
+
+  it("lets an unpaid company retry instead of treating it as already registered", () => {
+    const unpaid = {
+      id: "t1",
+      onboardingStatus: "NOT_STARTED",
+      stripeSubscriptionId: "sub_incomplete",
+      status: "SUSPENDED",
+    };
+    assert.deepEqual(pickResumableSignupTenant([unpaid]), { resume: unpaid, blocked: false });
+    assert.deepEqual(
+      pickResumableSignupTenant([{ id: "t2", onboardingStatus: "COMPLETED", status: "ACTIVE" }]),
+      { resume: null, blocked: true },
+    );
+    assert.deepEqual(pickResumableSignupTenant([]), { resume: null, blocked: false });
+  });
+
+  it("explains a duplicate Companies House number without asking them to guess", () => {
+    assert.match(
+      COMPANY_NUMBER_IN_USE_MESSAGE,
+      /Companies House number is already in use/i,
+    );
+  });
+
+  it("maps Stripe price-account mismatch to a public checkout error", () => {
+    assert.match(
+      publicCheckoutError({ message: "No such price: 'price_1UAlWTBd9ukGMLLHXJCfcTxK'" }),
+      /price ID is not on this Stripe account/i,
+    );
+    assert.equal(publicCheckoutError({ message: "Company name must be at least 2 characters" }), "Company name must be at least 2 characters");
   });
 });

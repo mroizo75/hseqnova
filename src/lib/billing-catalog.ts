@@ -108,5 +108,7 @@ export function monthlyTotalGbp(enabledKeys: Iterable<string>): number {
 
 export function stripePriceIdFromEnv(envName: string): string | null {
   const value = process.env[envName];
-  return value && value.trim().length > 0 ? value.trim() : null;
+  if (!value) return null;
+  const trimmed = value.trim().replace(/^['"]|['"]$/g, "");
+  return trimmed.length > 0 ? trimmed : null;
 }

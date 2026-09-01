@@ -128,7 +128,11 @@ export async function POST(request: NextRequest) {
   if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.created") {
     const subscription = event.data.object as Stripe.Subscription;
     const customerId = stripeRefId(subscription.customer);
-    if (customerId) {
+    const isLive =
+      subscription.status === "active" ||
+      subscription.status === "trialing" ||
+      subscription.status === "past_due";
+    if (customerId && isLive) {
       await db
         .from("Tenant")
         .update({ stripeSubscriptionId: subscription.id, updatedAt: new Date().toISOString() })
@@ -152,7 +156,8 @@ export async function POST(request: NextRequest) {
         .from("Tenant")
         .update({ status: "SUSPENDED", suspendedAt: now, updatedAt: now })
         .eq("stripeCustomerId", customerId)
-        .in("status", ["ACTIVE", "TRIAL"]);
+        .in("status", ["ACTIVE", "TRIAL"])
+        .neq("onboardingStatus", "NOT_STARTED");
     }
   }
 
@@ -170,7 +175,8 @@ export async function POST(request: NextRequest) {
         await db
           .from("Tenant")
           .update({ status: "SUSPENDED", suspendedAt: now, updatedAt: now })
-          .eq("id", tenant.id);
+          .eq("id", tenant.id)
+          .neq("onboardingStatus", "NOT_STARTED");
       }
     }
   }

@@ -10,9 +10,12 @@ import { type AddonPackId } from "@/lib/billing-catalog";
 import {
   appBaseUrl,
   buildSignupMetadata,
+  COMPANY_NUMBER_IN_USE_MESSAGE,
   needsPaymentGate,
   normalizeCompanyNumber,
   parseSignupAddonIds,
+  pickResumableSignupTenant,
+  publicCheckoutError,
   resolveSignupPriceIds,
 } from "@/lib/signup-checkout";
 import { syncCrmFromTenant } from "@/features/crm/lib/sync-from-tenant";
@@ -36,11 +39,7 @@ const signupSchema = z.object({
 export type StartSelfServeCheckoutInput = z.input<typeof signupSchema>;
 
 function errorMessage(error: unknown, fallback: string): string {
-  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
-    return error.message;
-  }
-  if (error instanceof Error) return error.message;
-  return fallback;
+  return publicCheckoutError(error, fallback);
 }
 
 function nowIso(): string {
@@ -95,10 +94,20 @@ async function checkoutUrl(input: {
   return url;
 }
 
+function reopenUnpaidSignupPayload(now: string) {
+  return {
+    status: "TRIAL",
+    suspendedAt: null,
+    onboardingStatus: "NOT_STARTED",
+    updatedAt: now,
+  };
+}
+
 async function findUnpaidTenantForUser(userId: string): Promise<{
   id: string;
   onboardingStatus: string | null;
   stripeSubscriptionId: string | null;
+  status: string | null;
 } | null> {
   const { data: memberships, error } = await getAdminDb()
     .from("UserTenant")
@@ -112,19 +121,12 @@ async function findUnpaidTenantForUser(userId: string): Promise<{
 
   const { data: tenants, error: tenantError } = await getAdminDb()
     .from("Tenant")
-    .select("id, onboardingStatus, stripeSubscriptionId")
+    .select("id, onboardingStatus, stripeSubscriptionId, status")
     .in("id", tenantIds);
   if (tenantError) {
     throw { code: "TENANT_LOOKUP_FAILED", message: tenantError.message };
   }
-  return (
-    (tenants ?? []).find((tenant) =>
-      needsPaymentGate({
-        onboardingStatus: tenant.onboardingStatus as string | null,
-        stripeSubscriptionId: tenant.stripeSubscriptionId as string | null,
-      }),
-    ) ?? null
-  );
+  return (tenants ?? []).find((tenant) => needsPaymentGate(tenant)) ?? null;
 }
 
 export async function startSelfServeCheckout(
@@ -173,10 +175,10 @@ export async function startSelfServeCheckout(
       const { error: tenantError } = await db
         .from("Tenant")
         .update({
+          ...reopenUnpaidSignupPayload(now),
           billingMethod: data.billingMethod,
           contactPerson: data.contactName,
           contactPhone: data.phone || null,
-          updatedAt: now,
         })
         .eq("id", unpaid.id);
       if (tenantError) {
@@ -198,18 +200,25 @@ export async function startSelfServeCheckout(
       return { success: false, error: "Password must be at least 8 characters" };
     }
 
-    const { data: existingCompany, error: companyError } = await db
+    const { data: companyRows, error: companyError } = await db
       .from("Tenant")
-      .select("id, onboardingStatus, stripeSubscriptionId")
-      .eq("companyNumber", data.companyNumber)
-      .maybeSingle();
+      .select("id, onboardingStatus, stripeSubscriptionId, status")
+      .or(`companyNumber.eq.${data.companyNumber},orgNumber.eq.${data.companyNumber}`);
     if (companyError) {
       throw { code: "COMPANY_LOOKUP_FAILED", message: companyError.message };
     }
-    if (existingCompany && !needsPaymentGate(existingCompany)) {
+    const { resume: existingCompany, blocked } = pickResumableSignupTenant(
+      (companyRows ?? []).map((row) => ({
+        id: String(row.id),
+        onboardingStatus: (row.onboardingStatus as string | null) ?? null,
+        stripeSubscriptionId: (row.stripeSubscriptionId as string | null) ?? null,
+        status: (row.status as string | null) ?? null,
+      })),
+    );
+    if (blocked) {
       return {
         success: false,
-        error: "This company is already registered. Sign in, or contact hello@hseqnova.co.uk.",
+        error: COMPANY_NUMBER_IN_USE_MESSAGE,
       };
     }
 
@@ -228,7 +237,7 @@ export async function startSelfServeCheckout(
           contactPerson: data.contactName,
           billingMethod: data.billingMethod,
           termsAcceptedAt: now,
-          updatedAt: now,
+          ...reopenUnpaidSignupPayload(now),
         })
         .eq("id", existingCompany.id);
       if (reuseError) {
@@ -339,7 +348,7 @@ export async function resumeSelfServeCheckout(input: {
     const tenantId = unpaid?.id ?? auth.tenantId;
     const { data: tenant, error } = await getAdminDb()
       .from("Tenant")
-      .select("id, onboardingStatus, stripeSubscriptionId")
+      .select("id, onboardingStatus, stripeSubscriptionId, status")
       .eq("id", tenantId)
       .maybeSingle();
     if (error) {
@@ -351,7 +360,10 @@ export async function resumeSelfServeCheckout(input: {
 
     const { error: updateError } = await getAdminDb()
       .from("Tenant")
-      .update({ billingMethod: input.billingMethod, updatedAt: nowIso() })
+      .update({
+        ...reopenUnpaidSignupPayload(nowIso()),
+        billingMethod: input.billingMethod,
+      })
       .eq("id", tenant.id);
     if (updateError) {
       throw { code: "TENANT_UPDATE_FAILED", message: updateError.message };
@@ -371,7 +383,7 @@ export async function resumeSelfServeCheckout(input: {
 export async function loadUnpaidSignupTenant(tenantId: string): Promise<boolean> {
   const { data, error } = await getAdminDb()
     .from("Tenant")
-    .select("onboardingStatus, stripeSubscriptionId")
+    .select("onboardingStatus, stripeSubscriptionId, status")
     .eq("id", tenantId)
     .maybeSingle();
   if (error || !data) {
