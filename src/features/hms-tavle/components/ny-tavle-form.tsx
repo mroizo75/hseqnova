@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { HmsTavlePlan } from "@prisma/client";
-import { PLAN_LABELS } from "@/features/hms-tavle/lib/tavle-plan-limits";
 import { BRANSJE_OPTIONS } from "@/features/hms-tavle/lib/bransje-config";
 
 interface Props {
@@ -24,7 +23,7 @@ interface Props {
   plan: HmsTavlePlan;
 }
 
-export function NyTavleForm({ projects, plan }: Props) {
+export function NyTavleForm({ projects }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -37,7 +36,7 @@ export function NyTavleForm({ projects, plan }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name.trim()) return toast.error("Navn er påkrevd");
+    if (!form.name.trim()) return toast.error("Name is required");
 
     setLoading(true);
     try {
@@ -53,8 +52,8 @@ export function NyTavleForm({ projects, plan }: Props) {
         }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Feil ved opprettelse");
-      toast.success("Tavle opprettet!");
+      if (!res.ok) throw new Error(json.message ?? json.error ?? "Could not create the board");
+      toast.success("Safety board created");
       router.push(`/dashboard/hms-tavle/${json.data.id}`);
     } catch (err: any) {
       toast.error(err.message);
@@ -68,10 +67,10 @@ export function NyTavleForm({ projects, plan }: Props) {
       <Card>
         <CardContent className="p-5 space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="bransje">Bransje *</Label>
+            <Label htmlFor="bransje">Type of work *</Label>
             <Select value={form.bransje} onValueChange={(v) => setForm({ ...form, bransje: v })}>
               <SelectTrigger id="bransje">
-                <SelectValue placeholder="Velg bransje" />
+                <SelectValue placeholder="Select type of work" />
               </SelectTrigger>
               <SelectContent>
                 {BRANSJE_OPTIONS.map((b) => (
@@ -82,27 +81,27 @@ export function NyTavleForm({ projects, plan }: Props) {
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Bransjeval tilpasser seksjonstekster og lovkrav-referanser på tavlen.
+              This sets the starting sections and legal references on the board.
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="name">Navn på tavle *</Label>
+            <Label htmlFor="name">Board name *</Label>
             <Input
               id="name"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="f.eks. Lagerhall B – Oslo, eller Blokkveien 12 – Nybygg"
+              placeholder="e.g. Warehouse B – Manchester, or 12 High Street – new build"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="description">Beskrivelse</Label>
+            <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Kort beskrivelse av prosjektet..."
+              placeholder="Short description of the site or project"
               rows={2}
             />
           </div>
@@ -115,7 +114,7 @@ export function NyTavleForm({ projects, plan }: Props) {
                 onValueChange={(v) => setForm({ ...form, projectId: v })}
               >
                 <SelectTrigger id="project">
-                  <SelectValue placeholder="Velg prosjekt (valgfritt)" />
+                  <SelectValue placeholder="Select a project (optional)" />
                 </SelectTrigger>
                 <SelectContent>
                   {projects.map((p) => (
@@ -133,7 +132,7 @@ export function NyTavleForm({ projects, plan }: Props) {
           )}
 
           <div className="space-y-1.5">
-            <Label htmlFor="color">Aksentfarge</Label>
+            <Label htmlFor="color">Accent colour</Label>
             <div className="flex items-center gap-3">
               <input
                 id="color"
@@ -150,10 +149,10 @@ export function NyTavleForm({ projects, plan }: Props) {
 
       <div className="flex gap-3 justify-end">
         <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>
-          Avbryt
+          Cancel
         </Button>
         <Button type="submit" disabled={loading}>
-          {loading ? "Oppretter..." : "Opprett tavle"}
+          {loading ? "Creating…" : "Create board"}
         </Button>
       </div>
     </form>

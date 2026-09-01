@@ -36,6 +36,7 @@ describe("MHSWR 1999 reg.3 significant findings", () => {
       "Young persons",
       "None identified",
     ]);
+    assert.equal(serializeGroupsAtRisk("employees"), '["employees"]');
   });
 
   it("treats an assessment as complete when findings, groups and review are recorded", () => {

@@ -5,6 +5,7 @@ import { recordIdSchema, updateRiskSchema } from "../src/features/risks/schemas/
 describe("risk record ids", () => {
   it("accepts createId, prisma cuid and UUID owner ids", () => {
     assert.equal(recordIdSchema.parse("c63ceaf97fcf83dd3103a8234"), "c63ceaf97fcf83dd3103a8234");
+    assert.equal(recordIdSchema.parse("c54eb2be52172540c61518998"), "c54eb2be52172540c61518998");
     assert.equal(
       recordIdSchema.parse("550e8400-e29b-41d4-a716-446655440000"),
       "550e8400-e29b-41d4-a716-446655440000",

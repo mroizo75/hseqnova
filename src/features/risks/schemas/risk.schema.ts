@@ -124,7 +124,10 @@ export type UpdateRiskAssessmentInput = z.infer<typeof updateRiskAssessmentSchem
  * Helper function to calculate risk score and level
  */
 export function calculateRiskScore(likelihood: number, consequence: number) {
-  const score = likelihood * consequence;
+  const chance = Number(likelihood);
+  const severity = Number(consequence);
+  const score =
+    Number.isFinite(chance) && Number.isFinite(severity) ? chance * severity : 0;
   
   let level: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   let color: string;

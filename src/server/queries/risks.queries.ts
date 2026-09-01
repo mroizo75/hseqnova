@@ -65,6 +65,10 @@ function asRisk(row: Record<string, unknown>): Risk {
   return row as unknown as Risk;
 }
 
+function toPlain<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
 function asAssessment(row: Record<string, unknown>): RiskAssessment {
   return row as unknown as RiskAssessment;
 }
@@ -223,12 +227,12 @@ export async function loadRiskAssessmentDetail(
     .maybeSingle();
 
   if (error) {
-    throw { code: "RISK_ASSESSMENT_LOAD_FAILED", message: error.message };
+    throw new Error(error.message);
   }
   if (!row) return null;
 
   const assessment = asAssessment(row as Record<string, unknown>);
-  const { data: riskRows } = await db
+  const { data: riskRows, error: riskError } = await db
     .from("Risk")
     .select("*")
     .eq("tenantId", tenantId)
@@ -236,6 +240,10 @@ export async function loadRiskAssessmentDetail(
     .order("score", { ascending: false })
     .order("assessmentDate", { ascending: false })
     .order("createdAt", { ascending: true });
+
+  if (riskError) {
+    throw new Error(riskError.message);
+  }
 
   const risks = ((riskRows ?? []) as Record<string, unknown>[]).map(asRisk);
   const people = await loadPeopleById(risks.map((risk) => risk.ownerId));
@@ -250,14 +258,14 @@ export async function loadRiskAssessmentDetail(
     project = (projectRow as { id: string; name: string } | null) ?? null;
   }
 
-  return {
+  return toPlain({
     ...assessment,
     project,
     risks: risks.map((risk) => ({
       ...risk,
       owner: people.get(risk.ownerId) ?? null,
     })),
-  };
+  });
 }
 
 export async function loadTenantPeople(tenantId: string): Promise<RiskPerson[]> {

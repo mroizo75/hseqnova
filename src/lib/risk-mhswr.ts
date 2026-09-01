@@ -79,8 +79,13 @@ export function parseGroupsAtRisk(raw: string | null | undefined): string[] {
   }
 }
 
-export function serializeGroupsAtRisk(keys: string[]): string {
-  const unique = [...new Set(keys.filter(Boolean))];
+export function serializeGroupsAtRisk(keys: string[] | string | null | undefined): string {
+  const list = Array.isArray(keys)
+    ? keys
+    : typeof keys === "string" && keys.trim()
+      ? [keys]
+      : [];
+  const unique = [...new Set(list.filter(Boolean))];
   return JSON.stringify(unique);
 }
 

@@ -172,16 +172,16 @@ export function AiRiskGenerator({ onApply, existingRisks, disabled }: AiRiskGene
                     Hazards identified
                   </h4>
                   <ul className="list-disc list-inside text-sm space-y-0.5">
-                    {result.hazards.map((h, i) => (
-                      <li key={i}>{h}</li>
-                    ))}
+                  {result.hazards?.map((h, i) => (
+                    <li key={i}>{h}</li>
+                  ))}
                   </ul>
                 </div>
 
                 <div>
                   <h4 className="font-semibold text-sm mb-1">Who is at risk</h4>
                   <div className="flex flex-wrap gap-1.5">
-                    {result.whoAtRisk.map((w, i) => (
+                    {result.whoAtRisk?.map((w, i) => (
                       <Badge key={i} variant="outline">{w}</Badge>
                     ))}
                   </div>
@@ -191,7 +191,7 @@ export function AiRiskGenerator({ onApply, existingRisks, disabled }: AiRiskGene
                   <div>
                     <h4 className="font-semibold text-sm mb-1">Existing controls</h4>
                     <ul className="list-disc list-inside text-sm space-y-0.5">
-                      {result.existingControls.map((c, i) => (
+                      {result.existingControls?.map((c, i) => (
                         <li key={i}>{c}</li>
                       ))}
                     </ul>
@@ -199,7 +199,7 @@ export function AiRiskGenerator({ onApply, existingRisks, disabled }: AiRiskGene
                   <div>
                     <h4 className="font-semibold text-sm mb-1">Additional controls</h4>
                     <ul className="list-disc list-inside text-sm space-y-0.5">
-                      {result.additionalControls.map((c, i) => (
+                      {result.additionalControls?.map((c, i) => (
                         <li key={i}>{c}</li>
                       ))}
                     </ul>

@@ -59,7 +59,7 @@ export default async function RiskAssessmentPage({
   }
 
   const userList = people
-    .filter((person) => person.email)
+    .filter((person) => person.id && person.email)
     .map((person) => ({
       id: person.id,
       name: person.name,

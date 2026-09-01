@@ -48,8 +48,19 @@ interface ComplianceCardProps {
 
 const NO_USER = "__none__";
 
-const formatDate = (date: Date | null) =>
-  date ? format(new Date(date), "d MMM yyyy", { locale: enGB }) : null;
+const formatDate = (date: Date | string | null) => {
+  if (!date) return null;
+  const parsed = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return format(parsed, "d MMM yyyy", { locale: enGB });
+};
+
+function toDateInput(value: Date | string | null | undefined): string {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+}
 
 export function RiskAssessmentComplianceCard({
   assessment,
@@ -62,13 +73,9 @@ export function RiskAssessmentComplianceCard({
 
   const [participants, setParticipants] = useState(assessment.participants ?? "");
   const [approvedById, setApprovedById] = useState(assessment.approvedById ?? NO_USER);
-  const [approvedAt, setApprovedAt] = useState(
-    assessment.approvedAt ? new Date(assessment.approvedAt).toISOString().slice(0, 10) : ""
-  );
+  const [approvedAt, setApprovedAt] = useState(toDateInput(assessment.approvedAt));
   const [reviewedById, setReviewedById] = useState(assessment.reviewedById ?? NO_USER);
-  const [reviewedAt, setReviewedAt] = useState(
-    assessment.reviewedAt ? new Date(assessment.reviewedAt).toISOString().slice(0, 10) : ""
-  );
+  const [reviewedAt, setReviewedAt] = useState(toDateInput(assessment.reviewedAt));
   const [groupsAtRisk, setGroupsAtRisk] = useState<string[]>(
     parseGroupsAtRisk(assessment.groupsAtRisk),
   );
@@ -215,7 +222,7 @@ export function RiskAssessmentComplianceCard({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NO_USER}>— Not set —</SelectItem>
-                    {users.map((u) => (
+                    {users.filter((u) => u.id).map((u) => (
                       <SelectItem key={u.id} value={u.id}>
                         {u.name || u.email}
                       </SelectItem>
@@ -248,7 +255,7 @@ export function RiskAssessmentComplianceCard({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NO_USER}>— Not set —</SelectItem>
-                    {users.map((u) => (
+                    {users.filter((u) => u.id).map((u) => (
                       <SelectItem key={u.id} value={u.id}>
                         {u.name || u.email}
                       </SelectItem>

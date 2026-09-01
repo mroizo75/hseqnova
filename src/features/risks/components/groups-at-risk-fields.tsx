@@ -58,6 +58,7 @@ export function GroupsAtRiskFields({
       <div className="grid gap-2 sm:grid-cols-2">
         {keys.map((key) => {
           const meta = RISK_WHO_META[key as RiskWhoKey];
+          if (!meta) return null;
           const id = `${idPrefix}-${key}`;
           return (
             <label key={key} htmlFor={id} className="flex items-start gap-2 text-sm">

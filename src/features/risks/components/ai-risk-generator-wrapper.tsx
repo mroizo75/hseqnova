@@ -41,7 +41,7 @@ export function AiRiskGeneratorWrapper({ existingRisks }: AiRiskGeneratorWrapper
             <p className="font-medium">{lastGenerated.title}</p>
             <p className="text-muted-foreground">{lastGenerated.description}</p>
             <div className="flex flex-wrap gap-1.5">
-              {lastGenerated.hazards.map((h, i) => (
+              {lastGenerated.hazards?.map((h, i) => (
                 <Badge key={i} variant="outline" className="text-xs">{h}</Badge>
               ))}
             </div>

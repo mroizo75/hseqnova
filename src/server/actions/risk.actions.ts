@@ -66,6 +66,15 @@ const getNextReviewDateForFrequency = (base: Date, frequency: ControlFrequency) 
   }
 };
 
+function actionErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return fallback;
+}
+
 function toIso(value: Date | string | null | undefined): string | null {
   if (!value) return null;
   const date = value instanceof Date ? value : new Date(value);
@@ -650,7 +659,7 @@ export async function addRiskAssessmentItem(input: {
   suggestedMeasures?: string[];
 }) {
   try {
-    const { tenantId: ctxTenantId } = await getActionContext();
+    const { user, tenantId: ctxTenantId } = await getActionContext();
     if (input.tenantId !== ctxTenantId) return { success: false, error: "Not authorised" };
 
     const { data: assessment } = await getAdminDb()
@@ -661,7 +670,11 @@ export async function addRiskAssessmentItem(input: {
       .maybeSingle();
     if (!assessment) return { success: false, error: "Risk assessment not found" };
 
-    const { likelihood, consequence } = riskLevelToMatrix[input.level];
+    const matrix = riskLevelToMatrix[input.level];
+    if (!matrix) {
+      return { success: false, error: "Choose a valid risk level" };
+    }
+    const { likelihood, consequence } = matrix;
     const score = likelihood * consequence;
     const context = (input.whoMightBeHarmed ?? input.beskrivelse ?? "").trim();
     if (context.length < 10) {
@@ -686,7 +699,8 @@ export async function addRiskAssessmentItem(input: {
 
     const now = new Date().toISOString();
     const riskId = createId();
-    const { data: risk, error } = await getAdminDb()
+    const ownerId = input.ownerId || user.id;
+    const { error } = await getAdminDb()
       .from("Risk")
       .insert({
         id: riskId,
@@ -700,20 +714,22 @@ export async function addRiskAssessmentItem(input: {
         likelihood,
         consequence,
         score,
-        ownerId: input.ownerId,
+        ownerId,
         status: "OPEN",
         category: input.category as RiskCategory,
         assessmentDate: input.assessmentDate ? toIso(input.assessmentDate) : null,
         nextReviewDate: input.nextReviewDate ? toIso(input.nextReviewDate) : null,
-        controlFrequency: input.nextReviewDate ? "ANNUAL" : null,
+        controlFrequency: "ANNUAL",
+        responseStrategy: "REDUCE",
+        trend: "STABLE",
         createdAt: now,
         updatedAt: now,
       })
-      .select("*")
+      .select("id")
       .single();
 
-    if (error || !risk) {
-      throw { code: "RISK_ITEM_CREATE_FAILED", message: error?.message || "Could not add risk item" };
+    if (error) {
+      throw new Error(error.message || "Could not add risk item");
     }
 
     if (normalizedMeasures.length > 0) {
@@ -723,11 +739,11 @@ export async function addRiskAssessmentItem(input: {
         normalizedMeasures.map((measureTitle) => ({
           id: createId(),
           tenantId: input.tenantId,
-          riskId: risk.id,
+          riskId,
           title: measureTitle,
           description: "AI-suggested action. Confirm owner, due date and effect when you follow it up.",
           dueAt: dueAt.toISOString(),
-          responsibleId: input.ownerId,
+          responsibleId: ownerId,
           category: "MITIGATION",
           followUpFrequency: "ANNUAL",
           createdAt: now,
@@ -735,17 +751,16 @@ export async function addRiskAssessmentItem(input: {
         })),
       );
       if (measureError) {
-        throw { code: "MEASURE_CREATE_FAILED", message: measureError.message };
+        throw new Error(measureError.message);
       }
     }
 
     revalidatePath("/dashboard/risks");
     revalidatePath("/ansatt/risikovurderinger");
     revalidatePath(`/dashboard/risks/assessment/${input.riskAssessmentId}`);
-    return { success: true, data: risk };
+    return { success: true };
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Could not add the risk item";
-    return { success: false, error: message };
+    return { success: false, error: actionErrorMessage(error, "Could not add the risk item") };
   }
 }
 
@@ -878,9 +893,10 @@ export async function createRiskAssessmentFromStarter(input: {
     revalidatePath(`/dashboard/risks/assessment/${assessmentId}`);
     return { success: true, assessmentId };
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Could not create the risk assessment from the starter";
-    return { success: false, error: message };
+    return {
+      success: false,
+      error: actionErrorMessage(error, "Could not create the risk assessment from the starter"),
+    };
   }
 }
 
@@ -1000,8 +1016,9 @@ export async function createRiskAssessmentFromGeneratedPack(input: {
     revalidatePath(`/dashboard/risks/assessment/${assessmentId}`);
     return { success: true, assessmentId };
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Could not create the risk assessment from the draft";
-    return { success: false, error: message };
+    return {
+      success: false,
+      error: actionErrorMessage(error, "Could not create the risk assessment from the draft"),
+    };
   }
 }

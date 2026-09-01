@@ -18,7 +18,7 @@ import {
   getUkRiskStarterPack,
   resolveUkRiskStarterIndustry,
 } from "@/lib/uk-risk-starters";
-import type { IndustryRiskPackHazard } from "@/lib/industry-risk-pack";
+import { sanitizeIndustryRiskPack, type IndustryRiskPackHazard } from "@/lib/industry-risk-pack";
 import { formatGroupsAtRiskLabels, serializeGroupsAtRisk } from "@/lib/risk-mhswr";
 
 interface IndustryRiskStarterProps {
@@ -106,13 +106,13 @@ export function IndustryRiskStarter({
       const json = (await response.json()) as {
         data?: { industryLabel?: string; hazards?: IndustryRiskPackHazard[] };
       };
-      const hazards = json.data?.hazards ?? [];
-      if (hazards.length === 0) {
+      const pack = sanitizeIndustryRiskPack(json.data ?? {});
+      if (pack.hazards.length === 0) {
         throw new Error("Empty pack");
       }
-      setAiHazards(hazards);
-      setAiLabel(json.data?.industryLabel?.trim() || industryText);
-      setSelected(hazards.map((hazard) => hazard.key));
+      setAiHazards(pack.hazards);
+      setAiLabel(pack.industryLabel.trim() || industryText);
+      setSelected(pack.hazards.map((hazard) => hazard.key));
     } catch {
       toast({
         variant: "destructive",

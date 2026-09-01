@@ -16,8 +16,8 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 
 const NAV_ITEMS = [
-  { href: "/dashboard/hms-tavle", label: "Mine tavler", icon: Monitor },
-  { href: "/dashboard/hms-tavle/ny", label: "Ny tavle", icon: PlusCircle },
+  { href: "/dashboard/hms-tavle", label: "My boards", icon: Monitor },
+  { href: "/dashboard/hms-tavle/ny", label: "New board", icon: PlusCircle },
 ];
 
 interface TavleNavProps {
@@ -39,7 +39,7 @@ export function TavleNav({ tenantName }: TavleNavProps) {
         )}
         <div className="mt-1 flex items-center gap-1.5">
           <HardHat className="h-3.5 w-3.5 text-blue-600" />
-          <span className="text-xs text-blue-700 font-semibold">Digital HMS Tavle</span>
+          <span className="text-xs text-blue-700 font-semibold">Digital safety board</span>
         </div>
       </div>
 
@@ -77,14 +77,14 @@ export function TavleNav({ tenantName }: TavleNavProps) {
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
         >
           <Settings className="h-4 w-4 text-gray-400" />
-          Kontoinnstillinger
+          Account settings
         </Link>
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
         >
           <LogOut className="h-4 w-4 text-gray-400" />
-          Logg ut
+          Sign out
         </button>
       </div>
     </aside>
@@ -99,7 +99,7 @@ export function TavleMobileNav({ tenantName }: TavleNavProps) {
     <header className="sticky top-0 z-40 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:hidden">
       <Link href="/dashboard/hms-tavle" className="flex items-center gap-2">
         <HardHat className="h-5 w-5 text-blue-600" />
-        <span className="font-semibold text-sm text-gray-900">Digital HMS Tavle</span>
+        <span className="font-semibold text-sm text-gray-900">Digital safety board</span>
       </Link>
 
       <div className="flex items-center gap-1">
@@ -129,8 +129,8 @@ export function TavleMobileNav({ tenantName }: TavleNavProps) {
           size="icon"
           className="text-gray-500"
           onClick={() => signOut({ callbackUrl: "/login" })}
-          title="Logg ut"
-          aria-label="Logg ut"
+          title="Sign out"
+          aria-label="Sign out"
         >
           <LogOut className="h-5 w-5" />
         </Button>

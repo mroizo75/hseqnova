@@ -9,7 +9,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 const createSchema = z.object({
-  name: z.string().min(2, "Navn må ha minst 2 tegn"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
   description: z.string().optional(),
   projectId: z.string().optional(),
   brandColor: z.string().optional(),
@@ -19,10 +19,10 @@ const createSchema = z.object({
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.tenantId) return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Ikke autentisert", 401);
+    if (!session?.user?.tenantId) return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Not authenticated", 401);
 
     const perms = getPermissions(session.user.role);
-    if (!perms.canViewHmsTavle) return createErrorResponse(ErrorCodes.FORBIDDEN, "Ingen tilgang", 403);
+    if (!perms.canViewHmsTavle) return createErrorResponse(ErrorCodes.FORBIDDEN, "Not authorised", 403);
 
     const [tavler, subscription] = await Promise.all([
       prisma.hmsTavle.findMany({
@@ -50,10 +50,10 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.tenantId) return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Ikke autentisert", 401);
+    if (!session?.user?.tenantId) return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Not authenticated", 401);
 
     const perms = getPermissions(session.user.role);
-    if (!perms.canManageHmsTavle) return createErrorResponse(ErrorCodes.FORBIDDEN, "Ingen tilgang", 403);
+    if (!perms.canManageHmsTavle) return createErrorResponse(ErrorCodes.FORBIDDEN, "Not authorised", 403);
 
     const body = await req.json();
     const parsed = createSchema.safeParse(body);
@@ -64,14 +64,14 @@ export async function POST(req: NextRequest) {
     });
 
     if (!subscription || subscription.status === "EXPIRED" || subscription.status === "CANCELLED") {
-      return createErrorResponse("NO_SUBSCRIPTION", "Ingen aktiv HMS Tavle-abonnement", 402);
+      return createErrorResponse("NO_SUBSCRIPTION", "No active digital safety board subscription", 402);
     }
 
     const { getPlanLimits } = await import("@/features/hms-tavle/lib/tavle-plan-limits");
     const limits = getPlanLimits(subscription.plan);
     const existing = await prisma.hmsTavle.count({ where: { tenantId: session.user.tenantId } });
     if (existing >= limits.maxTavler) {
-      return createErrorResponse(ErrorCodes.CONFLICT, `Maks ${limits.maxTavler} tavle(r) på din plan`, 400);
+      return createErrorResponse(ErrorCodes.CONFLICT, `Maximum ${limits.maxTavler} board(s) on your plan`, 400);
     }
 
     const bransje = parsed.data.bransje ?? "BYGG_ANLEGG";
