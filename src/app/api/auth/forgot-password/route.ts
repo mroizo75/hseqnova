@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { createPasswordResetToken } from "@/lib/password-reset";
 import { checkRateLimit, strictRateLimiter, getClientIp } from "@/lib/rate-limit";
 import { forgotPasswordSchema } from "@/lib/validations/auth";
@@ -35,15 +35,15 @@ export async function POST(request: NextRequest) {
 
     const { email } = (validation as any).data;
 
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-      },
-    });
+    const { data: user, error: userError } = await getAdminDb()
+      .from("User")
+      .select("id, email, name")
+      .eq("email", email.toLowerCase().trim())
+      .maybeSingle();
+
+    if (userError) {
+      throw { code: "USER_LOOKUP_FAILED", message: userError.message };
+    }
 
     // SECURITY: Do not reveal whether a user exists
     // Always return success to prevent user enumeration

@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { NextRequest } from "next/server";
+import { getAdminDb } from "@/lib/supabase/admin";
 import { validateResetToken, markTokenAsUsed } from "@/lib/password-reset";
 import { checkRateLimit, apiRateLimiter, getClientIp } from "@/lib/rate-limit";
 import { resetPasswordSchema } from "@/lib/validations/auth";
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     if (!success) {
       return createErrorResponse(
         ErrorCodes.RATE_LIMIT_EXCEEDED,
-        "For mange forespørsler. Prøv igjen senere.",
+        "Too many requests. Please try again later.",
         429
       );
     }
@@ -48,36 +48,35 @@ export async function POST(request: NextRequest) {
     // Hash nytt passord
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Oppdater passord og reset security fields
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
+    const db = getAdminDb();
+    const stamp = new Date().toISOString();
+    const { error: updateError } = await db
+      .from("User")
+      .update({
         password: hashedPassword,
         failedLoginAttempts: 0,
         lockedUntil: null,
-        updatedAt: new Date(),
-      },
-    });
+        updatedAt: stamp,
+      })
+      .eq("id", userId);
 
-    // Marker token som brukt
+    if (updateError) {
+      throw { code: "PASSWORD_UPDATE_FAILED", message: updateError.message };
+    }
+
     await markTokenAsUsed(token);
 
-    // Slett alle andre aktive sessions (tvinge re-login)
-    await prisma.session.deleteMany({
-      where: { userId },
-    });
-
-    console.log(`[Reset Password] Password reset successful for user: ${userId}`);
+    await db.from("Session").delete().eq("userId", userId);
 
     return createSuccessResponse(
       undefined,
-      "Passordet er tilbakestilt. Du kan nå logge inn med det nye passordet."
+      "Your password has been reset. You can now sign in with the new password."
     );
   } catch (error) {
     console.error("[Reset Password] Error:", error);
     return createErrorResponse(
       ErrorCodes.INTERNAL_ERROR,
-      "En feil oppstod. Prøv igjen senere.",
+      "An error occurred. Please try again later.",
       500
     );
   }

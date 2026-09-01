@@ -25,7 +25,7 @@ export default async function DashboardLayout({
 
   const user = session.user as SessionUser;
   const sessionUser = session.user;
-  if (user.isSuperAdmin || user.isSupport) {
+  if ((user.isSuperAdmin || user.isSupport) && !user.tenantId) {
     redirect("/admin");
   }
 

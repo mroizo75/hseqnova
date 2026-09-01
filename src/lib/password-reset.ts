@@ -1,143 +1,124 @@
-import { prisma } from "@/lib/db";
 import crypto from "crypto";
+import { createId } from "@/lib/ids";
+import { getAdminDb } from "@/lib/supabase/admin";
 
 const TOKEN_EXPIRY_HOURS = 1;
 const MAX_TOKENS_PER_USER_PER_DAY = 5;
 
-/**
- * Generer en sikker password reset token
- */
 export function generateResetToken(): string {
   return crypto.randomBytes(32).toString("hex");
 }
 
-/**
- * Opprett password reset token for bruker
- */
 export async function createPasswordResetToken(
   userId: string,
   ipAddress?: string,
-  userAgent?: string
+  userAgent?: string,
 ): Promise<{ token: string; expires: Date } | { error: string }> {
   try {
-    // Sjekk hvor mange tokens brukeren har laget siste 24 timer
+    const db = getAdminDb();
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const recentTokens = await prisma.passwordResetToken.count({
-      where: {
-        userId,
-        createdAt: {
-          gte: oneDayAgo,
-        },
-      },
-    });
+    const { count, error: countError } = await db
+      .from("PasswordResetToken")
+      .select("id", { count: "exact", head: true })
+      .eq("userId", userId)
+      .gte("createdAt", oneDayAgo.toISOString());
 
-    if (recentTokens >= MAX_TOKENS_PER_USER_PER_DAY) {
+    if (countError) {
+      throw { code: "RESET_TOKEN_COUNT_FAILED", message: countError.message };
+    }
+
+    if ((count ?? 0) >= MAX_TOKENS_PER_USER_PER_DAY) {
       return {
-        error: `For mange reset-forespørsler. Prøv igjen om ${24 - Math.floor((Date.now() - oneDayAgo.getTime()) / (60 * 60 * 1000))} timer.`,
+        error: "Too many reset requests. Try again in a few hours.",
       };
     }
 
-    // Generer token
     const token = generateResetToken();
     const expires = new Date(Date.now() + TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
 
-    // Slett gamle ubrukte tokens for denne brukeren
-    await prisma.passwordResetToken.deleteMany({
-      where: {
-        userId,
-        used: false,
-        expires: {
-          lt: new Date(),
-        },
-      },
+    const { error: deleteError } = await db
+      .from("PasswordResetToken")
+      .delete()
+      .eq("userId", userId)
+      .eq("used", false)
+      .lt("expires", new Date().toISOString());
+
+    if (deleteError) {
+      throw { code: "RESET_TOKEN_CLEANUP_FAILED", message: deleteError.message };
+    }
+
+    const { error: insertError } = await db.from("PasswordResetToken").insert({
+      id: createId(),
+      userId,
+      token,
+      expires: expires.toISOString(),
+      ipAddress: ipAddress ?? null,
+      userAgent: userAgent ?? null,
     });
 
-    // Opprett ny token
-    await prisma.passwordResetToken.create({
-      data: {
-        userId,
-        token,
-        expires,
-        ipAddress,
-        userAgent,
-      },
-    });
+    if (insertError) {
+      throw { code: "RESET_TOKEN_CREATE_FAILED", message: insertError.message };
+    }
 
     return { token, expires };
-  } catch (error) {
-    console.error("Failed to create password reset token:", error);
-    return { error: "Kunne ikke opprette reset-token" };
+  } catch {
+    return { error: "Could not create a reset token." };
   }
 }
 
-/**
- * Valider password reset token
- */
 export async function validateResetToken(
-  token: string
+  token: string,
 ): Promise<{ userId: string } | { error: string }> {
   try {
-    const resetToken = await prisma.passwordResetToken.findUnique({
-      where: { token },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-          },
-        },
-      },
-    });
+    const { data, error } = await getAdminDb()
+      .from("PasswordResetToken")
+      .select("userId, used, expires")
+      .eq("token", token)
+      .maybeSingle();
 
-    if (!resetToken) {
-      return { error: "Ugyldig eller utløpt token" };
+    if (error) {
+      throw { code: "RESET_TOKEN_LOOKUP_FAILED", message: error.message };
     }
 
-    if (resetToken.used) {
-      return { error: "Denne token er allerede brukt" };
+    if (!data) {
+      return { error: "Invalid or expired reset link." };
     }
 
-    if (resetToken.expires < new Date()) {
-      return { error: "Token er utløpt. Be om en ny reset-link." };
+    if (data.used) {
+      return { error: "This reset link has already been used." };
     }
 
-    return { userId: resetToken.userId };
-  } catch (error) {
-    console.error("Failed to validate reset token:", error);
-    return { error: "Kunne ikke validere token" };
+    if (new Date(data.expires) < new Date()) {
+      return { error: "This reset link has expired. Request a new one." };
+    }
+
+    return { userId: data.userId };
+  } catch {
+    return { error: "Could not validate the reset link." };
   }
 }
 
-/**
- * Marker token som brukt
- */
 export async function markTokenAsUsed(token: string): Promise<void> {
-  try {
-    await prisma.passwordResetToken.update({
-      where: { token },
-      data: { used: true },
-    });
-  } catch (error) {
-    console.error("Failed to mark token as used:", error);
+  const { error } = await getAdminDb()
+    .from("PasswordResetToken")
+    .update({ used: true })
+    .eq("token", token);
+
+  if (error) {
+    throw { code: "RESET_TOKEN_UPDATE_FAILED", message: error.message };
   }
 }
 
-/**
- * Cleanup utløpte tokens (kjør periodisk)
- */
 export async function cleanupExpiredTokens(): Promise<number> {
-  try {
-    const result = await prisma.passwordResetToken.deleteMany({
-      where: {
-        expires: {
-          lt: new Date(),
-        },
-      },
-    });
-    return result.count;
-  } catch (error) {
-    console.error("Failed to cleanup expired tokens:", error);
-    return 0;
-  }
-}
+  const { data, error } = await getAdminDb()
+    .from("PasswordResetToken")
+    .delete()
+    .lt("expires", new Date().toISOString())
+    .select("id");
 
+  if (error) {
+    throw { code: "RESET_TOKEN_CLEANUP_FAILED", message: error.message };
+  }
+
+  return data?.length ?? 0;
+}
