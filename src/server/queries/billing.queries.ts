@@ -1,6 +1,15 @@
 import { getAdminDb } from "@/lib/supabase/admin";
 import { createId } from "@/lib/ids";
 import { getAddonPack, monthlyTotalGbp, type AddonPack } from "@/lib/billing-catalog";
+import { getStripe } from "@/lib/stripe";
+import {
+  isPaidCancelPeriodExpired,
+  shouldKeepAccessAfterCancel,
+  shouldRestoreSuspendedTenant,
+  stripePaidUntilUnix,
+  stripePeriodStartUnix,
+  type StripePeriodSource,
+} from "@/lib/stripe-subscription-access";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -231,4 +240,225 @@ export async function activatePaidSignup(input: {
 
   const enabled = await loadEnabledBillingModuleKeys(input.tenantId);
   await upsertSubscriptionTotal(input.tenantId, enabled);
+}
+
+async function syncLocalSubscriptionAccess(
+  tenantId: string,
+  patch: {
+    cancelAtPeriodEnd: boolean;
+    status: "ACTIVE" | "CANCELLED";
+    currentPeriodEnd?: string | null;
+    currentPeriodStart?: string | null;
+    stripeSubscriptionId?: string | null;
+  },
+): Promise<void> {
+  const db = getAdminDb();
+  const { data: existing, error: lookupError } = await db
+    .from("Subscription")
+    .select("id")
+    .eq("tenantId", tenantId)
+    .maybeSingle();
+  if (lookupError) {
+    throw { code: "SUBSCRIPTION_LOOKUP_FAILED", message: lookupError.message };
+  }
+  if (!existing?.id) return;
+
+  const payload: Record<string, unknown> = {
+    cancelAtPeriodEnd: patch.cancelAtPeriodEnd,
+    status: patch.status,
+    updatedAt: nowIso(),
+  };
+  if (patch.currentPeriodEnd) payload.currentPeriodEnd = patch.currentPeriodEnd;
+  if (patch.currentPeriodStart) payload.currentPeriodStart = patch.currentPeriodStart;
+  if (patch.stripeSubscriptionId) payload.stripeSubscriptionId = patch.stripeSubscriptionId;
+
+  const { error } = await db.from("Subscription").update(payload).eq("id", existing.id);
+  if (error) {
+    throw { code: "SUBSCRIPTION_UPDATE_FAILED", message: error.message };
+  }
+}
+
+function periodIsoFromUnix(unix: number | null): string | null {
+  return unix ? new Date(unix * 1000).toISOString() : null;
+}
+
+export async function applyStripeSubscriptionAccess(input: {
+  stripeCustomerId: string;
+  subscription: StripePeriodSource & { id?: string };
+}): Promise<void> {
+  const db = getAdminDb();
+  const { data: tenant, error } = await db
+    .from("Tenant")
+    .select("id, status, onboardingStatus")
+    .eq("stripeCustomerId", input.stripeCustomerId)
+    .maybeSingle();
+  if (error) {
+    throw { code: "TENANT_LOOKUP_FAILED", message: error.message };
+  }
+  if (!tenant?.id || tenant.onboardingStatus === "NOT_STARTED") return;
+
+  const now = nowIso();
+  const periodEnd = periodIsoFromUnix(stripePaidUntilUnix(input.subscription));
+  const periodStart = periodIsoFromUnix(stripePeriodStartUnix(input.subscription));
+  const subscriptionId = input.subscription.id ?? null;
+
+  if (shouldKeepAccessAfterCancel(input.subscription)) {
+    if (tenant.status === "SUSPENDED" || tenant.status === "TRIAL" || tenant.status === "ACTIVE") {
+      const { error: tenantError } = await db
+        .from("Tenant")
+        .update({ status: "ACTIVE", suspendedAt: null, updatedAt: now })
+        .eq("id", tenant.id)
+        .neq("onboardingStatus", "NOT_STARTED");
+      if (tenantError) {
+        throw { code: "TENANT_UPDATE_FAILED", message: tenantError.message };
+      }
+    }
+    await syncLocalSubscriptionAccess(tenant.id, {
+      cancelAtPeriodEnd: true,
+      status: "ACTIVE",
+      currentPeriodEnd: periodEnd,
+      currentPeriodStart: periodStart,
+      stripeSubscriptionId: subscriptionId,
+    });
+    return;
+  }
+
+  const status = (input.subscription.status ?? "").toLowerCase();
+  const cancelled = status === "canceled" || status === "cancelled";
+  if (!cancelled) return;
+
+  const { error: suspendError } = await db
+    .from("Tenant")
+    .update({ status: "SUSPENDED", suspendedAt: now, updatedAt: now })
+    .eq("id", tenant.id)
+    .in("status", ["ACTIVE", "TRIAL"])
+    .neq("onboardingStatus", "NOT_STARTED");
+  if (suspendError) {
+    throw { code: "TENANT_UPDATE_FAILED", message: suspendError.message };
+  }
+  await syncLocalSubscriptionAccess(tenant.id, {
+    cancelAtPeriodEnd: true,
+    status: "CANCELLED",
+    currentPeriodEnd: periodEnd,
+    currentPeriodStart: periodStart,
+    stripeSubscriptionId: subscriptionId,
+  });
+}
+
+export async function syncLiveStripeSubscription(input: {
+  stripeCustomerId: string;
+  subscriptionId: string;
+  subscription: StripePeriodSource;
+}): Promise<void> {
+  const db = getAdminDb();
+  const { data: tenant, error } = await db
+    .from("Tenant")
+    .select("id")
+    .eq("stripeCustomerId", input.stripeCustomerId)
+    .maybeSingle();
+  if (error) {
+    throw { code: "TENANT_LOOKUP_FAILED", message: error.message };
+  }
+  if (!tenant?.id) return;
+
+  await syncLocalSubscriptionAccess(tenant.id, {
+    cancelAtPeriodEnd: Boolean(input.subscription.cancel_at_period_end),
+    status: "ACTIVE",
+    currentPeriodEnd: periodIsoFromUnix(stripePaidUntilUnix(input.subscription)),
+    currentPeriodStart: periodIsoFromUnix(stripePeriodStartUnix(input.subscription)),
+    stripeSubscriptionId: input.subscriptionId,
+  });
+}
+
+export async function suspendExpiredCancelledSubscriptions(): Promise<number> {
+  const db = getAdminDb();
+  const now = nowIso();
+  const { data: rows, error } = await db
+    .from("Subscription")
+    .select("id, tenantId, cancelAtPeriodEnd, currentPeriodEnd")
+    .eq("cancelAtPeriodEnd", true)
+    .lte("currentPeriodEnd", now);
+  if (error) {
+    throw { code: "SUBSCRIPTION_LOOKUP_FAILED", message: error.message };
+  }
+
+  let ended = 0;
+  for (const row of rows ?? []) {
+    if (
+      !isPaidCancelPeriodExpired({
+        cancelAtPeriodEnd: Boolean(row.cancelAtPeriodEnd),
+        currentPeriodEnd: (row.currentPeriodEnd as string | null) ?? null,
+      })
+    ) {
+      continue;
+    }
+    const { error: tenantError } = await db
+      .from("Tenant")
+      .update({ status: "SUSPENDED", suspendedAt: now, updatedAt: now })
+      .eq("id", row.tenantId)
+      .in("status", ["ACTIVE", "TRIAL"]);
+    if (tenantError) {
+      throw { code: "TENANT_UPDATE_FAILED", message: tenantError.message };
+    }
+    const { error: subError } = await db
+      .from("Subscription")
+      .update({ status: "CANCELLED", updatedAt: now })
+      .eq("id", row.id);
+    if (subError) {
+      throw { code: "SUBSCRIPTION_UPDATE_FAILED", message: subError.message };
+    }
+    ended += 1;
+  }
+  return ended;
+}
+
+export async function ensureTenantPaidAccess(tenant: {
+  id: string;
+  status: string | null;
+  stripeSubscriptionId?: string | null;
+}): Promise<boolean> {
+  if (tenant.status !== "SUSPENDED") return true;
+
+  const db = getAdminDb();
+  const { data: local } = await db
+    .from("Subscription")
+    .select("cancelAtPeriodEnd, currentPeriodEnd")
+    .eq("tenantId", tenant.id)
+    .maybeSingle();
+
+  let stripe: StripePeriodSource | null = null;
+  if (tenant.stripeSubscriptionId) {
+    try {
+      stripe = await getStripe().subscriptions.retrieve(tenant.stripeSubscriptionId);
+    } catch {
+      stripe = null;
+    }
+  }
+
+  const localState = local
+    ? {
+        cancelAtPeriodEnd: Boolean(local.cancelAtPeriodEnd),
+        currentPeriodEnd: (local.currentPeriodEnd as string | null) ?? null,
+      }
+    : null;
+
+  if (!shouldRestoreSuspendedTenant(localState, stripe)) return false;
+
+  const now = nowIso();
+  const { error } = await db
+    .from("Tenant")
+    .update({ status: "ACTIVE", suspendedAt: null, updatedAt: now })
+    .eq("id", tenant.id)
+    .eq("status", "SUSPENDED");
+  if (error) {
+    throw { code: "TENANT_UPDATE_FAILED", message: error.message };
+  }
+  await syncLocalSubscriptionAccess(tenant.id, {
+    cancelAtPeriodEnd: true,
+    status: "ACTIVE",
+    currentPeriodEnd: stripe ? periodIsoFromUnix(stripePaidUntilUnix(stripe)) : localState?.currentPeriodEnd,
+    currentPeriodStart: stripe ? periodIsoFromUnix(stripePeriodStartUnix(stripe)) : null,
+    stripeSubscriptionId: tenant.stripeSubscriptionId ?? null,
+  });
+  return true;
 }

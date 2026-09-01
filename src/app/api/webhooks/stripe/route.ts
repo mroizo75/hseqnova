@@ -5,9 +5,12 @@ import { createId } from "@/lib/ids";
 import {
   activateAddonPackForTenant,
   activatePaidSignup,
+  applyStripeSubscriptionAccess,
   loadEnabledBillingModuleKeys,
+  syncLiveStripeSubscription,
   upsertSubscriptionTotal,
 } from "@/server/queries/billing.queries";
+import { shouldKeepAccessAfterCancel } from "@/lib/stripe-subscription-access";
 import { parseSignupCheckoutMetadata } from "@/lib/signup-checkout";
 import Stripe from "stripe";
 
@@ -104,7 +107,10 @@ export async function POST(request: NextRequest) {
           amount: (invoice.total ?? 0) / 100,
           amountExVat: (invoice.subtotal ?? 0) / 100,
           vatAmount: ((invoice.total ?? 0) - (invoice.subtotal ?? 0)) / 100,
-          vatRate: 20,
+          vatRate:
+            (invoice.subtotal ?? 0) > 0
+              ? Math.round((((invoice.total ?? 0) - (invoice.subtotal ?? 0)) / (invoice.subtotal ?? 1)) * 100)
+              : 0,
           currency: (invoice.currency ?? "gbp").toUpperCase(),
           dueDate: invoice.due_date ? new Date(invoice.due_date * 1000).toISOString() : now,
           paidDate: event.type === "invoice.paid" ? now : null,
@@ -137,6 +143,17 @@ export async function POST(request: NextRequest) {
         .from("Tenant")
         .update({ stripeSubscriptionId: subscription.id, updatedAt: new Date().toISOString() })
         .eq("stripeCustomerId", customerId);
+      if (shouldKeepAccessAfterCancel(subscription)) {
+        await applyStripeSubscriptionAccess({ stripeCustomerId: customerId, subscription });
+      } else {
+        await syncLiveStripeSubscription({
+          stripeCustomerId: customerId,
+          subscriptionId: subscription.id,
+          subscription,
+        });
+      }
+    } else if (customerId) {
+      await applyStripeSubscriptionAccess({ stripeCustomerId: customerId, subscription });
     }
 
     if (subscription.status === "active") {
@@ -151,13 +168,7 @@ export async function POST(request: NextRequest) {
     const subscription = event.data.object as Stripe.Subscription;
     const customerId = stripeRefId(subscription.customer);
     if (customerId) {
-      const now = new Date().toISOString();
-      await db
-        .from("Tenant")
-        .update({ status: "SUSPENDED", suspendedAt: now, updatedAt: now })
-        .eq("stripeCustomerId", customerId)
-        .in("status", ["ACTIVE", "TRIAL"])
-        .neq("onboardingStatus", "NOT_STARTED");
+      await applyStripeSubscriptionAccess({ stripeCustomerId: customerId, subscription });
     }
   }
 

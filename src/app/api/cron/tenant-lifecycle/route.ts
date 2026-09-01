@@ -5,6 +5,7 @@ import { startCronExecution } from "@/lib/cron-tracker";
 import { sendEmail } from "@/lib/email";
 import { suspensionWarning14Days, suspensionWarning7Days } from "@/lib/email-suspension";
 import { permanentlyDeleteTenant } from "@/server/actions/tenant-deletion";
+import { suspendExpiredCancelledSubscriptions } from "@/server/queries/billing.queries";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const db = getAdminDb();
+    const endedCancels = await suspendExpiredCancelledSubscriptions();
 
     const { data: suspendedTenants } = await db
       .from("Tenant")
@@ -36,6 +38,7 @@ export async function GET(request: NextRequest) {
 
     const results = {
       processed: 0,
+      endedCancels,
       warnings14: 0,
       warnings7: 0,
       deleted: 0,
