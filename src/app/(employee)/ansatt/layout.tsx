@@ -27,8 +27,8 @@ export default async function EmployeeLayout({
     redirect("/login");
   }
 
-  if (session.user.isSuperAdmin || session.user.isSupport) {
-    redirect("/admin");
+  if (session.user.isSuperAdmin || session.user.isSupport || session.user.isSales || session.user.isSalesManager) {
+    redirect(session.user.isSales || session.user.isSalesManager ? "/admin/crm" : "/admin");
   }
 
   const db = getAdminDb();

@@ -55,7 +55,9 @@ model User {
   image         String? // Avatar/profilbilde
   password      String?
   isSuperAdmin  Boolean   @default(false)
-  isSupport     Boolean   @default(false) // Support rolle: kan kun administrere tenants
+  isSupport     Boolean   @default(false) // Support role: limited tenant administration
+  isSales       Boolean   @default(false) // Salesperson: assigned CRM + support only
+  isSalesManager Boolean  @default(false) // UK sales manager: all CRM + organisations + support
   lastTenantId  String?
   supabaseUserId String? @unique
 
@@ -135,12 +137,18 @@ model User {
   handbookSignatures              HandbookSignature[]            @relation("HandbookSignatures")
   handbookReviews                 HmsHandbook[]                  @relation("HandbookReviewer")
   handbookApprovals               HandbookVersion[]              @relation("HandbookApprover")
+  crmOrganisationsOwned           CrmOrganisation[]              @relation("CrmOrganisationOwner")
+  crmDealsOwned                   CrmDeal[]                      @relation("CrmDealOwner")
+  crmActivitiesCreated            CrmActivity[]                  @relation("CrmActivityCreatedBy")
+  crmTasksAssigned                CrmTask[]                      @relation("CrmTaskAssignedTo")
   createdAt                       DateTime                       @default(now())
   updatedAt                       DateTime                       @updatedAt
 
   @@index([email])
   @@index([isSuperAdmin])
   @@index([isSupport])
+  @@index([isSales])
+  @@index([isSalesManager])
   @@index([lockedUntil])
   @@index([emailVerified])
 }
@@ -272,6 +280,7 @@ model Tenant {
   auditLogs                           AuditLog[]
   subscription                        Subscription?
   offers                              TenantOffer[]
+  crmOrganisation                     CrmOrganisation?
   invoices                            Invoice[]
   formTemplates                       FormTemplate[] // Digital forms
   notifications                       Notification[]
@@ -477,6 +486,7 @@ model TenantOffer {
   updatedAt     DateTime          @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  crmDeals CrmDeal[]
 
   @@index([tenantId])
   @@index([status])
@@ -527,6 +537,158 @@ enum TenantActivityChannel {
   EMAIL // E-post
   MEETING // Fysisk eller digitalt møte
   OTHER // Annen kanal
+}
+
+// ============================================
+// Platform CRM (sales pipeline — not product tenants)
+// ============================================
+
+enum CrmSource {
+  WEBSITE
+  MANUAL
+  PACKAGE
+  REFERRAL
+  OTHER
+}
+
+enum CrmDealStage {
+  NEW
+  QUALIFIED
+  DEMO
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum CrmActivityType {
+  CONTACT
+  FOLLOW_UP
+  OFFER_SENT
+  MEETING
+  NOTE
+  OTHER
+}
+
+enum CrmActivityChannel {
+  PHONE
+  EMAIL
+  MEETING
+  OTHER
+}
+
+enum CrmTaskStatus {
+  OPEN
+  DONE
+}
+
+model CrmOrganisation {
+  id            String    @id @default(cuid())
+  name          String
+  companyNumber String?
+  industry      String?
+  employeeCount Int?
+  website       String?
+  address       String?
+  city          String?
+  postalCode    String?
+  notes         String?   @db.Text
+  tenantId      String?   @unique
+  ownerId       String?
+  source        CrmSource @default(MANUAL)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  owner    User?   @relation("CrmOrganisationOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  contacts CrmContact[]
+  deals    CrmDeal[]
+  activities CrmActivity[]
+  tasks    CrmTask[]
+
+  @@index([ownerId])
+  @@index([name])
+}
+
+model CrmContact {
+  id             String   @id @default(cuid())
+  organisationId String
+  name           String
+  email          String?
+  phone          String?
+  jobTitle       String?
+  isPrimary      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organisation CrmOrganisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId])
+  @@index([email])
+}
+
+model CrmDeal {
+  id              String       @id @default(cuid())
+  organisationId  String
+  ownerId         String?
+  title           String
+  valueGbp        Float        @default(0)
+  currency        String       @default("GBP")
+  stage           CrmDealStage @default(NEW)
+  expectedCloseAt DateTime?
+  lostReason      String?
+  tenantOfferId   String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organisation CrmOrganisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  owner        User?           @relation("CrmDealOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  tenantOffer  TenantOffer?    @relation(fields: [tenantOfferId], references: [id], onDelete: SetNull)
+  activities   CrmActivity[]
+  tasks        CrmTask[]
+
+  @@index([organisationId])
+  @@index([ownerId])
+  @@index([stage])
+}
+
+model CrmActivity {
+  id             String             @id @default(cuid())
+  organisationId String
+  dealId         String?
+  type           CrmActivityType    @default(NOTE)
+  channel        CrmActivityChannel @default(OTHER)
+  note           String             @db.Text
+  createdById    String
+  createdAt      DateTime           @default(now())
+
+  organisation CrmOrganisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  deal         CrmDeal?        @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  createdBy    User            @relation("CrmActivityCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([organisationId, createdAt])
+  @@index([dealId])
+}
+
+model CrmTask {
+  id             String        @id @default(cuid())
+  organisationId String
+  dealId         String?
+  assignedToId   String
+  title          String
+  dueAt          DateTime?
+  status         CrmTaskStatus @default(OPEN)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organisation CrmOrganisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  deal         CrmDeal?        @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  assignedTo   User            @relation("CrmTaskAssignedTo", fields: [assignedToId], references: [id], onDelete: Restrict)
+
+  @@index([assignedToId])
+  @@index([dueAt])
+  @@index([status])
+  @@index([organisationId])
 }
 
 enum RegistrationType {

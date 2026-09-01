@@ -52,7 +52,7 @@ export async function getAppUser(opts: { id?: string; email?: string }) {
   const db = getAdminDb();
   let query = db
     .from("User")
-    .select("id, email, name, image, isSuperAdmin, isSupport, lastTenantId");
+    .select("id, email, name, image, isSuperAdmin, isSupport, isSales, isSalesManager, lastTenantId");
 
   if (opts.id) {
     query = query.eq("id", opts.id);
@@ -73,6 +73,8 @@ export async function getAppUser(opts: { id?: string; email?: string }) {
     image: string | null;
     isSuperAdmin: boolean;
     isSupport: boolean;
+    isSales: boolean;
+    isSalesManager: boolean;
     lastTenantId: string | null;
   } | null;
 }

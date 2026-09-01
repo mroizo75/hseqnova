@@ -45,8 +45,8 @@ export function TenantActivityTimeline({ tenantId, activities }: TenantActivityT
     if (!note.trim()) {
       toast({
         variant: "destructive",
-        title: "Tomt notat",
-        description: "Skriv et kort notat før du lagrer.",
+        title: "Empty note",
+        description: "Write a short note before saving.",
       });
       return;
     }
@@ -62,8 +62,8 @@ export function TenantActivityTimeline({ tenantId, activities }: TenantActivityT
 
     if (result.success) {
       toast({
-        title: "Aktivitet lagret",
-        description: "CRM-aktiviteten er lagret for kunden.",
+        title: "Activity saved",
+        description: "The CRM activity has been saved for this customer.",
       });
       setNote("");
       router.refresh();
@@ -79,30 +79,30 @@ export function TenantActivityTimeline({ tenantId, activities }: TenantActivityT
   const formatTypeLabel = (value: TenantActivityType) => {
     switch (value) {
       case "CONTACT":
-        return "Førstegangskontakt";
+        return "First contact";
       case "FOLLOW_UP":
-        return "Oppfølging";
+        return "Follow-up";
       case "OFFER_SENT":
-        return "Tilbud sendt";
+        return "Proposal sent";
       case "MEETING":
-        return "Møte / demo";
+        return "Meeting / demo";
       case "OTHER":
       default:
-        return "Annet";
+        return "Other";
     }
   };
 
   const formatChannelLabel = (value: TenantActivityChannel) => {
     switch (value) {
       case "PHONE":
-        return "Telefon";
+        return "Phone";
       case "EMAIL":
-        return "E-post";
+        return "Email";
       case "MEETING":
-        return "Møte";
+        return "Meeting";
       case "OTHER":
       default:
-        return "Annet";
+        return "Other";
     }
   };
 
@@ -123,16 +123,16 @@ export function TenantActivityTimeline({ tenantId, activities }: TenantActivityT
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Aktivitetslogg (salg / oppfølging)</CardTitle>
+        <CardTitle>Activity log (sales / follow-up)</CardTitle>
         <CardDescription>
-          Registrer kontakt, tilbud, møter og annen oppfølging for denne kunden.
+          Log contact, proposals, meetings and other follow-up for this customer.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid md:grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="activity-type">Type aktivitet</Label>
+              <Label htmlFor="activity-type">Activity type</Label>
               <Select
                 value={type}
                 onValueChange={(value) => setType(value as TenantActivityType)}
@@ -141,16 +141,16 @@ export function TenantActivityTimeline({ tenantId, activities }: TenantActivityT
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="CONTACT">Førstegangskontakt</SelectItem>
-                  <SelectItem value="FOLLOW_UP">Oppfølging</SelectItem>
-                  <SelectItem value="OFFER_SENT">Tilbud sendt</SelectItem>
-                  <SelectItem value="MEETING">Møte / demo</SelectItem>
-                  <SelectItem value="OTHER">Annet</SelectItem>
+                  <SelectItem value="CONTACT">First contact</SelectItem>
+                  <SelectItem value="FOLLOW_UP">Follow-up</SelectItem>
+                  <SelectItem value="OFFER_SENT">Proposal sent</SelectItem>
+                  <SelectItem value="MEETING">Meeting / demo</SelectItem>
+                  <SelectItem value="OTHER">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label htmlFor="activity-channel">Kanal</Label>
+              <Label htmlFor="activity-channel">Channel</Label>
               <Select
                 value={channel}
                 onValueChange={(value) => setChannel(value as TenantActivityChannel)}
@@ -159,10 +159,10 @@ export function TenantActivityTimeline({ tenantId, activities }: TenantActivityT
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="PHONE">Telefon</SelectItem>
-                  <SelectItem value="EMAIL">E-post</SelectItem>
-                  <SelectItem value="MEETING">Møte</SelectItem>
-                  <SelectItem value="OTHER">Annet</SelectItem>
+                  <SelectItem value="PHONE">Phone</SelectItem>
+                  <SelectItem value="EMAIL">Email</SelectItem>
+                  <SelectItem value="MEETING">Meeting</SelectItem>
+                  <SelectItem value="OTHER">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>

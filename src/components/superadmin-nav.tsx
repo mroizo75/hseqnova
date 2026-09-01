@@ -20,25 +20,49 @@ import {
   UserPlus,
   Scale,
   Menu,
+  Kanban,
+  Briefcase,
+  ListTodo,
 } from "lucide-react";
 import { Badge } from "./ui/badge";
+import { canAccessAdminPath } from "@/lib/platform-access";
 
-const allNavItems = [
-  { href: "/admin", label: "Overview", icon: LayoutDashboard, supportAccess: true },
-  { href: "/admin/support", label: "Support", icon: Headphones, supportAccess: true },
-  { href: "/admin/registrations", label: "New registrations", icon: UserPlus, supportAccess: true },
-  { href: "/admin/tenants", label: "Organisations", icon: Building2, supportAccess: true },
-  { href: "/admin/invoices", label: "Invoices", icon: FileText, supportAccess: false },
-  { href: "/admin/legal-references", label: "Legal register", icon: Scale, supportAccess: true },
-  { href: "/admin/newsletter", label: "Newsletter", icon: FileText, supportAccess: false },
-  { href: "/admin/users", label: "Users", icon: Users, supportAccess: false },
-  { href: "/admin/settings", label: "Settings", icon: Settings, supportAccess: false },
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+};
+
+const allNavItems: NavItem[] = [
+  { href: "/admin", label: "Overview", icon: LayoutDashboard },
+  { href: "/admin/crm", label: "Sales", icon: Briefcase },
+  { href: "/admin/crm/pipeline", label: "Pipeline", icon: Kanban },
+  { href: "/admin/crm/companies", label: "Companies", icon: Building2 },
+  { href: "/admin/crm/tasks", label: "Tasks", icon: ListTodo },
+  { href: "/admin/support", label: "Support", icon: Headphones },
+  { href: "/admin/registrations", label: "New registrations", icon: UserPlus },
+  { href: "/admin/tenants", label: "Organisations", icon: Building2 },
+  { href: "/admin/invoices", label: "Invoices", icon: FileText },
+  { href: "/admin/legal-references", label: "Legal register", icon: Scale },
+  { href: "/admin/newsletter", label: "Newsletter", icon: FileText },
+  { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 interface SuperAdminNavProps {
   isSuperAdmin: boolean;
   isSupport: boolean;
+  isSales?: boolean;
+  isSalesManager?: boolean;
+  hasTenant?: boolean;
   openSupportCount?: number;
+}
+
+function roleBadge(props: SuperAdminNavProps) {
+  if (props.isSuperAdmin) return { label: "SUPERADMIN", className: "bg-primary/10 text-primary" };
+  if (props.isSalesManager) return { label: "SALES MANAGER", className: "bg-amber-100 text-amber-800" };
+  if (props.isSales) return { label: "SALES", className: "bg-emerald-100 text-emerald-800" };
+  return { label: "SUPPORT", className: "bg-blue-100 text-blue-700" };
 }
 
 function NavLinks({
@@ -47,7 +71,7 @@ function NavLinks({
   openSupportCount,
   onNavigate,
 }: {
-  navItems: typeof allNavItems;
+  navItems: NavItem[];
   pathname: string;
   openSupportCount: number;
   onNavigate?: () => void;
@@ -56,7 +80,12 @@ function NavLinks({
     <>
       {navItems.map((item) => {
         const Icon = item.icon;
-        const isActive = pathname === item.href;
+        const isActive =
+          item.href === "/admin"
+            ? pathname === "/admin"
+            : item.href === "/admin/crm"
+              ? pathname === "/admin/crm"
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
         const showBadge = item.href === "/admin/support" && openSupportCount > 0;
         return (
           <Link
@@ -65,9 +94,7 @@ function NavLinks({
             onClick={onNavigate}
             className={cn(
               "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-              isActive
-                ? "bg-primary text-primary-foreground"
-                : "hover:bg-accent"
+              isActive ? "bg-primary text-primary-foreground" : "hover:bg-accent",
             )}
           >
             <Icon className="h-4 w-4 shrink-0" />
@@ -84,15 +111,23 @@ function NavLinks({
   );
 }
 
-function NavFooter({ onNavigate }: { onNavigate?: () => void }) {
+function NavFooter({
+  hasTenant,
+  onNavigate,
+}: {
+  hasTenant: boolean;
+  onNavigate?: () => void;
+}) {
   return (
     <div className="border-t p-4 space-y-2">
-      <Button asChild variant="outline" className="w-full justify-start">
-        <Link href="/dashboard" onClick={onNavigate}>
-          <LayoutDashboard className="mr-3 h-4 w-4" />
-          To customer dashboard
-        </Link>
-      </Button>
+      {hasTenant && (
+        <Button asChild variant="outline" className="w-full justify-start bg-transparent">
+          <Link href="/dashboard" onClick={onNavigate}>
+            <LayoutDashboard className="mr-3 h-4 w-4" />
+            To customer dashboard
+          </Link>
+        </Button>
+      )}
       <Button
         variant="ghost"
         className="w-full justify-start"
@@ -108,32 +143,33 @@ function NavFooter({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function SuperAdminNav({ isSuperAdmin, isSupport, openSupportCount = 0 }: SuperAdminNavProps) {
+export function SuperAdminNav({
+  isSuperAdmin,
+  isSupport,
+  isSales = false,
+  isSalesManager = false,
+  hasTenant = false,
+  openSupportCount = 0,
+}: SuperAdminNavProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-
-  const navItems = isSuperAdmin
-    ? allNavItems
-    : allNavItems.filter((item) => item.supportAccess);
+  const staff = { isSuperAdmin, isSupport, isSales, isSalesManager };
+  const navItems = allNavItems.filter((item) => canAccessAdminPath(item.href, staff));
+  const badge = roleBadge({ isSuperAdmin, isSupport, isSales, isSalesManager });
 
   const brand = (
     <div className="flex items-center gap-2">
       {isSuperAdmin ? (
         <Shield className="h-6 w-6 text-primary" />
+      ) : isSalesManager || isSales ? (
+        <Briefcase className="h-6 w-6 text-amber-700" />
       ) : (
         <Headphones className="h-6 w-6 text-blue-600" />
       )}
       <div>
         <h2 className="text-lg font-bold">HSEQ Nova</h2>
-        <Badge
-          variant="secondary"
-          className={cn(
-            "text-xs",
-            isSuperAdmin && "bg-primary/10 text-primary",
-            isSupport && "bg-blue-100 text-blue-700"
-          )}
-        >
-          {isSuperAdmin ? "SUPERADMIN" : "SUPPORT"}
+        <Badge variant="secondary" className={cn("text-xs", badge.className)}>
+          {badge.label}
         </Badge>
       </div>
     </div>
@@ -164,7 +200,7 @@ export function SuperAdminNav({ isSuperAdmin, isSupport, openSupportCount = 0 }:
                     onNavigate={() => setOpen(false)}
                   />
                 </nav>
-                <NavFooter onNavigate={() => setOpen(false)} />
+                <NavFooter hasTenant={hasTenant} onNavigate={() => setOpen(false)} />
               </div>
             </SheetContent>
           </Sheet>
@@ -181,7 +217,7 @@ export function SuperAdminNav({ isSuperAdmin, isSupport, openSupportCount = 0 }:
               openSupportCount={openSupportCount}
             />
           </nav>
-          <NavFooter />
+          <NavFooter hasTenant={hasTenant} />
         </div>
       </aside>
     </>

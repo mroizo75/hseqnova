@@ -33,6 +33,9 @@ interface AdminUserListProps {
     email: string;
     name: string | null;
     isSuperAdmin: boolean;
+    isSupport: boolean;
+    isSales: boolean;
+    isSalesManager: boolean;
     createdAt: Date;
     tenants: Array<{
       role: string;
@@ -142,7 +145,7 @@ export function AdminUserList({ users, currentPage, totalPages }: AdminUserListP
             {filteredUsers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-muted-foreground">
-                  Ingen brukere funnet
+                  No users found
                 </TableCell>
               </TableRow>
             ) : (
@@ -159,7 +162,7 @@ export function AdminUserList({ users, currentPage, totalPages }: AdminUserListP
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
                     {user.tenants.length === 0 ? (
-                      <span className="text-muted-foreground">Ingen</span>
+                      <span className="text-muted-foreground">None</span>
                     ) : (
                       <div className="flex flex-col gap-1">
                         {user.tenants.map((t) => (
@@ -177,14 +180,20 @@ export function AdminUserList({ users, currentPage, totalPages }: AdminUserListP
                   <TableCell>
                     {user.isSuperAdmin ? (
                       <Badge className="bg-primary">SUPERADMIN</Badge>
+                    ) : user.isSalesManager ? (
+                      <Badge className="bg-amber-600">SALES MANAGER</Badge>
+                    ) : user.isSales ? (
+                      <Badge className="bg-emerald-700">SALES</Badge>
+                    ) : user.isSupport ? (
+                      <Badge className="bg-blue-700">SUPPORT</Badge>
                     ) : user.tenants.length > 0 ? (
-                      <Badge variant="default">Aktiv</Badge>
+                      <Badge variant="default">Active</Badge>
                     ) : (
-                      <Badge variant="secondary">Uten tenant</Badge>
+                      <Badge variant="secondary">No organisation</Badge>
                     )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {new Date(user.createdAt).toLocaleDateString("no-NO")}
+                    {new Date(user.createdAt).toLocaleDateString("en-GB")}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">

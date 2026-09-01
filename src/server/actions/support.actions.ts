@@ -68,11 +68,11 @@ async function requireStaffUser() {
 
   const { data: user, error } = await getAdminDb()
     .from("User")
-    .select("id, name, email, isSuperAdmin, isSupport")
+    .select("id, name, email, isSuperAdmin, isSupport, isSales, isSalesManager")
     .eq("email", session.user.email)
     .maybeSingle();
 
-  if (error || !user || (!user.isSuperAdmin && !user.isSupport)) {
+  if (error || !user || (!user.isSuperAdmin && !user.isSupport && !user.isSales && !user.isSalesManager)) {
     return null;
   }
 
@@ -82,6 +82,8 @@ async function requireStaffUser() {
     email: string;
     isSuperAdmin: boolean;
     isSupport: boolean;
+    isSales: boolean;
+    isSalesManager: boolean;
   };
 }
 
@@ -324,7 +326,7 @@ export async function getSupportTicketForCustomer(
     });
 
     if (!ticket) {
-      return fail("NOT_FOUND", "Saken ble ikke funnet");
+      return fail("NOT_FOUND", "Ticket not found");
     }
 
     return { success: true, data: ticket };
@@ -346,7 +348,7 @@ export async function replyToSupportTicketAsCustomer(
     });
 
     if (!ticket) {
-      return fail("NOT_FOUND", "Saken ble ikke funnet");
+      return fail("NOT_FOUND", "Ticket not found");
     }
     if (ticket.status === SupportTicketStatus.CLOSED) {
       return fail("CLOSED", "Saken er lukket. Opprett en ny sak om du trenger mer hjelp.");
@@ -548,7 +550,7 @@ export async function replyToSupportTicketAsStaff(
     const input = replySchema.parse(raw);
     const staff = await requireStaffUser();
     if (!staff) {
-      return fail("FORBIDDEN", "Ingen tilgang");
+      return fail("FORBIDDEN", "No access");
     }
 
     const ticket = await prisma.supportTicket.findUnique({
@@ -565,7 +567,7 @@ export async function replyToSupportTicketAsStaff(
     });
 
     if (!ticket) {
-      return fail("NOT_FOUND", "Saken ble ikke funnet");
+      return fail("NOT_FOUND", "Ticket not found");
     }
 
     const isInternal = Boolean(input.isInternal);
@@ -648,7 +650,7 @@ export async function updateSupportTicketStatus(
     const input = updateStatusSchema.parse(raw);
     const staff = await requireStaffUser();
     if (!staff) {
-      return fail("FORBIDDEN", "Ingen tilgang");
+      return fail("FORBIDDEN", "No access");
     }
 
     const ticket = await prisma.supportTicket.update({
@@ -725,16 +727,20 @@ export async function assignSupportTicket(
     const input = assignSchema.parse(raw);
     const staff = await requireStaffUser();
     if (!staff) {
-      return fail("FORBIDDEN", "Ingen tilgang");
+      return fail("FORBIDDEN", "No access");
     }
 
     if (input.assignedToId) {
-      const assignee = await prisma.user.findUnique({
-        where: { id: input.assignedToId },
-        select: { id: true, isSupport: true, isSuperAdmin: true },
-      });
-      if (!assignee || (!assignee.isSupport && !assignee.isSuperAdmin)) {
-        return fail("INVALID_ASSIGNEE", "Mottaker må være support eller superadmin");
+      const { data: assignee } = await getAdminDb()
+        .from("User")
+        .select("id, isSupport, isSuperAdmin, isSales, isSalesManager")
+        .eq("id", input.assignedToId)
+        .maybeSingle();
+      if (
+        !assignee ||
+        (!assignee.isSupport && !assignee.isSuperAdmin && !assignee.isSales && !assignee.isSalesManager)
+      ) {
+        return fail("INVALID_ASSIGNEE", "The assignee must be a platform staff member");
       }
     }
 
@@ -768,7 +774,7 @@ export async function claimSupportTicket(
 ): Promise<ActionResult<{ id: string }>> {
   const staff = await requireStaffUser();
   if (!staff) {
-    return fail("FORBIDDEN", "Ingen tilgang");
+    return fail("FORBIDDEN", "No access");
   }
   return assignSupportTicket({ ticketId, assignedToId: staff.id });
 }
@@ -778,7 +784,7 @@ export async function getSupportStaffOptions(): Promise<
 > {
   const staff = await requireStaffUser();
   if (!staff) {
-    return fail("FORBIDDEN", "Ingen tilgang");
+    return fail("FORBIDDEN", "No access");
   }
 
   const users = await prisma.user.findMany({

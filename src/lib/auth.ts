@@ -95,11 +95,11 @@ export const authOptions: NextAuthOptions = {
           await resetFailedLogins(user.id);
         }
 
-        if (!user.isSuperAdmin && !user.isSupport && user.tenants.length === 0) {
+        if (!user.isSuperAdmin && !user.isSupport && !user.isSales && !user.isSalesManager && user.tenants.length === 0) {
           throw new Error("This account is not linked to a company. Contact support.");
         }
 
-        if (!user.isSuperAdmin && !user.isSupport && user.tenants.length > 0) {
+        if (!user.isSuperAdmin && !user.isSupport && !user.isSales && !user.isSalesManager && user.tenants.length > 0) {
           const preferredTenant = user.lastTenantId
             ? user.tenants.find((membership) => membership.tenantId === user.lastTenantId)
             : null;
@@ -163,6 +163,8 @@ export const authOptions: NextAuthOptions = {
           if (dbUser) {
             token.isSuperAdmin = dbUser.isSuperAdmin;
             token.isSupport = dbUser.isSupport || false;
+            token.isSales = dbUser.isSales || false;
+            token.isSalesManager = dbUser.isSalesManager || false;
             token.hasMultipleTenants = dbUser.tenants.length > 1;
             token.preferredLocale = dbUser.preferredLocale || "en-GB";
 
@@ -238,6 +240,8 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string;
         session.user.isSuperAdmin = token.isSuperAdmin as boolean;
         session.user.isSupport = token.isSupport as boolean;
+        session.user.isSales = token.isSales as boolean;
+        session.user.isSalesManager = token.isSalesManager as boolean;
         session.user.tenantId = token.tenantId as string | null;
         session.user.role = token.role as any;
         session.user.tenantName = token.tenantName as string | null;

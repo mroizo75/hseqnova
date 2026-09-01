@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { adminHomePath, isPlatformStaff } from "@/lib/platform-access";
 
 export async function loginAction(
   _prevState: { error: string },
@@ -19,12 +20,12 @@ export async function loginAction(
   const admin = await createAdminClient();
   const { data: profile } = await admin
     .from("User")
-    .select("isSuperAdmin, isSupport")
+    .select("isSuperAdmin, isSupport, isSales, isSalesManager")
     .or(`id.eq.${authData.user.id},supabaseUserId.eq.${authData.user.id}`)
     .maybeSingle();
 
-  if (profile?.isSuperAdmin || profile?.isSupport) {
-    redirect("/admin");
+  if (isPlatformStaff(profile ?? {})) {
+    redirect(adminHomePath(profile ?? {}));
   }
   redirect("/dashboard");
 }

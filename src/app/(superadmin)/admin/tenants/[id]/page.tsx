@@ -71,13 +71,13 @@ async function TenantDetails({ id }: { id: string }) {
         <Link href="/admin/tenants">
           <Button variant="outline" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Tilbake
+            Back
           </Button>
         </Link>
         <div className="flex-1">
           <h1 className="text-3xl font-bold mb-1">{tenant.name}</h1>
           <p className="text-muted-foreground">
-            {tenant.slug} • Org.nr: {tenant.orgNumber || "Ikke oppgitt"}
+            {tenant.slug} • Company no: {tenant.orgNumber || "Not provided"}
           </p>
         </div>
         <div className="flex items-center gap-2">

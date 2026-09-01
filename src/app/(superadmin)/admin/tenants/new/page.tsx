@@ -13,8 +13,8 @@ export default async function NewTenantPage() {
   const user = session?.user as SessionUser;
 
   // Kun superadmin og support har tilgang
-  if (!user?.isSuperAdmin && !user?.isSupport) {
-    redirect("/admin");
+  if (!user?.isSuperAdmin && !user?.isSupport && !user?.isSalesManager) {
+    redirect("/admin/crm");
   }
 
   return (
@@ -23,12 +23,12 @@ export default async function NewTenantPage() {
         <Link href="/admin/tenants">
           <Button variant="ghost" size="sm" className="mb-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Tilbake til bedrifter
+            Back to organisations
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold">Registrer ny bedrift</h1>
+        <h1 className="text-3xl font-bold">Register organisation</h1>
         <p className="text-muted-foreground">
-          CRM/Onboarding - Komplett registrering av ny kunde
+          Create a customer record and add it to the sales pipeline
         </p>
       </div>
 

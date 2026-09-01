@@ -13,6 +13,6 @@ test("generateSecurePassword returnerer sterkt passord med alle tegnklasser", ()
 });
 
 test("generateSecurePassword krever minimumslengde", () => {
-  assert.throws(() => generateSecurePassword(8), /Passordlengde må være et heltall/);
+  assert.throws(() => generateSecurePassword(8), /Password length must be an integer/);
 });
 

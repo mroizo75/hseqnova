@@ -3,6 +3,7 @@
 import { z, ZodError } from "zod";
 import { prisma } from "@/lib/db";
 import { getAdminDb } from "@/lib/supabase/admin";
+import { createId } from "@/lib/ids";
 import { loadAdminTenantDetails } from "@/server/queries/admin.queries";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
@@ -21,6 +22,7 @@ import {
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { generateRiskAnalysis } from "@/lib/ai";
+import { syncCrmFromTenant } from "@/features/crm/lib/sync-from-tenant";
 
 // Valideringsskjemaer
 const updateTenantSchema = z.object({
@@ -103,15 +105,15 @@ async function requirePrivilegedUser() {
 
   const { data: user, error } = await getAdminDb()
     .from("User")
-    .select("id, isSuperAdmin, isSupport")
+    .select("id, isSuperAdmin, isSupport, isSales, isSalesManager")
     .eq("email", session.user.email)
     .maybeSingle();
 
-  if (error || !user || (!user.isSuperAdmin && !user.isSupport)) {
+  if (error || !user || (!user.isSuperAdmin && !user.isSupport && !user.isSalesManager)) {
     return null;
   }
 
-  return user as { id: string; isSuperAdmin: boolean; isSupport: boolean };
+  return user as { id: string; isSuperAdmin: boolean; isSupport: boolean; isSalesManager: boolean };
 }
 
 async function requireSuperAdmin() {
@@ -1249,36 +1251,68 @@ export async function toggleTenantStatus(tenantId: string, newStatus: "ACTIVE" |
  */
 export async function createTenant(input: z.infer<typeof createTenantSchema>) {
   try {
+    const staff = await requirePrivilegedUser();
+    if (!staff) {
+      return { success: false, error: "Not authorised" };
+    }
     const validated = createTenantSchema.parse(input);
-
-    // Generer slug fra navn
+    const db = getAdminDb();
     const slug = validated.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
 
-    // Sjekk at slug er unik
-    const existingSlug = await prisma.tenant.findUnique({
-      where: { slug },
-    });
-
+    const { data: existingSlug } = await db.from("Tenant").select("id").eq("slug", slug).maybeSingle();
     if (existingSlug) {
-      return { 
-        success: false, 
-        error: `An organisation with slug "${slug}" already exists. Please change the name slightly.` 
+      return {
+        success: false,
+        error: `An organisation with slug "${slug}" already exists. Please change the name slightly.`,
       };
     }
 
-    // Opprett tenant med subscription
     const normalizedIndustry = validated.industry
       ? normalizeIndustryValue(validated.industry)
       : undefined;
+    const tenantId = createId();
+    const now = new Date().toISOString();
+    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
-    const tenant = await prisma.tenant.create({
-      data: {
+    const { error } = await db.from("Tenant").insert({
+      id: tenantId,
+      name: validated.name,
+      slug,
+      orgNumber: validated.orgNumber || null,
+      companyNumber: validated.orgNumber || null,
+      address: validated.address || null,
+      postalCode: validated.postalCode || null,
+      city: validated.city || null,
+      contactPerson: validated.contactPerson,
+      contactEmail: validated.contactEmail,
+      contactPhone: validated.contactPhone || null,
+      employeeCount: validated.employeeCount,
+      industry: normalizedIndustry || null,
+      notes: validated.notes || null,
+      pricingTier: validated.pricingTier,
+      salesRep: validated.salesRep || null,
+      status: "TRIAL",
+      onboardingStatus: "NOT_STARTED",
+      trialEndsAt,
+      hmsAnnualPlanEnabled: true,
+      managementReviewFrequencyMonths: 12,
+      createdAt: now,
+      updatedAt: now,
+    });
+    if (error) {
+      throw { code: "TENANT_CREATE_FAILED", message: error.message };
+    }
+
+    await provisionIndustryPackage(tenantId);
+    await syncCrmFromTenant(
+      {
+        id: tenantId,
         name: validated.name,
-        slug,
         orgNumber: validated.orgNumber,
+        companyNumber: validated.orgNumber,
         address: validated.address,
         postalCode: validated.postalCode,
         city: validated.city,
@@ -1288,30 +1322,22 @@ export async function createTenant(input: z.infer<typeof createTenantSchema>) {
         employeeCount: validated.employeeCount,
         industry: normalizedIndustry,
         notes: validated.notes,
-        pricingTier: validated.pricingTier,
-        salesRep: validated.salesRep,
         status: "TRIAL",
         onboardingStatus: "NOT_STARTED",
-        trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 dager
-        // Standard HMS-oppsett
-        hmsAnnualPlanEnabled: true,
-        managementReviewFrequencyMonths: 12,
-        // Subscription opprettes når tenant aktiveres
       },
-    });
-
-    await provisionIndustryPackage(tenant.id);
+      { source: "MANUAL", stage: "NEW", ownerId: staff.id },
+    );
 
     revalidatePath("/admin/tenants");
     revalidatePath("/admin/registrations");
+    revalidatePath("/admin/crm");
 
-    return { 
-      success: true, 
-      data: tenant,
-      message: "Organisation created. You can now activate it by sending login details to the admin." 
+    return {
+      success: true,
+      data: { id: tenantId },
+      message: "Organisation created. You can now activate it by sending login details to the admin.",
     };
   } catch (error) {
-    console.error("Create tenant error:", error);
     if (error instanceof ZodError) {
       return { success: false, error: error.issues[0].message };
     }

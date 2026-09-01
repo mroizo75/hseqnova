@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { createId } from "@/lib/ids";
 import { sendPrivilegedAccessEmail } from "@/lib/email-service";
 import {
   createErrorResponse,
@@ -10,12 +11,13 @@ import {
   validateRequestBody,
 } from "@/lib/validations/api";
 import { generateSecurePassword } from "@/lib/privileged-users";
+import { flagsFromPlatformRole } from "@/lib/platform-access";
 
 const privilegedUserSchema = z.object({
   email: z.string().email().transform((value) => value.toLowerCase().trim()),
-  name: z.string().min(2, "Navn må bestå av minst 2 tegn"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
   password: z.string().min(12).max(128).optional(),
-  role: z.enum(["SUPERADMIN", "SUPPORT"]),
+  role: z.enum(["SUPERADMIN", "SUPPORT", "SALES_MANAGER", "SALES"]),
 });
 
 function extractBootstrapToken(request: NextRequest) {
@@ -40,14 +42,14 @@ export async function POST(request: NextRequest) {
   if (!configuredToken) {
     return createErrorResponse(
       ErrorCodes.SERVICE_UNAVAILABLE,
-      "Bootstrap-token er ikke konfigurert på serveren.",
-      503
+      "Bootstrap token is not configured on the server.",
+      503,
     );
   }
 
   const providedToken = extractBootstrapToken(request);
   if (!providedToken || providedToken !== configuredToken) {
-    return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Ugyldig bootstrap-token", 401);
+    return createErrorResponse(ErrorCodes.UNAUTHORIZED, "Invalid bootstrap token", 401);
   }
 
   const validation = await validateRequestBody(request, privilegedUserSchema);
@@ -56,60 +58,68 @@ export async function POST(request: NextRequest) {
   }
 
   const { email, name, password, role } = validation.data;
+  const db = getAdminDb();
+  const now = new Date().toISOString();
 
-  const existingUser = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true },
-  });
-
+  const { data: existingUser, error: lookupError } = await db
+    .from("User")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+  if (lookupError) {
+    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, lookupError.message, 500);
+  }
   if (existingUser) {
-    return createErrorResponse(ErrorCodes.ALREADY_EXISTS, "Bruker finnes allerede", 409);
+    return createErrorResponse(ErrorCodes.ALREADY_EXISTS, "User already exists", 409);
   }
 
   const plainPassword = password ?? generateSecurePassword();
   const hashedPassword = await bcrypt.hash(plainPassword, 10);
+  const flags = flagsFromPlatformRole(role);
+  const userId = createId();
 
-  const user = await prisma.user.create({
-    data: {
-      email,
-      name,
-      password: hashedPassword,
-      isSuperAdmin: role === "SUPERADMIN",
-      isSupport: role === "SUPPORT",
-      emailVerified: new Date(),
-    },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-    },
+  const { error: insertError } = await db.from("User").insert({
+    id: userId,
+    email,
+    name,
+    password: hashedPassword,
+    isSuperAdmin: flags.isSuperAdmin,
+    isSupport: flags.isSupport,
+    isSales: flags.isSales,
+    isSalesManager: flags.isSalesManager,
+    emailVerified: now,
+    preferredLocale: "en-GB",
+    createdAt: now,
+    updatedAt: now,
   });
+  if (insertError) {
+    return createErrorResponse(ErrorCodes.INTERNAL_ERROR, insertError.message, 500);
+  }
 
   try {
     await sendPrivilegedAccessEmail({
-      to: user.email,
-      name: user.name ?? user.email,
+      to: email,
+      name,
       role,
       tempPassword: plainPassword,
     });
   } catch (error) {
-    await prisma.user.delete({ where: { id: user.id } });
+    await db.from("User").delete().eq("id", userId);
     return createErrorResponse(
       ErrorCodes.EMAIL_SEND_FAILED,
-      "Kunne ikke sende bekreftelsesepost. Opprettelsen ble rullet tilbake.",
+      "Could not send the confirmation email. The user was not created.",
       502,
-      error instanceof Error ? error.message : undefined
+      error instanceof Error ? error.message : undefined,
     );
   }
 
   return createSuccessResponse(
     {
-      id: user.id,
-      email: user.email,
+      id: userId,
+      email,
       role,
       tempPassword: plainPassword,
     },
-    `Privilegert bruker ${user.email} opprettet`
+    `Privileged user ${email} created`,
   );
 }
-

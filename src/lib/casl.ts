@@ -28,6 +28,8 @@ export interface SessionUser {
   department?: string | null;
   isSuperAdmin?: boolean;
   isSupport?: boolean;
+  isSales?: boolean;
+  isSalesManager?: boolean;
 }
 
 export function defineAbilities(user: SessionUser): AppAbility {

@@ -7,6 +7,8 @@ declare module "next-auth" {
     id: string;
     isSuperAdmin?: boolean;
     isSupport?: boolean;
+    isSales?: boolean;
+    isSalesManager?: boolean;
     tenantId?: string | null;
     tenantName?: string | null;
     role?: Role;
@@ -22,6 +24,8 @@ declare module "next-auth" {
       image?: string | null;
       isSuperAdmin?: boolean;
       isSupport?: boolean;
+      isSales?: boolean;
+      isSalesManager?: boolean;
       tenantId?: string | null;
       tenantName?: string | null;
       role?: Role;
@@ -37,6 +41,8 @@ declare module "next-auth/jwt" {
     id: string;
     isSuperAdmin?: boolean;
     isSupport?: boolean;
+    isSales?: boolean;
+    isSalesManager?: boolean;
     tenantId?: string | null;
     tenantName?: string | null;
     role?: Role;

@@ -81,6 +81,8 @@ export default function LoginPage() {
         }
         if (session.user.isSuperAdmin || session.user.isSupport) {
           router.push("/admin");
+        } else if (session.user.isSalesManager || session.user.isSales) {
+          router.push("/admin/crm");
         } else if (session.user.role === "ANSATT") {
           router.push("/ansatt");
         } else if (session.user.isTavleOnly) {

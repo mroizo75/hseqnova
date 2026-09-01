@@ -50,24 +50,24 @@ export default async function AdminSupportPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <Headphones className="h-7 w-7 text-primary" />
-          Support-inbox
+          Support inbox
         </h1>
         <p className="text-muted-foreground mt-1">
-          Chat og tickets fra kunder. {openCount} aktive saker.
+          Customer tickets. {openCount} open.
         </p>
       </div>
 
       {!result.success ? (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
-            Kunne ikke laste inbox.
+            Could not load the inbox.
           </CardContent>
         </Card>
       ) : tickets.length === 0 ? (
         <Card>
           <CardContent className="p-12 text-center">
             <MessageSquare className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-            <p className="text-lg font-medium">Ingen saker ennå</p>
+            <p className="text-lg font-medium">No tickets yet</p>
           </CardContent>
         </Card>
       ) : (
@@ -89,17 +89,17 @@ export default async function AdminSupportPage() {
                 </CardHeader>
                 <CardContent className="text-sm text-muted-foreground space-y-1">
                   <p className="line-clamp-1">
-                    {ticket.messages[0]?.body ?? "Ingen meldinger"}
+                    {ticket.messages[0]?.body ?? "No messages"}
                   </p>
                   <div className="flex flex-wrap gap-x-4 gap-y-1">
                     <span>{SUPPORT_CATEGORY_LABELS[ticket.category]}</span>
                     <span>
-                      Fra {ticket.createdBy.name || ticket.createdBy.email}
+                      From {ticket.createdBy.name || ticket.createdBy.email}
                     </span>
                     <span>
                       {ticket.assignedTo?.name
-                        ? `Tildelt ${ticket.assignedTo.name}`
-                        : "Ikke tildelt"}
+                        ? `Assigned to ${ticket.assignedTo.name}`
+                        : "Unassigned"}
                     </span>
                     <span>
                       {format(new Date(ticket.lastMessageAt), "dd.MM.yyyy HH:mm", {

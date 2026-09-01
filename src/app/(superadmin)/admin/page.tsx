@@ -5,14 +5,18 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { loadAdminOverviewStats } from "@/server/queries/admin.queries";
+import { adminHomePath, isPlatformStaff } from "@/lib/platform-access";
 
 export default async function SuperAdminDashboard() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     redirect("/login");
   }
-  if (!session.user.isSuperAdmin && !session.user.isSupport) {
+  if (!isPlatformStaff(session.user)) {
     redirect("/login");
+  }
+  if (!session.user.isSuperAdmin && !session.user.isSupport) {
+    redirect(adminHomePath(session.user));
   }
 
   const { activeTenants, totalUsers, incidentsThisMonth, openActions } =
@@ -74,6 +78,12 @@ export default async function SuperAdminDashboard() {
       </div>
 
       <div className="flex gap-4">
+        <Link
+          href="/admin/crm"
+          className="text-sm font-medium text-primary hover:underline"
+        >
+          Open sales CRM →
+        </Link>
         <Link
           href="/admin/tenants"
           className="text-sm font-medium text-primary hover:underline"

@@ -25,8 +25,8 @@ export default async function DashboardLayout({
 
   const user = session.user as SessionUser;
   const sessionUser = session.user;
-  if ((user.isSuperAdmin || user.isSupport) && !user.tenantId) {
-    redirect("/admin");
+  if ((user.isSuperAdmin || user.isSupport || user.isSales || user.isSalesManager) && !user.tenantId) {
+    redirect(user.isSales || user.isSalesManager ? "/admin/crm" : "/admin");
   }
 
   if (user.role === "ANSATT") {

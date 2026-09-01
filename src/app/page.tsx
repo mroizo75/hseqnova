@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
+import { adminHomePath, isPlatformStaff } from "@/lib/platform-access";
 import { PublicNav } from "@/components/public-nav";
 import { PublicFooter } from "@/components/public-footer";
 import HomePage, { metadata } from "./(public)/page";
@@ -22,8 +23,8 @@ export default async function RootPage() {
     );
   }
 
-  if (session.user.isSuperAdmin || session.user.isSupport) {
-    redirect("/admin");
+  if (isPlatformStaff(session.user)) {
+    redirect(adminHomePath(session.user));
   }
 
   if (session.user.role === "ANSATT") {

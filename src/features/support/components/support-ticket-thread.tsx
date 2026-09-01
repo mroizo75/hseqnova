@@ -95,7 +95,7 @@ export function SupportTicketThread({
 
       if (result.success === false) {
         toast({
-          title: "Kunne ikke sende",
+          title: "Could not send",
           description: result.error.message,
           variant: "destructive",
         });
@@ -116,7 +116,7 @@ export function SupportTicketThread({
       });
       if (result.success === false) {
         toast({
-          title: "Kunne ikke oppdatere status",
+          title: "Could not update status",
           description: result.error.message,
           variant: "destructive",
         });
@@ -131,13 +131,13 @@ export function SupportTicketThread({
       const result = await claimSupportTicket(ticketId);
       if (result.success === false) {
         toast({
-          title: "Kunne ikke ta saken",
+          title: "Could not claim ticket",
           description: result.error.message,
           variant: "destructive",
         });
         return;
       }
-      toast({ title: "Du har tatt saken" });
+      toast({ title: "You claimed this ticket" });
       router.refresh();
     });
   };
@@ -170,11 +170,11 @@ export function SupportTicketThread({
             </Select>
           </div>
           <div className="text-sm text-muted-foreground">
-            Ansvarlig: {assignedToName ?? "Ikke tildelt"}
+            Owner: {assignedToName ?? "Unassigned"}
           </div>
           {!assignedToName && (
             <Button size="sm" variant="outline" onClick={onClaim} disabled={isPending}>
-              Ta saken
+              Claim ticket
             </Button>
           )}
         </div>
@@ -208,7 +208,7 @@ export function SupportTicketThread({
                       {msg.sender.name || msg.sender.email}
                       {isSupport ? " · HSEQ Nova" : ""}
                     </span>
-                    {msg.isInternal && <Badge variant="outline">Intern</Badge>}
+                    {msg.isInternal && <Badge variant="outline">Internal</Badge>}
                     <span>
                       {format(new Date(msg.createdAt), "dd.MM.yyyy HH:mm", {
                         locale: enGB,
@@ -226,7 +226,7 @@ export function SupportTicketThread({
         <div className="border-t p-3 space-y-3">
           {closed ? (
             <p className="text-sm text-muted-foreground px-1">
-              Saken er lukket. Opprett en ny sak hvis du trenger mer hjelp.
+              This ticket is closed. Open a new ticket if you still need help.
             </p>
           ) : (
             <>
@@ -235,8 +235,8 @@ export function SupportTicketThread({
                 onChange={(e) => setBody(e.target.value)}
                 placeholder={
                   mode === "staff"
-                    ? "Skriv svar til kunden…"
-                    : "Skriv til HMS-representanten…"
+                    ? "Write a reply to the customer…"
+                    : "Write to HSEQ Nova support…"
                 }
                 rows={3}
                 onKeyDown={(e) => {
@@ -253,11 +253,11 @@ export function SupportTicketThread({
                       checked={isInternal}
                       onCheckedChange={(v) => setIsInternal(Boolean(v))}
                     />
-                    Intern merknad (skjules for kunden)
+                    Internal note (hidden from the customer)
                   </label>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    Ctrl/Cmd + Enter for å sende
+                    Ctrl/Cmd + Enter to send
                   </p>
                 )}
                 <Button onClick={send} disabled={isPending || !body.trim()}>

@@ -53,18 +53,18 @@ export default async function AdminSupportTicketPage({
       <Button asChild variant="ghost" className="px-0">
         <Link href="/admin/support">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Tilbake til inbox
+          Back to inbox
         </Link>
       </Button>
 
       <div className="space-y-2">
         <p className="font-mono text-xs text-muted-foreground">
           {ticket.ticketNumber} · {ticket.tenant.name}
-          {ticket.tenant.orgNumber ? ` · Org.nr ${ticket.tenant.orgNumber}` : ""}
+          {ticket.tenant.orgNumber ? ` · Company no. ${ticket.tenant.orgNumber}` : ""}
         </p>
         <h1 className="text-2xl font-bold tracking-tight">{ticket.subject}</h1>
         <p className="text-sm text-muted-foreground">
-          Fra {ticket.createdBy.name || ticket.createdBy.email} ({ticket.createdBy.email})
+          From {ticket.createdBy.name || ticket.createdBy.email} ({ticket.createdBy.email})
         </p>
         <div className="flex flex-wrap gap-2">
           <Badge>{SUPPORT_STATUS_LABELS[ticket.status]}</Badge>

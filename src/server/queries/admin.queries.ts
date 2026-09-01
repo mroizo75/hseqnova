@@ -213,6 +213,9 @@ export type AdminUserListItem = {
   email: string;
   name: string | null;
   isSuperAdmin: boolean;
+  isSupport: boolean;
+  isSales: boolean;
+  isSalesManager: boolean;
   createdAt: Date;
   tenants: Array<{ role: string; tenant: { id: string; name: string } }>;
 };
@@ -222,7 +225,7 @@ export async function loadAdminUsers(opts: { page: number; pageSize: number; sea
   const safeSearch = opts.search.replace(/[%_,]/g, "").trim();
   let query = db
     .from("User")
-    .select("id, email, name, isSuperAdmin, createdAt", { count: "exact" })
+    .select("id, email, name, isSuperAdmin, isSupport, isSales, isSalesManager, createdAt", { count: "exact" })
     .order("createdAt", { ascending: false });
 
   if (safeSearch) {
@@ -247,6 +250,9 @@ export async function loadAdminUsers(opts: { page: number; pageSize: number; sea
     email: string;
     name: string | null;
     isSuperAdmin: boolean;
+    isSupport: boolean;
+    isSales: boolean;
+    isSalesManager: boolean;
     createdAt: string;
   }>;
   const userIds = users.map((user) => user.id);
@@ -279,6 +285,9 @@ export async function loadAdminUsers(opts: { page: number; pageSize: number; sea
     email: user.email,
     name: user.name,
     isSuperAdmin: Boolean(user.isSuperAdmin),
+    isSupport: Boolean(user.isSupport),
+    isSales: Boolean(user.isSales),
+    isSalesManager: Boolean(user.isSalesManager),
     createdAt: new Date(user.createdAt),
     tenants: memsByUser.get(user.id) ?? [],
   }));
@@ -290,7 +299,7 @@ export async function loadAdminUserEditor(userId: string) {
   const db = getAdminDb();
   const { data: user, error } = await db
     .from("User")
-    .select("id, email, name, isSuperAdmin")
+    .select("id, email, name, isSuperAdmin, isSupport, isSales, isSalesManager")
     .eq("id", userId)
     .maybeSingle();
   throwIf(error, "USER_LOOKUP_FAILED");
@@ -307,6 +316,9 @@ export async function loadAdminUserEditor(userId: string) {
     email: user.email as string,
     name: (user.name as string | null) ?? null,
     isSuperAdmin: Boolean(user.isSuperAdmin),
+    isSupport: Boolean(user.isSupport),
+    isSales: Boolean(user.isSales),
+    isSalesManager: Boolean(user.isSalesManager),
     tenants: (memberships ?? []).map((row) => ({
       tenantId: row.tenantId as string,
       role: row.role as AdminUserListItem["tenants"][number]["role"],

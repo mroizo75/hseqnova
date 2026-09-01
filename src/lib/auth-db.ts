@@ -22,6 +22,8 @@ export type AuthUserRow = {
   password: string | null;
   isSuperAdmin: boolean;
   isSupport: boolean;
+  isSales: boolean;
+  isSalesManager: boolean;
   lastTenantId: string | null;
   preferredLocale: string;
   failedLoginAttempts: number;
@@ -76,7 +78,7 @@ export async function getAuthUserByEmail(email: string): Promise<AuthUserRow | n
   const { data, error } = await getAdminDb()
     .from("User")
     .select(
-      "id, email, name, image, password, isSuperAdmin, isSupport, lastTenantId, preferredLocale, failedLoginAttempts, lockedUntil",
+      "id, email, name, image, password, isSuperAdmin, isSupport, isSales, isSalesManager, lastTenantId, preferredLocale, failedLoginAttempts, lockedUntil",
     )
     .eq("email", email)
     .maybeSingle();
@@ -95,7 +97,7 @@ export async function getAuthUserById(id: string): Promise<AuthUserRow | null> {
   const { data, error } = await db
     .from("User")
     .select(
-      "id, email, name, image, password, isSuperAdmin, isSupport, lastTenantId, preferredLocale, failedLoginAttempts, lockedUntil",
+      "id, email, name, image, password, isSuperAdmin, isSupport, isSales, isSalesManager, lastTenantId, preferredLocale, failedLoginAttempts, lockedUntil",
     )
     .eq("id", id)
     .maybeSingle();

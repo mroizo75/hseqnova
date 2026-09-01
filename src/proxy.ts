@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { SESSION_TOKEN_COOKIE_NAME } from "@/lib/auth-cookie";
+import { adminHomePath, canAccessAdminPath, isPlatformStaff } from "@/lib/platform-access";
 
 const applySecurityHeaders = (response: NextResponse): NextResponse => {
   // Strict-Transport-Security (HSTS)
@@ -105,11 +106,19 @@ export async function proxy(request: NextRequest) {
 
     // Superadmin/Support access control
     if (pathname.startsWith("/admin")) {
-      const isSuperAdmin = token.isSuperAdmin === true;
-      const isSupport = token.isSupport === true;
+      const staff = {
+        isSuperAdmin: token.isSuperAdmin === true,
+        isSupport: token.isSupport === true,
+        isSales: token.isSales === true,
+        isSalesManager: token.isSalesManager === true,
+      };
 
-      if (!isSuperAdmin && !isSupport) {
+      if (!isPlatformStaff(staff)) {
         return applySecurityHeaders(NextResponse.redirect(new URL("/dashboard", request.url)));
+      }
+
+      if (!canAccessAdminPath(pathname, staff)) {
+        return applySecurityHeaders(NextResponse.redirect(new URL(adminHomePath(staff), request.url)));
       }
     }
   }

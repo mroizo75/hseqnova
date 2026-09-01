@@ -6,24 +6,31 @@
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "HSEQ Nova <noreply@hseqnova.com>";
+const FROM_EMAIL =
+  process.env.RESEND_FROM_EMAIL ??
+  process.env.RESEND_FROM ??
+  "HSEQ Nova <hello@hseqnova.co.uk>";
 
 interface SendEmailParams {
   to: string;
   subject: string;
   html: string;
+  replyTo?: string;
 }
 
 /**
- * Generic email sender
+ * Generic email sender.
+ * From is always the verified Resend domain. replyTo routes customer replies
+ * to the salesperson's mailbox (Namecheap) without sending as that address.
  */
-export async function sendEmail({ to, subject, html }: SendEmailParams) {
+export async function sendEmail({ to, subject, html, replyTo }: SendEmailParams) {
   try {
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: [to],
       subject,
       html,
+      ...(replyTo ? { replyTo } : {}),
     });
 
     if (error) {

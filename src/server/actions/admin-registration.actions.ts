@@ -11,6 +11,7 @@ import { createId } from "@/lib/ids";
 import { sendUserInvitationEmail } from "@/lib/email-service";
 import { sendEmail } from "@/lib/email";
 import { appBaseUrl } from "@/lib/signup-checkout";
+import { markCrmDealLostForTenant, syncCrmFromTenant } from "@/features/crm/lib/sync-from-tenant";
 
 type RegistrationUser = {
   id: string;
@@ -66,13 +67,13 @@ async function requireStaff(): Promise<{ id: string; name: string | null; email:
   }
   const { data, error } = await getAdminDb()
     .from("User")
-    .select("id, name, email, isSuperAdmin, isSupport")
+    .select("id, name, email, isSuperAdmin, isSupport, isSales, isSalesManager")
     .eq("email", email)
     .maybeSingle();
   if (error) {
     throw { code: "STAFF_LOOKUP_FAILED", message: error.message };
   }
-  if (!data?.isSuperAdmin && !data?.isSupport) {
+  if (!data?.isSuperAdmin && !data?.isSupport && !data?.isSalesManager) {
     throw { code: "FORBIDDEN", message: "Only support staff can manage registrations" };
   }
   return { id: String(data.id), name: (data.name as string | null) ?? null, email: String(data.email) };
@@ -360,8 +361,22 @@ export async function activateTenant(input: z.infer<typeof activateSchema>) {
       invitedByName: staff.name || "HSEQ Nova",
     });
 
+    await syncCrmFromTenant(
+      {
+        id: validated.tenantId,
+        name: String(tenant.name),
+        contactPerson: validated.adminName,
+        contactEmail: email,
+        status: "ACTIVE",
+        onboardingStatus: "ADMIN_CREATED",
+        notes: validated.notes?.trim() || null,
+      },
+      { source: "WEBSITE", stage: "WON" },
+    );
+
     revalidatePath("/admin/registrations");
     revalidatePath(`/admin/registrations/${validated.tenantId}`);
+    revalidatePath("/admin/crm");
     return { success: true as const };
   } catch (error: unknown) {
     return { success: false as const, error: errorMessage(error, "Could not activate the company") };
@@ -403,6 +418,8 @@ export async function rejectRegistration(tenantId: string, reason: string) {
     if (updateError) {
       throw { code: "TENANT_UPDATE_FAILED", message: updateError.message };
     }
+
+    await markCrmDealLostForTenant(tenantId, trimmed);
 
     if (tenant.contactEmail) {
       const loginUrl = `${appBaseUrl()}/register`;

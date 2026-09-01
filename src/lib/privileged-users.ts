@@ -1,6 +1,6 @@
 import { randomInt, randomBytes } from "crypto";
 
-export type PrivilegedRole = "SUPERADMIN" | "SUPPORT";
+export type PrivilegedRole = "SUPERADMIN" | "SUPPORT" | "SALES_MANAGER" | "SALES";
 
 const UPPERCASE = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 const LOWERCASE = "abcdefghijkmnopqrstuvwxyz";
@@ -21,7 +21,7 @@ function pickRandomChar(source: string): string {
 
 export function generateSecurePassword(length: number = 16): string {
   if (!Number.isInteger(length) || length < MIN_LENGTH) {
-    throw new Error(`Passordlengde må være et heltall på minst ${MIN_LENGTH} tegn.`);
+    throw new Error(`Password length must be an integer of at least ${MIN_LENGTH} characters.`);
   }
 
   const requiredChars = [
@@ -51,6 +51,15 @@ export function generateBootstrapToken(): string {
 }
 
 export function getPrivilegedRoleLabel(role: PrivilegedRole): string {
-  return role === "SUPERADMIN" ? "superadmin" : "support";
+  switch (role) {
+    case "SUPERADMIN":
+      return "superadmin";
+    case "SALES_MANAGER":
+      return "sales manager";
+    case "SALES":
+      return "salesperson";
+    default:
+      return "support";
+  }
 }
 

@@ -15,6 +15,7 @@ import {
   parseSignupAddonIds,
   resolveSignupPriceIds,
 } from "@/lib/signup-checkout";
+import { syncCrmFromTenant } from "@/features/crm/lib/sync-from-tenant";
 
 const signupSchema = z.object({
   companyName: z.string().trim().min(2, "Company name must be at least 2 characters").max(120),
@@ -286,6 +287,21 @@ export async function startSelfServeCheckout(
     if (membershipError) {
       throw { code: "MEMBERSHIP_CREATE_FAILED", message: membershipError.message };
     }
+
+    await syncCrmFromTenant(
+      {
+        id: tenantId,
+        name: data.companyName,
+        companyNumber: data.companyNumber,
+        orgNumber: data.companyNumber,
+        contactPerson: data.contactName,
+        contactEmail: data.email,
+        contactPhone: data.phone || null,
+        status: "TRIAL",
+        onboardingStatus: "NOT_STARTED",
+      },
+      { source: "WEBSITE", stage: "NEW" },
+    );
 
     const url = await checkoutUrl({
       tenantId,
