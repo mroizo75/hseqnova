@@ -1,4 +1,4 @@
-import { ADDON_PACKS, HSEQ_CORE, UK_VAT_PERCENT } from "@/lib/billing-catalog";
+import { ADDON_PACKS, HSEQ_CORE } from "@/lib/billing-catalog";
 import { SITE_CONFIG } from "@/lib/seo-config";
 
 export function formatGbp(amount: number): string {
@@ -13,7 +13,7 @@ export const HOME_FAQS = [
   },
   {
     question: "How much does HSEQ Nova cost?",
-    answer: `HSEQ Nova Core is ${formatGbp(HSEQ_CORE.monthlyPriceGbp)} per month excluding VAT, billed per company with unlimited users. RAMS, COSHH, CDM 2015, the digital safety board, audits and environment are optional add-ons. Every subscription includes a UK VAT invoice at ${UK_VAT_PERCENT}%.`,
+    answer: `HSEQ Nova Core is ${formatGbp(HSEQ_CORE.monthlyPriceGbp)} per month excluding VAT, billed per company with unlimited users. RAMS, COSHH, CDM 2015, the digital safety board, audits and environment are optional add-ons. The supplier is in Norway: Stripe Tax applies reverse charge for UK VAT-registered customers, so UK VAT is not added to the card payment.`,
   },
   {
     question: "What is included in HSEQ Nova Core?",

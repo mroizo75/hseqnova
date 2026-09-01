@@ -30,6 +30,12 @@ const signupSchema = z.object({
   email: z.string().trim().email("Enter a valid work email").transform((value) => value.toLowerCase()),
   password: z.string().min(8, "Password must be at least 8 characters").max(200).optional(),
   phone: z.string().trim().max(30).optional(),
+  vatNumber: z
+    .string()
+    .trim()
+    .max(20)
+    .optional()
+    .transform((value) => (value && value.length > 0 ? value.toUpperCase().replace(/\s+/g, "") : undefined)),
   billingMethod: z.enum(["CARD", "DIRECT_DEBIT"]),
   addonIds: z.array(z.string()),
   acceptedTerms: z.literal(true, { message: "You must accept the terms" }),
@@ -179,6 +185,7 @@ export async function startSelfServeCheckout(
           billingMethod: data.billingMethod,
           contactPerson: data.contactName,
           contactPhone: data.phone || null,
+          vatNumber: data.vatNumber || null,
         })
         .eq("id", unpaid.id);
       if (tenantError) {
@@ -237,6 +244,7 @@ export async function startSelfServeCheckout(
           contactPerson: data.contactName,
           billingMethod: data.billingMethod,
           termsAcceptedAt: now,
+          vatNumber: data.vatNumber || null,
           ...reopenUnpaidSignupPayload(now),
         })
         .eq("id", existingCompany.id);
@@ -259,6 +267,7 @@ export async function startSelfServeCheckout(
         contactPhone: data.phone || null,
         contactPerson: data.contactName,
         billingMethod: data.billingMethod,
+        vatNumber: data.vatNumber || null,
         onboardingStatus: "NOT_STARTED",
         registrationType: "STANDARD",
         termsAcceptedAt: now,

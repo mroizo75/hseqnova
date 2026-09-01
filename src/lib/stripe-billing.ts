@@ -1,5 +1,10 @@
-import { getStripe, UK_VAT_PERCENT } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { getAdminDb } from "@/lib/supabase/admin";
+
+function gbVatValue(raw: string): string {
+  const compact = raw.replace(/\s+/g, "").toUpperCase();
+  return compact.startsWith("GB") ? compact : `GB${compact}`;
+}
 
 export async function createOrGetStripeCustomer(tenantId: string): Promise<string> {
   const { data: tenant, error } = await getAdminDb()
@@ -13,26 +18,43 @@ export async function createOrGetStripeCustomer(tenantId: string): Promise<strin
   if (!tenant) {
     throw { code: "TENANT_NOT_FOUND", message: "Company not found" };
   }
-  if (tenant.stripeCustomerId) {
-    return tenant.stripeCustomerId as string;
-  }
 
   const stripe = getStripe();
-  const customer = await stripe.customers.create({
-    name: tenant.name as string,
-    email: (tenant.invoiceEmail as string | null) || (tenant.contactEmail as string | null) || undefined,
-    metadata: { tenantId: tenant.id as string },
-    tax_exempt: "none",
-  });
+  let customerId = (tenant.stripeCustomerId as string | null) ?? null;
 
-  const { error: updateError } = await getAdminDb()
-    .from("Tenant")
-    .update({ stripeCustomerId: customer.id, updatedAt: new Date().toISOString() })
-    .eq("id", tenantId);
-  if (updateError) {
-    throw { code: "TENANT_UPDATE_FAILED", message: updateError.message };
+  if (customerId) {
+    await stripe.customers.update(customerId, { tax_exempt: "reverse" });
+  } else {
+    const customer = await stripe.customers.create({
+      name: tenant.name as string,
+      email: (tenant.invoiceEmail as string | null) || (tenant.contactEmail as string | null) || undefined,
+      metadata: { tenantId: tenant.id as string },
+      // B2B: Stripe Tax reverse charge, not B2C UK VAT.
+      tax_exempt: "reverse",
+    });
+    customerId = customer.id;
+    const { error: updateError } = await getAdminDb()
+      .from("Tenant")
+      .update({ stripeCustomerId: customerId, updatedAt: new Date().toISOString() })
+      .eq("id", tenantId);
+    if (updateError) {
+      throw { code: "TENANT_UPDATE_FAILED", message: updateError.message };
+    }
   }
-  return customer.id;
+
+  const vatNumber = typeof tenant.vatNumber === "string" ? tenant.vatNumber.trim() : "";
+  if (vatNumber) {
+    try {
+      await stripe.customers.createTaxId(customerId, {
+        type: "gb_vat",
+        value: gbVatValue(vatNumber),
+      });
+    } catch {
+      // Already on the customer, or format rejected — Checkout can still collect it.
+    }
+  }
+
+  return customerId;
 }
 
 export async function createCheckoutSession(input: {
@@ -53,7 +75,10 @@ export async function createCheckoutSession(input: {
       success_url: input.successUrl,
       cancel_url: input.cancelUrl,
       automatic_tax: { enabled: true },
-      metadata: { tenantId: input.tenantId, vatPercent: String(UK_VAT_PERCENT), ...input.metadata },
+      tax_id_collection: { enabled: true },
+      billing_address_collection: "required",
+      customer_update: { address: "auto", name: "auto" },
+      metadata: { tenantId: input.tenantId, ...input.metadata },
       subscription_data: {
         metadata: { tenantId: input.tenantId, ...input.metadata },
       },

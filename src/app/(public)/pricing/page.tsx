@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PAGE_METADATA, getCanonicalUrl, ROBOTS_CONFIG } from "@/lib/seo-config";
-import { ADDON_PACKS, HSEQ_CORE, UK_VAT_PERCENT } from "@/lib/billing-catalog";
+import { ADDON_PACKS, HSEQ_CORE, VAT_REVERSE_CHARGE_NOTE } from "@/lib/billing-catalog";
 
 export const metadata: Metadata = {
   title: PAGE_METADATA.priser.title,
@@ -22,7 +22,7 @@ export default function PricingPage() {
       <p className="mb-8 text-muted-foreground">
         One price per company, unlimited users. Core HSEQ is always included. Add-ons are optional.
         Self-serve checkout is card or Bacs Direct Debit. Invoice (Net 30) is available if you ask us.
-        Every subscription includes a UK VAT invoice at {UK_VAT_PERCENT}%.
+        {VAT_REVERSE_CHARGE_NOTE}
       </p>
       <div className="mb-8 rounded-xl border p-8">
         <h2 className="mb-2 text-xl font-semibold">{HSEQ_CORE.name}</h2>

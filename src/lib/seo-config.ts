@@ -151,7 +151,7 @@ export const FAQ_SCHEMA = {
       name: "How much does HSEQ Nova cost?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Core is £29 per month excluding VAT, billed per company with unlimited users. RAMS, COSHH, CDM 2015, the digital safety board, audits and environment are optional add-ons. Every subscription includes a UK VAT invoice at 20%.",
+        text: "Core is £29 per month excluding VAT, billed per company with unlimited users. RAMS, COSHH, CDM 2015, the digital safety board, audits and environment are optional add-ons. The supplier is in Norway; Stripe Tax applies reverse charge for UK VAT-registered customers.",
       },
     },
     {

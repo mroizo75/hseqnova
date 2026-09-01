@@ -130,8 +130,9 @@ export default function VilkarPage() {
                   <li><strong>Add-ons:</strong> Optional industry packs and extras at additional cost</li>
                 </ul>
                 <p className="text-sm text-muted-foreground mt-2">
-                  All prices are exclusive of UK VAT at the prevailing rate
-                  (currently 20%).
+                  Prices are exclusive of VAT. The supplier is established in Norway.
+                  Stripe Tax applies reverse charge for UK VAT-registered customers;
+                  HSEQ Nova does not collect UK VAT on the payment.
                 </p>
               </div>
 

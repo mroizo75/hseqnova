@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MultipleStructuredData } from "@/components/seo/structured-data";
-import { HSEQ_CORE, UK_VAT_PERCENT } from "@/lib/billing-catalog";
+import { HSEQ_CORE } from "@/lib/billing-catalog";
 import { formatGbp } from "@/lib/homepage-content";
 import {
   getCanonicalUrl,
@@ -502,7 +502,7 @@ function FinalCta() {
               Log injuries and near misses digitally. If an event is reportable
               under RIDDOR, the deadline is already running in the system.{" "}
               {formatGbp(HSEQ_CORE.monthlyPriceGbp)} per month, unlimited
-              users, UK VAT invoice at {UK_VAT_PERCENT}%.
+              users. Stripe Tax applies reverse charge for UK VAT-registered customers.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button

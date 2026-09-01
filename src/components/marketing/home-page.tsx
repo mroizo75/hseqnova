@@ -13,7 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ADDON_PACKS, HSEQ_CORE, UK_VAT_PERCENT } from "@/lib/billing-catalog";
+import { ADDON_PACKS, HSEQ_CORE } from "@/lib/billing-catalog";
 import { formatGbp, HOME_FAQS } from "@/lib/homepage-content";
 
 const DUTIES = [
@@ -241,7 +241,7 @@ function Hero() {
             </Button>
           </div>
           <p className="mt-4 text-sm text-white/60">
-            UK VAT invoices. Pay by Bacs Direct Debit, card or invoice.
+            UK invoices. Pay by Bacs Direct Debit, card or invoice.
           </p>
         </div>
 
@@ -560,7 +560,7 @@ function PricingSection() {
                 "Risk assessments, documents and actions",
                 "Workplace inspections, training and fire drills",
                 "Organisation chart",
-                `UK VAT invoice at ${UK_VAT_PERCENT}%`,
+                "Reverse-charge VAT invoice (Norwegian supplier)",
               ].map((item) => (
                 <li key={item} className="flex gap-3">
                   <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-800" aria-hidden />

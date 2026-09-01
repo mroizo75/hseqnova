@@ -2,6 +2,15 @@ import { tenantHasModule } from "@/lib/tenant-modules";
 
 export const UK_VAT_PERCENT = 20;
 
+/**
+ * Norwegian supplier selling B2B SaaS to UK organisations.
+ * Stripe Tax stays on: collect a UK VAT number and let Stripe apply reverse charge
+ * (0% collected, reverse-charge note on the invoice). Do not disable automatic tax.
+ * VAT Act 1994 s.7A / VAT Notice 741A; merverdiavgiftsloven for remote B2B exports.
+ */
+export const VAT_REVERSE_CHARGE_NOTE =
+  "VAT is not collected by HSEQ Nova. Enter your UK VAT number on the Stripe page so reverse charge can apply. VAT-registered customers account for UK VAT themselves.";
+
 export const HSEQ_CORE = {
   id: "core",
   name: "HSEQ Nova Core",

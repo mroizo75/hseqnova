@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   ADDON_PACKS,
   HSEQ_CORE,
-  UK_VAT_PERCENT,
+  VAT_REVERSE_CHARGE_NOTE,
 } from "@/lib/billing-catalog";
 import {
   resumeSelfServeCheckout,
@@ -36,6 +36,7 @@ export function RegisterForm({ mode, cancelled = false, prefillEmail = "" }: Reg
   const [email, setEmail] = useState(prefillEmail);
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
+  const [vatNumber, setVatNumber] = useState("");
   const [billingMethod, setBillingMethod] = useState<SignupBillingMethod>("CARD");
   const [addonIds, setAddonIds] = useState<AddonPackId[]>([]);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -79,6 +80,7 @@ export function RegisterForm({ mode, cancelled = false, prefillEmail = "" }: Reg
               email,
               password,
               phone,
+              vatNumber,
               billingMethod,
               addonIds,
               acceptedTerms: true,
@@ -152,6 +154,20 @@ export function RegisterForm({ mode, cancelled = false, prefillEmail = "" }: Reg
                     disabled={loading}
                     placeholder="020 7946 0000"
                   />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="vatNumber">UK VAT number (for reverse charge)</Label>
+                  <Input
+                    id="vatNumber"
+                    value={vatNumber}
+                    onChange={(event) => setVatNumber(event.target.value)}
+                    disabled={loading}
+                    placeholder="GB123456789"
+                    autoComplete="off"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    If you are VAT-registered, add it here. Stripe Tax then applies reverse charge instead of adding 20% UK VAT.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="contactName">Your name</Label>
@@ -253,7 +269,7 @@ export function RegisterForm({ mode, cancelled = false, prefillEmail = "" }: Reg
               {formatGbp(monthlyExVat)} / month ex VAT
             </p>
             <p className="text-muted-foreground">
-              Plus {UK_VAT_PERCENT}% VAT. Invoice Net 30 is available from hello@hseqnova.co.uk — not in this checkout.
+              {VAT_REVERSE_CHARGE_NOTE} Invoice Net 30 is available from hello@hseqnova.co.uk — not in this checkout.
             </p>
           </div>
 
