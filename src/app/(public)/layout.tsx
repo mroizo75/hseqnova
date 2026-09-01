@@ -1,18 +1,6 @@
-import { Fraunces, Source_Sans_3 } from "next/font/google";
+import { displayFont, marketingFont } from "@/fonts";
 import { PublicNav } from "@/components/public-nav";
 import { PublicFooter } from "@/components/public-footer";
-
-const displayFont = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const marketingFont = Source_Sans_3({
-  subsets: ["latin"],
-  variable: "--font-marketing",
-  display: "swap",
-});
 
 export default function PublicLayout({
   children,
