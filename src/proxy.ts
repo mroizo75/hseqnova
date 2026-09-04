@@ -136,6 +136,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public files (images, etc)
      */
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|site.webmanifest|sw.js|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!api/auth|api/webhooks|_next/static|_next/image|favicon.ico|site.webmanifest|sw.js|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

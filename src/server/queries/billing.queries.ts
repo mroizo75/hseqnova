@@ -5,7 +5,6 @@ import { getStripe } from "@/lib/stripe";
 import { needsPaymentGate, parseSignupCheckoutMetadata } from "@/lib/signup-checkout";
 import {
   coverageStillActive,
-  isFailedRenewal,
   isPaidCancelPeriodExpired,
   isVoluntaryCancel,
   paidUntilFromInvoice,
@@ -361,12 +360,8 @@ export async function applyStripeSubscriptionAccess(input: {
   }
   if (!tenant?.id) return;
 
-  const coverage = await loadStripePaidCoverage({
-    stripeCustomerId: input.stripeCustomerId,
-    stripeSubscriptionId: input.subscription.id ?? (tenant.stripeSubscriptionId as string | null),
-  });
-  const source = coverage.source ?? input.subscription;
-  const untilUnix = coverage.until ?? stripePaidUntilUnix(source);
+  const source = input.subscription;
+  const untilUnix = stripePaidUntilUnix(source);
   const keep =
     shouldKeepAccessAfterCancel(source) ||
     (isVoluntaryCancel(source) && coverageStillActive(untilUnix));
@@ -498,19 +493,6 @@ export async function suspendExpiredCancelledSubscriptions(): Promise<number> {
     ended += 1;
   }
   return ended;
-}
-
-export async function shouldSuspendOnPaymentFailed(input: {
-  stripeCustomerId: string;
-  stripeSubscriptionId?: string | null;
-}): Promise<boolean> {
-  const coverage = await loadStripePaidCoverage(input);
-  if (coverage.source && isVoluntaryCancel(coverage.source)) return false;
-  if (coverage.source && isFailedRenewal(coverage.source)) return true;
-  if (coverageStillActive(coverage.until) && coverage.source && isVoluntaryCancel(coverage.source)) {
-    return false;
-  }
-  return true;
 }
 
 export type TenantProductAccess = "ok" | "pay" | "suspended";

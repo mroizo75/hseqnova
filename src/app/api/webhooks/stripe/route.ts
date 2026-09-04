@@ -7,25 +7,26 @@ import {
   activatePaidSignup,
   applyStripeSubscriptionAccess,
   loadEnabledBillingModuleKeys,
-  shouldSuspendOnPaymentFailed,
   syncLiveStripeSubscription,
   upsertSubscriptionTotal,
 } from "@/server/queries/billing.queries";
-import { shouldKeepAccessAfterCancel } from "@/lib/stripe-subscription-access";
+import { isVoluntaryCancel, shouldKeepAccessAfterCancel } from "@/lib/stripe-subscription-access";
 import { parseSignupCheckoutMetadata } from "@/lib/signup-checkout";
 import Stripe from "stripe";
+
+export const runtime = "nodejs";
+export const maxDuration = 30;
 
 function stripeRefId(value: string | { id: string } | null | undefined): string | null {
   if (!value) return null;
   return typeof value === "string" ? value : value.id;
 }
 
-async function hydrateSubscription(subscription: Stripe.Subscription): Promise<Stripe.Subscription> {
-  try {
-    return await getStripe().subscriptions.retrieve(subscription.id, { expand: ["items.data"] });
-  } catch {
-    return subscription;
+function errorMessage(error: unknown): string {
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
+    return error.message;
   }
+  return error instanceof Error ? error.message : "Webhook processing failed";
 }
 
 async function handleSignupFromMetadata(
@@ -45,43 +46,24 @@ async function handleSignupFromMetadata(
   return true;
 }
 
-export async function POST(request: NextRequest) {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!secret) {
-    return NextResponse.json({ error: "Stripe webhook is not configured" }, { status: 503 });
-  }
-
-  const body = await request.text();
-  const signature = request.headers.get("stripe-signature");
-  if (!signature) {
-    return NextResponse.json({ error: "Missing signature" }, { status: 400 });
-  }
-
-  let event: Stripe.Event;
-  try {
-    event = getStripe().webhooks.constructEvent(body, signature, secret);
-  } catch {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
-  }
-
+async function processEvent(event: Stripe.Event): Promise<void> {
   const db = getAdminDb();
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-    const full = await getStripe().checkout.sessions.retrieve(session.id, {
-      expand: ["line_items.data.price", "subscription"],
-    });
-    const handledSignup = await handleSignupFromMetadata(full.metadata, {
-      customerId: stripeRefId(full.customer),
-      subscriptionId: stripeRefId(full.subscription as string | { id: string } | null),
+    const handledSignup = await handleSignupFromMetadata(session.metadata, {
+      customerId: stripeRefId(session.customer),
+      subscriptionId: stripeRefId(session.subscription as string | { id: string } | null),
     });
 
     if (!handledSignup) {
-      const tenantId = full.metadata?.tenantId;
-      const packId = full.metadata?.packId;
+      const tenantId = session.metadata?.tenantId;
+      const packId = session.metadata?.packId;
       if (tenantId && packId) {
-        const price = full.line_items?.data[0]?.price;
-        const priceId = typeof price === "object" ? price?.id ?? null : null;
+        const priceId =
+          typeof session.line_items?.data[0]?.price === "object"
+            ? session.line_items.data[0].price?.id ?? null
+            : null;
         await activateAddonPackForTenant({
           tenantId,
           packId,
@@ -141,7 +123,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.created") {
-    const subscription = await hydrateSubscription(event.data.object as Stripe.Subscription);
+    const subscription = event.data.object as Stripe.Subscription;
     const customerId = stripeRefId(subscription.customer);
     const isLive =
       subscription.status === "active" ||
@@ -174,7 +156,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (event.type === "customer.subscription.deleted") {
-    const subscription = await hydrateSubscription(event.data.object as Stripe.Subscription);
+    const subscription = event.data.object as Stripe.Subscription;
     const customerId = stripeRefId(subscription.customer);
     if (customerId) {
       await applyStripeSubscriptionAccess({ stripeCustomerId: customerId, subscription });
@@ -187,29 +169,34 @@ export async function POST(request: NextRequest) {
     if (customerId) {
       const { data: tenant } = await db
         .from("Tenant")
-        .select("id, status, stripeSubscriptionId")
+        .select("id, status")
         .eq("stripeCustomerId", customerId)
         .maybeSingle();
-      const shouldSuspend =
-        tenant &&
-        tenant.status !== "SUSPENDED" &&
-        tenant.status !== "CANCELLED" &&
-        (await shouldSuspendOnPaymentFailed({
-          stripeCustomerId: customerId,
-          stripeSubscriptionId: (tenant.stripeSubscriptionId as string | null) ?? null,
-        }));
-      if (shouldSuspend && tenant) {
-        const now = new Date().toISOString();
-        await db
-          .from("Tenant")
-          .update({ status: "SUSPENDED", suspendedAt: now, updatedAt: now })
-          .eq("id", tenant.id)
-          .neq("onboardingStatus", "NOT_STARTED");
+      if (tenant && tenant.status !== "SUSPENDED" && tenant.status !== "CANCELLED") {
+        const { data: localSub } = await db
+          .from("Subscription")
+          .select("cancelAtPeriodEnd")
+          .eq("tenantId", tenant.id)
+          .maybeSingle();
+        const cancelledLocally = Boolean(localSub?.cancelAtPeriodEnd);
+        const subscription = (invoice as Stripe.Invoice & { subscription?: Stripe.Subscription | string | null })
+          .subscription;
+        const cancelledOnInvoice =
+          typeof subscription === "object" && subscription
+            ? isVoluntaryCancel(subscription)
+            : false;
+        if (!cancelledLocally && !cancelledOnInvoice) {
+          const now = new Date().toISOString();
+          await db
+            .from("Tenant")
+            .update({ status: "SUSPENDED", suspendedAt: now, updatedAt: now })
+            .eq("id", tenant.id)
+            .neq("onboardingStatus", "NOT_STARTED");
+        }
       }
     }
   }
 
-  // Reactivate tenant if invoice is paid while suspended
   if (event.type === "invoice.paid") {
     const invoice = event.data.object as Stripe.Invoice;
     const customerId = stripeRefId(invoice.customer);
@@ -221,6 +208,32 @@ export async function POST(request: NextRequest) {
         .eq("stripeCustomerId", customerId)
         .eq("status", "SUSPENDED");
     }
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) {
+    return NextResponse.json({ error: "Stripe webhook is not configured" }, { status: 503 });
+  }
+
+  const body = await request.text();
+  const signature = request.headers.get("stripe-signature");
+  if (!signature) {
+    return NextResponse.json({ error: "Missing signature" }, { status: 400 });
+  }
+
+  let event: Stripe.Event;
+  try {
+    event = getStripe().webhooks.constructEvent(body, signature, secret);
+  } catch {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  }
+
+  try {
+    await processEvent(event);
+  } catch (error) {
+    return NextResponse.json({ received: true, error: errorMessage(error) }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });
