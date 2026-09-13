@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { adminHomePath, isPlatformStaff } from "@/lib/platform-access";
 import { PublicNav } from "@/components/public-nav";
 import { PublicFooter } from "@/components/public-footer";
+import { AskHseqNova } from "@/features/marketing-chat/components/ask-hseq-nova";
+import { displayFont, marketingFont } from "@/fonts";
 import HomePage, { metadata } from "./(public)/page";
 
 export { metadata };
@@ -13,13 +15,14 @@ export default async function RootPage() {
 
   if (!session?.user) {
     return (
-      <>
+      <div className={`${displayFont.variable} ${marketingFont.variable} font-marketing`}>
         <PublicNav />
         <main className="min-h-[calc(100vh-4rem)]">
           <HomePage />
         </main>
         <PublicFooter />
-      </>
+        <AskHseqNova />
+      </div>
     );
   }
 

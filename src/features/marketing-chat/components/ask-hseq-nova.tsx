@@ -41,7 +41,8 @@ export function AskHseqNova() {
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const hidden = HIDDEN_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  const path = pathname ?? "/";
+  const hidden = HIDDEN_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 
   useEffect(() => {
     if (!open) return;
