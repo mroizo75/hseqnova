@@ -42,6 +42,7 @@ async function handleSignupFromMetadata(
     addonIds: signup.addonIds,
     stripeCustomerId: refs.customerId,
     stripeSubscriptionId: refs.subscriptionId,
+    billingInterval: signup.billingInterval,
   });
   return true;
 }
@@ -70,7 +71,16 @@ async function processEvent(event: Stripe.Event): Promise<void> {
           stripePriceId: priceId,
         });
         const enabled = await loadEnabledBillingModuleKeys(tenantId);
-        await upsertSubscriptionTotal(tenantId, enabled);
+        const { data: subRow } = await db
+          .from("Subscription")
+          .select("billingInterval")
+          .eq("tenantId", tenantId)
+          .maybeSingle();
+        await upsertSubscriptionTotal(
+          tenantId,
+          enabled,
+          subRow?.billingInterval === "YEARLY" ? "year" : "month",
+        );
       }
     }
   }
@@ -211,10 +221,46 @@ async function processEvent(event: Stripe.Event): Promise<void> {
   }
 }
 
+function webhookSecrets(): string[] {
+  return (process.env.STRIPE_WEBHOOK_SECRET ?? "")
+    .split(",")
+    .map((value) => value.trim().replace(/^['"]|['"]$/g, ""))
+    .filter((value) => value.length > 0);
+}
+
+function constructWebhookEvent(body: string, signature: string): Stripe.Event {
+  const stripe = getStripe();
+  const secrets = webhookSecrets();
+  if (secrets.length === 0) {
+    throw { code: "WEBHOOK_SECRET_MISSING", message: "STRIPE_WEBHOOK_SECRET is not set" };
+  }
+  if (secrets.some((secret) => secret.startsWith("sk_") || secret.startsWith("pk_"))) {
+    throw {
+      code: "WEBHOOK_SECRET_WRONG_TYPE",
+      message: "STRIPE_WEBHOOK_SECRET must be the endpoint signing secret (whsec_...), not the API key",
+    };
+  }
+  let lastError: unknown;
+  for (const secret of secrets) {
+    try {
+      return stripe.webhooks.constructEvent(body, signature, secret);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
 export async function POST(request: NextRequest) {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!secret) {
+  const secrets = webhookSecrets();
+  if (secrets.length === 0) {
     return NextResponse.json({ error: "Stripe webhook is not configured" }, { status: 503 });
+  }
+  if (secrets.some((secret) => secret.startsWith("sk_") || secret.startsWith("pk_"))) {
+    return NextResponse.json(
+      { error: "STRIPE_WEBHOOK_SECRET must be the Dashboard endpoint signing secret (whsec_...)" },
+      { status: 503 },
+    );
   }
 
   const body = await request.text();
@@ -225,9 +271,19 @@ export async function POST(request: NextRequest) {
 
   let event: Stripe.Event;
   try {
-    event = getStripe().webhooks.constructEvent(body, signature, secret);
-  } catch {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+    event = constructWebhookEvent(body, signature);
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+    if (code === "WEBHOOK_SECRET_MISSING" || code === "WEBHOOK_SECRET_WRONG_TYPE") {
+      return NextResponse.json({ error: errorMessage(error) }, { status: 503 });
+    }
+    return NextResponse.json(
+      {
+        error: "Invalid signature",
+        hint: "Use the signing secret from this webhook endpoint in Stripe Dashboard (Developers → Webhooks → Reveal), not a Stripe CLI secret or the API key.",
+      },
+      { status: 400 },
+    );
   }
 
   try {

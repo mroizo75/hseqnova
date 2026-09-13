@@ -16,6 +16,11 @@ interface SendEmailParams {
   subject: string;
   html: string;
   replyTo?: string;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer | string;
+    contentType?: string;
+  }>;
 }
 
 /**
@@ -23,7 +28,7 @@ interface SendEmailParams {
  * From is always the verified Resend domain. replyTo routes customer replies
  * to the salesperson's mailbox (Namecheap) without sending as that address.
  */
-export async function sendEmail({ to, subject, html, replyTo }: SendEmailParams) {
+export async function sendEmail({ to, subject, html, replyTo, attachments }: SendEmailParams) {
   try {
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
@@ -31,6 +36,7 @@ export async function sendEmail({ to, subject, html, replyTo }: SendEmailParams)
       subject,
       html,
       ...(replyTo ? { replyTo } : {}),
+      ...(attachments?.length ? { attachments } : {}),
     });
 
     if (error) {

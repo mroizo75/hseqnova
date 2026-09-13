@@ -14,6 +14,7 @@ import {
   needsPaymentGate,
   normalizeCompanyNumber,
   parseSignupAddonIds,
+  parseSignupBillingInterval,
   pickResumableSignupTenant,
   publicCheckoutError,
   resolveSignupPriceIds,
@@ -37,6 +38,7 @@ const signupSchema = z.object({
     .optional()
     .transform((value) => (value && value.length > 0 ? value.toUpperCase().replace(/\s+/g, "") : undefined)),
   billingMethod: z.enum(["CARD", "DIRECT_DEBIT"]),
+  billingInterval: z.enum(["month", "year"]).default("month"),
   addonIds: z.array(z.string()),
   acceptedTerms: z.literal(true, { message: "You must accept the terms" }),
   resume: z.boolean().optional(),
@@ -77,8 +79,9 @@ async function checkoutUrl(input: {
   tenantId: string;
   addonIds: AddonPackId[];
   billingMethod: "CARD" | "DIRECT_DEBIT";
+  billingInterval: "month" | "year";
 }): Promise<string> {
-  const { priceIds, missing } = resolveSignupPriceIds(input.addonIds);
+  const { priceIds, missing } = resolveSignupPriceIds(input.addonIds, input.billingInterval);
   if (missing.length > 0) {
     throw {
       code: "STRIPE_PRICE_MISSING",
@@ -88,7 +91,7 @@ async function checkoutUrl(input: {
   }
 
   const base = appBaseUrl();
-  const metadata = buildSignupMetadata(input.tenantId, input.addonIds);
+  const metadata = buildSignupMetadata(input.tenantId, input.addonIds, input.billingInterval);
   const { url } = await createCheckoutSession({
     tenantId: input.tenantId,
     priceIds,
@@ -196,6 +199,7 @@ export async function startSelfServeCheckout(
         tenantId: unpaid.id,
         addonIds,
         billingMethod: data.billingMethod,
+        billingInterval: data.billingInterval,
       });
       return { success: true, url };
     }
@@ -325,6 +329,7 @@ export async function startSelfServeCheckout(
       tenantId,
       addonIds,
       billingMethod: data.billingMethod,
+      billingInterval: data.billingInterval,
     });
     return { success: true, url };
   } catch (error: unknown) {
@@ -335,6 +340,7 @@ export async function startSelfServeCheckout(
 export async function resumeSelfServeCheckout(input: {
   addonIds: string[];
   billingMethod: "CARD" | "DIRECT_DEBIT";
+  billingInterval?: "month" | "year";
 }): Promise<{ success: true; url: string } | { success: false; error: string }> {
   try {
     const auth = await getAuthContext();
@@ -346,6 +352,7 @@ export async function resumeSelfServeCheckout(input: {
     if (input.billingMethod !== "CARD" && input.billingMethod !== "DIRECT_DEBIT") {
       return { success: false, error: "Choose card or Bacs Direct Debit" };
     }
+    const billingInterval = parseSignupBillingInterval(input.billingInterval);
 
     const unpaid = await findUnpaidTenantForUser(auth.userId);
     if (!unpaid || unpaid.id !== auth.tenantId) {
@@ -382,6 +389,7 @@ export async function resumeSelfServeCheckout(input: {
       tenantId: tenant.id,
       addonIds,
       billingMethod: input.billingMethod,
+      billingInterval,
     });
     return { success: true, url };
   } catch (error: unknown) {

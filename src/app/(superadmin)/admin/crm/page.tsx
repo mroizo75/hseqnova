@@ -29,9 +29,14 @@ export default async function CrmDashboardPage() {
               : "Deals assigned to you"}
           </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/crm/companies/new">Add company</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" className="bg-transparent">
+            <Link href="/admin/crm/demos">Demos</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/admin/crm/companies/new">Add company</Link>
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

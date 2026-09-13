@@ -1,14 +1,17 @@
 import {
   ADDON_PACKS,
   HSEQ_CORE,
+  catalogStripePriceEnv,
   getAddonPack,
   stripePriceIdFromEnv,
   type AddonPackId,
+  type BillingInterval,
 } from "@/lib/billing-catalog";
 
 export const SIGNUP_FLOW = "signup";
 
 export type SignupBillingMethod = "CARD" | "DIRECT_DEBIT";
+export type SignupBillingInterval = BillingInterval;
 
 export type SignupPriceLookup = (envName: string) => string | null;
 
@@ -16,6 +19,7 @@ export type SignupCheckoutMetadata = {
   flow: typeof SIGNUP_FLOW;
   tenantId: string;
   addonIds: string;
+  billingInterval: SignupBillingInterval;
 };
 
 export function isAddonPackId(value: string): value is AddonPackId {
@@ -42,20 +46,26 @@ export function serializeSignupAddonIds(addonIds: Iterable<string>): string {
   return parseSignupAddonIds([...addonIds]).join(",");
 }
 
+export function parseSignupBillingInterval(value: string | null | undefined): SignupBillingInterval {
+  return value === "year" ? "year" : "month";
+}
+
 export function buildSignupMetadata(
   tenantId: string,
   addonIds: Iterable<string>,
+  billingInterval: SignupBillingInterval = "month",
 ): SignupCheckoutMetadata {
   return {
     flow: SIGNUP_FLOW,
     tenantId,
     addonIds: serializeSignupAddonIds(addonIds),
+    billingInterval,
   };
 }
 
 export function parseSignupCheckoutMetadata(
   metadata: Record<string, string> | null | undefined,
-): { tenantId: string; addonIds: AddonPackId[] } | null {
+): { tenantId: string; addonIds: AddonPackId[]; billingInterval: SignupBillingInterval } | null {
   if (!metadata || metadata.flow !== SIGNUP_FLOW) {
     return null;
   }
@@ -66,15 +76,20 @@ export function parseSignupCheckoutMetadata(
   return {
     tenantId,
     addonIds: parseSignupAddonIds(metadata.addonIds),
+    billingInterval: parseSignupBillingInterval(metadata.billingInterval),
   };
 }
 
 export function resolveSignupPriceIds(
   addonIds: Iterable<string>,
+  billingInterval: SignupBillingInterval = "month",
   lookup: SignupPriceLookup = stripePriceIdFromEnv,
 ): { priceIds: string[]; missing: string[] } {
   const packs = parseSignupAddonIds([...addonIds]).map((id) => getAddonPack(id)!);
-  const envNames = [HSEQ_CORE.stripePriceEnv, ...packs.map((pack) => pack.stripePriceEnv)];
+  const envNames = [
+    catalogStripePriceEnv(HSEQ_CORE, billingInterval),
+    ...packs.map((pack) => catalogStripePriceEnv(pack, billingInterval)),
+  ];
   const priceIds: string[] = [];
   const missing: string[] = [];
   for (const envName of envNames) {

@@ -11,6 +11,15 @@ export const UK_VAT_PERCENT = 20;
 export const VAT_REVERSE_CHARGE_NOTE =
   "VAT is not collected by HSEQ Nova. Enter your UK VAT number on the Stripe page so reverse charge can apply. VAT-registered customers account for UK VAT themselves.";
 
+export const ANNUAL_DISCOUNT_PERCENT = 10;
+
+export type BillingInterval = "month" | "year";
+
+/** 10% off the monthly rate when billed once a year. */
+export function yearlyPriceGbp(monthlyPriceGbp: number): number {
+  return Math.round(monthlyPriceGbp * 12 * (1 - ANNUAL_DISCOUNT_PERCENT / 100) * 100) / 100;
+}
+
 export const HSEQ_CORE = {
   id: "core",
   name: "HSEQ Nova Core",
@@ -18,6 +27,7 @@ export const HSEQ_CORE = {
   monthlyPriceGbp: 29,
   legalHook: "HSWA 1974; MHSWR 1999; RIDDOR 2013",
   stripePriceEnv: "STRIPE_PRICE_CORE_MONTHLY",
+  stripeYearlyPriceEnv: "STRIPE_PRICE_CORE_YEARLY",
 } as const;
 
 export type AddonPackId = "rams" | "coshh" | "cdm" | "safety-board" | "audits" | "environment";
@@ -31,6 +41,7 @@ export type AddonPack = {
   entitlementKey: string;
   moduleKeys: readonly string[];
   stripePriceEnv: string;
+  stripeYearlyPriceEnv: string;
 };
 
 export const ADDON_PACKS: readonly AddonPack[] = [
@@ -43,6 +54,7 @@ export const ADDON_PACKS: readonly AddonPack[] = [
     entitlementKey: "sja",
     moduleKeys: ["sja"],
     stripePriceEnv: "STRIPE_PRICE_RAMS_MONTHLY",
+    stripeYearlyPriceEnv: "STRIPE_PRICE_RAMS_YEARLY",
   },
   {
     id: "coshh",
@@ -53,6 +65,7 @@ export const ADDON_PACKS: readonly AddonPack[] = [
     entitlementKey: "chemicals",
     moduleKeys: ["chemicals", "coshh", "exposureRegister"],
     stripePriceEnv: "STRIPE_PRICE_COSHH_MONTHLY",
+    stripeYearlyPriceEnv: "STRIPE_PRICE_COSHH_YEARLY",
   },
   {
     id: "cdm",
@@ -63,6 +76,7 @@ export const ADDON_PACKS: readonly AddonPack[] = [
     entitlementKey: "constructionCompliance",
     moduleKeys: ["constructionCompliance", "cdm", "permitToWork"],
     stripePriceEnv: "STRIPE_PRICE_CDM_MONTHLY",
+    stripeYearlyPriceEnv: "STRIPE_PRICE_CDM_YEARLY",
   },
   {
     id: "safety-board",
@@ -73,6 +87,7 @@ export const ADDON_PACKS: readonly AddonPack[] = [
     entitlementKey: "hmsTavle",
     moduleKeys: ["hmsTavle"],
     stripePriceEnv: "STRIPE_PRICE_TAVLE_MONTHLY",
+    stripeYearlyPriceEnv: "STRIPE_PRICE_TAVLE_YEARLY",
   },
   {
     id: "audits",
@@ -83,6 +98,7 @@ export const ADDON_PACKS: readonly AddonPack[] = [
     entitlementKey: "audits",
     moduleKeys: ["audits"],
     stripePriceEnv: "STRIPE_PRICE_AUDITS_MONTHLY",
+    stripeYearlyPriceEnv: "STRIPE_PRICE_AUDITS_YEARLY",
   },
   {
     id: "environment",
@@ -93,6 +109,7 @@ export const ADDON_PACKS: readonly AddonPack[] = [
     entitlementKey: "environment",
     moduleKeys: ["environment"],
     stripePriceEnv: "STRIPE_PRICE_ENVIRONMENT_MONTHLY",
+    stripeYearlyPriceEnv: "STRIPE_PRICE_ENVIRONMENT_YEARLY",
   },
 ];
 
@@ -113,6 +130,24 @@ export function sumActiveAddonPriceGbp(enabledKeys: Iterable<string>): number {
 
 export function monthlyTotalGbp(enabledKeys: Iterable<string>): number {
   return HSEQ_CORE.monthlyPriceGbp + sumActiveAddonPriceGbp(enabledKeys);
+}
+
+export function billedTotalGbp(enabledKeys: Iterable<string>, interval: BillingInterval): number {
+  const monthly = monthlyTotalGbp(enabledKeys);
+  return interval === "year" ? yearlyPriceGbp(monthly) : monthly;
+}
+
+export function catalogStripePriceEnv(
+  item: { stripePriceEnv: string; stripeYearlyPriceEnv: string },
+  interval: BillingInterval,
+): string {
+  return interval === "year" ? item.stripeYearlyPriceEnv : item.stripePriceEnv;
+}
+
+export function packStripePriceIds(pack: AddonPack): string[] {
+  return [pack.stripePriceEnv, pack.stripeYearlyPriceEnv]
+    .map((envName) => stripePriceIdFromEnv(envName))
+    .filter((id): id is string => Boolean(id));
 }
 
 export function stripePriceIdFromEnv(envName: string): string | null {

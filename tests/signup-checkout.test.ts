@@ -22,13 +22,31 @@ describe("self-serve signup checkout", () => {
       STRIPE_PRICE_RAMS_MONTHLY: "price_rams",
       STRIPE_PRICE_ENVIRONMENT_MONTHLY: "price_env",
     };
-    const result = resolveSignupPriceIds(["environment", "rams", "unknown"], (name) => env[name] ?? null);
+    const result = resolveSignupPriceIds(["environment", "rams", "unknown"], "month", (name) => env[name] ?? null);
     assert.deepEqual(result.priceIds, ["price_core", "price_rams", "price_env"]);
     assert.deepEqual(result.missing, []);
   });
 
+  it("resolves yearly Stripe price IDs when billing annually", () => {
+    const env: Record<string, string> = {
+      STRIPE_PRICE_CORE_YEARLY: "price_core_y",
+      STRIPE_PRICE_RAMS_YEARLY: "price_rams_y",
+    };
+    const result = resolveSignupPriceIds(["rams"], "year", (name) => env[name] ?? null);
+    assert.deepEqual(result.priceIds, ["price_core_y", "price_rams_y"]);
+    assert.deepEqual(result.missing, []);
+
+    const yearly = buildSignupMetadata("tenant_1", ["rams"], "year");
+    assert.equal(yearly.billingInterval, "year");
+    assert.deepEqual(parseSignupCheckoutMetadata(yearly), {
+      tenantId: "tenant_1",
+      addonIds: ["rams"],
+      billingInterval: "year",
+    });
+  });
+
   it("lists missing Stripe price env names", () => {
-    const result = resolveSignupPriceIds(["cdm"], () => null);
+    const result = resolveSignupPriceIds(["cdm"], "month", () => null);
     assert.deepEqual(result.priceIds, []);
     assert.deepEqual(result.missing, [HSEQ_CORE.stripePriceEnv, "STRIPE_PRICE_CDM_MONTHLY"]);
   });
@@ -41,7 +59,11 @@ describe("self-serve signup checkout", () => {
     assert.equal(serializeSignupAddonIds(["audits", "coshh"]), "coshh,audits");
 
     const parsed = parseSignupCheckoutMetadata(metadata);
-    assert.deepEqual(parsed, { tenantId: "tenant_1", addonIds: ["coshh", "audits"] });
+    assert.deepEqual(parsed, {
+      tenantId: "tenant_1",
+      addonIds: ["coshh", "audits"],
+      billingInterval: "month",
+    });
     assert.equal(parseSignupCheckoutMetadata({ flow: "addon", tenantId: "x" }), null);
     assert.deepEqual(parseSignupAddonIds("rams,not-a-pack,environment"), ["rams", "environment"]);
   });

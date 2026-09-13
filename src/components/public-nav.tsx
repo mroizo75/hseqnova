@@ -48,6 +48,9 @@ export function PublicNav() {
                 Log in
               </Button>
             </Link>
+            <Button asChild variant="outline" size="sm" className="bg-transparent">
+              <Link href="/book-a-demo">Book a demo</Link>
+            </Button>
             <Button asChild size="sm">
               <Link href="/register">Start now</Link>
             </Button>
@@ -81,6 +84,11 @@ export function PublicNav() {
                   Log in
                 </Button>
               </Link>
+              <Button asChild variant="outline" size="sm" className="w-full bg-transparent">
+                <Link href="/book-a-demo" onClick={() => setMobileMenuOpen(false)}>
+                  Book a demo
+                </Link>
+              </Button>
               <Button asChild size="sm" className="w-full">
                 <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
                   Start now

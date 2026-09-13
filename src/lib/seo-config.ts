@@ -2,6 +2,8 @@
  * HSEQ Nova SEO configuration for the UK product.
  */
 
+import { ANNUAL_DISCOUNT_PERCENT, HSEQ_CORE, yearlyPriceGbp } from "@/lib/billing-catalog";
+
 const rawBaseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://hseqnova.co.uk";
 const normalizedBaseUrl = rawBaseUrl.startsWith("http") ? rawBaseUrl : `https://${rawBaseUrl}`;
 
@@ -11,8 +13,10 @@ export const SITE_CONFIG = {
   description: "HSEQ software for UK employers. Digital accident book, RIDDOR triage, living H&S policy, RAMS, COSHH, CDM and a digital site safety board. Priced per company, unlimited users.",
   url: normalizedBaseUrl,
   locale: "en_GB",
-  contactPhone: "",
-  contactEmail: "hello@hseqnova.co.uk",
+  contactName: "Callum",
+  contactPhone: "07498 312139",
+  contactPhoneTel: "+447498312139",
+  contactEmail: "callum@hseqnova.co.uk",
   socialMedia: {
     linkedin: "https://www.linkedin.com/company/hseqnova",
     facebook: "",
@@ -60,8 +64,22 @@ export const ORGANIZATION_SCHEMA = {
   url: SITE_CONFIG.url,
   logo: `${SITE_CONFIG.url}/opengraph-image`,
   description: SITE_CONFIG.description,
-  telephone: SITE_CONFIG.contactPhone,
+  telephone: SITE_CONFIG.contactPhoneTel,
   email: SITE_CONFIG.contactEmail,
+  contactPoint: {
+    "@type": "ContactPoint",
+    contactType: "sales",
+    telephone: SITE_CONFIG.contactPhoneTel,
+    email: SITE_CONFIG.contactEmail,
+    availableLanguage: "English",
+    areaServed: "GB",
+    hoursAvailable: {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      opens: "09:00",
+      closes: "17:00",
+    },
+  },
   address: {
     "@type": "PostalAddress",
     addressCountry: "GB",
@@ -151,7 +169,7 @@ export const FAQ_SCHEMA = {
       name: "How much does HSEQ Nova cost?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Core is £29 per month excluding VAT, billed per company with unlimited users. RAMS, COSHH, CDM 2015, the digital safety board, audits and environment are optional add-ons. The supplier is in Norway; Stripe Tax applies reverse charge for UK VAT-registered customers.",
+        text: `Core is £${HSEQ_CORE.monthlyPriceGbp} per month excluding VAT, or £${yearlyPriceGbp(HSEQ_CORE.monthlyPriceGbp).toFixed(2)} per year with ${ANNUAL_DISCOUNT_PERCENT}% off, billed per company with unlimited users. RAMS, COSHH, CDM 2015, the digital safety board, audits and environment are optional add-ons. The supplier is in Norway; Stripe Tax applies reverse charge for UK VAT-registered customers.`,
       },
     },
     {
@@ -203,7 +221,7 @@ export const PAGE_METADATA = {
   },
   priser: {
     title: "Pricing — HSEQ Nova | Per company, unlimited users",
-    description: "Core HSEQ for every company. Industry packs and extras as add-ons. VAT invoices, Bacs Direct Debit or card via Stripe.",
+    description: "Core HSEQ for every company, monthly or yearly with 10% off. Industry packs and extras as add-ons. VAT invoices, Bacs Direct Debit or card via Stripe.",
     keywords: "health and safety software pricing UK, HSEQ software cost, per company pricing, unlimited users",
   },
   riddor: {
@@ -243,8 +261,13 @@ export const PAGE_METADATA = {
   },
   contact: {
     title: "Contact HSEQ Nova | Get in Touch",
-    description: "Get in touch with HSEQ Nova. Email hello@hseqnova.co.uk for questions about health and safety software, pricing or support.",
-    keywords: "contact HSEQ Nova, health and safety software support, HSEQ enquiry",
+    description: "Get in touch with HSEQ Nova. Call 07498 312139 or email callum@hseqnova.co.uk. Book a 30-minute product demo online.",
+    keywords: "contact HSEQ Nova, health and safety software support, HSEQ enquiry, book a demo",
+  },
+  bookDemo: {
+    title: "Book a Demo | HSEQ Nova",
+    description: "Pick a day and time for a 30-minute HSEQ Nova demo. Add it to Google, Outlook or Apple Calendar, or download an ICS file.",
+    keywords: "book HSEQ Nova demo, health and safety software demo UK, HSEQ product walkthrough",
   },
 } as const;
 

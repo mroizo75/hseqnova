@@ -1,4 +1,4 @@
-import { ADDON_PACKS, HSEQ_CORE } from "@/lib/billing-catalog";
+import { ADDON_PACKS, ANNUAL_DISCOUNT_PERCENT, HSEQ_CORE, yearlyPriceGbp } from "@/lib/billing-catalog";
 import { SITE_CONFIG } from "@/lib/seo-config";
 
 export function formatGbp(amount: number): string {
@@ -13,7 +13,7 @@ export const HOME_FAQS = [
   },
   {
     question: "How much does HSEQ Nova cost?",
-    answer: `HSEQ Nova Core is ${formatGbp(HSEQ_CORE.monthlyPriceGbp)} per month excluding VAT, billed per company with unlimited users. RAMS, COSHH, CDM 2015, the digital safety board, audits and environment are optional add-ons. The supplier is in Norway: Stripe Tax applies reverse charge for UK VAT-registered customers, so UK VAT is not added to the card payment.`,
+    answer: `HSEQ Nova Core is ${formatGbp(HSEQ_CORE.monthlyPriceGbp)} per month excluding VAT, or ${formatGbp(yearlyPriceGbp(HSEQ_CORE.monthlyPriceGbp))} per year with ${ANNUAL_DISCOUNT_PERCENT}% off, billed per company with unlimited users. RAMS, COSHH, CDM 2015, the digital safety board, audits and environment are optional add-ons. The supplier is in Norway: Stripe Tax applies reverse charge for UK VAT-registered customers, so UK VAT is not added to the card payment.`,
   },
   {
     question: "What is included in HSEQ Nova Core?",
@@ -38,7 +38,7 @@ export const HOME_FAQS = [
   {
     question: "How do I pay?",
     answer:
-      "Self-serve checkout is card or Bacs Direct Debit. Invoice (Net 30) is available if you email hello@hseqnova.co.uk. Prices are in GBP excluding VAT.",
+      `Self-serve checkout is card or Bacs Direct Debit, monthly or yearly. Invoice (Net 30) is available if you email ${SITE_CONFIG.contactEmail}. Prices are in GBP excluding VAT.`,
   },
   {
     question: "Who can use HSEQ Nova in the company?",

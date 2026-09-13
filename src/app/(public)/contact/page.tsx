@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   Mail,
+  Phone,
   Linkedin,
   Clock,
   CalendarCheck,
@@ -17,11 +18,11 @@ import {
   getOpenGraphDefaults,
   getTwitterDefaults,
   SITE_CONFIG,
+  PAGE_METADATA,
 } from "@/lib/seo-config";
 
-const pageTitle = "Contact HSEQ Nova | Get in Touch";
-const pageDescription =
-  "Get in touch with the HSEQ Nova team. Email hello@hseqnova.co.uk or find us on LinkedIn. We respond within one working day, Monday to Friday.";
+const pageTitle = PAGE_METADATA.contact.title;
+const pageDescription = PAGE_METADATA.contact.description;
 
 export const metadata: Metadata = {
   title: pageTitle,
@@ -34,11 +35,25 @@ export const metadata: Metadata = {
 
 const CONTACT_METHODS = [
   {
+    icon: Phone,
+    title: "Telephone",
+    detail: SITE_CONFIG.contactPhone,
+    href: `tel:${SITE_CONFIG.contactPhoneTel}`,
+    description: "Speak to us Monday to Friday, 9 am to 5 pm UK time. Ask for a walkthrough, pricing or a second opinion on fit.",
+  },
+  {
     icon: Mail,
     title: "Email",
     detail: SITE_CONFIG.contactEmail,
     href: `mailto:${SITE_CONFIG.contactEmail}`,
-    description: "Our primary contact method. Write to us about anything — pricing, a demo, technical questions or partnership enquiries.",
+    description: "Write to us about pricing, a demo, technical questions or partnership enquiries. A real person replies.",
+  },
+  {
+    icon: CalendarCheck,
+    title: "Book a demo",
+    detail: "30 minutes, pick a slot",
+    href: "/book-a-demo",
+    description: "Choose a day and time. Add the meeting to Google, Outlook or Apple Calendar, or download an ICS file.",
   },
   {
     icon: Linkedin,
@@ -53,7 +68,7 @@ const DETAILS = [
   {
     icon: Clock,
     title: "Support hours",
-    text: "Monday to Friday, 9 am to 5 pm GMT",
+    text: "Monday to Friday, 9 am to 5 pm UK time",
   },
   {
     icon: CalendarCheck,
@@ -104,18 +119,34 @@ function HeroSection() {
             UK health and safety compliance, or want to give us feedback — we would like
             to hear from you.
           </p>
-          <div className="mt-8">
+          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Button
               asChild
               size="lg"
               className="h-12 bg-emerald-400 text-emerald-950 hover:bg-emerald-300"
             >
-              <a href={`mailto:${SITE_CONFIG.contactEmail}`}>
-                <Mail className="h-4 w-4" />
-                {SITE_CONFIG.contactEmail}
+              <Link href="/book-a-demo">
+                Book a demo
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="h-12 border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
+            >
+              <a href={`tel:${SITE_CONFIG.contactPhoneTel}`}>
+                <Phone className="h-4 w-4" />
+                {SITE_CONFIG.contactPhone}
               </a>
             </Button>
           </div>
+          <p className="mt-5 text-sm text-white/60">
+            <a className="underline underline-offset-2" href={`mailto:${SITE_CONFIG.contactEmail}`}>
+              {SITE_CONFIG.contactEmail}
+            </a>
+          </p>
         </div>
       </div>
     </section>
@@ -133,11 +164,11 @@ function ContactMethodsSection() {
           Simple and direct
         </h2>
         <p className="mt-4 text-base leading-relaxed text-[hsl(var(--home-ink)/0.72)]">
-          No contact form maze. Write to us and a real person will reply.
+          Call, email, or pick a slot in the calendar. No contact form maze.
         </p>
       </div>
 
-      <div className="mx-auto mt-14 grid max-w-3xl gap-6 md:grid-cols-2">
+      <div className="mx-auto mt-14 grid max-w-4xl gap-6 md:grid-cols-2">
         {CONTACT_METHODS.map((method) => (
           <a
             key={method.title}
@@ -269,11 +300,11 @@ function CtaSection() {
             size="lg"
             className="h-12 border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
           >
-            <a href={`mailto:${SITE_CONFIG.contactEmail}`}>Email us first</a>
+            <Link href="/book-a-demo">Book a demo first</Link>
           </Button>
         </div>
         <p className="mt-6 text-sm text-white/50">
-          {SITE_CONFIG.contactEmail} · Monday to Friday, 9 am to 5 pm GMT
+          {SITE_CONFIG.contactPhone} · {SITE_CONFIG.contactEmail} · Monday to Friday, 9 am to 5 pm UK
         </p>
       </div>
     </section>

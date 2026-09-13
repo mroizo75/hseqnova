@@ -3,7 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { getAuthContext } from "@/lib/server-authorization";
 import { getAdminDb } from "@/lib/supabase/admin";
-import { getAddonPack, isAddonPackActive, stripePriceIdFromEnv, ADDON_PACKS } from "@/lib/billing-catalog";
+import {
+  catalogStripePriceEnv,
+  getAddonPack,
+  isAddonPackActive,
+  packStripePriceIds,
+  stripePriceIdFromEnv,
+  type BillingInterval,
+} from "@/lib/billing-catalog";
 import {
   activateAddonPackForTenant,
   loadEnabledBillingModuleKeys,
@@ -29,6 +36,14 @@ async function requireAdminTenant() {
   return auth;
 }
 
+async function subscriptionBillingInterval(subscriptionId: string): Promise<BillingInterval> {
+  const { getStripe } = await import("@/lib/stripe");
+  const stripe = getStripe();
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const interval = subscription.items.data[0]?.price?.recurring?.interval;
+  return interval === "year" ? "year" : "month";
+}
+
 export async function addAddonToSubscription(packId: string) {
   try {
     const auth = await requireAdminTenant();
@@ -42,7 +57,22 @@ export async function addAddonToSubscription(packId: string) {
       return { success: false as const, error: `${pack.name} is already on this subscription` };
     }
 
-    const priceId = stripePriceIdFromEnv(pack.stripePriceEnv);
+    const { data: tenant } = await getAdminDb()
+      .from("Tenant")
+      .select("stripeSubscriptionId")
+      .eq("id", auth.tenantId)
+      .maybeSingle();
+
+    const interval: BillingInterval = tenant?.stripeSubscriptionId
+      ? await subscriptionBillingInterval(tenant.stripeSubscriptionId as string)
+      : "month";
+    const priceId = stripePriceIdFromEnv(catalogStripePriceEnv(pack, interval));
+    if (tenant?.stripeSubscriptionId && !priceId) {
+      return {
+        success: false as const,
+        error: "Stripe prices are not configured for this billing interval. Contact hello@hseqnova.co.uk.",
+      };
+    }
     await activateAddonPackForTenant({
       tenantId: auth.tenantId,
       packId: pack.id,
@@ -50,13 +80,7 @@ export async function addAddonToSubscription(packId: string) {
     });
 
     const nextKeys = await loadEnabledBillingModuleKeys(auth.tenantId);
-    const price = await upsertSubscriptionTotal(auth.tenantId, nextKeys);
-
-    const { data: tenant } = await getAdminDb()
-      .from("Tenant")
-      .select("stripeSubscriptionId")
-      .eq("id", auth.tenantId)
-      .maybeSingle();
+    const price = await upsertSubscriptionTotal(auth.tenantId, nextKeys, interval);
 
     if (tenant?.stripeSubscriptionId && priceId) {
       const { addPriceToExistingSubscription } = await import("@/lib/stripe-billing");
@@ -98,7 +122,7 @@ export async function removeAddonFromSubscription(packId: string) {
       .maybeSingle();
 
     let periodEnd: string = now;
-    const priceId = stripePriceIdFromEnv(pack.stripePriceEnv);
+    const priceIds = packStripePriceIds(pack);
 
     if (tenant?.stripeSubscriptionId) {
       const { getStripe } = await import("@/lib/stripe");
@@ -111,12 +135,10 @@ export async function removeAddonFromSubscription(packId: string) {
       // Keep access until the end of the current billing period
       periodEnd = new Date(subscription.current_period_end * 1000).toISOString();
 
-      // Remove the item from Stripe with no proration — they paid for this month already
-      if (priceId) {
-        const item = subscription.items.data.find((si) => si.price.id === priceId);
-        if (item) {
-          await stripe.subscriptionItems.del(item.id, { proration_behavior: "none" });
-        }
+      // Remove the item from Stripe with no proration — they paid for this period already
+      const item = subscription.items.data.find((si) => priceIds.includes(si.price.id));
+      if (item) {
+        await stripe.subscriptionItems.del(item.id, { proration_behavior: "none" });
       }
     }
 
@@ -130,7 +152,10 @@ export async function removeAddonFromSubscription(packId: string) {
     }
 
     const nextKeys = await loadEnabledBillingModuleKeys(auth.tenantId);
-    const price = await upsertSubscriptionTotal(auth.tenantId, nextKeys);
+    const interval: BillingInterval = tenant?.stripeSubscriptionId
+      ? await subscriptionBillingInterval(tenant.stripeSubscriptionId as string)
+      : "month";
+    const price = await upsertSubscriptionTotal(auth.tenantId, nextKeys, interval);
 
     revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard");

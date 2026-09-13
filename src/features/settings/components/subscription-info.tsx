@@ -18,8 +18,9 @@ import {
   ADDON_PACKS,
   HSEQ_CORE,
   UK_VAT_PERCENT,
+  billedTotalGbp,
   isAddonPackActive,
-  monthlyTotalGbp,
+  yearlyPriceGbp,
   type AddonPack,
 } from "@/lib/billing-catalog";
 
@@ -77,7 +78,9 @@ export function SubscriptionInfo({
   const [removingPackId, setRemovingPackId] = useState<string | null>(null);
   const subscription = tenant.subscription;
   const tenantStatus = tenant.status;
-  const monthlyTotal = monthlyTotalGbp(enabledModuleKeys);
+  const yearlyBilling = subscription?.billingInterval === "YEARLY";
+  const billedTotal = billedTotalGbp(enabledModuleKeys, yearlyBilling ? "year" : "month");
+  const billedUnit = yearlyBilling ? "/year" : "/month";
 
   const handleBillingSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -191,8 +194,12 @@ export function SubscriptionInfo({
               <div>
                 <p className="text-sm text-muted-foreground">Amount</p>
                 <p className="text-lg font-semibold">
-                  {formatMoneyGbp(HSEQ_CORE.monthlyPriceGbp)}
-                  <span className="text-sm font-normal text-muted-foreground"> / month</span>
+                  {formatMoneyGbp(
+                    yearlyBilling
+                      ? yearlyPriceGbp(HSEQ_CORE.monthlyPriceGbp)
+                      : HSEQ_CORE.monthlyPriceGbp,
+                  )}
+                  <span className="text-sm font-normal text-muted-foreground"> {billedUnit}</span>
                 </p>
                 <p className="text-xs text-muted-foreground">ex VAT</p>
               </div>
@@ -254,7 +261,7 @@ export function SubscriptionInfo({
         <CardHeader>
           <CardTitle>Add-ons</CardTitle>
           <CardDescription>
-            What this company has on top of {HSEQ_CORE.name}. Adding a pack updates the same subscription and monthly total.
+            What this company has on top of {HSEQ_CORE.name}. Adding a pack updates the same subscription and billed total.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -280,8 +287,10 @@ export function SubscriptionInfo({
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     <p className="text-sm font-semibold">
-                      {formatMoneyGbp(pack.monthlyPriceGbp)}
-                      <span className="font-normal text-muted-foreground">/month</span>
+                      {formatMoneyGbp(
+                        yearlyBilling ? yearlyPriceGbp(pack.monthlyPriceGbp) : pack.monthlyPriceGbp,
+                      )}
+                      <span className="font-normal text-muted-foreground"> {billedUnit}</span>
                     </p>
                     {included ? (
                       <div className="flex items-center gap-2">
@@ -321,7 +330,7 @@ export function SubscriptionInfo({
           </div>
           <div className="flex items-center justify-between border-t pt-4 text-sm">
             <p className="text-muted-foreground">Subscription total ex VAT</p>
-            <p className="font-semibold">{formatMoneyGbp(monthlyTotal)} / month</p>
+            <p className="font-semibold">{formatMoneyGbp(billedTotal)} {billedUnit}</p>
           </div>
         </CardContent>
       </Card>

@@ -9,8 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   ADDON_PACKS,
+  ANNUAL_DISCOUNT_PERCENT,
   HSEQ_CORE,
   VAT_REVERSE_CHARGE_NOTE,
+  yearlyPriceGbp,
 } from "@/lib/billing-catalog";
 import {
   resumeSelfServeCheckout,
@@ -18,6 +20,7 @@ import {
 } from "@/server/actions/signup-checkout.actions";
 import type { AddonPackId } from "@/lib/billing-catalog";
 import type { SignupBillingMethod } from "@/lib/signup-checkout";
+import { SITE_CONFIG } from "@/lib/seo-config";
 
 function formatGbp(amount: number): string {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(amount);
@@ -38,6 +41,7 @@ export function RegisterForm({ mode, cancelled = false, prefillEmail = "" }: Reg
   const [phone, setPhone] = useState("");
   const [vatNumber, setVatNumber] = useState("");
   const [billingMethod, setBillingMethod] = useState<SignupBillingMethod>("CARD");
+  const [billingInterval, setBillingInterval] = useState<"month" | "year">("month");
   const [addonIds, setAddonIds] = useState<AddonPackId[]>([]);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +56,8 @@ export function RegisterForm({ mode, cancelled = false, prefillEmail = "" }: Reg
       )
     );
   }, [addonIds]);
+  const yearlyExVat = yearlyPriceGbp(monthlyExVat);
+  const billedExVat = billingInterval === "year" ? yearlyExVat : monthlyExVat;
 
   const toggleAddon = (id: AddonPackId, checked: boolean) => {
     setAddonIds((current) =>
@@ -72,7 +78,7 @@ export function RegisterForm({ mode, cancelled = false, prefillEmail = "" }: Reg
     try {
       const result =
         mode === "pay"
-          ? await resumeSelfServeCheckout({ addonIds, billingMethod })
+          ? await resumeSelfServeCheckout({ addonIds, billingMethod, billingInterval })
           : await startSelfServeCheckout({
               companyName,
               companyNumber,
@@ -82,6 +88,7 @@ export function RegisterForm({ mode, cancelled = false, prefillEmail = "" }: Reg
               phone,
               vatNumber,
               billingMethod,
+              billingInterval,
               addonIds,
               acceptedTerms: true,
             });
@@ -209,6 +216,42 @@ export function RegisterForm({ mode, cancelled = false, prefillEmail = "" }: Reg
           )}
 
           <fieldset className="space-y-3">
+            <legend className="text-sm font-medium">Billing</legend>
+            <label className="flex items-start gap-3 rounded-md border p-3">
+              <input
+                type="radio"
+                name="billingInterval"
+                className="mt-1"
+                checked={billingInterval === "month"}
+                onChange={() => setBillingInterval("month")}
+                disabled={loading}
+              />
+              <span>
+                <span className="block font-medium">Monthly</span>
+                <span className="text-sm text-muted-foreground">
+                  {formatGbp(monthlyExVat)} per month ex VAT
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-3 rounded-md border p-3">
+              <input
+                type="radio"
+                name="billingInterval"
+                className="mt-1"
+                checked={billingInterval === "year"}
+                onChange={() => setBillingInterval("year")}
+                disabled={loading}
+              />
+              <span>
+                <span className="block font-medium">Yearly — {ANNUAL_DISCOUNT_PERCENT}% off</span>
+                <span className="text-sm text-muted-foreground">
+                  {formatGbp(yearlyExVat)} per year ex VAT ({formatGbp(yearlyExVat / 12)} / month equivalent)
+                </span>
+              </span>
+            </label>
+          </fieldset>
+
+          <fieldset className="space-y-3">
             <legend className="text-sm font-medium">Payment method</legend>
             <label className="flex items-start gap-3 rounded-md border p-3">
               <input
@@ -255,7 +298,11 @@ export function RegisterForm({ mode, cancelled = false, prefillEmail = "" }: Reg
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline justify-between gap-3">
                       <span className="font-medium">{pack.name}</span>
-                      <span className="shrink-0 text-sm">{formatGbp(pack.monthlyPriceGbp)}/mo</span>
+                      <span className="shrink-0 text-sm">
+                        {billingInterval === "year"
+                          ? `${formatGbp(yearlyPriceGbp(pack.monthlyPriceGbp))}/yr`
+                          : `${formatGbp(pack.monthlyPriceGbp)}/mo`}
+                      </span>
                     </span>
                     <span className="block text-sm text-muted-foreground">{pack.description}</span>
                   </span>
@@ -266,10 +313,12 @@ export function RegisterForm({ mode, cancelled = false, prefillEmail = "" }: Reg
 
           <div className="rounded-md border bg-muted/40 p-4 text-sm">
             <p className="font-medium">
-              {formatGbp(monthlyExVat)} / month ex VAT
+              {billingInterval === "year"
+                ? `${formatGbp(billedExVat)} / year ex VAT`
+                : `${formatGbp(billedExVat)} / month ex VAT`}
             </p>
             <p className="text-muted-foreground">
-              {VAT_REVERSE_CHARGE_NOTE} Invoice Net 30 is available from hello@hseqnova.co.uk — not in this checkout.
+              {VAT_REVERSE_CHARGE_NOTE} Invoice Net 30 is available from {SITE_CONFIG.contactEmail} — not in this checkout.
             </p>
           </div>
 
@@ -285,7 +334,7 @@ export function RegisterForm({ mode, cancelled = false, prefillEmail = "" }: Reg
               <Link href="/vilkar" className="underline">
                 terms
               </Link>{" "}
-              and understand this is a monthly subscription.
+              and understand this is a {billingInterval === "year" ? "yearly" : "monthly"} subscription.
             </span>
           </label>
 

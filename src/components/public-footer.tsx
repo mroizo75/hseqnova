@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Linkedin, Mail } from "lucide-react";
+import { Linkedin, Mail, Phone } from "lucide-react";
 import Image from "next/image";
 import { SITE_CONFIG } from "@/lib/seo-config";
 
@@ -16,6 +16,7 @@ const PRODUCT_LINKS = [
 
 const COMPANY_LINKS = [
   { href: "/about", label: "About HSEQ Nova" },
+  { href: "/book-a-demo", label: "Book a demo" },
   { href: "/contact", label: "Contact" },
   { href: "/personvern", label: "Privacy policy" },
   { href: "/vilkar", label: "Terms of service" },
@@ -118,6 +119,15 @@ export function PublicFooter() {
             <h3 className="font-semibold mb-4">Contact</h3>
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-2">
+                <Phone className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" aria-hidden="true" />
+                <a
+                  href={`tel:${SITE_CONFIG.contactPhoneTel}`}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {SITE_CONFIG.contactPhone}
+                </a>
+              </li>
+              <li className="flex items-start gap-2">
                 <Mail className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" aria-hidden="true" />
                 <a
                   href={`mailto:${SITE_CONFIG.contactEmail}`}
@@ -125,6 +135,11 @@ export function PublicFooter() {
                 >
                   {SITE_CONFIG.contactEmail}
                 </a>
+              </li>
+              <li>
+                <Link href="/book-a-demo" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Book a 30-minute demo
+                </Link>
               </li>
               <li className="text-muted-foreground">
                 <strong>{SITE_CONFIG.name}</strong>

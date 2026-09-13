@@ -56,7 +56,7 @@ export default async function RegisterPage({
         {mode === "pay" ? "Complete your subscription" : "Start HSEQ Nova"}
       </h1>
       <p className="mb-8 text-muted-foreground">
-        HSEQ Nova Core is £29 / month ex VAT, unlimited users. Choose add-ons if you need them, then pay on Stripe.
+        HSEQ Nova Core is £29 / month ex VAT, unlimited users. Pay yearly and save 10%. Choose add-ons if you need them, then pay on Stripe.
       </p>
       <RegisterForm
         mode={mode}

@@ -13,8 +13,9 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ADDON_PACKS, HSEQ_CORE } from "@/lib/billing-catalog";
+import { ADDON_PACKS, ANNUAL_DISCOUNT_PERCENT, HSEQ_CORE, yearlyPriceGbp } from "@/lib/billing-catalog";
 import { formatGbp, HOME_FAQS } from "@/lib/homepage-content";
+import { SITE_CONFIG } from "@/lib/seo-config";
 
 const DUTIES = [
   "HSWA 1974",
@@ -237,11 +238,11 @@ function Hero() {
               size="lg"
               className="h-12 border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
             >
-              <Link href="#pricing">See pricing</Link>
+              <Link href="/book-a-demo">Book a demo</Link>
             </Button>
           </div>
           <p className="mt-4 text-sm text-white/60">
-            UK invoices. Pay by Bacs Direct Debit, card or invoice.
+            UK invoices. Pay by Bacs Direct Debit, card or invoice. Or call {SITE_CONFIG.contactPhone}.
           </p>
         </div>
 
@@ -549,6 +550,9 @@ function PricingSection() {
                 /month ex VAT
               </span>
             </p>
+            <p className="mt-2 text-sm text-[hsl(var(--home-ink)/0.7)]">
+              Or {formatGbp(yearlyPriceGbp(HSEQ_CORE.monthlyPriceGbp))}/year with {ANNUAL_DISCOUNT_PERCENT}% off.
+            </p>
             <p className="mt-3 max-w-md text-sm leading-relaxed text-[hsl(var(--home-ink)/0.7)]">
               One price for the whole company. Unlimited users. Core covers the duties most
               UK employers run every week.
@@ -605,8 +609,8 @@ function PricingSection() {
             </ul>
             <p className="mt-4 text-sm text-[hsl(var(--home-ink)/0.6)]">
               Need invoice billing? Email{" "}
-              <a className="underline underline-offset-2" href="mailto:hello@hseqnova.co.uk">
-                hello@hseqnova.co.uk
+              <a className="underline underline-offset-2" href={`mailto:${SITE_CONFIG.contactEmail}`}>
+                {SITE_CONFIG.contactEmail}
               </a>
               .
             </p>
@@ -716,7 +720,7 @@ function FinalCta() {
                 variant="outline"
                 className="h-12 border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
               >
-                <Link href="/digital-safety-board">See the safety board</Link>
+                <Link href="/book-a-demo">Book a demo</Link>
               </Button>
             </div>
           </div>

@@ -149,7 +149,7 @@ function HeroSection() {
               size="lg"
               className="h-12 border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
             >
-              <Link href="/contact">Get in touch</Link>
+              <Link href="/book-a-demo">Book a demo</Link>
             </Button>
           </div>
         </div>
@@ -396,7 +396,7 @@ function CtaSection() {
             size="lg"
             className="h-12 border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
           >
-            <Link href="/contact">Get in touch</Link>
+            <Link href="/book-a-demo">Book a demo</Link>
           </Button>
         </div>
         <p className="mt-6 text-sm text-white/50">

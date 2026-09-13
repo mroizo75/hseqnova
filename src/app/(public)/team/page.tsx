@@ -74,10 +74,10 @@ export default function TeamPage() {
                 Get in touch with our team for a no-obligation chat about HSEQ Nova, training or occupational health.
               </p>
               <Link
-                href="/register"
+                href="/book-a-demo"
                 className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
-                Get started free
+                Book a demo
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </CardContent>

@@ -23,6 +23,7 @@ import {
   Kanban,
   Briefcase,
   ListTodo,
+  CalendarDays,
 } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { canAccessAdminPath } from "@/lib/platform-access";
@@ -39,6 +40,7 @@ const allNavItems: NavItem[] = [
   { href: "/admin/crm/pipeline", label: "Pipeline", icon: Kanban },
   { href: "/admin/crm/companies", label: "Companies", icon: Building2 },
   { href: "/admin/crm/tasks", label: "Tasks", icon: ListTodo },
+  { href: "/admin/crm/demos", label: "Demos", icon: CalendarDays },
   { href: "/admin/support", label: "Support", icon: Headphones },
   { href: "/admin/registrations", label: "New registrations", icon: UserPlus },
   { href: "/admin/tenants", label: "Organisations", icon: Building2 },

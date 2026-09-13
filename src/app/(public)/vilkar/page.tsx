@@ -127,6 +127,7 @@ export default function VilkarPage() {
                 </p>
                 <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
                   <li><strong>Core plan:</strong> £29 per month per company, unlimited users</li>
+                  <li><strong>Yearly billing:</strong> 10% off the monthly rate when billed once a year</li>
                   <li><strong>Add-ons:</strong> Optional industry packs and extras at additional cost</li>
                 </ul>
                 <p className="text-sm text-muted-foreground mt-2">

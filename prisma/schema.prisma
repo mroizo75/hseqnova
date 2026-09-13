@@ -582,6 +582,35 @@ enum CrmTaskStatus {
   DONE
 }
 
+enum DemoBookingStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+model DemoBooking {
+  id           String            @id @default(cuid())
+  startAt      DateTime
+  endAt        DateTime
+  timezone     String            @default("Europe/London")
+  name         String
+  email        String
+  phone        String?
+  company      String
+  jobTitle     String?
+  notes        String?           @db.Text
+  status       DemoBookingStatus @default(CONFIRMED)
+  manageToken  String            @unique
+  crmDealId    String?
+  sequence     Int               @default(0)
+  cancelledAt  DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([startAt])
+  @@index([status, startAt])
+  @@index([email])
+}
+
 model CrmOrganisation {
   id            String    @id @default(cuid())
   name          String

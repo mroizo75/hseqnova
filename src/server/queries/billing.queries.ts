@@ -1,6 +1,6 @@
 import { getAdminDb } from "@/lib/supabase/admin";
 import { createId } from "@/lib/ids";
-import { getAddonPack, monthlyTotalGbp, type AddonPack } from "@/lib/billing-catalog";
+import { getAddonPack, billedTotalGbp, type AddonPack, type BillingInterval } from "@/lib/billing-catalog";
 import { getStripe } from "@/lib/stripe";
 import { needsPaymentGate, parseSignupCheckoutMetadata } from "@/lib/signup-checkout";
 import {
@@ -165,11 +165,20 @@ export async function activateAddonPackForTenant(input: {
   return pack;
 }
 
-export async function upsertSubscriptionTotal(tenantId: string, enabledKeys: Iterable<string>): Promise<number> {
-  const price = monthlyTotalGbp(enabledKeys);
+export async function upsertSubscriptionTotal(
+  tenantId: string,
+  enabledKeys: Iterable<string>,
+  interval: BillingInterval = "month",
+): Promise<number> {
+  const price = billedTotalGbp(enabledKeys, interval);
   const now = nowIso();
   const periodEnd = new Date();
-  periodEnd.setMonth(periodEnd.getMonth() + 1);
+  if (interval === "year") {
+    periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+  } else {
+    periodEnd.setMonth(periodEnd.getMonth() + 1);
+  }
+  const billingInterval = interval === "year" ? "YEARLY" : "MONTHLY";
 
   const { data: existing, error: lookupError } = await getAdminDb()
     .from("Subscription")
@@ -183,7 +192,7 @@ export async function upsertSubscriptionTotal(tenantId: string, enabledKeys: Ite
   if (existing?.id) {
     const { error } = await getAdminDb()
       .from("Subscription")
-      .update({ price, updatedAt: now })
+      .update({ price, billingInterval, updatedAt: now })
       .eq("id", existing.id);
     if (error) {
       throw { code: "SUBSCRIPTION_UPDATE_FAILED", message: error.message };
@@ -197,7 +206,7 @@ export async function upsertSubscriptionTotal(tenantId: string, enabledKeys: Ite
     plan: "STARTER",
     status: "ACTIVE",
     price,
-    billingInterval: "MONTHLY",
+    billingInterval,
     currentPeriodStart: now,
     currentPeriodEnd: periodEnd.toISOString(),
     cancelAtPeriodEnd: false,
@@ -215,6 +224,7 @@ export async function activatePaidSignup(input: {
   addonIds: Iterable<string>;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
+  billingInterval?: BillingInterval;
 }): Promise<void> {
   const now = nowIso();
   const tenantUpdate: Record<string, unknown> = {
@@ -243,7 +253,7 @@ export async function activatePaidSignup(input: {
   }
 
   const enabled = await loadEnabledBillingModuleKeys(input.tenantId);
-  await upsertSubscriptionTotal(input.tenantId, enabled);
+  await upsertSubscriptionTotal(input.tenantId, enabled, input.billingInterval ?? "month");
 }
 
 async function syncLocalSubscriptionAccess(
@@ -380,6 +390,7 @@ export async function applyStripeSubscriptionAccess(input: {
       addonIds: signup?.addonIds ?? [],
       stripeCustomerId: input.stripeCustomerId,
       stripeSubscriptionId: subscriptionId,
+      billingInterval: signup?.billingInterval,
     });
   } else if (tenant.onboardingStatus === "NOT_STARTED") {
     return;
@@ -541,6 +552,7 @@ export async function resolveTenantProductAccess(tenant: {
       addonIds: signup?.addonIds ?? [],
       stripeCustomerId: tenant.stripeCustomerId,
       stripeSubscriptionId: tenant.stripeSubscriptionId ?? (coverage.source as { id?: string } | null)?.id,
+      billingInterval: signup?.billingInterval,
     });
     if (coverage.source && isVoluntaryCancel(coverage.source)) {
       await syncLocalSubscriptionAccess(tenant.id, {

@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { PAGE_METADATA, getCanonicalUrl, ROBOTS_CONFIG } from "@/lib/seo-config";
-import { ADDON_PACKS, HSEQ_CORE, VAT_REVERSE_CHARGE_NOTE } from "@/lib/billing-catalog";
+import { PAGE_METADATA, getCanonicalUrl, ROBOTS_CONFIG, SITE_CONFIG } from "@/lib/seo-config";
+import {
+  ADDON_PACKS,
+  ANNUAL_DISCOUNT_PERCENT,
+  HSEQ_CORE,
+  VAT_REVERSE_CHARGE_NOTE,
+  yearlyPriceGbp,
+} from "@/lib/billing-catalog";
 
 export const metadata: Metadata = {
   title: PAGE_METADATA.priser.title,
@@ -21,14 +27,17 @@ export default function PricingPage() {
       <h1 className="mb-4 text-4xl font-bold">Pricing</h1>
       <p className="mb-8 text-muted-foreground">
         One price per company, unlimited users. Core HSEQ is always included. Add-ons are optional.
-        Self-serve checkout is card or Bacs Direct Debit. Invoice (Net 30) is available if you ask us.
-        {VAT_REVERSE_CHARGE_NOTE}
+        Pay monthly, or yearly with {ANNUAL_DISCOUNT_PERCENT}% off. Self-serve checkout is card or Bacs Direct Debit.
+        Invoice (Net 30) is available if you ask us. {VAT_REVERSE_CHARGE_NOTE}
       </p>
       <div className="mb-8 rounded-xl border p-8">
         <h2 className="mb-2 text-xl font-semibold">{HSEQ_CORE.name}</h2>
         <p className="mb-1 text-3xl font-bold">
           {formatGbp(HSEQ_CORE.monthlyPriceGbp)}
           <span className="text-base font-normal text-muted-foreground">/month ex VAT</span>
+        </p>
+        <p className="mb-1 text-sm text-muted-foreground">
+          Or {formatGbp(yearlyPriceGbp(HSEQ_CORE.monthlyPriceGbp))}/year with {ANNUAL_DISCOUNT_PERCENT}% off
         </p>
         <p className="mb-4 text-sm text-muted-foreground">{HSEQ_CORE.description}</p>
         <ul className="mb-6 list-disc space-y-1 pl-5 text-sm">
@@ -37,9 +46,14 @@ export default function PricingPage() {
           <li>Risk assessments, procedures, inspections</li>
           <li>Training, fire drills, annual H&amp;S plan</li>
         </ul>
-        <Button asChild>
-          <Link href="/register">Start now</Link>
-        </Button>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button asChild>
+            <Link href="/register">Start now</Link>
+          </Button>
+          <Button asChild variant="outline" className="bg-transparent">
+            <Link href="/book-a-demo">Book a demo</Link>
+          </Button>
+        </div>
       </div>
       <h2 className="mb-3 text-lg font-semibold">Add-ons</h2>
       <ul className="mb-8 space-y-3">
@@ -47,14 +61,16 @@ export default function PricingPage() {
           <li key={pack.id} className="rounded-lg border p-4">
             <div className="flex items-baseline justify-between gap-3">
               <p className="font-medium">{pack.name}</p>
-              <p className="text-sm">{formatGbp(pack.monthlyPriceGbp)}/mo</p>
+              <p className="text-sm tabular-nums">
+                {formatGbp(pack.monthlyPriceGbp)}/mo · {formatGbp(yearlyPriceGbp(pack.monthlyPriceGbp))}/yr
+              </p>
             </div>
             <p className="text-sm text-muted-foreground">{pack.description}</p>
           </li>
         ))}
       </ul>
       <p className="text-sm text-muted-foreground">
-        Need invoice billing? Email hello@hseqnova.co.uk.
+        Need invoice billing? Email {SITE_CONFIG.contactEmail}.
       </p>
     </div>
   );

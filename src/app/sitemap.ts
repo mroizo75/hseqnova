@@ -9,6 +9,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "", priority: 1.0, changeFrequency: "weekly" as const },
     { path: "/pricing", priority: 0.9, changeFrequency: "weekly" as const },
     { path: "/register", priority: 0.9, changeFrequency: "monthly" as const },
+    { path: "/book-a-demo", priority: 0.9, changeFrequency: "weekly" as const },
+    { path: "/contact", priority: 0.7, changeFrequency: "monthly" as const },
     { path: "/health-safety-software", priority: 0.8, changeFrequency: "monthly" as const },
     { path: "/health-and-safety-policy", priority: 0.8, changeFrequency: "monthly" as const },
     { path: "/digital-safety-board", priority: 0.9, changeFrequency: "weekly" as const },
