@@ -1,6 +1,7 @@
 import { displayFont, marketingFont } from "@/fonts";
 import { PublicNav } from "@/components/public-nav";
 import { PublicFooter } from "@/components/public-footer";
+import { AskHseqNova } from "@/features/marketing-chat/components/ask-hseq-nova";
 
 export default function PublicLayout({
   children,
@@ -20,6 +21,7 @@ export default function PublicLayout({
         {children}
       </main>
       <PublicFooter />
+      <AskHseqNova />
     </div>
   );
 }

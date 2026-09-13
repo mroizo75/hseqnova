@@ -76,7 +76,16 @@ export const strictRateLimiter = hasUpstashConfig
       analytics: true,
       prefix: "@upstash/ratelimit/strict",
     })
-  : new MemoryRateLimiter(3, 60);
+    : new MemoryRateLimiter(3, 60);
+
+export const marketingChatRateLimiter = hasUpstashConfig
+  ? new Ratelimit({
+      redis: Redis.fromEnv(),
+      limiter: Ratelimit.slidingWindow(12, "5 m"),
+      analytics: true,
+      prefix: "@upstash/ratelimit/marketing-chat",
+    })
+  : new MemoryRateLimiter(12, 300);
 
 /**
  * Hent IP-adresse fra request

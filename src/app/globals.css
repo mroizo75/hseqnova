@@ -281,3 +281,31 @@ body {
     transition: none !important;
   }
 }
+
+/* Public product guide — solid surfaces so the page never shows through */
+.hseq-guide-panel {
+  background-color: #f4ead4;
+  color: #14261c;
+  isolation: isolate;
+  max-height: min(32rem, calc(100dvh - 8.75rem));
+}
+
+.hseq-guide-panel header {
+  background-color: #14261c;
+  color: #f6f0e6;
+}
+
+.hseq-guide-panel header .hseq-guide-title {
+  color: #f6f0e6;
+}
+
+.hseq-guide-thread {
+  background-color: #f4ead4;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
+.hseq-guide-composer {
+  background-color: #efe4c8;
+}
