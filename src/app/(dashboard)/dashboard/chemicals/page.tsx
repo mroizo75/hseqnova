@@ -11,6 +11,8 @@ import { helpContent } from "@/lib/help-content";
 import { getTranslations } from "next-intl/server";
 import { loadChemicalsForTenant } from "@/server/queries/chemicals.queries";
 import { CoshhLegalNote } from "@/features/chemicals/components/coshh-legal-note";
+import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
+import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
 import {
   isChemicalReviewDueSoon,
   isChemicalReviewOverdue,
@@ -80,6 +82,9 @@ export default async function ChemicalsPage({
       </div>
 
       <CoshhLegalNote />
+      <IsoWhenEnabled>
+        <IsoEvidenceNote clause="ISO 45001 cl. 8.1.1" title="Operational control — hazardous substances" />
+      </IsoWhenEnabled>
 
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         <Card>

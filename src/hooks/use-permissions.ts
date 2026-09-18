@@ -36,6 +36,8 @@ export function usePermissions() {
         environment: false,
         chemicals: false,
         training: false,
+        iso: false,
+        hseqCockpit: false,
         audits: false,
         managementReviews: false,
         annualHmsPlan: false,

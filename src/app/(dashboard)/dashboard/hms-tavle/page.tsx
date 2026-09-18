@@ -18,6 +18,8 @@ import {
 import { PLAN_LABELS } from "@/features/hms-tavle/lib/tavle-plan-limits";
 import { ActivateTavleAddonButton } from "@/features/hms-tavle/components/activate-addon-button";
 import { SafetyBoardLegalNote } from "@/features/hms-tavle/components/safety-board-legal-note";
+import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
+import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
 
 type SubscriptionStatus = "TRIAL" | "ACTIVE" | "EXPIRING_SOON" | "EXPIRED" | "CANCELLED";
 
@@ -134,6 +136,9 @@ export default async function HmsTavleOversiktPage() {
       </div>
 
       <SafetyBoardLegalNote />
+      <IsoWhenEnabled>
+        <IsoEvidenceNote clause="ISO 45001 cl. 7.4" title="OH&S communication" />
+      </IsoWhenEnabled>
 
       {subscription ? (
         <Card>

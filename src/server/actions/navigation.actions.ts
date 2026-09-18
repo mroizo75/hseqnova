@@ -21,6 +21,7 @@ const DEFAULT_NAVIGATION_ITEMS = [
   { key: "constructionCompliance", label: "nav.constructionCompliance", icon: "HardHat", href: "/dashboard/construction-compliance", permission: "constructionCompliance", isSimpleMode: true, order: 14 },
   { key: "hmsTavle", label: "nav.hmsTavle", icon: "Monitor", href: "/dashboard/hms-tavle", permission: "hmsTavle", isSimpleMode: true, order: 15 },
   { key: "environment", label: "nav.environment", icon: "Leaf", href: "/dashboard/environment", permission: "environment", isSimpleMode: true, order: 16 },
+  { key: "iso", label: "nav.iso", icon: "Award", href: "/dashboard/iso", permission: "iso", isSimpleMode: true, order: 16.5 },
   { key: "audits", label: "nav.audits", icon: "Search", href: "/dashboard/audits", permission: "audits", isSimpleMode: true, order: 17 },
   { key: "managementReviews", label: "nav.managementReviews", icon: "Users", href: "/dashboard/management-reviews", permission: "managementReviews", isSimpleMode: true, order: 18 },
   { key: "orgChart", label: "nav.orgChart", icon: "Building2", href: "/dashboard/organisasjonskart", permission: "settings", isSimpleMode: true, order: 97 },

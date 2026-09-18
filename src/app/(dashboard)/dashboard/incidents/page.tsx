@@ -12,6 +12,8 @@ import { helpContent } from "@/lib/help-content";
 import { getTranslations } from "next-intl/server";
 import { loadIncidentsForList } from "@/server/queries/incidents.queries";
 import { getMainCategory } from "@/features/incidents/schemas/incident.schema";
+import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
+import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
 
 export default async function IncidentsPage() {
   const t = await getTranslations("dashboardIncidentsPage");
@@ -49,6 +51,9 @@ export default async function IncidentsPage() {
 
   return (
     <div className="space-y-6">
+      <IsoWhenEnabled>
+        <IsoEvidenceNote clause="ISO 45001 cl. 10.2" title="Incidents and corrective action" />
+      </IsoWhenEnabled>
       <div className="page-header">
         <div className="flex min-w-0 items-start gap-3">
           <div>

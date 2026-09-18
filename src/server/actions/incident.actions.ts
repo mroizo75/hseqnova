@@ -21,6 +21,8 @@ import {
 } from "@/lib/module-visibility";
 import { dispatchNewIncidentNotifications } from "@/lib/incident-notification-routing.server";
 import { CLOSE_LOOP_MESSAGES, evaluateIncidentCloseLoop } from "@/lib/incident-close-loop";
+import { getEnabledModuleKeys } from "@/lib/require-tenant-module";
+import { tenantHasIsoPack } from "@/lib/tenant-modules";
 import { normalizeProjectReference } from "@/lib/incident-project-reference";
 import { resolveIncidentProjectId } from "@/lib/incident-project-reference.server";
 import {
@@ -715,6 +717,22 @@ export async function closeIncident(input: Record<string, unknown>) {
     });
     if (loop.ok !== true) {
       return { success: false, error: CLOSE_LOOP_MESSAGES[loop.code] };
+    }
+
+    const enabledModules = await getEnabledModuleKeys(tenantId);
+    if (tenantHasIsoPack(enabledModules)) {
+      if (!String(existing.rootCause ?? "").trim()) {
+        return {
+          success: false,
+          error: "ISO 45001 cl. 10.2: record the root cause before closing.",
+        };
+      }
+      if (!validated.effectivenessReview.trim()) {
+        return {
+          success: false,
+          error: "ISO 45001 cl. 10.2: record the effectiveness of the action before closing.",
+        };
+      }
     }
 
     const { data: incident, error } = await db

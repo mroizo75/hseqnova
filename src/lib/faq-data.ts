@@ -15,7 +15,7 @@ export const faqDatabase = {
     {
       question: 'Does HSEQ Nova support ISO 9001?',
       answer:
-        'Yes, HSEQ Nova is <strong>developed to ISO 9001:2015 standards</strong>. The system supports all key requirements including: document management with version control, risk assessments, corrective actions, internal audits, management reviews, and continual improvement. We have the structures in place to simplify the certification process.',
+        'The ISO 45001 & 9001 add-on turns HSEQ Nova into a guided management system: work guide, clause map, internal audits, management review and an auditor pack. Certification is granted by a UKAS-accredited body, not by the software.',
     },
     {
       question: 'How long does it take to get started?',

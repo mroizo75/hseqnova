@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MeasureForm } from "@/features/measures/components/measure-form";
 import { MeasureList } from "@/features/measures/components/measure-list";
 import { MeasureLegalNote } from "@/features/measures/components/measure-legal-note";
+import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
+import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
 import { ListTodo, Clock, CheckCircle, AlertTriangle } from "lucide-react";
 import { PageHelpDialog } from "@/components/dashboard/page-help-dialog";
 import { helpContent } from "@/lib/help-content";
@@ -66,6 +68,9 @@ export default async function ActionsPage({ searchParams }: ActionsPageProps) {
       </div>
 
       <MeasureLegalNote />
+      <IsoWhenEnabled>
+        <IsoEvidenceNote clause="ISO 45001 cl. 10.2 and 10.3" title="Corrective action and continual improvement" />
+      </IsoWhenEnabled>
       {selectedProject ? (
         <div className="rounded border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">
           {t("projectInfo")} <strong>{selectedProject.name}</strong>

@@ -30,7 +30,7 @@ export const HSEQ_CORE = {
   stripeYearlyPriceEnv: "STRIPE_PRICE_CORE_YEARLY",
 } as const;
 
-export type AddonPackId = "rams" | "coshh" | "cdm" | "safety-board" | "audits" | "environment";
+export type AddonPackId = "rams" | "coshh" | "cdm" | "safety-board" | "iso" | "environment";
 
 export type AddonPack = {
   id: AddonPackId;
@@ -90,13 +90,14 @@ export const ADDON_PACKS: readonly AddonPack[] = [
     stripeYearlyPriceEnv: "STRIPE_PRICE_TAVLE_YEARLY",
   },
   {
-    id: "audits",
-    name: "Audits",
-    description: "Internal audits and management review. Optional — useful for tenders and ISO 45001, not a legal duty.",
-    legalHook: "ISO 45001 (optional)",
+    id: "iso",
+    name: "ISO 45001 & 9001",
+    description:
+      "Turns HSEQ Nova into a guided occupational health and safety and quality management system: clause map, work guide, internal audits, management review and auditor evidence. Certification is granted by a UKAS body, not by the software.",
+    legalHook: "ISO 45001:2018 / ISO 9001:2015 (optional)",
     monthlyPriceGbp: 15,
-    entitlementKey: "audits",
-    moduleKeys: ["audits"],
+    entitlementKey: "iso",
+    moduleKeys: ["iso", "audits"],
     stripePriceEnv: "STRIPE_PRICE_AUDITS_MONTHLY",
     stripeYearlyPriceEnv: "STRIPE_PRICE_AUDITS_YEARLY",
   },

@@ -20,6 +20,8 @@ import {
 import { IndustryRiskStarter } from "@/features/risks/components/industry-risk-starter";
 import { getAdminDb } from "@/lib/supabase/admin";
 import { hasAiAddon } from "@/lib/ai-gate";
+import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
+import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
 
 export default async function RisksPage() {
   const t = await getTranslations("dashboardRisksPage");
@@ -68,6 +70,9 @@ export default async function RisksPage() {
 
   return (
     <div className="space-y-6">
+      <IsoWhenEnabled>
+        <IsoEvidenceNote clause="ISO 45001 cl. 6.1.2 and 8.1.2" title="Hazard identification" />
+      </IsoWhenEnabled>
       <div className="page-header">
         <div className="flex min-w-0 items-start gap-3">
           <div>

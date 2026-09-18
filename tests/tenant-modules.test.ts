@@ -24,6 +24,9 @@ describe("tenant modules", () => {
     assert.equal(tenantHasModule([], "chemicals"), false);
     assert.equal(tenantHasModule(["coshh"], "chemicals"), true);
     assert.equal(tenantHasModule(["cdm"], "constructionCompliance"), true);
+    assert.equal(tenantHasModule(["audits"], "iso"), true);
+    assert.equal(tenantHasModule(["iso"], "audits"), true);
+    assert.equal(tenantHasModule([], "iso"), false);
   });
 });
 
@@ -34,7 +37,8 @@ describe("UK dashboard nav", () => {
     assert.equal(hrefs.includes("/dashboard/procedures"), false);
     assert.equal(hrefs.includes("/dashboard/time-registration"), false);
     assert.equal(UK_EXCLUDED_NAV_HREFS.has("/dashboard/procedures"), true);
-    assert.equal(UK_EXCLUDED_NAV_HREFS.has("/dashboard/goals"), true);
+    assert.equal(UK_EXCLUDED_NAV_HREFS.has("/dashboard/goals"), false);
+    assert.equal(hrefs.includes("/dashboard/iso"), true);
   });
 
   it("does not change core HSEQ by industry", () => {

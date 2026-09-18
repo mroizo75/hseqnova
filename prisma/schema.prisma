@@ -293,6 +293,11 @@ model Tenant {
   routines                            Routine[]
   managementReviews                   ManagementReview[] // Ledelsens gjennomgang
   meetings                            Meeting[] // AMU/VO møter
+  isoContextIssues                    IsoContextIssue[]
+  isoInterestedParties                IsoInterestedParty[]
+  isoScope                            IsoScope?
+  isoLegalRequirements                IsoLegalRequirement[]
+  isoChanges                          IsoChange[]
   whistleblowings                     Whistleblowing[] // Varslinger
   supportTickets                      SupportTicket[] // Chat/tickets til HMS-representanter
   scheduledReminders                  ScheduledReminder[] // Planlagte påminnelser
@@ -3231,7 +3236,11 @@ model ManagementReview {
   trainingStatus     String? @db.Text // Opplæringsstatus
   resourcesReview    String? @db.Text // Ressurser og budsjett
   externalChanges    String? @db.Text // Eksterne endringer (lover, etc)
-  wellbeingSummary   String? @db.Text // Psykososialt arbeidsmiljø oppsummering
+  previousActionsStatus String? @db.Text
+  interestedPartiesReview String? @db.Text
+  complianceEvaluationReview String? @db.Text
+  consultationReview String? @db.Text
+  communicationReview String? @db.Text
 
   // Output data
   conclusions    String?   @db.Text // Konklusjoner
@@ -3263,6 +3272,104 @@ enum ManagementReviewStatus {
   IN_PROGRESS
   COMPLETED
   APPROVED
+}
+
+// ============================================
+// ISO 45001 / 9001 IMS pack
+// ============================================
+
+model IsoContextIssue {
+  id          String   @id @default(cuid())
+  tenantId    String
+  kind        String // INTERNAL | EXTERNAL | OPPORTUNITY
+  title       String
+  description String?  @db.Text
+  relevance   String?  @db.Text
+  reviewedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([kind])
+}
+
+model IsoInterestedParty {
+  id                  String    @id @default(cuid())
+  tenantId            String
+  name                String
+  partyType           String // WORKERS | CONTRACTOR | CUSTOMER | REGULATOR | COMMUNITY | OTHER
+  needs               String    @db.Text
+  expectations        String    @db.Text
+  consultationMethod  String?
+  reviewedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model IsoScope {
+  id            String    @id @default(cuid())
+  tenantId      String    @unique
+  ohAndSScope   String    @db.Text
+  qualityScope  String?   @db.Text
+  inclusions    String?   @db.Text
+  exclusions    String?   @db.Text
+  sites         String?   @db.Text
+  approvedAt    DateTime?
+  approvedById  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model IsoLegalRequirement {
+  id                   String    @id @default(cuid())
+  tenantId             String
+  title                String
+  source               String
+  reference            String?
+  appliesBecause       String?   @db.Text
+  ownerId              String?
+  nextEvaluationDate   DateTime?
+  lastEvaluationDate   DateTime?
+  lastEvaluationResult String? // COMPLIANT | PARTIAL | NON_COMPLIANT | NOT_EVALUATED
+  lastEvaluationNotes  String?   @db.Text
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([nextEvaluationDate])
+}
+
+model IsoChange {
+  id              String    @id @default(cuid())
+  tenantId        String
+  title           String
+  description     String    @db.Text
+  changeType      String // PROCESS | PLANT | ORGANISATION | LEGAL | OTHER
+  status          String    @default("PROPOSED") // PROPOSED | ASSESSED | APPROVED | IMPLEMENTED | CLOSED
+  riskImpact      String?   @db.Text
+  trainingImpact  String?   @db.Text
+  documentImpact  String?   @db.Text
+  approvedById    String?
+  approvedAt      DateTime?
+  implementedAt   DateTime?
+  createdById     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([status])
 }
 
 // ============================================

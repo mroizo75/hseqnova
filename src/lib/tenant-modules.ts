@@ -20,6 +20,7 @@ export const ADDON_MODULE_KEYS = [
   "constructionCompliance",
   "hmsTavle",
   "audits",
+  "iso",
   "environment",
   "coshh",
   "cdm",
@@ -49,6 +50,10 @@ export const NAV_PERMISSION_TO_MODULE_KEY: Record<string, ModuleKey> = {
   permits: "permitToWork",
   audits: "audits",
   managementReviews: "audits",
+  iso: "iso",
+  goals: "iso",
+  meetings: "iso",
+  legalRegister: "iso",
   environment: "environment",
 };
 
@@ -70,7 +75,21 @@ export function tenantHasModule(
   if (moduleKey === "constructionCompliance") {
     return enabled.has("constructionCompliance") || enabled.has("cdm");
   }
+  if (
+    moduleKey === "iso" ||
+    moduleKey === "audits" ||
+    moduleKey === "goals" ||
+    moduleKey === "meetings" ||
+    moduleKey === "legalRegister"
+  ) {
+    return enabled.has("iso") || enabled.has("audits");
+  }
   return enabled.has(moduleKey);
+}
+
+/** ISO 45001 & 9001 pack — replaces Audits. Existing audits tenants keep access. */
+export function tenantHasIsoPack(enabledKeys: Iterable<string>): boolean {
+  return tenantHasModule(enabledKeys, "iso");
 }
 
 /** Projects live under CDM 2015 — not core HSEQ. */

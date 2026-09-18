@@ -16,6 +16,8 @@ import Link from "next/link";
 import { listContractors } from "@/server/actions/contractor.actions";
 import type { PreQualStatus } from "@prisma/client";
 import { ContractorLegalNote } from "@/features/contractors/components/contractor-legal-note";
+import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
+import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
 
 const STATUS_STYLES: Record<
   PreQualStatus,
@@ -90,6 +92,9 @@ export default async function ContractorsPage({
       </div>
 
       <ContractorLegalNote />
+      <IsoWhenEnabled>
+        <IsoEvidenceNote clause="ISO 45001 cl. 8.1.4 / ISO 9001 cl. 8.4" title="Procurement and contractors" />
+      </IsoWhenEnabled>
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">

@@ -151,6 +151,7 @@ export const NAV_PERMISSION_TO_MODULE: Partial<Record<string, ModuleKey>> = {
   documents: "documents",
   chemicals: "chemicals",
   audits: "audits",
+  iso: "audits",
   inspections: "inspections",
   training: "training",
   actions: "actions",

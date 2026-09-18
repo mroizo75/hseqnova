@@ -42,8 +42,8 @@ const PACK_RULES: readonly { pattern: RegExp; packIds: readonly AddonPackId[]; r
   },
   {
     pattern: /\b(iso 45001|internal audit|management review|chas|constructionline|safecontractor|\bssip\b)\b/i,
-    packIds: ["audits"],
-    reason: "Tenders and ISO 45001 work often want internal audits and management review.",
+    packIds: ["iso"],
+    reason: "Tenders and ISO 45001 / 9001 work need the ISO pack: work guide, clause map, internal audits and management review.",
   },
   {
     pattern: /\b(iso 14001|environmental aspect)\b/i,
@@ -104,7 +104,7 @@ WHAT FITS WHICH COMPANY
 - Office, warehouse, shop, cafe, most SMEs: Core only.
 - Construction / contractors / CDM sites: Core + RAMS + CDM 2015 + digital safety board.
 - Chemicals, paints, dusts, fumes: Core + COSHH.
-- CHAS / Constructionline / ISO 45001 evidence: Core, then Audits if they want internal audit and management review.
+- CHAS / Constructionline / ISO 45001 and 9001: Core, then the ISO pack for the work guide, clause map, internal audits and management review. UKAS grants the certificate, not the software.
 - ISO 14001 EMS: Environment add-on (optional, not an HSWA duty).
 Digital safety board can run standalone without Core at the same board price; with Core it pulls live first aiders, RAMS and accident tally. Personal names stay off the public screen (UK GDPR).
 

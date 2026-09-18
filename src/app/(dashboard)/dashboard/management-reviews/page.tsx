@@ -17,6 +17,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ManagementReviewLegalNote } from "@/features/management-reviews/components/management-review-legal-note";
+import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
+import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
 import { PageHelpDialog } from "@/components/dashboard/page-help-dialog";
 import { helpContent } from "@/lib/help-content";
 
@@ -76,6 +78,9 @@ export default async function ManagementReviewsPage() {
       </div>
 
       <ManagementReviewLegalNote />
+      <IsoWhenEnabled>
+        <IsoEvidenceNote clause="ISO 45001 cl. 9.3 / ISO 9001 cl. 9.3" title="Management review" />
+      </IsoWhenEnabled>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Card>

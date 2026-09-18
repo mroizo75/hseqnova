@@ -14,6 +14,8 @@ import {
 import Link from "next/link";
 import { listFireRiskAssessments } from "@/server/actions/fire-risk.actions";
 import { FireSafetyLegalNote } from "@/features/fire-risk/components/fire-safety-legal-note";
+import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
+import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
 import { format } from "date-fns";
 import { enGB } from "date-fns/locale/en-GB";
 
@@ -88,6 +90,9 @@ export default async function FireRiskPage() {
       </div>
 
       <FireSafetyLegalNote />
+      <IsoWhenEnabled>
+        <IsoEvidenceNote clause="ISO 45001 cl. 8.2" title="Emergency preparedness" />
+      </IsoWhenEnabled>
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
         <Card>

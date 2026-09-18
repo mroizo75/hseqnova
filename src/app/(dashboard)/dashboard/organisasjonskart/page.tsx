@@ -4,6 +4,8 @@ import { getPermissions } from "@/lib/permissions";
 import { OrgChartTree } from "@/features/organization/components/org-chart-tree";
 import { loadOrgChartNodes } from "@/server/queries/org-chart.queries";
 import { Building2 } from "lucide-react";
+import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
+import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
 
 export default async function OrgChartPage() {
   const user = await getCurrentUser();
@@ -36,6 +38,10 @@ export default async function OrgChartPage() {
           </p>
         </div>
       </div>
+
+      <IsoWhenEnabled>
+        <IsoEvidenceNote clause="ISO 45001 cl. 5.3 / ISO 9001 cl. 5.3" title="Roles, responsibilities and authorities" />
+      </IsoWhenEnabled>
 
       <OrgChartTree
         nodes={nodes.map((n) => ({

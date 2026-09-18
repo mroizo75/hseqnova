@@ -62,6 +62,11 @@ export default function EditManagementReviewPage() {
     trainingStatus: "",
     resourcesReview: "",
     externalChanges: "",
+    previousActionsStatus: "",
+    interestedPartiesReview: "",
+    complianceEvaluationReview: "",
+    consultationReview: "",
+    communicationReview: "",
     wellbeingSummary: "",
     conclusions: "",
     notes: "",
@@ -115,6 +120,11 @@ export default function EditManagementReviewPage() {
           trainingStatus: review.trainingStatus || "",
           resourcesReview: review.resourcesReview || "",
           externalChanges: review.externalChanges || "",
+          previousActionsStatus: review.previousActionsStatus || "",
+          interestedPartiesReview: review.interestedPartiesReview || "",
+          complianceEvaluationReview: review.complianceEvaluationReview || "",
+          consultationReview: review.consultationReview || "",
+          communicationReview: review.communicationReview || "",
           wellbeingSummary: review.wellbeingSummary || "",
           conclusions: review.conclusions || "",
           notes: review.notes || "",
@@ -155,6 +165,11 @@ export default function EditManagementReviewPage() {
         trainingStatus: formData.trainingStatus,
         resourcesReview: formData.resourcesReview,
         externalChanges: formData.externalChanges,
+        previousActionsStatus: formData.previousActionsStatus,
+        interestedPartiesReview: formData.interestedPartiesReview,
+        complianceEvaluationReview: formData.complianceEvaluationReview,
+        consultationReview: formData.consultationReview,
+        communicationReview: formData.communicationReview,
         wellbeingSummary: formData.wellbeingSummary,
         conclusions: formData.conclusions,
         notes: formData.notes,
@@ -472,6 +487,66 @@ export default function EditManagementReviewPage() {
                   setFormData({ ...formData, externalChanges: e.target.value })
                 }
                 rows={4}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="previousActionsStatus">Actions from previous reviews (ISO 9.3)</Label>
+              <Textarea
+                id="previousActionsStatus"
+                value={formData.previousActionsStatus}
+                onChange={(e) =>
+                  setFormData({ ...formData, previousActionsStatus: e.target.value })
+                }
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="interestedPartiesReview">Interested parties (ISO 9.3)</Label>
+              <Textarea
+                id="interestedPartiesReview"
+                value={formData.interestedPartiesReview}
+                onChange={(e) =>
+                  setFormData({ ...formData, interestedPartiesReview: e.target.value })
+                }
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="complianceEvaluationReview">Compliance evaluation (ISO 9.3)</Label>
+              <Textarea
+                id="complianceEvaluationReview"
+                value={formData.complianceEvaluationReview}
+                onChange={(e) =>
+                  setFormData({ ...formData, complianceEvaluationReview: e.target.value })
+                }
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="consultationReview">Consultation (ISO 9.3)</Label>
+              <Textarea
+                id="consultationReview"
+                value={formData.consultationReview}
+                onChange={(e) =>
+                  setFormData({ ...formData, consultationReview: e.target.value })
+                }
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="communicationReview">Relevant communication (ISO 9.3)</Label>
+              <Textarea
+                id="communicationReview"
+                value={formData.communicationReview}
+                onChange={(e) =>
+                  setFormData({ ...formData, communicationReview: e.target.value })
+                }
+                rows={3}
               />
             </div>
           </CardContent>

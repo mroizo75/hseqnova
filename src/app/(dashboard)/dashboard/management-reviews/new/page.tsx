@@ -48,6 +48,11 @@ export default function NewManagementReviewPage() {
     trainingStatus: "",
     resourcesReview: "",
     externalChanges: "",
+    previousActionsStatus: "",
+    interestedPartiesReview: "",
+    complianceEvaluationReview: "",
+    consultationReview: "",
+    communicationReview: "",
     conclusions: "",
     notes: "",
   });
@@ -92,6 +97,11 @@ export default function NewManagementReviewPage() {
         riskReview: data.data.riskReview || prev.riskReview,
         auditResults: data.data.auditResults || prev.auditResults,
         trainingStatus: data.data.trainingStatus || prev.trainingStatus,
+        previousActionsStatus: data.data.previousActionsStatus || prev.previousActionsStatus,
+        interestedPartiesReview: data.data.interestedPartiesReview || prev.interestedPartiesReview,
+        complianceEvaluationReview: data.data.complianceEvaluationReview || prev.complianceEvaluationReview,
+        consultationReview: data.data.consultationReview || prev.consultationReview,
+        communicationReview: data.data.communicationReview || prev.communicationReview,
       }));
 
       toast({
@@ -166,7 +176,7 @@ export default function NewManagementReviewPage() {
         {/* Grunnleggende informasjon */}
         <Card>
           <CardHeader>
-            <CardTitle>Grunnleggende informasjon</CardTitle>
+            <CardTitle>Basic information</CardTitle>
             <CardDescription>
               Fill in basic details about the review
             </CardDescription>
@@ -175,7 +185,7 @@ export default function NewManagementReviewPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="title">
-                  Tittel <span className="text-destructive">*</span>
+                  Title <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="title"
@@ -190,7 +200,7 @@ export default function NewManagementReviewPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="period">
-                  Periode <span className="text-destructive">*</span>
+                  Period <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="period"
@@ -198,14 +208,14 @@ export default function NewManagementReviewPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, period: e.target.value })
                   }
-                  placeholder="F.eks. Q4 2024, H2 2024, eller 2024"
+                  placeholder="e.g. Q4 2026, H2 2026, or 2026"
                   required
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="reviewDate">
-                  Gjennomgangsdato <span className="text-destructive">*</span>
+                  Review date <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="reviewDate"
@@ -250,7 +260,7 @@ export default function NewManagementReviewPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Gjennomgang av HMS-systemet</CardTitle>
+                <CardTitle>Review of the management system</CardTitle>
                 <CardDescription>
                   Fill in status and results from different HSEQ areas
                 </CardDescription>
@@ -264,7 +274,7 @@ export default function NewManagementReviewPage() {
                 {loadingPrefill ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Henter data...
+                    Fetching data...
                   </>
                 ) : (
                   <>
@@ -371,8 +381,73 @@ export default function NewManagementReviewPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, externalChanges: e.target.value })
                 }
-                placeholder="Endringer i lover, forskrifter, standarder..."
+                placeholder="Changes in law, HSE guidance, customers or the organisation..."
                 rows={4}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="previousActionsStatus">Actions from previous reviews (ISO 9.3)</Label>
+              <Textarea
+                id="previousActionsStatus"
+                value={formData.previousActionsStatus}
+                onChange={(e) =>
+                  setFormData({ ...formData, previousActionsStatus: e.target.value })
+                }
+                placeholder="Status of actions raised at the last management review..."
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="interestedPartiesReview">Interested parties (ISO 9.3)</Label>
+              <Textarea
+                id="interestedPartiesReview"
+                value={formData.interestedPartiesReview}
+                onChange={(e) =>
+                  setFormData({ ...formData, interestedPartiesReview: e.target.value })
+                }
+                placeholder="Needs and feedback from workers, customers, contractors and regulators..."
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="complianceEvaluationReview">Compliance evaluation (ISO 9.3)</Label>
+              <Textarea
+                id="complianceEvaluationReview"
+                value={formData.complianceEvaluationReview}
+                onChange={(e) =>
+                  setFormData({ ...formData, complianceEvaluationReview: e.target.value })
+                }
+                placeholder="Results of evaluating legal and other requirements..."
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="consultationReview">Consultation (ISO 9.3)</Label>
+              <Textarea
+                id="consultationReview"
+                value={formData.consultationReview}
+                onChange={(e) =>
+                  setFormData({ ...formData, consultationReview: e.target.value })
+                }
+                placeholder="Worker consultation and participation in the period..."
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="communicationReview">Relevant communication (ISO 9.3)</Label>
+              <Textarea
+                id="communicationReview"
+                value={formData.communicationReview}
+                onChange={(e) =>
+                  setFormData({ ...formData, communicationReview: e.target.value })
+                }
+                placeholder="Internal and external OH&S / quality communication..."
+                rows={3}
               />
             </div>
           </CardContent>

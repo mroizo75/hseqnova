@@ -25,6 +25,8 @@ import { SjaDeleteTemplateButton } from "@/components/sja/sja-delete-template-bu
 import { getTranslations } from "next-intl/server";
 import { loadSjaAnalysesForTenant, loadSjaTemplates } from "@/server/queries/sja.queries";
 import { RamsLegalNote } from "@/features/sja/components/rams-legal-note";
+import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
+import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
 
 export default async function SjaDashboardPage() {
   const t = await getTranslations("dashboardSjaPage");
@@ -105,6 +107,9 @@ export default async function SjaDashboardPage() {
       </div>
 
       <RamsLegalNote />
+      <IsoWhenEnabled>
+        <IsoEvidenceNote clause="ISO 45001 cl. 8.1 / ISO 9001 cl. 8.5" title="Operational control" />
+      </IsoWhenEnabled>
 
       {showCreateOnlyNotice && (
         <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/30">

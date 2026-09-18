@@ -36,6 +36,10 @@ import {
   ChevronDown,
   Gauge,
   Megaphone,
+  Target,
+  GitBranch,
+  Award,
+  Scale,
   type LucideIcon,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -89,6 +93,7 @@ const navGroups: NavGroup[] = [
       { href: "/dashboard/inspections", label: "nav.inspections", icon: ShieldCheck, permission: "inspections" },
       { href: "/dashboard/fire-drills", label: "nav.fireDrills", icon: Flame, permission: "inspections" },
       { href: "/dashboard/actions", label: "nav.actions", icon: ListTodo, permission: "actions" },
+      { href: "/dashboard/goals", label: "nav.goals", icon: Target, permission: "goals" },
     ],
   },
   {
@@ -97,6 +102,7 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/dashboard/documents", label: "nav.documents", icon: FileText, permission: "documents" },
       { href: "/dashboard/training", label: "nav.training", icon: GraduationCap, permission: "training" },
+      { href: "/dashboard/changes", label: "nav.managementOfChange", icon: GitBranch, permission: "iso" },
       { href: "/dashboard/sja", label: "nav.sja", icon: HardHat, permission: "sja" },
       { href: "/dashboard/permits", label: "nav.permits", icon: FileKey, permission: "permits" },
       { href: "/dashboard/chemicals", label: "nav.chemicals", icon: Beaker, permission: "chemicals" },
@@ -119,6 +125,8 @@ const navGroups: NavGroup[] = [
     label: "nav.group.compliance",
     items: [
       { href: "/dashboard/hseq-cockpit", label: "nav.hseqCockpit", icon: Gauge, permission: "hseqCockpit" },
+      { href: "/dashboard/iso", label: "nav.iso", icon: Award, permission: "iso" },
+      { href: "/dashboard/legal-register", label: "nav.legalRegister", icon: Scale, permission: "legalRegister" },
       { href: "/dashboard/fire-risk", label: "nav.fireRisk", icon: Flame, permission: "fireRisk" },
       { href: "/dashboard/environment", label: "nav.environment", icon: Leaf, permission: "environment" },
       { href: "/dashboard/audits", label: "nav.audits", icon: ClipboardCheck, permission: "audits" },
@@ -131,6 +139,7 @@ const navGroups: NavGroup[] = [
     label: "nav.group.admin",
     items: [
       { href: "/dashboard/organisasjonskart", label: "nav.orgChart", icon: Building2, permission: "settings" },
+      { href: "/dashboard/meetings", label: "nav.meetings", icon: Users, permission: "meetings" },
       { href: "/dashboard/users", label: "nav.users", icon: Users, permission: "settings" },
       { href: "/dashboard/support", label: "nav.support", icon: Headphones, permission: "support" },
       { href: "/dashboard/settings", label: "nav.settings", icon: Settings, permission: "settings" },

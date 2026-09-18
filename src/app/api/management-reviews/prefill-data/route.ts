@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -116,6 +117,34 @@ export async function GET(req: NextRequest) {
     // Generer tekst for opplæring
     const trainingStatus = generateTrainingStatus(trainings);
 
+    const admin = getAdminDb();
+    const [partiesRes, legalRes, meetingsRes, previousReviews] = await Promise.all([
+      admin.from("IsoInterestedParty").select("name, partyType").eq("tenantId", tenantId),
+      admin
+        .from("IsoLegalRequirement")
+        .select("title, lastEvaluationResult")
+        .eq("tenantId", tenantId),
+      admin.from("Meeting").select("title, scheduledDate, status").eq("tenantId", tenantId).limit(8),
+      db.managementReview.findMany({
+        where: { tenantId, status: { in: ["COMPLETED", "APPROVED"] } },
+        orderBy: { reviewDate: "desc" },
+        take: 1,
+      }),
+    ]);
+
+    const previousActionsStatus = generatePreviousActions(previousReviews, measures);
+    const interestedPartiesReview = generateInterestedParties(
+      (partiesRes.data ?? []) as Array<{ name?: string; partyType?: string }>,
+    );
+    const complianceEvaluationReview = generateCompliance(
+      (legalRes.data ?? []) as Array<{ title?: string; lastEvaluationResult?: string | null }>,
+    );
+    const consultationReview = generateConsultation(
+      (meetingsRes.data ?? []) as Array<{ title?: string; scheduledDate?: string | null; status?: string | null }>,
+    );
+    const communicationReview =
+      "Review policy notifications, the digital safety board and any whistleblowing cases from the period.";
+
     return NextResponse.json({
       data: {
         hmsGoalsReview,
@@ -123,7 +152,11 @@ export async function GET(req: NextRequest) {
         riskReview,
         auditResults,
         trainingStatus,
-        // Raw data for evt. videre prosessering
+        previousActionsStatus,
+        interestedPartiesReview,
+        complianceEvaluationReview,
+        consultationReview,
+        communicationReview,
         raw: {
           goals,
           incidents,
@@ -498,5 +531,44 @@ function generateTrainingStatus(trainings: any[]): string {
   }
 
   return text;
+}
+
+function generatePreviousActions(previousReviews: Array<{ title?: string }>, measures: Array<{ status?: string }>): string {
+  const last = previousReviews[0];
+  const open = measures.filter((measure) => measure.status !== "DONE").length;
+  if (!last) {
+    return "No previous management review on record. Record this review as the baseline.";
+  }
+  return `Last completed review: ${last.title ?? "untitled"}.\nOpen actions in the period: ${open}.`;
+}
+
+function generateInterestedParties(parties: Array<{ name?: string; partyType?: string }>): string {
+  if (parties.length === 0) {
+    return "No interested parties recorded. Complete the ISO context register before the next review.";
+  }
+  return parties
+    .map((party) => `- ${party.name ?? "Unnamed"} (${party.partyType ?? "OTHER"})`)
+    .join("\n");
+}
+
+function generateCompliance(
+  legal: Array<{ title?: string; lastEvaluationResult?: string | null }>,
+): string {
+  if (legal.length === 0) {
+    return "Legal register is empty. Add the duties that apply, then evaluate compliance.";
+  }
+  const evaluated = legal.filter((item) => item.lastEvaluationResult && item.lastEvaluationResult !== "NOT_EVALUATED");
+  return `${evaluated.length} of ${legal.length} legal / other requirements have an evaluation result.`;
+}
+
+function generateConsultation(
+  meetings: Array<{ title?: string; scheduledDate?: string | null; status?: string | null }>,
+): string {
+  if (meetings.length === 0) {
+    return "No consultation meetings recorded in this period.";
+  }
+  return meetings
+    .map((meeting) => `- ${meeting.title ?? "Untitled"} (${meeting.status ?? "PLANNED"})`)
+    .join("\n");
 }
 

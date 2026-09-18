@@ -191,12 +191,12 @@ const FAQS = [
   {
     question: "Can I use HSEQ Nova for ISO 45001?",
     answer:
-      "HSEQ Nova covers much of what an occupational health and safety management system requires — policy, risk assessments, incident management, inspections, training and actions. The optional audits add-on adds internal audits and management review. Certification itself is granted by a UKAS-accredited body, not by software.",
+      "HSEQ Nova Core covers the legal duties. Switch on the ISO 45001 & 9001 add-on to turn the same records into a guided management system with a work guide, clause map, internal audits, management review and an auditor pack. Certification is granted by a UKAS-accredited body, not by the software.",
   },
   {
     question: "What industries is HSEQ Nova suitable for?",
     answer:
-      "Any UK employer with health and safety duties — which is every employer. Core is industry-neutral. The add-ons tailor the system for construction (CDM, RAMS, safety board), chemical users (COSHH) and companies pursuing ISO 45001 or 14001 (audits, environment).",
+      "Any UK employer with health and safety duties — which is every employer. Core is industry-neutral. The add-ons tailor the system for construction (CDM, RAMS, safety board), chemical users (COSHH) and companies pursuing ISO 45001, 9001 or 14001 (ISO pack, environment).",
   },
 ] as const;
 

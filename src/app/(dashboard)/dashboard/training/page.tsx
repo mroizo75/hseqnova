@@ -26,6 +26,8 @@ import {
 import { AiToolboxTalk } from "@/features/training/components/ai-toolbox-talk";
 import { TrainingLegalNote } from "@/features/training/components/training-legal-note";
 import { hasAiAddon } from "@/lib/ai-gate";
+import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
+import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
 
 export default async function TrainingPage() {
   const t = await getTranslations("dashboardTrainingPage");
@@ -100,6 +102,9 @@ export default async function TrainingPage() {
 
   return (
     <div className="space-y-6">
+      <IsoWhenEnabled>
+        <IsoEvidenceNote clause="ISO 45001 cl. 7.2 and 7.3" title="Competence and awareness" />
+      </IsoWhenEnabled>
       <div className="page-header">
         <div className="flex min-w-0 items-start gap-3">
           <div>

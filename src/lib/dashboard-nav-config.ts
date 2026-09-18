@@ -20,6 +20,10 @@ export type NavPermission =
   | "environment"
   | "audits"
   | "managementReviews"
+  | "iso"
+  | "goals"
+  | "meetings"
+  | "legalRegister"
   | "settings"
   | "support"
   | "hmsHandbok"
@@ -40,7 +44,6 @@ export interface DashboardNavItemConfig {
 export const UK_EXCLUDED_NAV_HREFS = new Set([
   "/dashboard/procedures",
   "/dashboard/rutiner",
-  "/dashboard/juridisk-register",
   "/dashboard/incidents/statistics",
   "/dashboard/risk-register",
   "/dashboard/wellbeing",
@@ -48,7 +51,6 @@ export const UK_EXCLUDED_NAV_HREFS = new Set([
   "/dashboard/feedback",
   "/dashboard/bcm",
   "/dashboard/annual-hms-plan",
-  "/dashboard/meetings",
   "/dashboard/time-registration",
   "/dashboard/medarbeidersamtale",
   "/dashboard/hms-cockpit",
@@ -62,7 +64,6 @@ export const UK_EXCLUDED_NAV_HREFS = new Set([
   "/dashboard/ruh",
   "/dashboard/hms-pulse",
   "/dashboard/hms-handbok",
-  "/dashboard/goals",
 ]);
 
 export const DASHBOARD_NAV_CONFIG: DashboardNavItemConfig[] = [
@@ -75,6 +76,8 @@ export const DASHBOARD_NAV_CONFIG: DashboardNavItemConfig[] = [
   { href: "/dashboard/fire-drills", label: "nav.fireDrills", permission: "inspections", defaultSimple: true },
   { href: "/dashboard/training", label: "nav.training", permission: "training", defaultSimple: true },
   { href: "/dashboard/actions", label: "nav.actions", permission: "actions", defaultSimple: true },
+  { href: "/dashboard/goals", label: "nav.goals", permission: "goals", defaultSimple: true },
+  { href: "/dashboard/changes", label: "nav.managementOfChange", permission: "iso", defaultSimple: true },
   { href: "/dashboard/sja", label: "nav.sja", permission: "sja", defaultSimple: true },
   { href: "/dashboard/permits", label: "nav.permits", permission: "permits", defaultSimple: true },
   { href: "/dashboard/chemicals", label: "nav.chemicals", permission: "chemicals", defaultSimple: true },
@@ -86,12 +89,15 @@ export const DASHBOARD_NAV_CONFIG: DashboardNavItemConfig[] = [
   { href: "/dashboard/contractors", label: "nav.contractors", permission: "contractors", defaultSimple: true },
   { href: "/dashboard/hms-tavle", label: "nav.hmsTavle", permission: "hmsTavle", defaultSimple: true },
   { href: "/dashboard/hseq-cockpit", label: "nav.hseqCockpit", permission: "hseqCockpit", defaultSimple: true },
+  { href: "/dashboard/iso", label: "nav.iso", permission: "iso", defaultSimple: true },
+  { href: "/dashboard/legal-register", label: "nav.legalRegister", permission: "legalRegister", defaultSimple: true },
   { href: "/dashboard/fire-risk", label: "nav.fireRisk", permission: "fireRisk", defaultSimple: true },
   { href: "/dashboard/environment", label: "nav.environment", permission: "environment", defaultSimple: true },
   { href: "/dashboard/audits", label: "nav.audits", permission: "audits", defaultSimple: true },
   { href: "/dashboard/management-reviews", label: "nav.managementReviews", permission: "managementReviews", defaultSimple: true },
   { href: "/dashboard/whistleblowing", label: "nav.whistleblowing", permission: "whistleblowing", defaultSimple: true },
   { href: "/dashboard/organisasjonskart", label: "nav.orgChart", permission: "settings", defaultSimple: true },
+  { href: "/dashboard/meetings", label: "nav.meetings", permission: "meetings", defaultSimple: true },
   { href: "/dashboard/users", label: "nav.users", permission: "settings", defaultSimple: true },
   { href: "/dashboard/support", label: "nav.support", permission: "support", defaultSimple: true },
   { href: "/dashboard/settings", label: "nav.settings", permission: "settings", defaultSimple: true },

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ISO_9001_CLAUSES as ISO_9001_IMS, auditClauseOptions } from "@/features/iso/lib/clauses";
 
 /**
  * ISO 9001 - 9.2 Internrevisjon
@@ -84,10 +85,10 @@ export type UpdateFindingInput = z.infer<typeof updateFindingSchema>;
  */
 export function getAuditTypeLabel(type: string): string {
   const labels: Record<string, string> = {
-    INTERNAL: "Internrevisjon",
-    EXTERNAL: "Ekstern revisjon",
-    SUPPLIER: "Leverandørrevisjon",
-    CERTIFICATION: "Sertifiseringsrevisjon",
+    INTERNAL: "Internal audit",
+    EXTERNAL: "External audit",
+    SUPPLIER: "Supplier audit",
+    CERTIFICATION: "Certification audit",
   };
   return labels[type] || type;
 }
@@ -110,10 +111,10 @@ export function getAuditTypeColor(type: string): string {
  */
 export function getAuditStatusLabel(status: string): string {
   const labels: Record<string, string> = {
-    PLANNED: "Planlagt",
-    IN_PROGRESS: "Pågår",
-    COMPLETED: "Fullført",
-    CANCELLED: "Avbrutt",
+    PLANNED: "Planned",
+    IN_PROGRESS: "In progress",
+    COMPLETED: "Completed",
+    CANCELLED: "Cancelled",
   };
   return labels[status] || status;
 }
@@ -136,10 +137,10 @@ export function getAuditStatusColor(status: string): string {
  */
 export function getFindingTypeLabel(type: string): string {
   const labels: Record<string, string> = {
-    MAJOR_NC: "Større avvik",
-    MINOR_NC: "Mindre avvik",
-    OBSERVATION: "Observasjon",
-    STRENGTH: "Styrke",
+    MAJOR_NC: "Major nonconformity",
+    MINOR_NC: "Minor nonconformity",
+    OBSERVATION: "Observation",
+    STRENGTH: "Strength",
   };
   return labels[type] || type;
 }
@@ -162,10 +163,10 @@ export function getFindingTypeColor(type: string): string {
  */
 export function getFindingStatusLabel(status: string): string {
   const labels: Record<string, string> = {
-    OPEN: "Åpen",
-    IN_PROGRESS: "Under arbeid",
-    RESOLVED: "Løst",
-    VERIFIED: "Verifisert",
+    OPEN: "Open",
+    IN_PROGRESS: "In progress",
+    RESOLVED: "Resolved",
+    VERIFIED: "Verified",
   };
   return labels[status] || status;
 }
@@ -183,37 +184,11 @@ export function getFindingStatusColor(status: string): string {
   return colors[status] || "bg-gray-100 text-gray-800 border-gray-300";
 }
 
-/**
- * ISO 9001 Standard Clauses (for checklist)
- */
-export const ISO_9001_CLAUSES = [
-  { clause: "4.1", title: "Forstå organisasjonen og dens kontekst" },
-  { clause: "4.2", title: "Forstå interessenters behov og forventninger" },
-  { clause: "4.3", title: "Bestemme omfanget til ledelsessystemet for kvalitet" },
-  { clause: "4.4", title: "Ledelsessystem for kvalitet og dets prosesser" },
-  { clause: "5.1", title: "Lederskap og forpliktelse" },
-  { clause: "5.2", title: "Politikk" },
-  { clause: "5.3", title: "Roller, ansvar og myndighet i organisasjonen" },
-  { clause: "6.1", title: "Handlinger for å håndtere risikoer og muligheter" },
-  { clause: "6.2", title: "Kvalitetsmål og planlegging for å oppnå dem" },
-  { clause: "6.3", title: "Planlegging av endringer" },
-  { clause: "7.1", title: "Ressurser" },
-  { clause: "7.2", title: "Kompetanse" },
-  { clause: "7.3", title: "Bevissthet" },
-  { clause: "7.4", title: "Kommunikasjon" },
-  { clause: "7.5", title: "Dokumentert informasjon" },
-  { clause: "8.1", title: "Operasjonell planlegging og kontroll" },
-  { clause: "8.2", title: "Krav til produkter og tjenester" },
-  { clause: "8.3", title: "Utforming og utvikling av produkter og tjenester" },
-  { clause: "8.4", title: "Kontroll av eksternt tilbudte produkter og tjenester" },
-  { clause: "8.5", title: "Produksjon og tjenesteleveranse" },
-  { clause: "8.6", title: "Frigivelse av produkter og tjenester" },
-  { clause: "8.7", title: "Kontroll av avvikende resultat" },
-  { clause: "9.1", title: "Overvåking, måling, analyse og evaluering" },
-  { clause: "9.2", title: "Internrevisjon" },
-  { clause: "9.3", title: "Ledelsens gjennomgang" },
-  { clause: "10.1", title: "Generelt - Forbedring" },
-  { clause: "10.2", title: "Avvik og korrigerende tiltak" },
-  { clause: "10.3", title: "Kontinuerlig forbedring" },
-];
+export const ISO_9001_CLAUSES = ISO_9001_IMS.map((c) => ({
+  clause: c.clause,
+  title: c.title,
+}));
+
+export { auditClauseOptions };
+
 

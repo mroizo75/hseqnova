@@ -26,6 +26,8 @@ import { enUS, nb } from "date-fns/locale";
 import { PageHelpDialog } from "@/components/dashboard/page-help-dialog";
 import { helpContent } from "@/lib/help-content";
 import { getLocale, getTranslations } from "next-intl/server";
+import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
+import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
 
 export const dynamic = "force-dynamic";
 
@@ -203,6 +205,9 @@ async function AuditsPageContent() {
   const t = await getTranslations("dashboardAuditsPage");
   return (
     <div className="space-y-6">
+      <IsoWhenEnabled>
+        <IsoEvidenceNote clause="ISO 45001 cl. 9.2 / ISO 9001 cl. 9.2" title="Internal audit" />
+      </IsoWhenEnabled>
       <div className="page-header">
         <div className="flex min-w-0 items-start gap-3">
           <div>

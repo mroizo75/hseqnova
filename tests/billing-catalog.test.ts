@@ -27,6 +27,8 @@ describe("HSEQ Nova billing catalog", () => {
   it("does not treat an add-on as active without the pack", () => {
     assert.equal(isAddonPackActive([], getAddonPack("rams")!), false);
     assert.equal(isAddonPackActive(["audits"], getAddonPack("cdm")!), false);
+    assert.equal(isAddonPackActive(["audits"], getAddonPack("iso")!), true);
+    assert.equal(isAddonPackActive(["iso"], getAddonPack("iso")!), true);
     assert.equal(monthlyTotalGbp([]), 29);
     assert.equal(monthlyTotalGbp(["sja"]), 29 + 15);
     assert.equal(ADDON_PACKS.length, 6);

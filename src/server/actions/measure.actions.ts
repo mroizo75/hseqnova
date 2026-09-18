@@ -23,6 +23,8 @@ import {
   updateIncidentActionStage,
   updateMeasureRecord,
 } from "@/server/queries/measures.queries";
+import { getEnabledModuleKeys } from "@/lib/require-tenant-module";
+import { tenantHasIsoPack } from "@/lib/tenant-modules";
 import { createNotification } from "@/server/actions/notification.actions";
 import {
   formatActionDueDate,
@@ -368,6 +370,17 @@ export async function completeMeasure(input: unknown) {
     const existing = await loadMeasureById(validated.id, tenantId);
     if (!existing) {
       return { success: false, error: "Action not found" };
+    }
+
+    const enabledModules = await getEnabledModuleKeys(tenantId);
+    if (
+      tenantHasIsoPack(enabledModules) &&
+      (validated.effectiveness === "NOT_EVALUATED" || !validated.effectiveness)
+    ) {
+      return {
+        success: false,
+        error: "ISO 45001 cl. 10.2: evaluate the effectiveness of this action before closing it.",
+      };
     }
 
     const measure = await updateMeasureRecord(validated.id, tenantId, {

@@ -39,6 +39,8 @@ import {
 } from "@/features/fire-drills/schemas/fire-drill.schema";
 import type { FireDrillStatus, FireDrillType } from "@/features/fire-drills/schemas/fire-drill.schema";
 import { FireSafetyLegalNote } from "@/features/fire-risk/components/fire-safety-legal-note";
+import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
+import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
 
 function getStatusBadge(status: FireDrillStatus) {
   const map: Record<FireDrillStatus, string> = {
@@ -129,6 +131,9 @@ export default async function FireDrillsPage() {
       </div>
 
       <FireSafetyLegalNote />
+      <IsoWhenEnabled>
+        <IsoEvidenceNote clause="ISO 45001 cl. 8.2" title="Emergency preparedness" />
+      </IsoWhenEnabled>
 
       {fireMarshals.length === 0 ? (
         <Alert className="border-orange-200 bg-orange-50">

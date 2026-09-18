@@ -22,6 +22,8 @@ import { WhistleblowStatus, WhistleblowCategory, WhistleblowSeverity } from "@pr
 import { PageHelpDialog } from "@/components/dashboard/page-help-dialog";
 import { helpContent } from "@/lib/help-content";
 import { getTranslations } from "next-intl/server";
+import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
+import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
 
 function getStatusBadge(status: WhistleblowStatus, t: Awaited<ReturnType<typeof getTranslations>>) {
   switch (status) {
@@ -100,6 +102,9 @@ export default async function WhistleblowingListPage() {
 
   return (
     <div className="space-y-6">
+      <IsoWhenEnabled>
+        <IsoEvidenceNote clause="ISO 45001 cl. 5.4 and 7.4" title="Consultation and communication" />
+      </IsoWhenEnabled>
       <div className="page-header">
         <div className="flex min-w-0 items-start gap-3">
           <div>

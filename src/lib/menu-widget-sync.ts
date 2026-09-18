@@ -27,6 +27,7 @@ const PATH_TO_WIDGET: Record<string, string> = {
   "/dashboard/beredskap-reiseliv": "beredskap-reiseliv",
   "/dashboard/documents": "documents",
   "/dashboard/actions": "actions",
+  "/dashboard/iso": "iso",
   "/dashboard/audits": "audits",
   "/dashboard/meetings": "meetings",
   "/dashboard/environment": "environment",

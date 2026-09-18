@@ -26,6 +26,11 @@ export function isAddonPackId(value: string): value is AddonPackId {
   return ADDON_PACKS.some((pack) => pack.id === value);
 }
 
+/** Legacy Audits pack id from checkout metadata and tests. */
+function canonicalAddonPackId(value: string): string {
+  return value.trim() === "audits" ? "iso" : value.trim();
+}
+
 export function parseSignupAddonIds(raw: string | string[] | null | undefined): AddonPackId[] {
   const values = Array.isArray(raw)
     ? raw
@@ -34,7 +39,7 @@ export function parseSignupAddonIds(raw: string | string[] | null | undefined): 
       : [];
   const unique = new Set<AddonPackId>();
   for (const value of values) {
-    const id = value.trim();
+    const id = canonicalAddonPackId(value);
     if (isAddonPackId(id)) {
       unique.add(id);
     }

@@ -35,6 +35,7 @@ import {
   Gauge,
   Megaphone,
   Scale,
+  Award,
   Truck,
   TreePine,
   PersonStanding,
@@ -375,9 +376,22 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
 
   // Kvalitet & Forbedring
   {
+    id: "iso",
+    label: "ISO 45001 & 9001",
+    description: "Work guide, clause map and auditor evidence pack",
+    icon: Award,
+    href: "/dashboard/iso",
+    category: "kvalitet",
+    color: "text-teal-700",
+    bgColor: "bg-teal-50",
+    borderColor: "border-teal-200",
+    permission: "iso",
+    isAdvanced: true,
+  },
+  {
     id: "audits",
-    label: "Audits",
-    description: "Internal and external audits",
+    label: "Internal audits",
+    description: "Internal audits against ISO 45001 and ISO 9001",
     icon: Search,
     href: "/dashboard/audits",
     category: "kvalitet",

@@ -302,6 +302,51 @@ export default async function ManagementReviewDetailPage({
             </div>
           )}
 
+          {review.previousActionsStatus && (
+            <div>
+              <h3 className="mb-2 font-semibold">Actions from previous reviews</h3>
+              <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                {review.previousActionsStatus}
+              </p>
+            </div>
+          )}
+
+          {review.interestedPartiesReview && (
+            <div>
+              <h3 className="mb-2 font-semibold">Interested parties</h3>
+              <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                {review.interestedPartiesReview}
+              </p>
+            </div>
+          )}
+
+          {review.complianceEvaluationReview && (
+            <div>
+              <h3 className="mb-2 font-semibold">Compliance evaluation</h3>
+              <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                {review.complianceEvaluationReview}
+              </p>
+            </div>
+          )}
+
+          {review.consultationReview && (
+            <div>
+              <h3 className="mb-2 font-semibold">Consultation</h3>
+              <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                {review.consultationReview}
+              </p>
+            </div>
+          )}
+
+          {review.communicationReview && (
+            <div>
+              <h3 className="mb-2 font-semibold">Relevant communication</h3>
+              <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                {review.communicationReview}
+              </p>
+            </div>
+          )}
+
           {review.wellbeingSummary && (
             <div>
               <h3 className="mb-2 font-semibold">Psychosocial working environment</h3>

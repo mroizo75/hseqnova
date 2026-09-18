@@ -10,6 +10,8 @@ import { helpContent } from "@/lib/help-content";
 import { getTranslations } from "next-intl/server";
 import { loadDocumentsForList } from "@/server/queries/documents.queries";
 import { DocumentLegalNote } from "@/features/documents/components/document-legal-note";
+import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
+import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
 
 export default async function DocumentsPage() {
   const t = await getTranslations("dashboardDocumentsPage");
@@ -58,6 +60,9 @@ export default async function DocumentsPage() {
       </div>
 
       <DocumentLegalNote />
+      <IsoWhenEnabled>
+        <IsoEvidenceNote clause="ISO 45001 cl. 7.5 / ISO 9001 cl. 7.5" title="Documented information" />
+      </IsoWhenEnabled>
 
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <Card>

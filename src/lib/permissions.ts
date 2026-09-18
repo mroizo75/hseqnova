@@ -940,8 +940,13 @@ export function getVisibleNavItems(role: Role) {
     employeeReviews: perms.canReadOwnEmployeeReviews || perms.canReadAllEmployeeReviews,
     support: true, // Alle innloggede brukere kan kontakte HMS-representanter
     benchmark: true, // Alle kan se benchmark (krever opt-in for data)
-    hmsHandbok: perms.canReadDocuments || perms.canReadRoutines, // Alle som kan lese dokumenter/rutiner ser håndboken
-    hmsCockpit: perms.canReadDocuments, // HMS Cockpit krever lesetilgang til dokumenter
+    iso: perms.canReadAudits,
+    hseqCockpit: perms.canReadDocuments,
+    fireRisk: perms.canReadInspections,
+    contractors: perms.canReadDocuments,
+    assets: perms.canReadDocuments,
+    hmsHandbok: perms.canReadDocuments || perms.canReadRoutines,
+    hmsCockpit: perms.canReadDocuments,
   };
 }
 

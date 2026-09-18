@@ -55,13 +55,13 @@ describe("self-serve signup checkout", () => {
     const metadata = buildSignupMetadata("tenant_1", ["audits", "coshh", "audits"]);
     assert.equal(metadata.flow, SIGNUP_FLOW);
     assert.equal(metadata.tenantId, "tenant_1");
-    assert.equal(metadata.addonIds, "coshh,audits");
-    assert.equal(serializeSignupAddonIds(["audits", "coshh"]), "coshh,audits");
+    assert.equal(metadata.addonIds, "coshh,iso");
+    assert.equal(serializeSignupAddonIds(["audits", "coshh"]), "coshh,iso");
 
     const parsed = parseSignupCheckoutMetadata(metadata);
     assert.deepEqual(parsed, {
       tenantId: "tenant_1",
-      addonIds: ["coshh", "audits"],
+      addonIds: ["coshh", "iso"],
       billingInterval: "month",
     });
     assert.equal(parseSignupCheckoutMetadata({ flow: "addon", tenantId: "x" }), null);

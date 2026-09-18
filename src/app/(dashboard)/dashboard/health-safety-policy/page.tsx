@@ -4,6 +4,8 @@ import { getAdminDb } from "@/lib/supabase/admin";
 import { getHandbookData, getHandbookSuggestions } from "@/server/actions/hms-handbok.actions";
 import { HandbokViewer } from "@/features/hms-handbok/components/handbok-viewer";
 import { BookOpen } from "lucide-react";
+import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
+import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
 
 export const metadata = { title: "Health and safety policy" };
 
@@ -54,6 +56,9 @@ export default async function HealthSafetyPolicyPage() {
 
   return (
     <div className="space-y-6">
+      <IsoWhenEnabled>
+        <IsoEvidenceNote clause="ISO 45001 cl. 5.2 / ISO 9001 cl. 5.2" title="OH&S and quality policy" />
+      </IsoWhenEnabled>
       <div className="flex items-start gap-3">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -64,7 +69,7 @@ export default async function HealthSafetyPolicyPage() {
             Written policy under HSWA 1974 s.2(3): statement of intent, organisation and
             arrangements. Required in writing where there are five or more employees.
             Live records stay in the linked modules. Arrangements below match the HSEQ modules
-            this company has — add-ons such as RAMS, COSHH, CDM, audits and whistleblowing appear
+            this company has — add-ons such as RAMS, COSHH, CDM, ISO 45001 & 9001 and whistleblowing appear
             only when they are switched on.
           </p>
         </div>

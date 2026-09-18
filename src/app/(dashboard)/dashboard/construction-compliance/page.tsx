@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CdmLegalNote } from "@/features/projects/components/cdm-legal-note";
+import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
+import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
 import { loadCdmOverviewProjects } from "@/server/queries/construction-compliance.queries";
 
 function formatDateOnly(date: Date): string {
@@ -62,6 +64,9 @@ export default async function ConstructionComplianceOverviewPage() {
       </div>
 
       <CdmLegalNote />
+      <IsoWhenEnabled>
+        <IsoEvidenceNote clause="ISO 45001 cl. 8.1" title="Operational control on construction work" />
+      </IsoWhenEnabled>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>

@@ -26,6 +26,8 @@ import {
 } from "@/components/ui/table";
 import { getTranslations } from "next-intl/server";
 import { InspectionLegalNote } from "@/features/inspections/components/inspection-legal-note";
+import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
+import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
 
 export default async function InspectionsPage({
   searchParams,
@@ -114,6 +116,9 @@ export default async function InspectionsPage({
         </div>
       </div>
       <InspectionLegalNote />
+      <IsoWhenEnabled>
+        <IsoEvidenceNote clause="ISO 45001 cl. 9.1.1 and 8.1.1" title="Monitoring and operational control" />
+      </IsoWhenEnabled>
 
       {/* Mobile Quick Access */}
       <div className="lg:hidden grid grid-cols-1 gap-3">

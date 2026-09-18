@@ -15,6 +15,8 @@ import { EnvironmentAspectList } from "@/features/environment/components/environ
 import { CO2CalculatorCard } from "@/features/environment/components/co2-calculator-card";
 import { PageHelpDialog } from "@/components/dashboard/page-help-dialog";
 import { helpContent } from "@/lib/help-content";
+import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
+import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
 
 export default async function EnvironmentPage() {
   const auth = await getAuthContext();
@@ -57,6 +59,13 @@ export default async function EnvironmentPage() {
           </Button>
         </div>
       </div>
+
+      <IsoWhenEnabled>
+        <IsoEvidenceNote
+          clause="ISO 45001 cl. 8.1 — environmental add-on counts as operational control. ISO 14001 is a later pack."
+          title="Environment in the IMS"
+        />
+      </IsoWhenEnabled>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>

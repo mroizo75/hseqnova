@@ -36,6 +36,10 @@ import {
   FileBarChart,
   ChevronDown,
   Megaphone,
+  Target,
+  GitBranch,
+  Award,
+  Scale,
   type LucideIcon,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -88,6 +92,7 @@ const navGroups: NavGroup[] = [
       { href: "/dashboard/inspections", label: "nav.inspections", icon: ShieldCheck, permission: "inspections" },
       { href: "/dashboard/fire-drills", label: "nav.fireDrills", icon: Flame, permission: "inspections" },
       { href: "/dashboard/actions", label: "nav.actions", icon: ListTodo, permission: "actions" },
+      { href: "/dashboard/goals", label: "nav.goals", icon: Target, permission: "goals" },
     ],
   },
   {
@@ -96,6 +101,7 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/dashboard/documents", label: "nav.documents", icon: FileText, permission: "documents" },
       { href: "/dashboard/training", label: "nav.training", icon: GraduationCap, permission: "training" },
+      { href: "/dashboard/changes", label: "nav.managementOfChange", icon: GitBranch, permission: "iso" },
       { href: "/dashboard/sja", label: "nav.sja", icon: HardHat, permission: "sja" },
       { href: "/dashboard/chemicals", label: "nav.chemicals", icon: Beaker, permission: "chemicals" },
       { href: "/dashboard/exposure-register", label: "nav.exposureRegister", icon: FlaskConical, permission: "exposureRegister" },
@@ -114,6 +120,8 @@ const navGroups: NavGroup[] = [
     id: "compliance",
     label: "Compliance",
     items: [
+      { href: "/dashboard/iso", label: "nav.iso", icon: Award, permission: "iso" },
+      { href: "/dashboard/legal-register", label: "nav.legalRegister", icon: Scale, permission: "legalRegister" },
       { href: "/dashboard/environment", label: "nav.environment", icon: Leaf, permission: "environment" },
       { href: "/dashboard/audits", label: "nav.audits", icon: ClipboardCheck, permission: "audits" },
       { href: "/dashboard/management-reviews", label: "nav.managementReviews", icon: FileBarChart, permission: "managementReviews" },
@@ -125,6 +133,7 @@ const navGroups: NavGroup[] = [
     label: "Administration",
     items: [
       { href: "/dashboard/organisasjonskart", label: "nav.orgChart", icon: Building2, permission: "settings" },
+      { href: "/dashboard/meetings", label: "nav.meetings", icon: Users, permission: "meetings" },
       { href: "/dashboard/users", label: "nav.users", icon: Users, permission: "settings" },
       { href: "/dashboard/support", label: "nav.support", icon: Headphones, permission: "support" },
       { href: "/dashboard/settings", label: "nav.settings", icon: Settings, permission: "settings" },
