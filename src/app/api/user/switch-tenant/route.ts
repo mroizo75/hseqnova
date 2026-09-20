@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { getAdminDb } from "@/lib/supabase/admin";
+import { canSwitchToTenant } from "@/lib/external-competent-person";
 import { z } from "zod";
 
 const switchTenantSchema = z.object({
-  tenantId: z.string().min(1, "Tenant ID er påkrevd"),
+  tenantId: z.string().min(1, "Tenant ID is required"),
 });
 
 export async function POST(request: NextRequest) {
@@ -13,63 +14,44 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Ikke autorisert" }, { status: 401 });
+      return NextResponse.json({ error: "Not authorised" }, { status: 401 });
     }
 
     const body = await request.json();
     const { tenantId } = switchTenantSchema.parse(body);
 
-    // Verifiser at brukeren har tilgang til denne tenanten
-    const userTenant = await prisma.userTenant.findUnique({
-      where: {
-        userId_tenantId: {
-          userId: session.user.id,
-          tenantId,
-        },
-      },
-      include: {
-        tenant: {
-          select: {
-            status: true,
-          },
-        },
-      },
-    });
+    const db = getAdminDb();
+    const { data: memberships, error } = await db
+      .from("UserTenant")
+      .select("tenantId, tenant:Tenant(status)")
+      .eq("userId", session.user.id);
+    if (error) {
+      throw { code: "MEMBERSHIP_LOOKUP_FAILED", message: error.message };
+    }
 
-    if (!userTenant) {
+    const membershipTenantIds = ((memberships ?? []) as Array<{ tenantId: string }>).map((row) => row.tenantId);
+    if (!canSwitchToTenant(membershipTenantIds, tenantId)) {
       return NextResponse.json(
-        { error: "Du har ikke tilgang til denne bedriften" },
-        { status: 403 }
+        { error: "You do not have access to this company" },
+        { status: 403 },
       );
     }
 
-    // Sjekk at tenanten er aktiv
-    if (userTenant.tenant.status === "CANCELLED" || userTenant.tenant.status === "SUSPENDED") {
-      return NextResponse.json(
-        { error: "Denne bedriften er ikke aktiv" },
-        { status: 403 }
-      );
+    const match = (memberships ?? []).find((row) => row.tenantId === tenantId) as
+      | { tenantId: string; tenant?: { status?: string } | { status?: string }[] | null }
+      | undefined;
+    const tenant = Array.isArray(match?.tenant) ? match?.tenant[0] : match?.tenant;
+    if (tenant?.status === "CANCELLED" || tenant?.status === "SUSPENDED") {
+      return NextResponse.json({ error: "This company is not active" }, { status: 403 });
     }
 
-    // Oppdater brukerens siste valgte tenant
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: { lastTenantId: tenantId },
-    });
+    await db.from("User").update({ lastTenantId: tenantId }).eq("id", session.user.id);
 
-    // Session vil bli oppdatert ved neste request via proxy (tidligere middleware)
     return NextResponse.json({ success: true, tenantId });
   } catch (error) {
-    console.error("Switch tenant error:", error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Ugyldig input", details: error.issues },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid input", details: error.issues }, { status: 400 });
     }
-    return NextResponse.json(
-      { error: "Kunne ikke bytte bedrift" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Could not switch company" }, { status: 500 });
   }
 }

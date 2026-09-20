@@ -79,8 +79,8 @@ export function TenantSwitcher() {
       window.location.href = "/dashboard";
     } catch (error) {
       toast({
-        title: "Feil",
-        description: error instanceof Error ? error.message : "Kunne ikke bytte bedrift",
+        title: "Could not switch",
+        description: error instanceof Error ? error.message : "Could not switch company",
         variant: "destructive",
       });
     } finally {
@@ -102,7 +102,7 @@ export function TenantSwitcher() {
         <Button variant="outline" className="w-full justify-between" disabled={loading}>
           <div className="flex items-center gap-2 truncate">
             <Building2 className="h-4 w-4 flex-shrink-0" />
-            <span className="truncate">{currentTenant?.name || "Velg bedrift"}</span>
+            <span className="truncate">{currentTenant?.name || "Choose company"}</span>
           </div>
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin flex-shrink-0" />
@@ -112,7 +112,7 @@ export function TenantSwitcher() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[300px]">
-        <DropdownMenuLabel>Dine bedrifter</DropdownMenuLabel>
+        <DropdownMenuLabel>Your companies</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {tenants.map((tenant) => (
           <DropdownMenuItem
@@ -139,7 +139,7 @@ export function TenantSwitcher() {
               </div>
               {(tenant.status === "CANCELLED" || tenant.status === "SUSPENDED") && (
                 <Badge variant="destructive" className="text-xs">
-                  {tenant.status === "CANCELLED" ? "Kansellert" : "Suspendert"}
+                  {tenant.status === "CANCELLED" ? "Cancelled" : "Suspended"}
                 </Badge>
               )}
             </div>

@@ -25,6 +25,7 @@ const adminUserSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   password: z.string().min(8, "Password must be at least 8 characters").optional(),
   platformRole: z.enum(["NONE", "SUPERADMIN", "SUPPORT", "SALES_MANAGER", "SALES"]),
+  canBeExternalCompetentPerson: z.boolean().optional(),
   tenantId: z.string().optional(),
   role: z.enum(["ADMIN", "HMS", "LEDER", "VERNEOMBUD", "ANSATT", "BHT", "REVISOR"]).optional(),
 });
@@ -41,6 +42,7 @@ interface AdminUserFormProps {
     isSupport?: boolean;
     isSales?: boolean;
     isSalesManager?: boolean;
+    canBeExternalCompetentPerson?: boolean;
     tenants: Array<{
       tenantId: string;
       role: Role;
@@ -74,6 +76,7 @@ export function AdminUserForm({ tenants, user }: AdminUserFormProps) {
       email: user?.email || "",
       name: user?.name || "",
       platformRole: defaultPlatformRole,
+      canBeExternalCompetentPerson: user?.canBeExternalCompetentPerson ?? false,
       tenantId: firstTenantMembership?.tenantId || undefined,
       role: firstTenantMembership?.role || undefined,
     },
@@ -90,6 +93,7 @@ export function AdminUserForm({ tenants, user }: AdminUserFormProps) {
         name: data.name,
         password: data.password,
         platformRole: data.platformRole,
+        canBeExternalCompetentPerson: data.canBeExternalCompetentPerson,
         tenantId: data.tenantId,
         role: data.role,
       };
@@ -177,6 +181,27 @@ export function AdminUserForm({ tenants, user }: AdminUserFormProps) {
           </SelectContent>
         </Select>
       </div>
+
+      {user ? (
+        <div className="space-y-2">
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={Boolean(watch("canBeExternalCompetentPerson"))}
+              onChange={(event) => setValue("canBeExternalCompetentPerson", event.target.checked)}
+              disabled={loading}
+            />
+            <span>
+              <span className="font-medium">May be an external competent person</span>
+              <span className="block text-muted-foreground">
+                Superadmin only. Lets this person be invited into other companies without resetting their password.
+                Support and sales roles do not receive this automatically.
+              </span>
+            </span>
+          </label>
+        </div>
+      ) : null}
 
       {isTenantUser && (
         <>

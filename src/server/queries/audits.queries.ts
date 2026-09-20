@@ -284,6 +284,9 @@ export async function insertFinding(input: {
   requirement: string;
   responsibleId: string;
   dueDate?: Date | null;
+  incidentId?: string | null;
+  riskId?: string | null;
+  trainingId?: string | null;
 }): Promise<AuditFinding> {
   const now = nowIso();
   const { data, error } = await getAdminDb()
@@ -298,6 +301,9 @@ export async function insertFinding(input: {
       requirement: input.requirement,
       responsibleId: input.responsibleId,
       dueDate: input.dueDate ? input.dueDate.toISOString() : null,
+      incidentId: input.incidentId ?? null,
+      riskId: input.riskId ?? null,
+      trainingId: input.trainingId ?? null,
       status: "OPEN",
       createdAt: now,
       updatedAt: now,

@@ -18,6 +18,7 @@ import {
   ORG_HS_DUTY_BY_KEY,
   assessOrgChartCoverage,
 } from "@/lib/org-chart-duties";
+import { assertUserIsTenantMember } from "@/server/queries/iso.queries";
 
 const ORG_CHART_PATH = "/dashboard/organisasjonskart";
 
@@ -32,6 +33,15 @@ function errorMessage(error: unknown, fallback: string): string {
   }
   if (error instanceof Error) return error.message;
   return fallback;
+}
+
+async function resolveMemberUserId(tenantId: string, userId: string | null | undefined): Promise<string | null | { error: string }> {
+  if (!userId) return null;
+  const member = await assertUserIsTenantMember(tenantId, userId);
+  if (!member) {
+    return { error: "The competent person must already be a member of this company." };
+  }
+  return userId;
 }
 
 function validateDutyName(hsDutyKey: string | null | undefined, name: string | null | undefined): string | null {
@@ -65,6 +75,7 @@ export async function createOrgChartNode(input: {
   department?: string | null;
   hsDutyKey?: string | null;
   hsDuty?: string | null;
+  userId?: string | null;
   sortOrder?: number;
 }) {
   try {
@@ -84,6 +95,11 @@ export async function createOrgChartNode(input: {
       }
     }
 
+    const member = await resolveMemberUserId(context.tenantId, input.userId);
+    if (member && typeof member === "object" && "error" in member) {
+      return { success: false, error: member.error };
+    }
+
     const node = await insertOrgChartNode({
       tenantId: context.tenantId,
       parentId: input.parentId ?? null,
@@ -92,6 +108,7 @@ export async function createOrgChartNode(input: {
       department: input.department?.trim() || null,
       hsDutyKey: input.hsDutyKey && isOrgHsDutyKey(input.hsDutyKey) ? input.hsDutyKey : null,
       hsDuty: input.hsDuty?.trim() || null,
+      userId: typeof member === "string" ? member : null,
       sortOrder: input.sortOrder ?? 0,
     });
 
@@ -110,6 +127,7 @@ export async function updateOrgChartNode(input: {
   department?: string | null;
   hsDutyKey?: string | null;
   hsDuty?: string | null;
+  userId?: string | null;
   sortOrder?: number;
 }) {
   try {
@@ -137,6 +155,13 @@ export async function updateOrgChartNode(input: {
       patch.hsDutyKey = input.hsDutyKey && isOrgHsDutyKey(input.hsDutyKey) ? input.hsDutyKey : null;
     }
     if (input.hsDuty !== undefined) patch.hsDuty = input.hsDuty?.trim() || null;
+    if (input.userId !== undefined) {
+      const member = await resolveMemberUserId(context.tenantId, input.userId);
+      if (member && typeof member === "object" && "error" in member) {
+        return { success: false, error: member.error };
+      }
+      patch.userId = typeof member === "string" ? member : null;
+    }
     if (input.sortOrder !== undefined) patch.sortOrder = input.sortOrder;
     if (Object.prototype.hasOwnProperty.call(input, "parentId")) {
       if (input.parentId) {

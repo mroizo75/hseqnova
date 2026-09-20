@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import { getAuthContext } from "@/lib/server-authorization";
 import { loadAuditDetail, loadTenantAuditUsers } from "@/server/queries/audits.queries";
+import { loadIsoAuditSamplePool } from "@/server/queries/iso.queries";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FindingForm } from "@/features/audits/components/finding-form";
+import { AuditSamplePanel } from "@/features/iso/components/audit-sample-panel";
 import { FindingList } from "@/features/audits/components/finding-list";
 import { CompleteAuditForm } from "@/features/audits/components/complete-audit-form";
 import { UpdateAuditStatusForm } from "@/features/audits/components/update-audit-status-form";
@@ -44,6 +46,7 @@ export default async function AuditDetailPage({ params }: { params: Promise<{ id
   const leadAuditor = audit.leadAuditor;
   const teamMembers = audit.teamMembers;
   const tenantUsers = await loadTenantAuditUsers(auth.tenantId);
+  const samples = await loadIsoAuditSamplePool(auth.tenantId);
 
   const typeLabel = getAuditTypeLabel(audit.auditType);
   const typeColor = getAuditTypeColor(audit.auditType);
@@ -249,6 +252,8 @@ export default async function AuditDetailPage({ params }: { params: Promise<{ id
         </Card>
       )}
 
+      <AuditSamplePanel samples={samples} />
+
       {/* Findings */}
       <Card>
         <CardHeader>
@@ -259,7 +264,7 @@ export default async function AuditDetailPage({ params }: { params: Promise<{ id
                 {t("findings.description")}
               </CardDescription>
             </div>
-            <FindingForm auditId={audit.id} users={tenantUsers} />
+            <FindingForm auditId={audit.id} users={tenantUsers} samples={samples} />
           </div>
         </CardHeader>
         <CardContent>

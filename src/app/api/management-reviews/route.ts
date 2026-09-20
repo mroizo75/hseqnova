@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { resolveScopedTenantId } from "@/lib/external-competent-person";
+import { createMeasuresFromReviewPlan } from "@/server/queries/iso.queries";
 
 export const dynamic = "force-dynamic";
 
@@ -65,11 +67,12 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const validatedData = createManagementReviewSchema.parse(body);
+    const tenantId = resolveScopedTenantId(session.user.tenantId, body.tenantId);
 
     const review = await db.managementReview.create({
       data: {
         ...validatedData,
-        tenantId: session.user.tenantId,
+        tenantId,
         participants: validatedData.participants
           ? JSON.stringify(validatedData.participants)
           : null,
@@ -84,6 +87,10 @@ export async function POST(req: NextRequest) {
           : null,
       },
     });
+
+    if (validatedData.actionPlan) {
+      await createMeasuresFromReviewPlan(tenantId, validatedData.actionPlan);
+    }
 
     return NextResponse.json({ data: review }, { status: 201 });
   } catch (error: any) {

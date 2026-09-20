@@ -58,6 +58,8 @@ model User {
   isSupport     Boolean   @default(false) // Support role: limited tenant administration
   isSales       Boolean   @default(false) // Salesperson: assigned CRM + support only
   isSalesManager Boolean  @default(false) // UK sales manager: all CRM + organisations + support
+  /// Superadmin-only: may be invited into other tenants as competent person (MHSWR reg.7).
+  canBeExternalCompetentPerson Boolean @default(false)
   lastTenantId  String?
   supabaseUserId String? @unique
 
@@ -91,6 +93,8 @@ model User {
   accounts                        Account[]
   sessions                        Session[]
   tenants                         UserTenant[]
+  orgChartNodes                   OrgChartNode[]                 @relation("OrgChartNodeUser")
+  isoClauseAssessmentsOwned       IsoClauseAssessment[]          @relation("IsoAssessmentOwner")
   managedUserTenants              UserTenant[]                   @relation("UserTenantManager") // Ansatte denne brukeren er nærmeste leder for
   blogPosts                       BlogPost[] // Blogg-artikler skrevet av bruker
   passwordResetTokens             PasswordResetToken[]
@@ -293,11 +297,16 @@ model Tenant {
   routines                            Routine[]
   managementReviews                   ManagementReview[] // Ledelsens gjennomgang
   meetings                            Meeting[] // AMU/VO møter
+  iso45001VersionId                   String?
+  iso9001VersionId                    String?
+  iso45001Version                     IsoStandardVersion?            @relation("TenantIso45001", fields: [iso45001VersionId], references: [id], onDelete: SetNull)
+  iso9001Version                      IsoStandardVersion?            @relation("TenantIso9001", fields: [iso9001VersionId], references: [id], onDelete: SetNull)
   isoContextIssues                    IsoContextIssue[]
   isoInterestedParties                IsoInterestedParty[]
   isoScope                            IsoScope?
   isoLegalRequirements                IsoLegalRequirement[]
   isoChanges                          IsoChange[]
+  isoClauseAssessments                IsoClauseAssessment[]
   whistleblowings                     Whistleblowing[] // Varslinger
   supportTickets                      SupportTicket[] // Chat/tickets til HMS-representanter
   scheduledReminders                  ScheduledReminder[] // Planlagte påminnelser
@@ -1132,16 +1141,20 @@ model OrgChartNode {
   hsDutyKey  String?
   /// What they do for health and safety (HSE Part 2 "roles")
   hsDuty     String?  @db.Text
+  /// Optional link to a member of this tenant (competent person must be a member).
+  userId     String?
   sortOrder  Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User?          @relation("OrgChartNodeUser", fields: [userId], references: [id], onDelete: SetNull)
   parent   OrgChartNode?  @relation("OrgChartHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   children OrgChartNode[] @relation("OrgChartHierarchy")
 
   @@index([tenantId])
   @@index([parentId])
+  @@index([userId])
 }
 
 // Elektro: samsvarserklæringer (utført arbeid) – synlig under Elektro for ansatte
@@ -2480,6 +2493,9 @@ model AuditFinding {
   closedAt         DateTime?
   verifiedById     String? // Hvem som verifiserte lukkingen
   verifiedAt       DateTime?
+  incidentId       String?
+  riskId           String?
+  trainingId       String?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -2490,6 +2506,9 @@ model AuditFinding {
   @@index([findingType])
   @@index([responsibleId])
   @@index([dueDate])
+  @@index([incidentId])
+  @@index([riskId])
+  @@index([trainingId])
 }
 
 enum FindingType {
@@ -3370,6 +3389,67 @@ model IsoChange {
 
   @@index([tenantId])
   @@index([status])
+}
+
+model IsoStandardVersion {
+  id          String    @id
+  standard    String // ISO_45001 | ISO_9001
+  edition     String // 2018 | 2015
+  status      String    @default("PUBLISHED") // PUBLISHED | SUPERSEDED
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  requirements   IsoRequirement[]
+  tenants45001   Tenant[]         @relation("TenantIso45001")
+  tenants9001    Tenant[]         @relation("TenantIso9001")
+
+  @@unique([standard, edition])
+}
+
+model IsoRequirement {
+  id              String   @id
+  versionId       String
+  clauseKey       String
+  clause          String
+  title           String
+  shallParaphrase String   @db.Text
+  phase           String
+  evidenceKey     String
+  doThis          String   @db.Text
+  auditorHint     String   @db.Text
+  href            String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  version      IsoStandardVersion    @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  assessments  IsoClauseAssessment[]
+
+  @@unique([versionId, clauseKey])
+  @@index([versionId])
+  @@index([clauseKey])
+}
+
+model IsoClauseAssessment {
+  id                String    @id @default(cuid())
+  tenantId          String
+  requirementId     String
+  assessedLevel     String? // COMPLIANT | PARTIAL | GAP | MAJOR_GAP
+  responsibleUserId String?
+  lastReviewedAt    DateTime?
+  nextReviewAt      DateTime?
+  notes             String?   @db.Text
+  measureId         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  requirement IsoRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  responsible User?          @relation("IsoAssessmentOwner", fields: [responsibleUserId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, requirementId])
+  @@index([tenantId])
+  @@index([responsibleUserId])
 }
 
 // ============================================

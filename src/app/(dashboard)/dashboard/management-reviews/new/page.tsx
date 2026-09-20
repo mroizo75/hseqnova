@@ -19,6 +19,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ManagementReviewActionsFields } from "@/features/iso/components/management-review-actions-fields";
+import type { ManagementReviewActionItem } from "@/features/iso/lib/iso-93";
 
 interface TenantUser {
   user: {
@@ -36,6 +38,8 @@ export default function NewManagementReviewPage() {
   const [users, setUsers] = useState<TenantUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [loadingPrefill, setLoadingPrefill] = useState(false);
+  const [decisions, setDecisions] = useState<ManagementReviewActionItem[]>([]);
+  const [actionPlan, setActionPlan] = useState<ManagementReviewActionItem[]>([]);
   const [formData, setFormData] = useState({
     title: "",
     period: "",
@@ -130,6 +134,8 @@ export default function NewManagementReviewPage() {
         body: JSON.stringify({
           ...formData,
           reviewDate: new Date(formData.reviewDate).toISOString(),
+          decisions,
+          actionPlan,
         }),
       });
 
@@ -487,6 +493,15 @@ export default function NewManagementReviewPage() {
                 rows={4}
               />
             </div>
+            <ManagementReviewActionsFields
+              users={users.map((item) => item.user)}
+              decisions={decisions}
+              actionPlan={actionPlan}
+              onChange={(next) => {
+                setDecisions(next.decisions);
+                setActionPlan(next.actionPlan);
+              }}
+            />
           </CardContent>
         </Card>
 

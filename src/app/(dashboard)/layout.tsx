@@ -11,6 +11,7 @@ import { SessionUser } from "@/types";
 import { DashboardProviders } from "@/components/dashboard-providers";
 import { OfflineSyncBannerWrapper } from "@/components/offline-sync-banner-wrapper";
 import { resolveTenantProductAccess } from "@/server/queries/billing.queries";
+import { getEnabledModuleKeys } from "@/lib/require-tenant-module";
 
 export default async function DashboardLayout({
   children,
@@ -35,6 +36,7 @@ export default async function DashboardLayout({
 
   const tenantId = user.tenantId ?? null;
   let isTavleOnly = false;
+  let enabledModules: string[] = [];
 
   if (tenantId) {
     const { data: tenant } = await getAdminDb()
@@ -50,6 +52,11 @@ export default async function DashboardLayout({
       redirect("/suspended");
     }
     isTavleOnly = Boolean(tenant?.isTavleOnly);
+    try {
+      enabledModules = await getEnabledModuleKeys(tenantId);
+    } catch {
+      enabledModules = [];
+    }
   }
 
   // isTavleOnly customers: minimal layout without full HSEQ Nova menu
@@ -71,8 +78,8 @@ export default async function DashboardLayout({
   return (
     <DashboardProviders>
       <div className="flex min-h-dvh flex-col overflow-hidden lg:flex-row">
-        <MobileNav />
-        <DashboardNav />
+        <MobileNav enabledModules={enabledModules} />
+        <DashboardNav enabledModules={enabledModules} />
         <main className="min-w-0 flex-1 overflow-y-auto p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4 lg:p-8">
           <div className="min-w-0 w-full">
             <AppBreadcrumbs />

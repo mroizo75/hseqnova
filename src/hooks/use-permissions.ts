@@ -10,7 +10,7 @@ import { getPermissions, hasPermission, getVisibleNavItems, type RolePermissions
 export function usePermissions() {
   const { data: session } = useSession();
   
-  // Hent rolle fra første tenant (bruker kan kun ha én tenant)
+  // Role on the currently selected company (Callum may belong to several tenants)
   const role = session?.user?.tenantId 
     ? ((session.user as any).role as Role | undefined)
     : undefined;

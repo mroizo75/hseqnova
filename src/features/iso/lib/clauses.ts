@@ -1,6 +1,7 @@
 /**
  * ISO 45001:2018 and ISO 9001:2015 clause library for the IMS pack.
  * Evidence is live HSEQ Nova records — not a parallel ISO form.
+ * This file is the seed/fallback library. Active editions live in IsoStandardVersion / IsoRequirement.
  */
 
 export type IsoStandard = "ISO_45001" | "ISO_9001";

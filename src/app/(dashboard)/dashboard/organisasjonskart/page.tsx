@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getPermissions } from "@/lib/permissions";
 import { OrgChartTree } from "@/features/organization/components/org-chart-tree";
 import { loadOrgChartNodes } from "@/server/queries/org-chart.queries";
+import { loadIsoTenantMembers } from "@/server/queries/iso.queries";
 import { Building2 } from "lucide-react";
 import { IsoWhenEnabled } from "@/features/iso/components/iso-when-enabled";
 import { IsoEvidenceNote } from "@/features/iso/components/iso-evidence-note";
@@ -23,6 +24,7 @@ export default async function OrgChartPage() {
   const permissions = getPermissions(userTenant.role);
 
   const nodes = await loadOrgChartNodes(tenantId);
+  const members = await loadIsoTenantMembers(tenantId);
 
   return (
     <div className="space-y-6">
@@ -52,9 +54,11 @@ export default async function OrgChartPage() {
           department: n.department,
           hsDutyKey: n.hsDutyKey ?? null,
           hsDuty: n.hsDuty ?? null,
+          userId: n.userId ?? null,
           sortOrder: n.sortOrder,
         }))}
         canManage={permissions.canManageUsers}
+        members={members}
       />
     </div>
   );

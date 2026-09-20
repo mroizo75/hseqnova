@@ -6,6 +6,7 @@ export type OrgChartTreeNode = {
   department: string | null;
   hsDutyKey: string | null;
   hsDuty: string | null;
+  userId?: string | null;
   sortOrder: number;
 };
 

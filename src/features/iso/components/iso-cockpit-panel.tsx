@@ -2,11 +2,12 @@ import Link from "next/link";
 import { getAuthContext } from "@/lib/server-authorization";
 import { getEnabledModuleKeys } from "@/lib/require-tenant-module";
 import { tenantHasIsoPack } from "@/lib/tenant-modules";
-import { loadIsoEvidenceSnapshot } from "@/server/queries/iso.queries";
-import { buildIsoJourney, evaluateIsoClauses } from "@/features/iso/lib/evidence";
+import { loadIsoReadiness } from "@/server/queries/iso.queries";
+import { buildIsoJourney } from "@/features/iso/lib/evidence";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { IsoPackBanner } from "@/features/iso/components/iso-evidence-note";
+import { IsoReadinessPanel } from "@/features/iso/components/iso-readiness-panel";
 
 export async function IsoCockpitPanel() {
   const auth = await getAuthContext();
@@ -14,23 +15,24 @@ export async function IsoCockpitPanel() {
   const enabledModules = await getEnabledModuleKeys(auth.tenantId);
   if (!tenantHasIsoPack(enabledModules)) return null;
 
-  const snapshot = await loadIsoEvidenceSnapshot(auth.tenantId, enabledModules);
-  const journey = buildIsoJourney(evaluateIsoClauses(snapshot));
+  const { readiness, statuses } = await loadIsoReadiness(auth.tenantId, enabledModules);
+  const journey = buildIsoJourney(statuses);
   const next = journey.nextStep;
 
   return (
     <div className="space-y-4">
       <IsoPackBanner />
+      <IsoReadinessPanel readiness={readiness} />
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">IMS coverage</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-semibold">{journey.percent}%</p>
-            <p className="text-sm text-muted-foreground">
-              {journey.coveredCount} of {journey.totalCount} clauses have live evidence
-            </p>
+          <p className="text-3xl font-semibold">{readiness.label}</p>
+          <p className="text-sm text-muted-foreground">
+            {journey.coveredCount} of {journey.totalCount} clauses have live evidence
+          </p>
           </CardContent>
         </Card>
         <Card className="md:col-span-2">

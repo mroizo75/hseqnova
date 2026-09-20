@@ -26,14 +26,16 @@ import { createFinding } from "@/server/actions/audit.actions";
 import { auditClauseOptions } from "@/features/audits/schemas/audit.schema";
 import { useToast } from "@/hooks/use-toast";
 import { Plus } from "lucide-react";
+import type { IsoAuditSamplePool } from "@/server/queries/iso.queries";
 
 interface FindingFormProps {
   auditId: string;
   users: Array<{ id: string; name: string | null; email: string }>;
+  samples?: IsoAuditSamplePool;
   trigger?: React.ReactNode;
 }
 
-export function FindingForm({ auditId, users, trigger }: FindingFormProps) {
+export function FindingForm({ auditId, users, samples, trigger }: FindingFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -53,6 +55,9 @@ export function FindingForm({ auditId, users, trigger }: FindingFormProps) {
       requirement: formData.get("requirement") as string,
       responsibleId: formData.get("responsibleId") as string,
       dueDate: formData.get("dueDate") as string || undefined,
+      incidentId: (formData.get("incidentId") as string) || undefined,
+      riskId: (formData.get("riskId") as string) || undefined,
+      trainingId: (formData.get("trainingId") as string) || undefined,
     };
 
     const result = await createFinding(data);
@@ -196,6 +201,42 @@ export function FindingForm({ auditId, users, trigger }: FindingFormProps) {
                 disabled={loading}
                 min={new Date().toISOString().split("T")[0]}
               />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="incidentId">Sampled incident</Label>
+              <select id="incidentId" name="incidentId" className="h-9 w-full rounded-md border bg-transparent px-2 text-sm" disabled={loading}>
+                <option value="">None</option>
+                {(samples?.incidents ?? []).map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="riskId">Sampled risk</Label>
+              <select id="riskId" name="riskId" className="h-9 w-full rounded-md border bg-transparent px-2 text-sm" disabled={loading}>
+                <option value="">None</option>
+                {(samples?.risks ?? []).map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="trainingId">Sampled competence record</Label>
+              <select id="trainingId" name="trainingId" className="h-9 w-full rounded-md border bg-transparent px-2 text-sm" disabled={loading}>
+                <option value="">None</option>
+                {(samples?.trainings ?? []).map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.title}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

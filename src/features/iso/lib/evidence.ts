@@ -39,6 +39,8 @@ export type IsoEvidenceSnapshot = {
   auditWithIsoClauses: boolean;
   completedReviewCount: number;
   incidentCount: number;
+  nearMissCount: number;
+  whistleblowingCount: number;
   actionsWithEffectiveness: number;
   openActionCount: number;
 };
@@ -390,6 +392,8 @@ export const EMPTY_ISO_SNAPSHOT: IsoEvidenceSnapshot = {
   completedAuditCount: 0,
   auditWithIsoClauses: false,
   incidentCount: 0,
+  nearMissCount: 0,
+  whistleblowingCount: 0,
   actionsWithEffectiveness: 0,
   openActionCount: 0,
   completedReviewCount: 0,

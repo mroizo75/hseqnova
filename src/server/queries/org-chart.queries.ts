@@ -56,6 +56,7 @@ export async function insertOrgChartNode(input: {
   department?: string | null;
   hsDutyKey?: string | null;
   hsDuty?: string | null;
+  userId?: string | null;
   sortOrder?: number;
 }): Promise<OrgChartNode> {
   const now = nowIso();
@@ -70,6 +71,7 @@ export async function insertOrgChartNode(input: {
       department: input.department ?? null,
       hsDutyKey: input.hsDutyKey ?? null,
       hsDuty: input.hsDuty ?? null,
+      userId: input.userId ?? null,
       sortOrder: input.sortOrder ?? 0,
       createdAt: now,
       updatedAt: now,

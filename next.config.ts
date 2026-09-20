@@ -109,6 +109,10 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "50mb", // Øk til 50MB for dokumentopplasting
     },
+    // First paint must include CSS. Turbopack's default FS cache on Windows/OneDrive
+    // often serves an incomplete stylesheet until a manual refresh.
+    inlineCss: true,
+    turbopackFileSystemCacheForDev: false,
   },
   outputFileTracingExcludes: {
     "*": ["**/storage/**"],

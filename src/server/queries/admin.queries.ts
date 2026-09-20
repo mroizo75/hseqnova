@@ -299,7 +299,7 @@ export async function loadAdminUserEditor(userId: string) {
   const db = getAdminDb();
   const { data: user, error } = await db
     .from("User")
-    .select("id, email, name, isSuperAdmin, isSupport, isSales, isSalesManager")
+    .select("id, email, name, isSuperAdmin, isSupport, isSales, isSalesManager, canBeExternalCompetentPerson")
     .eq("id", userId)
     .maybeSingle();
   throwIf(error, "USER_LOOKUP_FAILED");
@@ -319,6 +319,7 @@ export async function loadAdminUserEditor(userId: string) {
     isSupport: Boolean(user.isSupport),
     isSales: Boolean(user.isSales),
     isSalesManager: Boolean(user.isSalesManager),
+    canBeExternalCompetentPerson: Boolean(user.canBeExternalCompetentPerson),
     tenants: (memberships ?? []).map((row) => ({
       tenantId: row.tenantId as string,
       role: row.role as AdminUserListItem["tenants"][number]["role"],

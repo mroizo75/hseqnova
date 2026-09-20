@@ -179,6 +179,41 @@ export async function sendUserInvitationEmail({
   }
 }
 
+export async function sendExistingUserAddedToCompanyEmail({
+  to,
+  userName,
+  companyName,
+  invitedByName,
+}: {
+  to: string;
+  userName: string;
+  companyName: string;
+  invitedByName: string;
+}) {
+  const loginUrl = `${BASE_URL}/login`;
+  const html = `
+<!DOCTYPE html>
+<html lang="en-GB">
+<body style="font-family: Arial, sans-serif; color: #1a1a1a;">
+  <p>Hello <strong>${userName}</strong>,</p>
+  <p><strong>${invitedByName}</strong> has added you to <strong>${companyName}</strong> in HSEQ Nova.</p>
+  <p>Sign in with your existing password, then switch company.</p>
+  <p><a href="${loginUrl}">${loginUrl}</a></p>
+  <p>Kind regards,<br/>HSEQ Nova</p>
+</body>
+</html>`;
+  const { error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to: [to],
+    subject: `You have been added to ${companyName} in HSEQ Nova`,
+    html,
+  });
+  if (error) {
+    throw { code: "EMAIL_SEND_FAILED", message: error.message };
+  }
+  return { success: true as const };
+}
+
 export async function sendPrivilegedAccessEmail({
   to,
   name,

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getAuthContext } from "@/lib/server-authorization";
 import { getEnabledModuleKeys } from "@/lib/require-tenant-module";
 import { tenantHasIsoPack } from "@/lib/tenant-modules";
+import { ensureIsoCatalogue } from "@/server/queries/iso.queries";
 
 export async function requireIsoPage() {
   const auth = await getAuthContext();
@@ -12,5 +13,6 @@ export async function requireIsoPage() {
   if (!tenantHasIsoPack(enabledModules)) {
     redirect("/dashboard/settings");
   }
+  await ensureIsoCatalogue(auth.tenantId);
   return { auth, enabledModules };
 }

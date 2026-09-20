@@ -11,6 +11,7 @@ import { assertNoManagerCycle } from "@/lib/incident-notification-routing";
 import { Role } from "@prisma/client";
 import { loadTenantWithSubscription } from "@/server/queries/settings.queries";
 import { validateInviteName } from "@/lib/competent-person-uk";
+import { evaluateExistingUserInvite } from "@/lib/external-competent-person";
 
 type SessionUser = {
   id: string;
@@ -78,7 +79,7 @@ async function countTenantUsers(tenantId: string): Promise<number> {
 async function findUserByEmail(email: string) {
   const { data, error } = await getAdminDb()
     .from("User")
-    .select("id, email, name, password")
+    .select("id, email, name, password, canBeExternalCompetentPerson")
     .eq("email", email)
     .maybeSingle();
   if (error) {
@@ -620,9 +621,53 @@ async function inviteSingleUser(ctx: InviteContext, data: { email: string; name:
 
   if (existingUser) {
     const inTenant = await findMembership(existingUser.id as string, ctx.tenantId);
-    if (inTenant) {
-      return { success: false, error: `${normalizedEmail} is already a member` };
+    const { count: otherTenantCount } = await db
+      .from("UserTenant")
+      .select("id", { count: "exact", head: true })
+      .eq("userId", existingUser.id)
+      .neq("tenantId", ctx.tenantId);
+    const decision = evaluateExistingUserInvite({
+      alreadyInThisTenant: Boolean(inTenant),
+      otherTenantCount: otherTenantCount ?? 0,
+      canBeExternalCompetentPerson: Boolean(
+        (existingUser as { canBeExternalCompetentPerson?: boolean }).canBeExternalCompetentPerson,
+      ),
+    });
+    if (decision.ok === false) {
+      return { success: false, error: decision.error };
     }
+
+    const { error: membershipError } = await db.from("UserTenant").insert({
+      id: createId(),
+      userId: existingUser.id,
+      tenantId: ctx.tenantId,
+      role: data.role as Role,
+      invitationSentAt: nowIso(),
+      updatedAt: nowIso(),
+    });
+    if (membershipError) {
+      throw { code: "MEMBERSHIP_CREATE_FAILED", message: membershipError.message };
+    }
+
+    try {
+      const { sendExistingUserAddedToCompanyEmail } = await import("@/lib/email-service");
+      await sendExistingUserAddedToCompanyEmail({
+        to: normalizedEmail,
+        userName: named.name,
+        companyName: ctx.tenantName,
+        invitedByName: ctx.user.name || ctx.user.email,
+      });
+    } catch {
+      // Membership created; email failed
+    }
+
+    await AuditLog.log(ctx.tenantId, ctx.user.id, "USER_INVITED", "User", existingUser.id as string, {
+      email: normalizedEmail,
+      role: data.role,
+      existingUser: true,
+      passwordReset: false,
+    });
+    return { success: true };
   }
 
   const generateSecurePassword = () => {
@@ -636,56 +681,32 @@ async function inviteSingleUser(ctx: InviteContext, data: { email: string; name:
   const tempPassword = generateSecurePassword();
   const hashedPassword = await bcrypt.hash(tempPassword, 10);
   const stamp = nowIso();
-
-  if (!existingUser) {
-    const userId = createId();
-    const { data: createdUser, error: userError } = await db
-      .from("User")
-      .insert({
-        id: userId,
-        email: normalizedEmail,
-        name: named.name,
-        password: hashedPassword,
-        updatedAt: stamp,
-      })
-          .select("id, email, name, password")
-          .maybeSingle();
-    if (userError || !createdUser) {
-      throw { code: "USER_CREATE_FAILED", message: userError?.message ?? "Could not create user" };
-    }
-    existingUser = createdUser;
-
-    const { error: membershipError } = await db.from("UserTenant").insert({
-      id: createId(),
-      userId,
-      tenantId: ctx.tenantId,
-      role: data.role as Role,
-      invitationSentAt: stamp,
+  const userId = createId();
+  const { data: createdUser, error: userError } = await db
+    .from("User")
+    .insert({
+      id: userId,
+      email: normalizedEmail,
+      name: named.name,
+      password: hashedPassword,
       updatedAt: stamp,
-    });
-    if (membershipError) {
-      throw { code: "MEMBERSHIP_CREATE_FAILED", message: membershipError.message };
-    }
-  } else {
-    const { error: passwordError } = await db
-      .from("User")
-      .update({ password: hashedPassword, updatedAt: stamp })
-      .eq("id", existingUser.id);
-    if (passwordError) {
-      throw { code: "USER_UPDATE_FAILED", message: passwordError.message };
-    }
+    })
+    .select("id, email, name, password, canBeExternalCompetentPerson")
+    .maybeSingle();
+  if (userError || !createdUser) {
+    throw { code: "USER_CREATE_FAILED", message: userError?.message ?? "Could not create user" };
+  }
 
-    const { error: membershipError } = await db.from("UserTenant").insert({
-      id: createId(),
-      userId: existingUser.id,
-      tenantId: ctx.tenantId,
-      role: data.role as Role,
-      invitationSentAt: stamp,
-      updatedAt: stamp,
-    });
-    if (membershipError) {
-      throw { code: "MEMBERSHIP_CREATE_FAILED", message: membershipError.message };
-    }
+  const { error: membershipError } = await db.from("UserTenant").insert({
+    id: createId(),
+    userId,
+    tenantId: ctx.tenantId,
+    role: data.role as Role,
+    invitationSentAt: stamp,
+    updatedAt: stamp,
+  });
+  if (membershipError) {
+    throw { code: "MEMBERSHIP_CREATE_FAILED", message: membershipError.message };
   }
 
   try {
@@ -702,7 +723,7 @@ async function inviteSingleUser(ctx: InviteContext, data: { email: string; name:
     // User is created; email failed
   }
 
-  await AuditLog.log(ctx.tenantId, ctx.user.id, "USER_INVITED", "User", existingUser.id as string, {
+  await AuditLog.log(ctx.tenantId, ctx.user.id, "USER_INVITED", "User", userId, {
     email: normalizedEmail,
     role: data.role,
   });
@@ -837,6 +858,25 @@ export async function importUsersFromFile(formData: FormData): Promise<ImportUse
         continue;
       }
 
+      if (existingUser) {
+        const { count: otherTenantCount } = await db
+          .from("UserTenant")
+          .select("id", { count: "exact", head: true })
+          .eq("userId", existingUser.id)
+          .neq("tenantId", tenantId);
+        const decision = evaluateExistingUserInvite({
+          alreadyInThisTenant: false,
+          otherTenantCount: otherTenantCount ?? 0,
+          canBeExternalCompetentPerson: Boolean(
+            (existingUser as { canBeExternalCompetentPerson?: boolean }).canBeExternalCompetentPerson,
+          ),
+        });
+        if (decision.ok === false) {
+          errors.push(`${normalizedEmail}: ${decision.error}`);
+          continue;
+        }
+      }
+
       if (!existingUser) {
         const userId = createId();
         const { data: createdUser, error: userError } = await db
@@ -848,7 +888,7 @@ export async function importUsersFromFile(formData: FormData): Promise<ImportUse
             password: null,
             updatedAt: stamp,
           })
-          .select("id, email, name, password")
+          .select("id, email, name, password, canBeExternalCompetentPerson")
           .maybeSingle();
         if (userError || !createdUser) {
           errors.push(`${normalizedEmail}: ${userError?.message ?? "could not create the user"}`);

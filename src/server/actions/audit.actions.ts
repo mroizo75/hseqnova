@@ -9,6 +9,8 @@ import {
   updateFindingSchema,
 } from "@/features/audits/schemas/audit.schema";
 import { AuditLog } from "@/lib/audit-log";
+import { resolveScopedTenantId } from "@/lib/external-competent-person";
+import { assertSampleRecordInTenant } from "@/server/queries/iso.queries";
 import {
   deleteAuditRecord,
   deleteFindingRecord,
@@ -185,14 +187,24 @@ export async function getAuditStats(_tenantId: string) {
 export async function createFinding(input: Record<string, unknown>) {
   try {
     const { userId, tenantId } = await getRequiredTenantContext();
+    const scopedTenantId = resolveScopedTenantId(tenantId, typeof input.tenantId === "string" ? input.tenantId : null);
     const validated = createFindingSchema.parse({
       ...input,
       dueDate: input.dueDate ? new Date(input.dueDate as string) : undefined,
     });
 
-    const audit = await loadAudit(validated.auditId, tenantId);
+    const audit = await loadAudit(validated.auditId, scopedTenantId);
     if (!audit) {
       return { success: false, error: "Audit not found" };
+    }
+    if (validated.incidentId && !(await assertSampleRecordInTenant(scopedTenantId, "incident", validated.incidentId))) {
+      return { success: false, error: "Incident not found in this company" };
+    }
+    if (validated.riskId && !(await assertSampleRecordInTenant(scopedTenantId, "risk", validated.riskId))) {
+      return { success: false, error: "Risk assessment not found in this company" };
+    }
+    if (validated.trainingId && !(await assertSampleRecordInTenant(scopedTenantId, "training", validated.trainingId))) {
+      return { success: false, error: "Training record not found in this company" };
     }
 
     const finding = await insertFinding({
@@ -204,9 +216,12 @@ export async function createFinding(input: Record<string, unknown>) {
       requirement: validated.requirement,
       responsibleId: validated.responsibleId,
       dueDate: validated.dueDate,
+      incidentId: validated.incidentId,
+      riskId: validated.riskId,
+      trainingId: validated.trainingId,
     });
 
-    await AuditLog.log(tenantId, userId, "AUDIT_FINDING_CREATED", "AuditFinding", finding.id, {
+    await AuditLog.log(scopedTenantId, userId, "AUDIT_FINDING_CREATED", "AuditFinding", finding.id, {
       auditId: audit.id,
       findingType: finding.findingType,
     });

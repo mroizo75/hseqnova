@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRequiredTenantContext } from "@/lib/tenant-context";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { resolveScopedTenantId } from "@/lib/external-competent-person";
+import { hasIso93Input } from "@/features/iso/lib/iso-93";
+import { getEnabledModuleKeys } from "@/lib/require-tenant-module";
+import { tenantHasIsoPack } from "@/lib/tenant-modules";
+import { createMeasuresFromReviewPlan } from "@/server/queries/iso.queries";
 
 export const dynamic = "force-dynamic";
 
@@ -87,6 +92,7 @@ export async function PATCH(
     }
 
     const body = await req.json();
+    tenantId = resolveScopedTenantId(tenantId, typeof body.tenantId === "string" ? body.tenantId : null);
     const validatedData = updateManagementReviewSchema.parse(body);
 
     const existing = await db.managementReview.findFirst({
@@ -100,7 +106,31 @@ export async function PATCH(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const updateData: any = { ...validatedData };
+    const nextStatus = validatedData.status ?? existing.status;
+    if (nextStatus === "COMPLETED" || nextStatus === "APPROVED") {
+      const modules = await getEnabledModuleKeys(tenantId);
+      if (tenantHasIsoPack(modules)) {
+        const merged = {
+          previousActionsStatus: validatedData.previousActionsStatus ?? existing.previousActionsStatus,
+          interestedPartiesReview: validatedData.interestedPartiesReview ?? existing.interestedPartiesReview,
+          complianceEvaluationReview:
+            validatedData.complianceEvaluationReview ?? existing.complianceEvaluationReview,
+          consultationReview: validatedData.consultationReview ?? existing.consultationReview,
+        };
+        if (!hasIso93Input(merged)) {
+          return NextResponse.json(
+            {
+              error:
+                "ISO 9.3 inputs are required before completing the management review (previous actions, interested parties, compliance evaluation and consultation).",
+            },
+            { status: 400 },
+          );
+        }
+      }
+    }
+
+    const updateData: Record<string, unknown> = { ...validatedData };
+    delete updateData.tenantId;
 
     if (validatedData.participants) {
       updateData.participants = JSON.stringify(validatedData.participants);
@@ -123,6 +153,10 @@ export async function PATCH(
       where: { id },
       data: updateData,
     });
+
+    if (validatedData.actionPlan) {
+      await createMeasuresFromReviewPlan(tenantId, validatedData.actionPlan);
+    }
 
     return NextResponse.json({ data: review });
   } catch (error: any) {

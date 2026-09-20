@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, createContext, useContext } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +40,10 @@ import {
 interface OrgChartTreeProps {
   nodes: OrgChartTreeNode[];
   canManage: boolean;
+  members?: Array<{ id: string; name: string | null; email: string }>;
 }
+
+const OrgMembersContext = createContext<Array<{ id: string; name: string | null; email: string }>>([]);
 
 // ─── Visual chart node (box) ─────────────────────────
 
@@ -242,6 +245,8 @@ function NodeDialog({
   const [department, setDepartment] = useState(editNode?.department ?? "");
   const [hsDutyKey, setHsDutyKey] = useState<string>(editNode?.hsDutyKey ?? "");
   const [hsDuty, setHsDuty] = useState(editNode?.hsDuty ?? "");
+  const [userId, setUserId] = useState(editNode?.userId ?? "");
+  const members = useContext(OrgMembersContext);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const nameRequired = dutyRequiresName(hsDutyKey || null);
@@ -258,6 +263,7 @@ function NodeDialog({
         department: department.trim() || null,
         hsDutyKey: (hsDutyKey || null) as OrgHsDutyKey | null,
         hsDuty: hsDuty.trim() || null,
+        userId: userId || null,
       };
       const result = editNode
         ? await updateOrgChartNode({ id: editNode.id, ...payload })
@@ -288,6 +294,7 @@ function NodeDialog({
         setDepartment(editNode.department ?? "");
         setHsDutyKey(editNode.hsDutyKey ?? "");
         setHsDuty(editNode.hsDuty ?? "");
+        setUserId(editNode.userId ?? "");
       }
     }}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -350,6 +357,30 @@ function NodeDialog({
                 placeholder="e.g. Jane Smith"
                 required={nameRequired}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="node-user">Company member</Label>
+              <select
+                id="node-user"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                value={userId}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setUserId(next);
+                  const member = members.find((item) => item.id === next);
+                  if (member) setName(member.name || member.email);
+                }}
+              >
+                <option value="">Not linked to a login</option>
+                {members.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.name || member.email}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                The competent person must be a member of this company (MHSWR 1999 reg.7).
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="node-duty">What they do for health and safety</Label>
@@ -535,7 +566,7 @@ const chartStyles = `
 
 // ─── Main export ─────────────────────────────────────
 
-export function OrgChartTree({ nodes, canManage }: OrgChartTreeProps) {
+export function OrgChartTree({ nodes, canManage, members = [] }: OrgChartTreeProps) {
   const tree = buildOrgChartTree(nodes);
   const isEmpty = tree.length === 0;
   const coverage = assessOrgChartCoverage(nodes);
@@ -560,6 +591,7 @@ export function OrgChartTree({ nodes, canManage }: OrgChartTreeProps) {
   }
 
   return (
+    <OrgMembersContext.Provider value={members}>
     <>
       <style dangerouslySetInnerHTML={{ __html: chartStyles }} />
 
@@ -705,5 +737,6 @@ export function OrgChartTree({ nodes, canManage }: OrgChartTreeProps) {
         </Card>
       )}
     </>
+    </OrgMembersContext.Provider>
   );
 }

@@ -1,17 +1,17 @@
 import Link from "next/link";
 import { requireIsoPage } from "@/features/iso/lib/require-iso-page";
-import { loadIsoEvidenceSnapshot } from "@/server/queries/iso.queries";
-import { buildIsoJourney, evaluateIsoClauses } from "@/features/iso/lib/evidence";
+import { loadIsoReadiness } from "@/server/queries/iso.queries";
+import { buildIsoJourney } from "@/features/iso/lib/evidence";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { IsoPackBanner } from "@/features/iso/components/iso-evidence-note";
+import { IsoReadinessPanel } from "@/features/iso/components/iso-readiness-panel";
 
 export const dynamic = "force-dynamic";
 
 export default async function IsoHubPage() {
   const { auth, enabledModules } = await requireIsoPage();
-  const snapshot = await loadIsoEvidenceSnapshot(auth.tenantId, enabledModules);
-  const statuses = evaluateIsoClauses(snapshot);
+  const { statuses, readiness } = await loadIsoReadiness(auth.tenantId, enabledModules);
   const journey = buildIsoJourney(statuses);
   const next = journey.nextStep;
 
@@ -26,6 +26,7 @@ export default async function IsoHubPage() {
         </p>
       </div>
       <IsoPackBanner />
+      <IsoReadinessPanel readiness={readiness} />
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -35,7 +36,7 @@ export default async function IsoHubPage() {
           <CardContent>
             <p className="text-3xl font-semibold">{journey.percent}%</p>
             <p className="text-sm text-muted-foreground">
-              {journey.coveredCount} of {journey.totalCount} clauses covered
+              {journey.coveredCount} of {journey.totalCount} clauses covered automatically
             </p>
           </CardContent>
         </Card>
@@ -111,10 +112,13 @@ export default async function IsoHubPage() {
 
       <div className="flex flex-wrap gap-3">
         <Button asChild variant="outline">
-          <Link href="/dashboard/iso/context">Context, parties and scope</Link>
+          <Link href="/dashboard/iso/context">Context interview</Link>
         </Button>
         <Button asChild variant="outline">
-          <Link href="/dashboard/iso/clauses">Full clause map</Link>
+          <Link href="/dashboard/iso/clauses">Gap matrix</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/dashboard/iso/consultation">Worker consultation</Link>
         </Button>
         <Button asChild variant="outline">
           <Link href="/dashboard/legal-register">Legal register</Link>

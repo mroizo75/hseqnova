@@ -1,7 +1,18 @@
 import { getAdminDb } from "@/lib/supabase/admin";
 import { createId } from "@/lib/ids";
 import { tenantHasModule } from "@/lib/tenant-modules";
-import { EMPTY_ISO_SNAPSHOT, type IsoEvidenceSnapshot } from "@/features/iso/lib/evidence";
+import { EMPTY_ISO_SNAPSHOT, evaluateIsoClauses, type IsoClauseStatus, type IsoEvidenceSnapshot } from "@/features/iso/lib/evidence";
+import { ALL_ISO_CLAUSES, type IsoClause } from "@/features/iso/lib/clauses";
+import {
+  ISO_45001_2018_VERSION_ID,
+  ISO_9001_2015_VERSION_ID,
+  clauseFromRequirement,
+  isoRequirementSeedRows,
+  PUBLISHED_ISO_VERSIONS,
+} from "@/features/iso/lib/catalogue";
+import { hasIso93Input, parseManagementReviewActions } from "@/features/iso/lib/iso-93";
+import { buildIsoReadiness, type IsoAssessedLevel, type IsoReadiness } from "@/features/iso/lib/readiness";
+import { insertMeasure } from "@/server/queries/measures.queries";
 
 function parseDate(value: unknown): Date | null {
   if (!value) return null;
@@ -567,6 +578,7 @@ export async function loadIsoEvidenceSnapshot(
     incidentsRes,
     measuresRes,
     handbookRes,
+    whistleRes,
   ] = await Promise.all([
     db.from("IsoContextIssue").select("id, kind").eq("tenantId", tenantId),
     db.from("IsoInterestedParty").select("id").eq("tenantId", tenantId),
@@ -587,9 +599,10 @@ export async function loadIsoEvidenceSnapshot(
     db.from("FireRiskAssessment").select("id").eq("tenantId", tenantId).limit(1),
     db.from("Audit").select("id, status, completedAt").eq("tenantId", tenantId),
     db.from("ManagementReview").select("id, status").eq("tenantId", tenantId),
-    db.from("Incident").select("id").eq("tenantId", tenantId),
+    db.from("Incident").select("id, type").eq("tenantId", tenantId),
     db.from("Measure").select("id, status, effectiveness").eq("tenantId", tenantId),
     db.from("HmsHandbook").select("id, currentVersionId").eq("tenantId", tenantId).maybeSingle(),
+    db.from("Whistleblowing").select("id").eq("tenantId", tenantId),
   ]);
 
   const contextRows = (contextRes.data ?? []) as Array<{ kind?: string }>;
@@ -686,9 +699,518 @@ export async function loadIsoEvidenceSnapshot(
     auditWithIsoClauses,
     completedReviewCount: reviewRows.filter((row) => row.status === "COMPLETED" || row.status === "APPROVED").length,
     incidentCount: countRows(incidentsRes.data),
+    nearMissCount: ((incidentsRes.data ?? []) as Array<{ type?: string }>).filter(
+      (row) => row.type === "NESTEN" || row.type === "FARLIG_SITUASJON",
+    ).length,
+    whistleblowingCount: countRows(whistleRes.data),
     actionsWithEffectiveness: measureRows.filter(
       (row) => row.effectiveness && row.effectiveness !== "NOT_EVALUATED",
     ).length,
     openActionCount: measureRows.filter((row) => row.status !== "DONE").length,
   };
 }
+
+export type IsoTenantMember = { id: string; name: string | null; email: string };
+
+export type IsoRequirementRow = {
+  id: string;
+  versionId: string;
+  clauseKey: string;
+  clause: string;
+  title: string;
+  shallParaphrase: string;
+  phase: string;
+  evidenceKey: string;
+  doThis: string;
+  auditorHint: string;
+  href: string;
+};
+
+export type IsoClauseAssessmentRow = {
+  id: string;
+  tenantId: string;
+  requirementId: string;
+  assessedLevel: IsoAssessedLevel | null;
+  responsibleUserId: string | null;
+  lastReviewedAt: Date | null;
+  nextReviewAt: Date | null;
+  notes: string | null;
+  measureId: string | null;
+};
+
+export type IsoMatrixRow = {
+  requirement: IsoRequirementRow;
+  clause: IsoClause;
+  autoLevel: IsoClauseStatus["level"];
+  autoDetail: string;
+  assessment: IsoClauseAssessmentRow | null;
+};
+
+export type IsoConsultationHub = {
+  meetings: IsoConsultationMeeting[];
+  incidents: Array<{
+    id: string;
+    title: string;
+    type: string;
+    status: string;
+    reportedBy: string | null;
+    occurredAt: Date | null;
+  }>;
+  actions: Array<{
+    id: string;
+    title: string;
+    status: string;
+    incidentId: string | null;
+    dueAt: Date | null;
+    effectiveness: string | null;
+  }>;
+  whistleblowing: Array<{
+    id: string;
+    caseNumber: string;
+    title: string;
+    status: string;
+    isAnonymous: boolean;
+  }>;
+};
+
+export type IsoAuditSamplePool = {
+  incidents: Array<{ id: string; title: string; type: string; status: string; rootCause: string | null; closedAt: Date | null }>;
+  risks: Array<{ id: string; title: string }>;
+  trainings: Array<{ id: string; title: string; userId: string; validUntil: Date | null }>;
+};
+
+function asRequirement(row: Record<string, unknown>): IsoRequirementRow {
+  return {
+    id: String(row.id),
+    versionId: String(row.versionId),
+    clauseKey: String(row.clauseKey),
+    clause: String(row.clause),
+    title: String(row.title),
+    shallParaphrase: String(row.shallParaphrase ?? ""),
+    phase: String(row.phase),
+    evidenceKey: String(row.evidenceKey),
+    doThis: String(row.doThis ?? ""),
+    auditorHint: String(row.auditorHint ?? ""),
+    href: String(row.href ?? ""),
+  };
+}
+
+function asAssessment(row: Record<string, unknown>): IsoClauseAssessmentRow {
+  const level = row.assessedLevel ? String(row.assessedLevel) : null;
+  const assessedLevel =
+    level === "COMPLIANT" || level === "PARTIAL" || level === "GAP" || level === "MAJOR_GAP"
+      ? level
+      : null;
+  return {
+    id: String(row.id),
+    tenantId: String(row.tenantId),
+    requirementId: String(row.requirementId),
+    assessedLevel,
+    responsibleUserId: row.responsibleUserId ? String(row.responsibleUserId) : null,
+    lastReviewedAt: parseDate(row.lastReviewedAt),
+    nextReviewAt: parseDate(row.nextReviewAt),
+    notes: row.notes ? String(row.notes) : null,
+    measureId: row.measureId ? String(row.measureId) : null,
+  };
+}
+
+export async function ensureIsoCatalogue(tenantId: string): Promise<void> {
+  const db = getAdminDb();
+  const stamp = nowIso();
+  const { error: versionError } = await db.from("IsoStandardVersion").upsert(
+    PUBLISHED_ISO_VERSIONS.map((version) => ({
+      id: version.id,
+      standard: version.standard,
+      edition: version.edition,
+      status: version.status,
+      publishedAt: version.edition === "2018" ? "2018-03-12T00:00:00.000Z" : "2015-09-15T00:00:00.000Z",
+      updatedAt: stamp,
+    })),
+    { onConflict: "id" },
+  );
+  if (versionError) return;
+  await db.from("IsoRequirement").upsert(
+    isoRequirementSeedRows().map((row) => ({ ...row, updatedAt: stamp })),
+    { onConflict: "id" },
+  );
+  const { data: tenant } = await db
+    .from("Tenant")
+    .select("iso45001VersionId, iso9001VersionId")
+    .eq("id", tenantId)
+    .maybeSingle();
+  if (!tenant?.iso45001VersionId || !tenant?.iso9001VersionId) {
+    await db
+      .from("Tenant")
+      .update({
+        iso45001VersionId: tenant?.iso45001VersionId ?? ISO_45001_2018_VERSION_ID,
+        iso9001VersionId: tenant?.iso9001VersionId ?? ISO_9001_2015_VERSION_ID,
+      })
+      .eq("id", tenantId);
+  }
+}
+
+export async function loadActiveIsoRequirements(tenantId: string): Promise<IsoRequirementRow[]> {
+  await ensureIsoCatalogue(tenantId);
+  const db = getAdminDb();
+  const { data: tenant } = await db
+    .from("Tenant")
+    .select("iso45001VersionId, iso9001VersionId")
+    .eq("id", tenantId)
+    .maybeSingle();
+  const versionIds = [
+    String(tenant?.iso45001VersionId ?? ISO_45001_2018_VERSION_ID),
+    String(tenant?.iso9001VersionId ?? ISO_9001_2015_VERSION_ID),
+  ];
+  const { data, error } = await db.from("IsoRequirement").select("*").in("versionId", versionIds);
+  if (error) return isoRequirementSeedRows();
+  const rows = ((data ?? []) as Record<string, unknown>[]).map(asRequirement);
+  if (rows.length > 0) {
+    const order = new Map(ALL_ISO_CLAUSES.map((clause, index) => [clause.id, index]));
+    return rows.sort((a, b) => (order.get(a.clauseKey) ?? 999) - (order.get(b.clauseKey) ?? 999));
+  }
+  return isoRequirementSeedRows();
+}
+
+export async function loadIsoClauseAssessments(tenantId: string): Promise<IsoClauseAssessmentRow[]> {
+  const { data, error } = await getAdminDb().from("IsoClauseAssessment").select("*").eq("tenantId", tenantId);
+  if (error) return [];
+  return ((data ?? []) as Record<string, unknown>[]).map(asAssessment);
+}
+
+export async function loadIsoClauseMatrix(
+  tenantId: string,
+  statuses: IsoClauseStatus[],
+): Promise<IsoMatrixRow[]> {
+  const [requirements, assessments] = await Promise.all([
+    loadActiveIsoRequirements(tenantId),
+    loadIsoClauseAssessments(tenantId),
+  ]);
+  const statusByKey = new Map(statuses.map((item) => [item.clause.id, item]));
+  const assessmentByReq = new Map(assessments.map((item) => [item.requirementId, item]));
+  return requirements.map((requirement) => {
+    const clause = clauseFromRequirement(requirement);
+    const status = statusByKey.get(requirement.clauseKey);
+    return {
+      requirement,
+      clause,
+      autoLevel: status?.level ?? "missing",
+      autoDetail: status?.detail ?? "Not evaluated",
+      assessment: assessmentByReq.get(requirement.id) ?? null,
+    };
+  });
+}
+
+export async function upsertIsoClauseAssessment(input: {
+  tenantId: string;
+  requirementId: string;
+  assessedLevel?: IsoAssessedLevel | null;
+  responsibleUserId?: string | null;
+  lastReviewedAt?: Date | null;
+  nextReviewAt?: Date | null;
+  notes?: string | null;
+  measureId?: string | null;
+}): Promise<IsoClauseAssessmentRow> {
+  const db = getAdminDb();
+  const { data: existing } = await db
+    .from("IsoClauseAssessment")
+    .select("*")
+    .eq("tenantId", input.tenantId)
+    .eq("requirementId", input.requirementId)
+    .maybeSingle();
+  const payload: Record<string, unknown> = { updatedAt: nowIso() };
+  if (input.assessedLevel !== undefined) payload.assessedLevel = input.assessedLevel;
+  if (input.responsibleUserId !== undefined) payload.responsibleUserId = input.responsibleUserId;
+  if (input.lastReviewedAt !== undefined) {
+    payload.lastReviewedAt = input.lastReviewedAt ? input.lastReviewedAt.toISOString() : null;
+  }
+  if (input.nextReviewAt !== undefined) {
+    payload.nextReviewAt = input.nextReviewAt ? input.nextReviewAt.toISOString() : null;
+  }
+  if (input.notes !== undefined) payload.notes = input.notes;
+  if (input.measureId !== undefined) payload.measureId = input.measureId;
+
+  if (existing) {
+    const { data, error } = await db
+      .from("IsoClauseAssessment")
+      .update(payload)
+      .eq("id", existing.id)
+      .eq("tenantId", input.tenantId)
+      .select("*")
+      .single();
+    if (error || !data) {
+      throw { code: "ISO_ASSESSMENT_UPDATE_FAILED", message: error?.message ?? "Could not save assessment" };
+    }
+    return asAssessment(data as Record<string, unknown>);
+  }
+
+  const { data, error } = await db
+    .from("IsoClauseAssessment")
+    .insert({
+      id: createId(),
+      tenantId: input.tenantId,
+      requirementId: input.requirementId,
+      assessedLevel: input.assessedLevel ?? null,
+      responsibleUserId: input.responsibleUserId ?? null,
+      lastReviewedAt: input.lastReviewedAt?.toISOString() ?? nowIso(),
+      nextReviewAt: input.nextReviewAt?.toISOString() ?? null,
+      notes: input.notes ?? null,
+      measureId: input.measureId ?? null,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    })
+    .select("*")
+    .single();
+  if (error || !data) {
+    throw { code: "ISO_ASSESSMENT_CREATE_FAILED", message: error?.message ?? "Could not save assessment" };
+  }
+  return asAssessment(data as Record<string, unknown>);
+}
+
+export async function loadIsoTenantMembers(tenantId: string): Promise<IsoTenantMember[]> {
+  const db = getAdminDb();
+  const { data: memberships } = await db.from("UserTenant").select("userId").eq("tenantId", tenantId);
+  const userIds = [...new Set(((memberships ?? []) as Array<{ userId: string }>).map((row) => row.userId))];
+  if (userIds.length === 0) return [];
+  const { data: users } = await db.from("User").select("id, name, email").in("id", userIds);
+  return ((users ?? []) as Array<{ id: string; name: string | null; email: string }>).map((user) => ({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+  }));
+}
+
+export async function assertUserIsTenantMember(tenantId: string, userId: string): Promise<boolean> {
+  const { data } = await getAdminDb()
+    .from("UserTenant")
+    .select("id")
+    .eq("tenantId", tenantId)
+    .eq("userId", userId)
+    .maybeSingle();
+  return Boolean(data);
+}
+
+export async function loadIsoReadiness(tenantId: string, enabledModules: string[]): Promise<{
+  snapshot: IsoEvidenceSnapshot;
+  statuses: IsoClauseStatus[];
+  matrix: IsoMatrixRow[];
+  readiness: IsoReadiness;
+}> {
+  const snapshot = await loadIsoEvidenceSnapshot(tenantId, enabledModules);
+  const statuses = evaluateIsoClauses(snapshot);
+  const matrix = await loadIsoClauseMatrix(tenantId, statuses);
+  const db = getAdminDb();
+  const [{ data: audits }, { data: reviews }, { data: nilIssues }] = await Promise.all([
+    db.from("Audit").select("id").eq("tenantId", tenantId),
+    db
+      .from("ManagementReview")
+      .select(
+        "id, status, previousActionsStatus, interestedPartiesReview, complianceEvaluationReview, consultationReview",
+      )
+      .eq("tenantId", tenantId),
+    db.from("IsoContextIssue").select("id, title").eq("tenantId", tenantId).ilike("title", "%nil return%"),
+  ]);
+  const auditIds = ((audits ?? []) as Array<{ id: string }>).map((row) => row.id);
+  const { data: findings } =
+    auditIds.length > 0
+      ? await db.from("AuditFinding").select("id, findingType, status").in("auditId", auditIds)
+      : { data: [] };
+
+  const findingRows = (findings ?? []) as Array<{ findingType?: string; status?: string }>;
+  const openMajorNcCount = findingRows.filter(
+    (row) => row.findingType === "MAJOR_NC" && row.status !== "VERIFIED",
+  ).length;
+  const reviewRows = (reviews ?? []) as Array<{
+    status?: string;
+    previousActionsStatus?: string | null;
+    interestedPartiesReview?: string | null;
+    complianceEvaluationReview?: string | null;
+    consultationReview?: string | null;
+  }>;
+  const managementReviewWith93 = reviewRows.some(
+    (row) =>
+      (row.status === "COMPLETED" || row.status === "APPROVED") &&
+      hasIso93Input(row),
+  );
+  const documentedNilReturn = countRows(nilIssues) > 0;
+
+  const readiness = buildIsoReadiness({
+    statuses,
+    assessments: matrix.map((row) => ({
+      clauseKey: row.requirement.clauseKey,
+      assessedLevel: row.assessment?.assessedLevel ?? null,
+    })),
+    snapshot,
+    openMajorNcCount,
+    completedIsoAudit: snapshot.completedAuditCount > 0 && snapshot.auditWithIsoClauses,
+    managementReviewWith93,
+    documentedNilReturn,
+  });
+
+  return { snapshot, statuses, matrix, readiness };
+}
+
+export async function generateIsoImplementationTasks(input: {
+  tenantId: string;
+  responsibleFallbackId: string;
+  matrix: IsoMatrixRow[];
+}): Promise<number> {
+  let created = 0;
+  const due = new Date();
+  due.setDate(due.getDate() + 30);
+  for (const row of input.matrix) {
+    const assessed = row.assessment?.assessedLevel;
+    const isOpen =
+      assessed === "GAP" ||
+      assessed === "MAJOR_GAP" ||
+      (!assessed && (row.autoLevel === "missing" || row.autoLevel === "partial"));
+    if (!isOpen) continue;
+    if (row.assessment?.measureId) continue;
+    const ownerId = row.assessment?.responsibleUserId ?? input.responsibleFallbackId;
+    const measure = await insertMeasure({
+      tenantId: input.tenantId,
+      title: `ISO ${row.clause.standard === "ISO_45001" ? "45001" : "9001"} ${row.clause.clause}: ${row.clause.title}`,
+      description: row.clause.doThis,
+      dueAt: due,
+      responsibleId: ownerId,
+      status: "PENDING",
+      category: "IMPROVEMENT",
+    });
+    await upsertIsoClauseAssessment({
+      tenantId: input.tenantId,
+      requirementId: row.requirement.id,
+      assessedLevel: assessed ?? null,
+      responsibleUserId: ownerId,
+      measureId: measure.id,
+    });
+    created += 1;
+  }
+  return created;
+}
+
+export async function loadIsoConsultationHub(tenantId: string): Promise<IsoConsultationHub> {
+  const db = getAdminDb();
+  const [meetings, incidentsRes, actionsRes, whistleRes] = await Promise.all([
+    loadIsoConsultationMeetings(tenantId),
+    db
+      .from("Incident")
+      .select("id, title, type, status, reportedBy, occurredAt")
+      .eq("tenantId", tenantId)
+      .order("occurredAt", { ascending: false })
+      .limit(40),
+    db
+      .from("Measure")
+      .select("id, title, status, incidentId, dueAt, effectiveness")
+      .eq("tenantId", tenantId)
+      .not("incidentId", "is", null)
+      .order("dueAt", { ascending: true })
+      .limit(40),
+    db
+      .from("Whistleblowing")
+      .select("id, caseNumber, title, status, isAnonymous")
+      .eq("tenantId", tenantId)
+      .order("createdAt", { ascending: false })
+      .limit(20),
+  ]);
+
+  return {
+    meetings,
+    incidents: ((incidentsRes.data ?? []) as Record<string, unknown>[]).map((row) => ({
+      id: String(row.id),
+      title: String(row.title),
+      type: String(row.type ?? ""),
+      status: String(row.status ?? ""),
+      reportedBy: row.reportedBy ? String(row.reportedBy) : null,
+      occurredAt: parseDate(row.occurredAt),
+    })),
+    actions: ((actionsRes.data ?? []) as Record<string, unknown>[]).map((row) => ({
+      id: String(row.id),
+      title: String(row.title),
+      status: String(row.status ?? ""),
+      incidentId: row.incidentId ? String(row.incidentId) : null,
+      dueAt: parseDate(row.dueAt),
+      effectiveness: row.effectiveness ? String(row.effectiveness) : null,
+    })),
+    whistleblowing: ((whistleRes.data ?? []) as Record<string, unknown>[]).map((row) => ({
+      id: String(row.id),
+      caseNumber: String(row.caseNumber ?? ""),
+      title: String(row.title ?? ""),
+      status: String(row.status ?? ""),
+      isAnonymous: Boolean(row.isAnonymous),
+    })),
+  };
+}
+
+export async function loadIsoAuditSamplePool(tenantId: string): Promise<IsoAuditSamplePool> {
+  const db = getAdminDb();
+  const [incidentsRes, risksRes, trainingRes] = await Promise.all([
+    db
+      .from("Incident")
+      .select("id, title, type, status, rootCause, closedAt")
+      .eq("tenantId", tenantId)
+      .order("occurredAt", { ascending: false })
+      .limit(12),
+    db.from("RiskAssessment").select("id, title").eq("tenantId", tenantId).order("createdAt", { ascending: false }).limit(12),
+    db
+      .from("Training")
+      .select("id, title, userId, validUntil")
+      .eq("tenantId", tenantId)
+      .order("createdAt", { ascending: false })
+      .limit(12),
+  ]);
+  return {
+    incidents: ((incidentsRes.data ?? []) as Record<string, unknown>[]).map((row) => ({
+      id: String(row.id),
+      title: String(row.title),
+      type: String(row.type ?? ""),
+      status: String(row.status ?? ""),
+      rootCause: row.rootCause ? String(row.rootCause) : null,
+      closedAt: parseDate(row.closedAt),
+    })),
+    risks: ((risksRes.data ?? []) as Record<string, unknown>[]).map((row) => ({
+      id: String(row.id),
+      title: String(row.title),
+    })),
+    trainings: ((trainingRes.data ?? []) as Record<string, unknown>[]).map((row) => ({
+      id: String(row.id),
+      title: String(row.title),
+      userId: String(row.userId ?? ""),
+      validUntil: parseDate(row.validUntil),
+    })),
+  };
+}
+
+export async function assertSampleRecordInTenant(
+  tenantId: string,
+  kind: "incident" | "risk" | "training",
+  id: string,
+): Promise<boolean> {
+  const table = kind === "incident" ? "Incident" : kind === "risk" ? "RiskAssessment" : "Training";
+  const { data } = await getAdminDb().from(table).select("id").eq("id", id).eq("tenantId", tenantId).maybeSingle();
+  return Boolean(data);
+}
+
+export async function createMeasuresFromReviewPlan(
+  tenantId: string,
+  actionPlan: unknown,
+): Promise<number> {
+  const items = parseManagementReviewActions(actionPlan);
+  let created = 0;
+  const dueDefault = new Date();
+  dueDefault.setDate(dueDefault.getDate() + 30);
+  for (const item of items) {
+    const member = await assertUserIsTenantMember(tenantId, item.ownerId);
+    if (!member) continue;
+    await insertMeasure({
+      tenantId,
+      title: item.title,
+      description: "From management review (ISO 45001 / 9001 9.3)",
+      dueAt: item.dueDate ? new Date(item.dueDate) : dueDefault,
+      responsibleId: item.ownerId,
+      status: "PENDING",
+      category: "IMPROVEMENT",
+    });
+    created += 1;
+  }
+  return created;
+}
+

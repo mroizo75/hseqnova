@@ -1,4 +1,4 @@
-const CACHE_NAME = "hseqnova-app-shell-v2";
+const CACHE_NAME = "hseqnova-app-shell-v3";
 
 const APP_SHELL_URLS = [
   "/offline",
@@ -32,6 +32,11 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
 
   if (request.method !== "GET") return;
+
+  const url = new URL(request.url);
+  if (url.pathname.startsWith("/_next/")) {
+    return;
+  }
 
   if (request.destination === "document") {
     event.respondWith(

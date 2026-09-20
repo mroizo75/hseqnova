@@ -141,14 +141,14 @@ const navGroups: NavGroup[] = [
   },
 ];
 
-export function MobileNav() {
+export function MobileNav({ enabledModules: enabledModulesFromServer = [] }: { enabledModules?: string[] }) {
   const pathname = usePathname();
   const t = useTranslations();
   const { data: session } = useSession();
   const { visibleNavItems, role, permissions } = usePermissions();
   const [open, setOpen] = useState(false);
   const [moduleVisibility, setModuleVisibility] = useState<ModuleVisibilityConfig | null>(null);
-  const [enabledModules, setEnabledModules] = useState<string[]>([]);
+  const [enabledModules, setEnabledModules] = useState<string[]>(enabledModulesFromServer);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const toggleGroup = useCallback((groupId: string) => {

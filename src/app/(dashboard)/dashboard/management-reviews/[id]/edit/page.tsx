@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { WellbeingSummaryCard } from "@/components/wellbeing/wellbeing-summary-card";
+import { ManagementReviewActionsFields } from "@/features/iso/components/management-review-actions-fields";
+import { parseManagementReviewActions, type ManagementReviewActionItem } from "@/features/iso/lib/iso-93";
 import {
   Select,
   SelectContent,
@@ -49,6 +51,8 @@ export default function EditManagementReviewPage() {
   const [deleting, setDeleting] = useState(false);
   const [users, setUsers] = useState<TenantUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [decisions, setDecisions] = useState<ManagementReviewActionItem[]>([]);
+  const [actionPlan, setActionPlan] = useState<ManagementReviewActionItem[]>([]);
   const [formData, setFormData] = useState({
     title: "",
     period: "",
@@ -132,6 +136,8 @@ export default function EditManagementReviewPage() {
             ? new Date(review.nextReviewDate).toISOString().slice(0, 16)
             : "",
         });
+        setDecisions(parseManagementReviewActions(review.decisions));
+        setActionPlan(parseManagementReviewActions(review.actionPlan));
       } catch (error: any) {
         toast({
           title: "Feil",
@@ -173,6 +179,8 @@ export default function EditManagementReviewPage() {
         wellbeingSummary: formData.wellbeingSummary,
         conclusions: formData.conclusions,
         notes: formData.notes,
+        decisions,
+        actionPlan,
       };
 
       if (formData.nextReviewDate) {
@@ -621,6 +629,15 @@ export default function EditManagementReviewPage() {
                 rows={4}
               />
             </div>
+            <ManagementReviewActionsFields
+              users={users.map((item) => item.user)}
+              decisions={decisions}
+              actionPlan={actionPlan}
+              onChange={(next) => {
+                setDecisions(next.decisions);
+                setActionPlan(next.actionPlan);
+              }}
+            />
           </CardContent>
         </Card>
 

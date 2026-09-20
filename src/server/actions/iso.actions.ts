@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getRequiredTenantContext } from "@/lib/tenant-context";
-import { requireTenantModule } from "@/lib/require-tenant-module";
+import { requireTenantModule, getEnabledModuleKeys } from "@/lib/require-tenant-module";
 import { AuditLog } from "@/lib/audit-log";
 import {
   completeIsoConsultationMeeting,
@@ -11,14 +11,18 @@ import {
   deleteIsoInterestedParty,
   deleteIsoLegalRequirement,
   evaluateIsoLegalRequirement,
+  generateIsoImplementationTasks,
   insertIsoChange,
   insertIsoConsultationMeeting,
   insertIsoContextIssue,
   insertIsoInterestedParty,
   insertIsoLegalRequirement,
+  loadIsoReadiness,
   seedDefaultLegalRequirements,
   updateIsoChangeStatus,
+  upsertIsoClauseAssessment,
   upsertIsoScope,
+  assertUserIsTenantMember,
 } from "@/server/queries/iso.queries";
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -263,6 +267,7 @@ export async function createConsultationMeeting(input: Record<string, unknown>) 
     await AuditLog.log(tenantId, userId, "ISO_MEETING_CREATED", "Meeting", row.id, { title: row.title });
     revalidatePath("/dashboard/meetings");
     revalidatePath("/dashboard/iso");
+    revalidatePath("/dashboard/iso/consultation");
     return { success: true as const, data: row };
   } catch (error) {
     return { success: false as const, error: errorMessage(error, "Could not save the meeting") };
@@ -275,8 +280,68 @@ export async function completeConsultationMeeting(id: string, summary: string) {
     await completeIsoConsultationMeeting(tenantId, id, summary);
     await AuditLog.log(tenantId, userId, "ISO_MEETING_COMPLETED", "Meeting", id, {});
     revalidatePath("/dashboard/meetings");
+    revalidatePath("/dashboard/iso/consultation");
     return { success: true as const };
   } catch (error) {
     return { success: false as const, error: errorMessage(error, "Could not complete the meeting") };
+  }
+}
+
+const assessmentSchema = z.object({
+  requirementId: z.string().min(1),
+  assessedLevel: z.enum(["COMPLIANT", "PARTIAL", "GAP", "MAJOR_GAP"]).nullable().optional(),
+  responsibleUserId: z.string().nullable().optional(),
+  notes: z.string().optional(),
+  nextReviewAt: z.string().optional(),
+});
+
+export async function saveIsoClauseAssessment(input: Record<string, unknown>) {
+  try {
+    const { tenantId, userId } = await requireIso();
+    const validated = assessmentSchema.parse(input);
+    if (validated.responsibleUserId) {
+      const member = await assertUserIsTenantMember(tenantId, validated.responsibleUserId);
+      if (!member) {
+        return { success: false as const, error: "Responsible person must be a member of this company" };
+      }
+    }
+    const row = await upsertIsoClauseAssessment({
+      tenantId,
+      requirementId: validated.requirementId,
+      assessedLevel: validated.assessedLevel ?? null,
+      responsibleUserId: validated.responsibleUserId ?? null,
+      lastReviewedAt: new Date(),
+      nextReviewAt: validated.nextReviewAt ? new Date(validated.nextReviewAt) : null,
+      notes: validated.notes,
+    });
+    await AuditLog.log(tenantId, userId, "ISO_ASSESSMENT_SAVED", "IsoClauseAssessment", row.id, {
+      requirementId: validated.requirementId,
+      assessedLevel: validated.assessedLevel,
+    });
+    revalidatePath("/dashboard/iso");
+    revalidatePath("/dashboard/iso/clauses");
+    return { success: true as const, data: row };
+  } catch (error) {
+    return { success: false as const, error: errorMessage(error, "Could not save the assessment") };
+  }
+}
+
+export async function generateIsoGapTasks() {
+  try {
+    const { tenantId, userId } = await requireIso();
+    const modules = await getEnabledModuleKeys(tenantId);
+    const { matrix } = await loadIsoReadiness(tenantId, modules);
+    const count = await generateIsoImplementationTasks({
+      tenantId,
+      responsibleFallbackId: userId,
+      matrix,
+    });
+    await AuditLog.log(tenantId, userId, "ISO_GAP_TASKS_GENERATED", "Measure", tenantId, { count });
+    revalidatePath("/dashboard/iso");
+    revalidatePath("/dashboard/iso/clauses");
+    revalidatePath("/dashboard/actions");
+    return { success: true as const, count };
+  } catch (error) {
+    return { success: false as const, error: errorMessage(error, "Could not generate implementation tasks") };
   }
 }

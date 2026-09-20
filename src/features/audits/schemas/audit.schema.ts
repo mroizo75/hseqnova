@@ -57,8 +57,11 @@ export const createFindingSchema = z.object({
   description: z.string().min(20, "Beskrivelse må være minst 20 tegn"),
   evidence: z.string().min(10, "Bevis må være minst 10 tegn"),
   requirement: z.string().min(10, "Krav må være minst 10 tegn"),
-  responsibleId: z.string().cuid(),
+  responsibleId: z.string().min(1),
   dueDate: z.date().optional(),
+  incidentId: z.string().min(1).optional(),
+  riskId: z.string().min(1).optional(),
+  trainingId: z.string().min(1).optional(),
 });
 
 export const updateFindingSchema = z.object({

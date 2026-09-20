@@ -28,6 +28,7 @@ const PATH_TO_WIDGET: Record<string, string> = {
   "/dashboard/documents": "documents",
   "/dashboard/actions": "actions",
   "/dashboard/iso": "iso",
+  "/dashboard/iso/consultation": "iso",
   "/dashboard/audits": "audits",
   "/dashboard/meetings": "meetings",
   "/dashboard/environment": "environment",

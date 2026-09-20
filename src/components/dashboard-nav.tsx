@@ -175,13 +175,13 @@ function saveCollapsed(state: Record<string, boolean>) {
   }
 }
 
-export function DashboardNav() {
+export function DashboardNav({ enabledModules: enabledModulesFromServer = [] }: { enabledModules?: string[] }) {
   const pathname = usePathname();
   const t = useTranslations();
   const { data: session } = useSession();
   const { visibleNavItems, role, permissions } = usePermissions();
   const [moduleVisibility, setModuleVisibility] = useState<ModuleVisibilityConfig | null>(null);
-  const [enabledModules, setEnabledModules] = useState<string[]>([]);
+  const [enabledModules, setEnabledModules] = useState<string[]>(enabledModulesFromServer);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   useEffect(() => {

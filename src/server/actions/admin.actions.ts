@@ -36,6 +36,7 @@ const updateAdminUserSchema = z.object({
   email: z.string().email().optional(),
   name: z.string().min(2).optional(),
   platformRole: platformRoleSchema.optional(),
+  canBeExternalCompetentPerson: z.boolean().optional(),
   tenantId: z.string().optional(),
   role: z.enum(["ADMIN", "HMS", "LEDER", "VERNEOMBUD", "ANSATT", "BHT", "REVISOR"]).optional(),
 });
@@ -146,6 +147,9 @@ export async function updateAdminUser(userId: string, input: z.infer<typeof upda
         isSupport: flags.isSupport,
         isSales: flags.isSales,
         isSalesManager: flags.isSalesManager,
+        ...(validated.canBeExternalCompetentPerson !== undefined
+          ? { canBeExternalCompetentPerson: validated.canBeExternalCompetentPerson }
+          : {}),
         updatedAt: now,
       })
       .eq("id", userId);
