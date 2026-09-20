@@ -1,4 +1,12 @@
 import { getAdminDb } from "@/lib/supabase/admin";
+import { OPEN_DEAL_STAGES } from "@/features/crm/lib/types";
+import {
+  buildAttentionQueue,
+  daysUntil,
+  monthlyRecurringGbp,
+  type AttentionItem,
+  type OrganisationStatusCounts,
+} from "@/lib/admin-dashboard";
 
 function throwIf(error: { message: string } | null, code: string): void {
   if (error) {
@@ -30,28 +38,256 @@ function activityLevel(lastLogin: Date | null, recentIncidents: number, recentDo
   return { level: "inactive", label: "Inactive", color: "text-destructive", bg: "bg-destructive" };
 }
 
-export async function loadAdminOverviewStats() {
-  const db = getAdminDb();
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+export type AdminDashboardRecentOrg = {
+  id: string;
+  name: string;
+  status: string;
+  industry: string | null;
+  createdAt: Date;
+};
 
-  const [tenants, users, incidents, actions] = await Promise.all([
-    db.from("Tenant").select("id", { count: "exact", head: true }).in("status", ["ACTIVE", "TRIAL"]).is("deletedAt", null),
+export type AdminDashboardTicket = {
+  id: string;
+  ticketNumber: string;
+  subject: string;
+  status: string;
+  lastMessageAt: Date;
+  organisationName: string;
+};
+
+export type AdminDashboardTrial = {
+  id: string;
+  name: string;
+  trialEndsAt: Date;
+  daysLeft: number;
+};
+
+export type AdminDashboardDemo = {
+  id: string;
+  company: string;
+  name: string;
+  startAt: Date;
+  endAt: Date;
+};
+
+export type AdminCommandCentre = {
+  counts: OrganisationStatusCounts;
+  liveOrganisations: number;
+  totalUsers: number;
+  incidentsThisMonth: number;
+  openActions: number;
+  monthlyRecurringGbp: number;
+  pipelineValueGbp: number;
+  openDealCount: number;
+  overdueInvoiceCount: number;
+  overdueInvoiceGbp: number;
+  openSupportCount: number;
+  pendingRegistrations: number;
+  attention: AttentionItem[];
+  recentOrganisations: AdminDashboardRecentOrg[];
+  tickets: AdminDashboardTicket[];
+  trialsEnding: AdminDashboardTrial[];
+  upcomingDemos: AdminDashboardDemo[];
+};
+
+async function optionalSelect<T>(
+  run: PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<T[]> {
+  const { data, error } = await run;
+  if (error) return [];
+  return data ?? [];
+}
+
+export async function loadAdminCommandCentre(opts: {
+  includeCommercial: boolean;
+}): Promise<AdminCommandCentre> {
+  const db = getAdminDb();
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const fourteenDays = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+  const [
+    activeRes,
+    trialRes,
+    suspendedRes,
+    cancelledRes,
+    usersRes,
+    incidentsRes,
+    actionsRes,
+    supportCountRes,
+    registrationRes,
+    recentOrgsRes,
+    trialOrgsRes,
+    ticketsRes,
+  ] = await Promise.all([
+    db.from("Tenant").select("id", { count: "exact", head: true }).eq("status", "ACTIVE").is("deletedAt", null),
+    db.from("Tenant").select("id", { count: "exact", head: true }).eq("status", "TRIAL").is("deletedAt", null),
+    db.from("Tenant").select("id", { count: "exact", head: true }).eq("status", "SUSPENDED").is("deletedAt", null),
+    db.from("Tenant").select("id", { count: "exact", head: true }).eq("status", "CANCELLED").is("deletedAt", null),
     db.from("User").select("id", { count: "exact", head: true }),
     db.from("Incident").select("id", { count: "exact", head: true }).gte("createdAt", thirtyDaysAgo.toISOString()),
     db.from("Measure").select("id", { count: "exact", head: true }).in("status", ["PENDING", "IN_PROGRESS", "OVERDUE"]),
+    db.from("SupportTicket").select("id", { count: "exact", head: true }).in("status", ["OPEN", "IN_PROGRESS", "WAITING_CUSTOMER"]),
+    db
+      .from("Tenant")
+      .select("id", { count: "exact", head: true })
+      .neq("status", "CANCELLED")
+      .in("onboardingStatus", ["NOT_STARTED", "IN_PROGRESS", "ADMIN_CREATED"]),
+    db
+      .from("Tenant")
+      .select("id, name, status, industry, createdAt")
+      .is("deletedAt", null)
+      .order("createdAt", { ascending: false })
+      .limit(8),
+    db
+      .from("Tenant")
+      .select("id, name, trialEndsAt")
+      .eq("status", "TRIAL")
+      .is("deletedAt", null)
+      .not("trialEndsAt", "is", null)
+      .lte("trialEndsAt", fourteenDays.toISOString())
+      .gte("trialEndsAt", now.toISOString())
+      .order("trialEndsAt", { ascending: true })
+      .limit(6),
+    db
+      .from("SupportTicket")
+      .select("id, ticketNumber, subject, status, lastMessageAt, tenantId")
+      .in("status", ["OPEN", "IN_PROGRESS", "WAITING_CUSTOMER"])
+      .order("lastMessageAt", { ascending: false })
+      .limit(6),
   ]);
 
-  throwIf(tenants.error, "TENANT_COUNT_FAILED");
-  throwIf(users.error, "USER_COUNT_FAILED");
-  throwIf(incidents.error, "INCIDENT_COUNT_FAILED");
-  throwIf(actions.error, "ACTION_COUNT_FAILED");
+  throwIf(activeRes.error, "TENANT_COUNT_FAILED");
+  throwIf(trialRes.error, "TENANT_COUNT_FAILED");
+  throwIf(suspendedRes.error, "TENANT_COUNT_FAILED");
+  throwIf(cancelledRes.error, "TENANT_COUNT_FAILED");
+  throwIf(usersRes.error, "USER_COUNT_FAILED");
+  throwIf(incidentsRes.error, "INCIDENT_COUNT_FAILED");
+  throwIf(actionsRes.error, "ACTION_COUNT_FAILED");
+  throwIf(supportCountRes.error, "SUPPORT_COUNT_FAILED");
+  throwIf(registrationRes.error, "REGISTRATION_COUNT_FAILED");
+  throwIf(recentOrgsRes.error, "TENANT_LIST_FAILED");
+  throwIf(trialOrgsRes.error, "TRIAL_LIST_FAILED");
+  throwIf(ticketsRes.error, "SUPPORT_LIST_FAILED");
+
+  const ticketRows = ticketsRes.data ?? [];
+  const ticketTenantIds = [...new Set(ticketRows.map((row) => String(row.tenantId)))];
+  const { data: ticketTenants, error: ticketTenantError } =
+    ticketTenantIds.length > 0
+      ? await db.from("Tenant").select("id, name").in("id", ticketTenantIds)
+      : { data: [], error: null };
+  throwIf(ticketTenantError, "TENANT_LOOKUP_FAILED");
+  const tenantNameById = new Map((ticketTenants ?? []).map((row) => [String(row.id), String(row.name)]));
+
+  let overdueInvoices: Array<{ amount: number }> = [];
+  let subscriptions: Array<{ price: number; billingInterval: string; status: string }> = [];
+  let openDeals: Array<{ valueGbp: number }> = [];
+  let overdueTaskCount = 0;
+  let upcomingDemos: AdminDashboardDemo[] = [];
+
+  if (opts.includeCommercial) {
+    const [invoiceRows, subscriptionRows, dealRows, taskRows, demoRows] = await Promise.all([
+      optionalSelect(
+        db.from("Invoice").select("amount").eq("status", "OVERDUE"),
+      ),
+      optionalSelect(
+        db.from("Subscription").select("price, billingInterval, status").in("status", ["ACTIVE", "TRIAL"]),
+      ),
+      optionalSelect(
+        db.from("CrmDeal").select("valueGbp, stage").in("stage", [...OPEN_DEAL_STAGES]),
+      ),
+      optionalSelect(
+        db.from("CrmTask").select("id, dueAt, status").eq("status", "OPEN").lt("dueAt", now.toISOString()),
+      ),
+      optionalSelect(
+        db
+          .from("DemoBooking")
+          .select("id, company, name, startAt, endAt, status")
+          .eq("status", "CONFIRMED")
+          .gte("startAt", now.toISOString())
+          .order("startAt", { ascending: true })
+          .limit(5),
+      ),
+    ]);
+
+    overdueInvoices = invoiceRows.map((row) => ({ amount: Number(row.amount ?? 0) }));
+    subscriptions = subscriptionRows.map((row) => ({
+      price: Number(row.price ?? 0),
+      billingInterval: String(row.billingInterval ?? "MONTHLY"),
+      status: String(row.status),
+    }));
+    openDeals = dealRows.map((row) => ({ valueGbp: Number(row.valueGbp ?? 0) }));
+    overdueTaskCount = taskRows.length;
+    upcomingDemos = demoRows.map((row) => ({
+      id: String(row.id),
+      company: String(row.company),
+      name: String(row.name),
+      startAt: new Date(String(row.startAt)),
+      endAt: new Date(String(row.endAt)),
+    }));
+  }
+
+  const counts: OrganisationStatusCounts = {
+    active: activeRes.count ?? 0,
+    trial: trialRes.count ?? 0,
+    suspended: suspendedRes.count ?? 0,
+    cancelled: cancelledRes.count ?? 0,
+  };
+  const overdueInvoiceGbp = overdueInvoices.reduce((sum, row) => sum + row.amount, 0);
+  const openSupportCount = supportCountRes.count ?? 0;
+  const pendingRegistrations = registrationRes.count ?? 0;
+  const trialsEnding = (trialOrgsRes.data ?? [])
+    .map((row) => {
+      const trialEndsAt = asDate(row.trialEndsAt as string | null);
+      if (!trialEndsAt) return null;
+      return {
+        id: String(row.id),
+        name: String(row.name),
+        trialEndsAt,
+        daysLeft: daysUntil(trialEndsAt, now),
+      };
+    })
+    .filter((row): row is AdminDashboardTrial => row !== null);
 
   return {
-    activeTenants: tenants.count ?? 0,
-    totalUsers: users.count ?? 0,
-    incidentsThisMonth: incidents.count ?? 0,
-    openActions: actions.count ?? 0,
+    counts,
+    liveOrganisations: counts.active + counts.trial,
+    totalUsers: usersRes.count ?? 0,
+    incidentsThisMonth: incidentsRes.count ?? 0,
+    openActions: actionsRes.count ?? 0,
+    monthlyRecurringGbp: monthlyRecurringGbp(subscriptions),
+    pipelineValueGbp: openDeals.reduce((sum, deal) => sum + deal.valueGbp, 0),
+    openDealCount: openDeals.length,
+    overdueInvoiceCount: overdueInvoices.length,
+    overdueInvoiceGbp,
+    openSupportCount,
+    pendingRegistrations,
+    attention: buildAttentionQueue({
+      overdueInvoiceCount: overdueInvoices.length,
+      overdueInvoiceGbp,
+      openSupportCount,
+      trialsEndingSoon: trialsEnding.length,
+      pendingRegistrations,
+      overdueCrmTasks: overdueTaskCount,
+      suspendedCount: counts.suspended,
+    }),
+    recentOrganisations: (recentOrgsRes.data ?? []).map((row) => ({
+      id: String(row.id),
+      name: String(row.name),
+      status: String(row.status),
+      industry: (row.industry as string | null) ?? null,
+      createdAt: asDate(row.createdAt as string) ?? now,
+    })),
+    tickets: ticketRows.map((row) => ({
+      id: String(row.id),
+      ticketNumber: String(row.ticketNumber),
+      subject: String(row.subject),
+      status: String(row.status),
+      lastMessageAt: asDate(row.lastMessageAt as string) ?? now,
+      organisationName: tenantNameById.get(String(row.tenantId)) ?? "Organisation",
+    })),
+    trialsEnding,
+    upcomingDemos,
   };
 }
 
