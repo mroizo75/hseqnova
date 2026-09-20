@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { getAdminDb } from "@/lib/supabase/admin";
 import { createId } from "@/lib/ids";
 import { flagsFromPlatformRole, type PlatformRole } from "@/lib/platform-access";
+import { actionErrorMessage, detachUserReferences, userDeleteErrorMessage } from "@/lib/admin-user-delete";
 import { SessionUser } from "@/types";
 
 async function requireSuperAdmin() {
@@ -110,7 +111,7 @@ export async function createAdminUser(input: z.infer<typeof createAdminUserSchem
   } catch (error: unknown) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Could not create the user",
+      error: actionErrorMessage(error, "Could not create the user"),
     };
   }
 }
@@ -179,14 +180,18 @@ export async function updateAdminUser(userId: string, input: z.infer<typeof upda
   } catch (error: unknown) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Could not update the user",
+      error: actionErrorMessage(error, "Could not update the user"),
     };
   }
 }
 
 export async function deleteUser(userId: string) {
   try {
-    await requireSuperAdmin();
+    const actor = await requireSuperAdmin();
+    if (actor.id === userId) {
+      return { success: false, error: "You cannot delete your own account" };
+    }
+
     const db = getAdminDb();
     const { data: user } = await db.from("User").select("id, isSuperAdmin").eq("id", userId).maybeSingle();
     if (!user) {
@@ -195,16 +200,20 @@ export async function deleteUser(userId: string) {
     if (user.isSuperAdmin) {
       return { success: false, error: "Superadmin users cannot be deleted" };
     }
+
+    await detachUserReferences(db, userId);
+
     const { error } = await db.from("User").delete().eq("id", userId);
     if (error) {
-      throw { code: "USER_DELETE_FAILED", message: error.message };
+      return { success: false, error: userDeleteErrorMessage(error) };
     }
+
     revalidatePath("/admin/users");
     return { success: true };
   } catch (error: unknown) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Could not delete the user",
+      error: userDeleteErrorMessage(error),
     };
   }
 }

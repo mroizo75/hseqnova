@@ -108,6 +108,7 @@ export default async function AdminUsersPage({
             users={users}
             currentPage={currentPage}
             totalPages={totalPages}
+            currentUserId={session.user.id ?? ""}
           />
         </CardContent>
       </Card>

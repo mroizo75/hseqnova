@@ -21,11 +21,21 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Shield, Building2, Edit, Trash2, Search } from "lucide-react";
+import { Shield, Building2, Edit, Trash2, Search, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { deleteUser } from "@/server/actions/admin.actions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface AdminUserListProps {
   users: Array<{
@@ -47,13 +57,15 @@ interface AdminUserListProps {
   }>;
   currentPage: number;
   totalPages: number;
+  currentUserId: string;
 }
 
-export function AdminUserList({ users, currentPage, totalPages }: AdminUserListProps) {
+export function AdminUserList({ users, currentPage, totalPages, currentUserId }: AdminUserListProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; email: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -78,30 +90,28 @@ export function AdminUserList({ users, currentPage, totalPages }: AdminUserListP
   // Vis alle brukere (server har allerede filtrert og paginert)
   const filteredUsers = users;
 
-  const handleDelete = async (userId: string, userEmail: string) => {
-    if (
-      !confirm(
-        `Er du sikker på at du vil slette brukeren ${userEmail}?\n\nDette vil fjerne brukeren permanent.`
-      )
-    ) {
-      return;
-    }
-
-    const result = await deleteUser(userId);
-
-    if (result.success) {
-      toast({
-        title: "✅ Bruker slettet",
-        description: "Brukeren er permanent fjernet fra systemet",
-        className: "bg-green-50 border-green-200",
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      const result = await deleteUser(pendingDelete.id);
+      if (result.success) {
+        toast.success("User deleted", {
+          description: `${pendingDelete.email} has been removed.`,
+        });
+        setPendingDelete(null);
+        router.refresh();
+      } else {
+        toast.error("Could not delete the user", {
+          description: result.error || "Try again, or check that the user is not a superadmin.",
+        });
+      }
+    } catch {
+      toast.error("Could not delete the user", {
+        description: "Something went wrong. Try again.",
       });
-      router.refresh();
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Feil",
-        description: result.error || "Kunne ikke slette bruker",
-      });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -110,7 +120,7 @@ export function AdminUserList({ users, currentPage, totalPages }: AdminUserListP
       <div className="flex items-center gap-2">
         <Search className="h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Søk etter bruker, e-post eller bedrift..."
+          placeholder="Search by name, email or organisation..."
           value={searchTerm}
           onChange={handleSearchChange}
           className="max-w-sm"
@@ -124,7 +134,7 @@ export function AdminUserList({ users, currentPage, totalPages }: AdminUserListP
               router.push("/admin/users");
             }}
           >
-            Nullstill
+            Clear
           </Button>
         )}
       </div>
@@ -133,12 +143,12 @@ export function AdminUserList({ users, currentPage, totalPages }: AdminUserListP
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Navn</TableHead>
-              <TableHead>E-post</TableHead>
-              <TableHead>Bedrifter</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Organisations</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Opprettet</TableHead>
-              <TableHead className="text-right">Handlinger</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -209,10 +219,15 @@ export function AdminUserList({ users, currentPage, totalPages }: AdminUserListP
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDelete(user.id, user.email)}
-                        disabled={user.isSuperAdmin}
+                        onClick={() => setPendingDelete({ id: user.id, email: user.email })}
+                        disabled={user.isSuperAdmin || user.id === currentUserId || deleting}
+                        aria-label={`Delete ${user.email}`}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        {deleting && pendingDelete?.id === user.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
                       </Button>
                     </div>
                   </TableCell>
@@ -308,10 +323,41 @@ export function AdminUserList({ users, currentPage, totalPages }: AdminUserListP
           </Pagination>
 
           <div className="text-center text-sm text-muted-foreground mt-4">
-            Side {currentPage} av {totalPages}
+            Page {currentPage} of {totalPages}
           </div>
         </div>
       )}
+
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this user?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDelete
+                ? `${pendingDelete.email} will be removed from the platform. Organisation records they owned stay in place.`
+                : "This user will be removed from the platform."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleConfirmDelete();
+              }}
+            >
+              {deleting ? "Deleting…" : "Delete user"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

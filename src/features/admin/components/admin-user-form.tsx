@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { createAdminUser, updateAdminUser } from "@/server/actions/admin.actions";
 import { resolvePlatformRole, type PlatformRole } from "@/lib/platform-access";
 import { Role } from "@prisma/client";
@@ -52,7 +52,6 @@ interface AdminUserFormProps {
 
 export function AdminUserForm({ tenants, user }: AdminUserFormProps) {
   const router = useRouter();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const firstTenantMembership = user?.tenants.at(0);
   const defaultPlatformRole: PlatformRole = user
@@ -102,26 +101,21 @@ export function AdminUserForm({ tenants, user }: AdminUserFormProps) {
         : await createAdminUser(payload as typeof payload & { password: string });
 
       if (result.success) {
-        toast({
-          title: user ? "User updated" : "User created",
+        toast.success(user ? "User updated" : "User created", {
           description: user
-            ? "The user's details have been saved"
-            : "The new user has been added",
+            ? "The user's details have been saved."
+            : "The new user has been added.",
         });
         router.push("/admin/users");
         router.refresh();
       } else {
-        toast({
-          variant: "destructive",
-          title: "Could not save",
-          description: result.error || "Could not save the user",
+        toast.error("Could not save the user", {
+          description: result.error || "Check the details and try again.",
         });
       }
     } catch {
-      toast({
-        variant: "destructive",
-        title: "Unexpected error",
-        description: "Something went wrong",
+      toast.error("Could not save the user", {
+        description: "Something went wrong. Try again.",
       });
     } finally {
       setLoading(false);
