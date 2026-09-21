@@ -38,6 +38,8 @@
   "exclude": [
     "node_modules",
     "scripts",
+    "tests",
+    ".next/dev/types",
     "src/features/intelligence",
     "src/features/hms-ai",
     "src/lib/annual-hms-plan-report-generator.ts",

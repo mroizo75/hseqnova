@@ -6,9 +6,9 @@
   "copyright": "Copyright (c) 2026 HSEQ Nova. All rights reserved.",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && node next-build.mjs",
     "postinstall": "prisma generate",
-    "build:prod": "npm run cleanup:logs && next build",
+    "build:prod": "npm run cleanup:logs && node next-build.mjs",
     "start": "next start -p 3026",
     "lint": "next lint",
     "test": "tsx --test \"tests/**/*.test.ts*\"",
