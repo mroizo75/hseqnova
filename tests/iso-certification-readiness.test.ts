@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { isoRequirementSeedRows, ISO_45001_2018_VERSION_ID, ISO_9001_2015_VERSION_ID } from "../src/features/iso/lib/catalogue";
 import { ALL_ISO_CLAUSES } from "../src/features/iso/lib/clauses";
+import { clausesNeedingControlledDocument } from "../src/features/iso/lib/documented-information";
 import { EMPTY_ISO_SNAPSHOT, evaluateIsoClauses, type IsoEvidenceSnapshot } from "../src/features/iso/lib/evidence";
 import { buildIsoReadiness, ISO_READY_DISCLAIMER } from "../src/features/iso/lib/readiness";
 import {
@@ -37,12 +38,21 @@ function livingSnapshot(): IsoEvidenceSnapshot {
     fireAssessment: true,
     completedAuditCount: 1,
     auditWithIsoClauses: true,
+    auditCovers45001: true,
+    auditCovers9001: true,
     completedReviewCount: 1,
     incidentCount: 1,
     nearMissCount: 1,
     whistleblowingCount: 0,
     actionsWithEffectiveness: 1,
     openActionCount: 0,
+    documentControlAdequate: true,
+    processCount: 2,
+    customerFeedbackCount: 1,
+    excludeDesign: true,
+    excludeDesignJustified: true,
+    approvedClauseKeys: clausesNeedingControlledDocument().map((clause) => clause.id),
+    hasQualityScope: true,
   };
 }
 
@@ -91,6 +101,32 @@ describe("ISO certification readiness", () => {
     assert.equal(readiness.label, "READY");
     assert.equal(readiness.majorGaps, 0);
     assert.ok(readiness.chapters.every((chapter) => chapter.status === "green"));
+  });
+
+  it("maps ISO 9001 operational clauses including 8.3, 8.7 and 9.1.2", () => {
+    const keys = ALL_ISO_CLAUSES.filter((clause) => clause.standard === "ISO_9001").map((clause) => clause.clause);
+    assert.ok(keys.includes("4.4"));
+    assert.ok(keys.includes("8.3"));
+    assert.ok(keys.includes("8.7"));
+    assert.ok(keys.includes("9.1.2"));
+  });
+
+  it("does not treat 8.3 as a document gap when design is excluded with justification", () => {
+    const snapshot = livingSnapshot();
+    const statuses = evaluateIsoClauses(snapshot);
+    const design = statuses.find((item) => item.clause.id === "9001-8.3");
+    assert.equal(design?.level, "covered");
+    const readiness = buildIsoReadiness({
+      statuses,
+      assessments: statuses.map((item) => ({ clauseKey: item.clause.id, assessedLevel: "COMPLIANT" })),
+      snapshot: { ...snapshot, approvedClauseKeys: [] },
+      openMajorNcCount: 0,
+      completedIsoAudit: true,
+      managementReviewWith93: true,
+      documentedNilReturn: false,
+    });
+    assert.equal(readiness.gates.find((gate) => gate.id === "design-scope")?.met, true);
+    assert.equal(readiness.gates.find((gate) => gate.id === "clause-procedures")?.met, false);
   });
 
   it("rejects inviting an unflagged user who already belongs to another tenant", () => {

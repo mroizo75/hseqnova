@@ -79,7 +79,7 @@ export default async function IsoHubPage() {
             <p className="text-sm text-muted-foreground">Why: {next.clause.shall}</p>
             <p className="text-sm text-muted-foreground">Done when: {next.detail}</p>
             <Button asChild>
-              <Link href={next.clause.href}>Open this work</Link>
+              <Link href={`/dashboard/iso/clauses/${next.clause.id}`}>Work this clause</Link>
             </Button>
           </CardContent>
         </Card>
@@ -116,6 +116,9 @@ export default async function IsoHubPage() {
         </Button>
         <Button asChild variant="outline">
           <Link href="/dashboard/iso/clauses">Gap matrix</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/dashboard/iso/processes">Processes and customers</Link>
         </Button>
         <Button asChild variant="outline">
           <Link href="/dashboard/iso/consultation">Worker consultation</Link>

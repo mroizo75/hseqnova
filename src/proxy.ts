@@ -74,6 +74,7 @@ export async function proxy(request: NextRequest) {
     "/dashboard",
     "/admin",
     "/ansatt",
+    "/enterprise",
   ];
 
   const isProtectedRoute = protectedRoutes.some((route) =>
@@ -99,9 +100,17 @@ export async function proxy(request: NextRequest) {
       token.hasMultipleTenants === true &&
       !token.tenantId &&
       !pathname.startsWith("/select-tenant") &&
+      !pathname.startsWith("/enterprise") &&
       !pathname.startsWith("/api")
     ) {
       return applySecurityHeaders(NextResponse.redirect(new URL("/select-tenant", request.url)));
+    }
+
+    if (pathname.startsWith("/enterprise")) {
+      if (token.hasEnterpriseAccess !== true && token.isSuperAdmin !== true) {
+        const fallback = token.tenantId ? "/dashboard" : "/login";
+        return applySecurityHeaders(NextResponse.redirect(new URL(fallback, request.url)));
+      }
     }
 
     // Superadmin/Support access control

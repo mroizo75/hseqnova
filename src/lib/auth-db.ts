@@ -14,6 +14,13 @@ export type AuthMembership = {
   tenant: AuthTenant | null;
 };
 
+export type AuthEnterpriseMembership = {
+  enterpriseId: string;
+  role: string;
+  name: string;
+  status: string;
+};
+
 export type AuthUserRow = {
   id: string;
   email: string;
@@ -25,10 +32,12 @@ export type AuthUserRow = {
   isSales: boolean;
   isSalesManager: boolean;
   lastTenantId: string | null;
+  lastEnterpriseId: string | null;
   preferredLocale: string;
   failedLoginAttempts: number;
   lockedUntil: string | null;
   tenants: AuthMembership[];
+  enterprises: AuthEnterpriseMembership[];
 };
 
 function asMemberships(
@@ -44,7 +53,7 @@ function asMemberships(
   }));
 }
 
-async function withMemberships(user: Omit<AuthUserRow, "tenants">): Promise<AuthUserRow> {
+async function withMemberships(user: Omit<AuthUserRow, "tenants" | "enterprises">): Promise<AuthUserRow> {
   const db = getAdminDb();
   const { data: rows, error } = await db
     .from("UserTenant")
@@ -68,9 +77,41 @@ async function withMemberships(user: Omit<AuthUserRow, "tenants">): Promise<Auth
     tenants = (tenantRows ?? []) as AuthTenant[];
   }
 
+  const { data: enterpriseRows } = await db
+    .from("EnterpriseUser")
+    .select("enterpriseId, role")
+    .eq("userId", user.id);
+
+  const enterpriseIds = ((enterpriseRows ?? []) as Array<{ enterpriseId: string }>).map(
+    (row) => row.enterpriseId,
+  );
+  let enterprises: AuthEnterpriseMembership[] = [];
+  if (enterpriseIds.length > 0) {
+    const { data: orgs } = await db
+      .from("EnterpriseOrganisation")
+      .select("id, name, status")
+      .in("id", enterpriseIds);
+    const byId = new Map(
+      ((orgs ?? []) as Array<{ id: string; name: string; status: string }>).map((org) => [org.id, org]),
+    );
+    enterprises = ((enterpriseRows ?? []) as Array<{ enterpriseId: string; role: string }>)
+      .map((row) => {
+        const org = byId.get(row.enterpriseId);
+        if (!org) return null;
+        return {
+          enterpriseId: row.enterpriseId,
+          role: row.role,
+          name: org.name,
+          status: org.status,
+        };
+      })
+      .filter((row): row is AuthEnterpriseMembership => row !== null);
+  }
+
   return {
     ...user,
     tenants: asMemberships(rows as Array<{ tenantId: string; role: string; updatedAt: string }> | null, tenants),
+    enterprises,
   };
 }
 
@@ -78,7 +119,7 @@ export async function getAuthUserByEmail(email: string): Promise<AuthUserRow | n
   const { data, error } = await getAdminDb()
     .from("User")
     .select(
-      "id, email, name, image, password, isSuperAdmin, isSupport, isSales, isSalesManager, lastTenantId, preferredLocale, failedLoginAttempts, lockedUntil",
+      "id, email, name, image, password, isSuperAdmin, isSupport, isSales, isSalesManager, lastTenantId, lastEnterpriseId, preferredLocale, failedLoginAttempts, lockedUntil",
     )
     .eq("email", email)
     .maybeSingle();
@@ -89,7 +130,7 @@ export async function getAuthUserByEmail(email: string): Promise<AuthUserRow | n
   if (!data) {
     return null;
   }
-  return withMemberships(data as Omit<AuthUserRow, "tenants">);
+  return withMemberships(data as Omit<AuthUserRow, "tenants" | "enterprises">);
 }
 
 export async function getAuthUserById(id: string): Promise<AuthUserRow | null> {
@@ -97,7 +138,7 @@ export async function getAuthUserById(id: string): Promise<AuthUserRow | null> {
   const { data, error } = await db
     .from("User")
     .select(
-      "id, email, name, image, password, isSuperAdmin, isSupport, isSales, isSalesManager, lastTenantId, preferredLocale, failedLoginAttempts, lockedUntil",
+      "id, email, name, image, password, isSuperAdmin, isSupport, isSales, isSalesManager, lastTenantId, lastEnterpriseId, preferredLocale, failedLoginAttempts, lockedUntil",
     )
     .eq("id", id)
     .maybeSingle();
@@ -108,7 +149,7 @@ export async function getAuthUserById(id: string): Promise<AuthUserRow | null> {
   if (!data) {
     return null;
   }
-  return withMemberships(data as Omit<AuthUserRow, "tenants">);
+  return withMemberships(data as Omit<AuthUserRow, "tenants" | "enterprises">);
 }
 
 export async function getAuthMembership(userId: string, tenantId: string) {

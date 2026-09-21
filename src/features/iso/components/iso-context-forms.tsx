@@ -74,6 +74,8 @@ export function IsoContextForms({
       inclusions: form.get("inclusions"),
       exclusions: form.get("exclusions"),
       sites: form.get("sites"),
+      excludeDesign: form.get("excludeDesign") === "on",
+      excludeDesignJustification: form.get("excludeDesignJustification"),
       approve: form.get("approve") === "on",
     });
     setBusy(false);
@@ -189,6 +191,20 @@ export function IsoContextForms({
         <Textarea name="sites" placeholder="Sites and locations" defaultValue={scope?.sites ?? ""} disabled={busy} />
         <Textarea name="inclusions" placeholder="Inclusions" defaultValue={scope?.inclusions ?? ""} disabled={busy} />
         <Textarea name="exclusions" placeholder="Exclusions and justification" defaultValue={scope?.exclusions ?? ""} disabled={busy} />
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" name="excludeDesign" className="mt-1" defaultChecked={scope?.excludeDesign} />
+          <span>
+            We do not design products or services (ISO 9001 8.3 excluded). ISO 9001:2015 4.3 — only clause 8 may be
+            excluded, and only if it does not affect conformity.
+          </span>
+        </label>
+        <Textarea
+          name="excludeDesignJustification"
+          placeholder="Why 8.3 does not apply (e.g. we install to customer drawings and do not design)"
+          defaultValue={scope?.excludeDesignJustification ?? ""}
+          disabled={busy}
+          rows={2}
+        />
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="approve" />
           Approve this scope

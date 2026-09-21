@@ -422,3 +422,29 @@ export async function sendPasswordResetEmail(to: string, resetToken: string, use
   }
 }
 
+export async function sendEnterpriseConnectionEmail(input: {
+  to: string;
+  companyName: string;
+  programmeName: string;
+  token: string;
+}): Promise<void> {
+  try {
+    const acceptUrl = `${BASE_URL}/dashboard/settings/connected-organisations?token=${input.token}`;
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: input.to,
+      subject: `${input.programmeName} — connection request`,
+      html: `
+        <p>Hello,</p>
+        <p><strong>${input.programmeName}</strong> has asked to connect with <strong>${input.companyName}</strong> on HSEQ Nova.</p>
+        <p>A company administrator can accept or decline this in Settings → Connected organisations.</p>
+        <p><a href="${acceptUrl}">Review the request</a></p>
+        <p>HSEQ Nova only shares the status you approve. Incident details and personal data stay in your company account.</p>
+      `,
+    });
+  } catch {
+    // Invitation is stored even if email delivery fails.
+  }
+}
+
+

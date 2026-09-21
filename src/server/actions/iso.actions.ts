@@ -15,8 +15,13 @@ import {
   insertIsoChange,
   insertIsoConsultationMeeting,
   insertIsoContextIssue,
+  insertIsoCustomerFeedback,
   insertIsoInterestedParty,
   insertIsoLegalRequirement,
+  insertIsoProcess,
+  deleteIsoProcess,
+  linkIsoClauseDocument,
+  unlinkIsoClauseDocument,
   loadIsoReadiness,
   seedDefaultLegalRequirements,
   updateIsoChangeStatus,
@@ -113,6 +118,8 @@ const scopeSchema = z.object({
   inclusions: z.string().optional(),
   exclusions: z.string().optional(),
   sites: z.string().optional(),
+  excludeDesign: z.boolean().optional(),
+  excludeDesignJustification: z.string().optional(),
   approve: z.boolean().optional(),
 });
 
@@ -120,6 +127,15 @@ export async function saveIsoScope(input: Record<string, unknown>) {
   try {
     const { tenantId, userId } = await requireIso();
     const validated = scopeSchema.parse(input);
+    if (
+      validated.excludeDesign &&
+      (!validated.excludeDesignJustification || validated.excludeDesignJustification.trim().length < 20)
+    ) {
+      return {
+        success: false as const,
+        error: "Write why ISO 9001 clause 8.3 does not apply (at least 20 characters). ISO 9001:2015 4.3.",
+      };
+    }
     const row = await upsertIsoScope({
       tenantId,
       ...validated,
@@ -343,5 +359,117 @@ export async function generateIsoGapTasks() {
     return { success: true as const, count };
   } catch (error) {
     return { success: false as const, error: errorMessage(error, "Could not generate implementation tasks") };
+  }
+}
+
+const linkDocumentSchema = z.object({
+  documentId: z.string().min(8),
+  requirementId: z.string().min(3),
+  clauseKey: z.string().min(3),
+  role: z.enum(["PROCEDURE", "POLICY", "RECORD", "EXTERNAL", "FORM"]).optional(),
+});
+
+export async function linkIsoDocument(input: Record<string, unknown>) {
+  try {
+    const { tenantId, userId } = await requireIso();
+    const validated = linkDocumentSchema.parse(input);
+    await linkIsoClauseDocument({ tenantId, ...validated });
+    await AuditLog.log(tenantId, userId, "ISO_DOCUMENT_LINKED", "IsoClauseDocument", validated.documentId, {
+      clauseKey: validated.clauseKey,
+    });
+    revalidatePath("/dashboard/iso");
+    revalidatePath("/dashboard/iso/clauses");
+    revalidatePath(`/dashboard/iso/clauses/${validated.clauseKey}`);
+    return { success: true as const };
+  } catch (error) {
+    return { success: false as const, error: errorMessage(error, "Could not link the document") };
+  }
+}
+
+export async function unlinkIsoDocument(linkId: string, clauseKey: string) {
+  try {
+    const { tenantId, userId } = await requireIso();
+    await unlinkIsoClauseDocument(tenantId, linkId);
+    await AuditLog.log(tenantId, userId, "ISO_DOCUMENT_UNLINKED", "IsoClauseDocument", linkId, { clauseKey });
+    revalidatePath("/dashboard/iso/clauses");
+    revalidatePath(`/dashboard/iso/clauses/${clauseKey}`);
+    return { success: true as const };
+  } catch (error) {
+    return { success: false as const, error: errorMessage(error, "Could not remove the document link") };
+  }
+}
+
+const processSchema = z.object({
+  name: z.string().min(3),
+  purpose: z.string().min(8),
+  ownerId: z.string().optional(),
+  inputs: z.string().optional(),
+  outputs: z.string().optional(),
+});
+
+export async function createIsoProcess(input: Record<string, unknown>) {
+  try {
+    const { tenantId, userId } = await requireIso();
+    const validated = processSchema.parse(input);
+    if (validated.ownerId) {
+      const member = await assertUserIsTenantMember(tenantId, validated.ownerId);
+      if (!member) {
+        return { success: false as const, error: "Process owner must be a member of this company" };
+      }
+    }
+    const row = await insertIsoProcess({
+      tenantId,
+      name: validated.name,
+      purpose: validated.purpose,
+      ownerId: validated.ownerId || null,
+      inputs: validated.inputs,
+      outputs: validated.outputs,
+    });
+    await AuditLog.log(tenantId, userId, "ISO_PROCESS_CREATED", "IsoProcess", row.id, { name: row.name });
+    revalidatePath("/dashboard/iso/processes");
+    revalidatePath("/dashboard/iso");
+    return { success: true as const };
+  } catch (error) {
+    return { success: false as const, error: errorMessage(error, "Could not save the process") };
+  }
+}
+
+export async function removeIsoProcess(id: string) {
+  try {
+    const { tenantId, userId } = await requireIso();
+    await deleteIsoProcess(tenantId, id);
+    await AuditLog.log(tenantId, userId, "ISO_PROCESS_DELETED", "IsoProcess", id, {});
+    revalidatePath("/dashboard/iso/processes");
+    return { success: true as const };
+  } catch (error) {
+    return { success: false as const, error: errorMessage(error, "Could not delete the process") };
+  }
+}
+
+const feedbackSchema = z.object({
+  summary: z.string().min(5),
+  customerCompany: z.string().optional(),
+  sentiment: z.enum(["POSITIVE", "NEUTRAL", "NEGATIVE"]).optional(),
+  source: z.enum(["EMAIL", "PHONE", "MEETING", "SURVEY", "SOCIAL", "OTHER"]).optional(),
+});
+
+export async function recordIsoCustomerFeedback(input: Record<string, unknown>) {
+  try {
+    const { tenantId, userId } = await requireIso();
+    const validated = feedbackSchema.parse(input);
+    await insertIsoCustomerFeedback({
+      tenantId,
+      recordedById: userId,
+      summary: validated.summary,
+      customerCompany: validated.customerCompany,
+      sentiment: validated.sentiment,
+      source: validated.source,
+    });
+    await AuditLog.log(tenantId, userId, "ISO_CUSTOMER_FEEDBACK", "CustomerFeedback", tenantId, {});
+    revalidatePath("/dashboard/iso/processes");
+    revalidatePath("/dashboard/iso");
+    return { success: true as const };
+  } catch (error) {
+    return { success: false as const, error: errorMessage(error, "Could not save customer feedback") };
   }
 }

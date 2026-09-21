@@ -37,6 +37,9 @@ interface DocumentFormProps {
     isGlobal: boolean;
     pdcaGuidance?: Record<string, string> | null;
   }>;
+  isoClauseKey?: string;
+  isoRequirementId?: string;
+  afterCreateHref?: string;
 }
 
 const documentKinds = ["LAW", "PLAN", "PROCEDURE", "CHECKLIST", "FORM", "SDS", "OTHER"] as const;
@@ -45,7 +48,14 @@ const userRoles = ["ADMIN", "HMS", "LEDER", "VERNEOMBUD", "ANSATT", "BHT", "REVI
 const NO_OWNER_VALUE = "__none_owner__";
 const NO_TEMPLATE_VALUE = "__none_template__";
 
-export function DocumentForm({ tenantId, owners, templates }: DocumentFormProps) {
+export function DocumentForm({
+  tenantId,
+  owners,
+  templates,
+  isoClauseKey,
+  isoRequirementId,
+  afterCreateHref,
+}: DocumentFormProps) {
   const t = useTranslations("dashboardDocumentForm");
   const router = useRouter();
   const { toast } = useToast();
@@ -141,7 +151,7 @@ export function DocumentForm({ tenantId, owners, templates }: DocumentFormProps)
           description: t("toasts.created.description"),
           className: "bg-green-50 border-green-200",
         });
-        router.push("/dashboard/documents");
+        router.push(afterCreateHref ?? "/dashboard/documents");
         router.refresh();
       } else {
         toast({
@@ -179,6 +189,8 @@ export function DocumentForm({ tenantId, owners, templates }: DocumentFormProps)
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
+          {isoClauseKey ? <input type="hidden" name="isoClauseKey" value={isoClauseKey} /> : null}
+          {isoRequirementId ? <input type="hidden" name="isoRequirementId" value={isoRequirementId} /> : null}
           <div className="space-y-2">
             <Label htmlFor="title">{t("fields.title")}</Label>
             <Input

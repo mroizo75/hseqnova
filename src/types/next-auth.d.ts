@@ -1,6 +1,6 @@
 import "next-auth";
 import "next-auth/jwt";
-import { Role } from "@prisma/client";
+import { EnterpriseRole, Role } from "@prisma/client";
 
 declare module "next-auth" {
   interface User {
@@ -13,6 +13,10 @@ declare module "next-auth" {
     tenantName?: string | null;
     role?: Role;
     hasMultipleTenants?: boolean;
+    enterpriseId?: string | null;
+    enterpriseName?: string | null;
+    enterpriseRole?: EnterpriseRole;
+    hasEnterpriseAccess?: boolean;
     preferredLocale?: string;
   }
 
@@ -30,6 +34,10 @@ declare module "next-auth" {
       tenantName?: string | null;
       role?: Role;
       hasMultipleTenants?: boolean;
+      enterpriseId?: string | null;
+      enterpriseName?: string | null;
+      enterpriseRole?: EnterpriseRole;
+      hasEnterpriseAccess?: boolean;
       preferredLocale?: string;
       isTavleOnly?: boolean;
     };
@@ -47,6 +55,10 @@ declare module "next-auth/jwt" {
     tenantName?: string | null;
     role?: Role;
     hasMultipleTenants?: boolean;
+    enterpriseId?: string | null;
+    enterpriseName?: string | null;
+    enterpriseRole?: EnterpriseRole;
+    hasEnterpriseAccess?: boolean;
     preferredLocale?: string;
     isTavleOnly?: boolean;
   }

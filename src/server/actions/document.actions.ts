@@ -313,6 +313,25 @@ export async function createDocument(formData: FormData) {
       reviewIntervalMonths: resolvedReviewInterval,
     });
 
+    const isoClauseKey = sanitizeText(formData.get("isoClauseKey") as string | null);
+    const isoRequirementId = sanitizeText(formData.get("isoRequirementId") as string | null);
+    if (isoClauseKey && isoRequirementId) {
+      const { error: linkError } = await db.from("IsoClauseDocument").insert({
+        id: createId(),
+        tenantId: validated.tenantId,
+        documentId,
+        requirementId: isoRequirementId,
+        clauseKey: isoClauseKey,
+        role: sanitizeText(formData.get("isoDocumentRole") as string | null) || "PROCEDURE",
+        createdAt: now,
+        updatedAt: now,
+      });
+      if (!linkError) {
+        revalidatePath("/dashboard/iso/clauses");
+        revalidatePath(`/dashboard/iso/clauses/${isoClauseKey}`);
+      }
+    }
+
     revalidatePath(`/dashboard/documents`);
     return { success: true as const, data: document };
   } catch (error: unknown) {

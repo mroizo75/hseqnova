@@ -11,7 +11,7 @@ import {
 import { SESSION_TOKEN_COOKIE_NAME } from "@/lib/auth-cookie";
 import { shouldRefreshMembership } from "@/lib/auth-session";
 import bcrypt from "bcryptjs";
-import type { Role } from "@prisma/client";
+import type { EnterpriseRole, Role } from "@prisma/client";
 
 const azureAdClientId = process.env.AZURE_AD_CLIENT_ID;
 const azureAdClientSecret = process.env.AZURE_AD_CLIENT_SECRET;
@@ -168,6 +168,22 @@ export const authOptions: NextAuthOptions = {
             token.hasMultipleTenants = dbUser.tenants.length > 1;
             token.preferredLocale = dbUser.preferredLocale || "en-GB";
 
+            const eligibleEnterprises = (dbUser.enterprises ?? []).filter(
+              (membership) => membership.status === "ACTIVE",
+            );
+            const selectedEnterprise =
+              (dbUser.lastEnterpriseId
+                ? eligibleEnterprises.find(
+                    (membership) => membership.enterpriseId === dbUser.lastEnterpriseId,
+                  )
+                : null) ??
+              eligibleEnterprises[0] ??
+              null;
+            token.enterpriseId = selectedEnterprise?.enterpriseId ?? null;
+            token.enterpriseName = selectedEnterprise?.name ?? null;
+            token.enterpriseRole = (selectedEnterprise?.role as EnterpriseRole | undefined) ?? undefined;
+            token.hasEnterpriseAccess = eligibleEnterprises.length > 0;
+
             const eligibleTenants = dbUser.tenants.filter(
               (membership) =>
                 membership.tenant?.status === "ACTIVE" || membership.tenant?.status === "TRIAL",
@@ -192,6 +208,24 @@ export const authOptions: NextAuthOptions = {
           // Keep a signed-in JWT even if membership lookup is briefly unreachable.
         }
         token.membershipCheckedAt = Date.now();
+      }
+
+      if (trigger === "update" && session?.enterpriseId) {
+        token.enterpriseId = session.enterpriseId;
+        try {
+          const dbUser = await getAuthUserById(token.id as string);
+          const selected = dbUser?.enterprises.find(
+            (membership) => membership.enterpriseId === session.enterpriseId,
+          );
+          if (selected) {
+            token.enterpriseRole = selected.role as EnterpriseRole;
+            token.enterpriseName = selected.name;
+            token.hasEnterpriseAccess = true;
+          }
+        } catch {
+          // Keep existing JWT if lookup fails.
+        }
+        return token;
       }
 
       if (trigger === "update" && session?.tenantId) {
@@ -246,6 +280,10 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as any;
         session.user.tenantName = token.tenantName as string | null;
         session.user.hasMultipleTenants = token.hasMultipleTenants as boolean;
+        session.user.enterpriseId = token.enterpriseId as string | null;
+        session.user.enterpriseName = token.enterpriseName as string | null;
+        session.user.enterpriseRole = token.enterpriseRole as EnterpriseRole | undefined;
+        session.user.hasEnterpriseAccess = token.hasEnterpriseAccess as boolean;
         session.user.preferredLocale = (token.preferredLocale as string | undefined) ?? "en-GB";
         session.user.isTavleOnly = (token.isTavleOnly as boolean | undefined) ?? false;
       }

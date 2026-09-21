@@ -121,6 +121,7 @@ const navGroups: NavGroup[] = [
     label: "Compliance",
     items: [
       { href: "/dashboard/iso", label: "nav.iso", icon: Award, permission: "iso" },
+      { href: "/dashboard/iso/processes", label: "nav.isoProcesses", icon: GitBranch, permission: "iso" },
       { href: "/dashboard/legal-register", label: "nav.legalRegister", icon: Scale, permission: "legalRegister" },
       { href: "/dashboard/environment", label: "nav.environment", icon: Leaf, permission: "environment" },
       { href: "/dashboard/audits", label: "nav.audits", icon: ClipboardCheck, permission: "audits" },

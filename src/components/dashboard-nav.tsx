@@ -126,6 +126,7 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/dashboard/hseq-cockpit", label: "nav.hseqCockpit", icon: Gauge, permission: "hseqCockpit" },
       { href: "/dashboard/iso", label: "nav.iso", icon: Award, permission: "iso" },
+      { href: "/dashboard/iso/processes", label: "nav.isoProcesses", icon: GitBranch, permission: "iso" },
       { href: "/dashboard/legal-register", label: "nav.legalRegister", icon: Scale, permission: "legalRegister" },
       { href: "/dashboard/fire-risk", label: "nav.fireRisk", icon: Flame, permission: "fireRisk" },
       { href: "/dashboard/environment", label: "nav.environment", icon: Leaf, permission: "environment" },
@@ -342,6 +343,11 @@ export function DashboardNav({ enabledModules: enabledModulesFromServer = [] }: 
           <div className="mb-2 px-3 text-xs text-muted-foreground truncate">
             {session?.user?.name || session?.user?.email}
           </div>
+          {session?.user?.hasEnterpriseAccess ? (
+            <Button asChild variant="outline" className="mb-2 w-full justify-start bg-transparent">
+              <Link href="/enterprise">Enterprise portal</Link>
+            </Button>
+          ) : null}
           <Button
             variant="ghost"
             className="w-full justify-start"

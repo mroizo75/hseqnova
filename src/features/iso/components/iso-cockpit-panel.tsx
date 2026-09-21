@@ -49,7 +49,7 @@ export async function IsoCockpitPanel() {
                 <p className="text-sm text-muted-foreground">{next.clause.doThis}</p>
                 <div className="flex flex-wrap gap-2">
                   <Button asChild size="sm">
-                    <Link href={next.clause.href}>Open this work</Link>
+                    <Link href={`/dashboard/iso/clauses/${next.clause.id}`}>Work this clause</Link>
                   </Button>
                   <Button asChild size="sm" variant="outline">
                     <Link href="/dashboard/iso">Work guide</Link>

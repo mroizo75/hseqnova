@@ -37,6 +37,9 @@ export type IsoEvidenceKey =
   | "emergency"
   | "monitoring"
   | "customer"
+  | "customerSatisfaction"
+  | "processes"
+  | "design"
   | "internalAudit"
   | "managementReview"
   | "incidents"
@@ -54,6 +57,8 @@ export type IsoClause = {
   doThis: string;
   auditorHint: string;
   phase: IsoPhaseId;
+  /** ISO 7.5 — auditor expects an approved controlled document linked to this clause. */
+  needsControlledDocument?: boolean;
 };
 
 export const ISO_PHASES: readonly { id: IsoPhaseId; title: string; gain: string }[] = [
@@ -258,6 +263,7 @@ export const ISO_45001_CLAUSES: readonly IsoClause[] = [
     doThis: "Keep controlled documents versioned, approved and reviewed.",
     auditorHint: "Approved documents with version, owner and next review.",
     phase: "support",
+    needsControlledDocument: true,
   },
   {
     id: "45001-8.1.1",
@@ -270,6 +276,7 @@ export const ISO_45001_CLAUSES: readonly IsoClause[] = [
     doThis: "Run inspections, RAMS, COSHH and permits for the work you actually do.",
     auditorHint: "Inspections and operational add-ons (RAMS, COSHH, CDM) in use.",
     phase: "operation",
+    needsControlledDocument: true,
   },
   {
     id: "45001-8.1.2",
@@ -423,12 +430,37 @@ export const ISO_9001_CLAUSES: readonly IsoClause[] = [
     standard: "ISO_9001",
     clause: "4.3",
     title: "Determining the scope of the quality management system",
-    shall: "Determine the boundaries and applicability of the QMS.",
+    shall: "Determine the boundaries and applicability of the QMS. Exclusions are limited to clause 8 and must not affect product/service conformity.",
     href: "/dashboard/iso/context",
     evidenceKey: "scope",
-    doThis: "Record the quality scope alongside the OH&S scope.",
-    auditorHint: "Approved quality scope on the same scope record.",
+    doThis: "Record the quality scope and, if you do not design products or services, exclude 8.3 with a written justification.",
+    auditorHint: "Approved quality scope. Any 8.3 exclusion is justified under 4.3.",
     phase: "context",
+  },
+  {
+    id: "9001-4.4",
+    standard: "ISO_9001",
+    clause: "4.4",
+    title: "Quality management system and its processes",
+    shall: "Establish, implement, maintain and continually improve the QMS, including the processes needed and their interactions.",
+    href: "/dashboard/iso/processes",
+    evidenceKey: "processes",
+    doThis: "Name the processes that deliver the work (enquiry → delivery → review), with owner, inputs and outputs.",
+    auditorHint: "Process register with owners and how processes interact.",
+    phase: "context",
+    needsControlledDocument: true,
+  },
+  {
+    id: "9001-5.1",
+    standard: "ISO_9001",
+    clause: "5.1",
+    title: "Leadership and customer focus",
+    shall: "Top management shall demonstrate leadership and ensure customer requirements and applicable statutory requirements are determined and met.",
+    href: "/dashboard/health-safety-policy",
+    evidenceKey: "customer",
+    doThis: "Show leadership through the signed policy and by recording what customers require.",
+    auditorHint: "Signed policy plus customer/interested-party requirements.",
+    phase: "leadership",
   },
   {
     id: "9001-5.2",
@@ -441,6 +473,7 @@ export const ISO_9001_CLAUSES: readonly IsoClause[] = [
     doThis: "Publish a quality policy section in the living policy, or a controlled quality-policy document.",
     auditorHint: "Quality policy section or approved document titled Quality policy.",
     phase: "leadership",
+    needsControlledDocument: true,
   },
   {
     id: "9001-5.3",
@@ -479,6 +512,30 @@ export const ISO_9001_CLAUSES: readonly IsoClause[] = [
     phase: "planning",
   },
   {
+    id: "9001-6.3",
+    standard: "ISO_9001",
+    clause: "6.3",
+    title: "Planning of changes",
+    shall: "When the organisation determines the need for changes to the QMS, the changes shall be carried out in a planned manner.",
+    href: "/dashboard/changes",
+    evidenceKey: "moc",
+    doThis: "Record planned changes to processes, plant or organisation before they happen.",
+    auditorHint: "Management of change records with risk, training and document impact.",
+    phase: "planning",
+  },
+  {
+    id: "9001-7.1",
+    standard: "ISO_9001",
+    clause: "7.1",
+    title: "Resources",
+    shall: "Determine and provide the resources needed for the establishment, implementation, maintenance and continual improvement of the QMS.",
+    href: "/dashboard/organisasjonskart",
+    evidenceKey: "roles",
+    doThis: "Show people, plant and competence needed to deliver the work.",
+    auditorHint: "Organisation chart, competence records and asset/inspection records where used.",
+    phase: "support",
+  },
+  {
     id: "9001-7.2",
     standard: "ISO_9001",
     clause: "7.2",
@@ -491,6 +548,30 @@ export const ISO_9001_CLAUSES: readonly IsoClause[] = [
     phase: "support",
   },
   {
+    id: "9001-7.3",
+    standard: "ISO_9001",
+    clause: "7.3",
+    title: "Awareness",
+    shall: "Ensure persons doing work are aware of the quality policy, relevant objectives, their contribution and implications of not conforming.",
+    href: "/dashboard/health-safety-policy",
+    evidenceKey: "awareness",
+    doThis: "Notify employees of the current policy and quality objectives.",
+    auditorHint: "Policy acknowledgements and toolbox / induction records.",
+    phase: "support",
+  },
+  {
+    id: "9001-7.4",
+    standard: "ISO_9001",
+    clause: "7.4",
+    title: "Communication",
+    shall: "Determine the internal and external communications relevant to the QMS.",
+    href: "/dashboard/iso/context",
+    evidenceKey: "communication",
+    doThis: "Record how you communicate quality and H&S information to workers, customers and suppliers.",
+    auditorHint: "Interested-party communication methods.",
+    phase: "support",
+  },
+  {
     id: "9001-7.5",
     standard: "ISO_9001",
     clause: "7.5",
@@ -498,9 +579,47 @@ export const ISO_9001_CLAUSES: readonly IsoClause[] = [
     shall: "Control documented information required by the QMS and by this standard.",
     href: "/dashboard/documents",
     evidenceKey: "documents",
-    doThis: "Control procedures for the work you do — including product or service processes.",
-    auditorHint: "Versioned, approved documents. Process documents cover 8.2–8.6 where relevant.",
+    doThis: "Upload procedures against the clause they support. Approve them. Review them. Withdraw obsolete copies.",
+    auditorHint: "Approved documents with version, owner, review date, linked to clauses.",
     phase: "support",
+    needsControlledDocument: true,
+  },
+  {
+    id: "9001-8.1",
+    standard: "ISO_9001",
+    clause: "8.1",
+    title: "Operational planning and control",
+    shall: "Plan, implement and control the processes needed to meet requirements for products and services.",
+    href: "/dashboard/iso/processes",
+    evidenceKey: "processes",
+    doThis: "Describe how work is planned and controlled — then keep the live inspections/RAMS that prove it.",
+    auditorHint: "Process register plus operational records.",
+    phase: "operation",
+    needsControlledDocument: true,
+  },
+  {
+    id: "9001-8.2",
+    standard: "ISO_9001",
+    clause: "8.2",
+    title: "Requirements for products and services",
+    shall: "Determine, review and communicate requirements for products and services, including statutory and customer requirements.",
+    href: "/dashboard/iso/processes",
+    evidenceKey: "customer",
+    doThis: "Record what customers require (scope, specification, statutory duties) before work starts.",
+    auditorHint: "Customer/interested-party requirements and how they are reviewed.",
+    phase: "operation",
+  },
+  {
+    id: "9001-8.3",
+    standard: "ISO_9001",
+    clause: "8.3",
+    title: "Design and development of products and services",
+    shall: "Establish, implement and maintain a design and development process when the organisation designs products or services.",
+    href: "/dashboard/iso/context",
+    evidenceKey: "design",
+    doThis: "If you do not design, exclude 8.3 in the approved scope with a justification. If you do, keep design records as controlled documents.",
+    auditorHint: "Justified 8.3 exclusion under 4.3, or design records.",
+    phase: "operation",
   },
   {
     id: "9001-8.4",
@@ -513,6 +632,7 @@ export const ISO_9001_CLAUSES: readonly IsoClause[] = [
     doThis: "Control contractors and suppliers through prequalification.",
     auditorHint: "Contractor / supplier control records.",
     phase: "operation",
+    needsControlledDocument: true,
   },
   {
     id: "9001-8.5",
@@ -522,8 +642,33 @@ export const ISO_9001_CLAUSES: readonly IsoClause[] = [
     shall: "Implement production and service provision under controlled conditions.",
     href: "/dashboard/documents",
     evidenceKey: "operationalControl",
-    doThis: "Keep controlled procedures or RAMS for how work is carried out.",
-    auditorHint: "Controlled process documents or RAMS — not a manufacturing ERP.",
+    doThis: "Keep the procedure or RAMS that describes how the work is carried out, then use it on site.",
+    auditorHint: "Controlled process documents or RAMS in use.",
+    phase: "operation",
+    needsControlledDocument: true,
+  },
+  {
+    id: "9001-8.6",
+    standard: "ISO_9001",
+    clause: "8.6",
+    title: "Release of products and services",
+    shall: "Implement planned arrangements to verify that product and service requirements have been met, prior to release.",
+    href: "/dashboard/inspections",
+    evidenceKey: "operationalControl",
+    doThis: "Record the check that work is complete and conforms before handover.",
+    auditorHint: "Inspection, snagging or handover records.",
+    phase: "operation",
+  },
+  {
+    id: "9001-8.7",
+    standard: "ISO_9001",
+    clause: "8.7",
+    title: "Control of nonconforming outputs",
+    shall: "Ensure outputs that do not conform to requirements are identified and controlled to prevent unintended use or delivery.",
+    href: "/dashboard/incidents",
+    evidenceKey: "correctiveAction",
+    doThis: "Record quality nonconformities (defects, rework, customer rejects) and the action taken.",
+    auditorHint: "Nonconforming work with containment, correction and effectiveness.",
     phase: "operation",
   },
   {
@@ -531,11 +676,23 @@ export const ISO_9001_CLAUSES: readonly IsoClause[] = [
     standard: "ISO_9001",
     clause: "9.1",
     title: "Monitoring, measurement, analysis and evaluation",
-    shall: "Determine what to monitor and measure, and evaluate QMS performance and customer satisfaction.",
+    shall: "Determine what to monitor and measure, and evaluate QMS performance.",
     href: "/dashboard/hseq-cockpit",
     evidenceKey: "monitoring",
-    doThis: "Watch objectives and customer feedback alongside HSEQ performance.",
-    auditorHint: "Objectives, cockpit and any customer feedback records.",
+    doThis: "Watch objectives and operational checks alongside HSEQ performance.",
+    auditorHint: "Objectives, cockpit and inspection results.",
+    phase: "performance",
+  },
+  {
+    id: "9001-9.1.2",
+    standard: "ISO_9001",
+    clause: "9.1.2",
+    title: "Customer satisfaction",
+    shall: "Monitor customers' perceptions of the degree to which their needs and expectations have been fulfilled.",
+    href: "/dashboard/iso/processes",
+    evidenceKey: "customerSatisfaction",
+    doThis: "Record customer feedback (praise, complaint or survey) and what you did about it.",
+    auditorHint: "Customer feedback records with follow-up.",
     phase: "performance",
   },
   {
@@ -574,10 +731,21 @@ export const ISO_9001_CLAUSES: readonly IsoClause[] = [
     auditorHint: "Nonconformities with root cause, action and effectiveness.",
     phase: "improvement",
   },
+  {
+    id: "9001-10.3",
+    standard: "ISO_9001",
+    clause: "10.3",
+    title: "Continual improvement",
+    shall: "Continually improve the suitability, adequacy and effectiveness of the QMS.",
+    href: "/dashboard/actions",
+    evidenceKey: "continualImprovement",
+    doThis: "Raise improvement actions from audits, reviews, incidents and customer feedback, and verify them.",
+    auditorHint: "Improvement actions closed with effectiveness recorded.",
+    phase: "improvement",
+  },
 ];
 
 export const ALL_ISO_CLAUSES: readonly IsoClause[] = [...ISO_45001_CLAUSES, ...ISO_9001_CLAUSES];
-
 export function clausesForStandard(standard: IsoStandard | "BOTH"): readonly IsoClause[] {
   if (standard === "ISO_45001") return ISO_45001_CLAUSES;
   if (standard === "ISO_9001") return ISO_9001_CLAUSES;

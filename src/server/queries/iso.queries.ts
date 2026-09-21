@@ -11,6 +11,7 @@ import {
   PUBLISHED_ISO_VERSIONS,
 } from "@/features/iso/lib/catalogue";
 import { hasIso93Input, parseManagementReviewActions } from "@/features/iso/lib/iso-93";
+import { isJustifiedDesignExclusion } from "@/features/iso/lib/documented-information";
 import { buildIsoReadiness, type IsoAssessedLevel, type IsoReadiness } from "@/features/iso/lib/readiness";
 import { insertMeasure } from "@/server/queries/measures.queries";
 
@@ -60,6 +61,8 @@ export type IsoScopeRow = {
   inclusions: string | null;
   exclusions: string | null;
   sites: string | null;
+  excludeDesign: boolean;
+  excludeDesignJustification: string | null;
   approvedAt: Date | null;
   approvedById: string | null;
 };
@@ -129,6 +132,10 @@ function asScope(row: Record<string, unknown>): IsoScopeRow {
     inclusions: row.inclusions ? String(row.inclusions) : null,
     exclusions: row.exclusions ? String(row.exclusions) : null,
     sites: row.sites ? String(row.sites) : null,
+    excludeDesign: Boolean(row.excludeDesign),
+    excludeDesignJustification: row.excludeDesignJustification
+      ? String(row.excludeDesignJustification)
+      : null,
     approvedAt: parseDate(row.approvedAt),
     approvedById: row.approvedById ? String(row.approvedById) : null,
   };
@@ -257,6 +264,8 @@ export async function upsertIsoScope(input: {
   inclusions?: string | null;
   exclusions?: string | null;
   sites?: string | null;
+  excludeDesign?: boolean;
+  excludeDesignJustification?: string | null;
   approvedById?: string | null;
   approve?: boolean;
 }): Promise<IsoScopeRow> {
@@ -267,6 +276,8 @@ export async function upsertIsoScope(input: {
     inclusions: input.inclusions ?? null,
     exclusions: input.exclusions ?? null,
     sites: input.sites ?? null,
+    excludeDesign: Boolean(input.excludeDesign),
+    excludeDesignJustification: input.excludeDesignJustification ?? null,
     updatedAt: nowIso(),
     ...(input.approve
       ? { approvedAt: nowIso(), approvedById: input.approvedById ?? null }
@@ -579,14 +590,17 @@ export async function loadIsoEvidenceSnapshot(
     measuresRes,
     handbookRes,
     whistleRes,
+    processRes,
+    feedbackRes,
+    clauseDocRes,
   ] = await Promise.all([
     db.from("IsoContextIssue").select("id, kind").eq("tenantId", tenantId),
     db.from("IsoInterestedParty").select("id").eq("tenantId", tenantId),
-    db.from("IsoScope").select("id, qualityScope, approvedAt").eq("tenantId", tenantId).maybeSingle(),
+    db.from("IsoScope").select("id, qualityScope, approvedAt, excludeDesign, excludeDesignJustification").eq("tenantId", tenantId).maybeSingle(),
     db.from("IsoLegalRequirement").select("id, lastEvaluationResult").eq("tenantId", tenantId),
     db.from("IsoChange").select("id").eq("tenantId", tenantId),
     db.from("Meeting").select("id").eq("tenantId", tenantId),
-    db.from("Document").select("id, title").eq("tenantId", tenantId).eq("status", "APPROVED").limit(50),
+    db.from("Document").select("id, title, ownerId, nextReviewDate, version").eq("tenantId", tenantId).eq("status", "APPROVED").limit(80),
     db.from("OrgChartNode").select("id").eq("tenantId", tenantId),
     db.from("RiskAssessment").select("id").eq("tenantId", tenantId),
     db.from("RiskControl").select("id, controlType").eq("tenantId", tenantId),
@@ -603,6 +617,9 @@ export async function loadIsoEvidenceSnapshot(
     db.from("Measure").select("id, status, effectiveness").eq("tenantId", tenantId),
     db.from("HmsHandbook").select("id, currentVersionId").eq("tenantId", tenantId).maybeSingle(),
     db.from("Whistleblowing").select("id").eq("tenantId", tenantId),
+    db.from("IsoProcess").select("id").eq("tenantId", tenantId),
+    db.from("CustomerFeedback").select("id").eq("tenantId", tenantId),
+    db.from("IsoClauseDocument").select("clauseKey, documentId").eq("tenantId", tenantId),
   ]);
 
   const contextRows = (contextRes.data ?? []) as Array<{ kind?: string }>;
@@ -625,6 +642,8 @@ export async function loadIsoEvidenceSnapshot(
   const completedAudits = auditRows.filter((row) => row.status === "COMPLETED" || row.status === "APPROVED");
   const completedIds = completedAudits.map((row) => row.id);
   let auditWithIsoClauses = false;
+  let auditCovers45001 = false;
+  let auditCovers9001 = false;
   const handbook = handbookRes.data as { id?: string; currentVersionId?: string | null } | null;
   let signatureCount = 0;
   if (completedIds.length > 0 || handbook?.id) {
@@ -646,9 +665,9 @@ export async function loadIsoEvidenceSnapshot(
     const extraRows = await Promise.all(extra);
     if (completedIds.length > 0) {
       const findingRows = (extraRows[0]?.data ?? []) as Array<{ clause?: string }>;
-      auditWithIsoClauses = findingRows.some(
-        (row) => String(row.clause ?? "").includes("45001") || String(row.clause ?? "").includes("9001"),
-      );
+      auditCovers45001 = findingRows.some((row) => String(row.clause ?? "").includes("45001"));
+      auditCovers9001 = findingRows.some((row) => String(row.clause ?? "").includes("9001"));
+      auditWithIsoClauses = auditCovers45001 || auditCovers9001;
     }
     const sigIndex = completedIds.length > 0 ? 1 : 0;
     if (handbook?.id) {
@@ -658,9 +677,41 @@ export async function loadIsoEvidenceSnapshot(
 
   const reviewRows = (reviewsRes.data ?? []) as Array<{ status?: string }>;
   const measureRows = (measuresRes.data ?? []) as Array<{ status?: string; effectiveness?: string | null }>;
-  const policyDocs = (policyRes.data ?? []) as Array<{ title?: string }>;
+  const policyDocs = (policyRes.data ?? []) as Array<{
+    id?: string;
+    title?: string;
+    ownerId?: string | null;
+    nextReviewDate?: string | null;
+    version?: string | null;
+  }>;
   const qualityDocs = policyDocs.some((doc) => /quality/i.test(String(doc.title ?? "")));
-  const scope = scopeRes.data as { qualityScope?: string | null; approvedAt?: string | null } | null;
+  const scope = scopeRes.data as {
+    qualityScope?: string | null;
+    approvedAt?: string | null;
+    excludeDesign?: boolean;
+    excludeDesignJustification?: string | null;
+  } | null;
+  const approvedIds = new Set(policyDocs.map((doc) => String(doc.id ?? "")).filter(Boolean));
+  const clauseDocRows = (clauseDocRes.error ? [] : (clauseDocRes.data ?? [])) as Array<{
+    clauseKey?: string;
+    documentId?: string;
+  }>;
+  const approvedClauseKeys = [
+    ...new Set(
+      clauseDocRows
+        .filter((row) => approvedIds.has(String(row.documentId ?? "")))
+        .map((row) => String(row.clauseKey ?? ""))
+        .filter(Boolean),
+    ),
+  ];
+  const documentControlAdequate = policyDocs.some(
+    (doc) => Boolean(doc.ownerId) && Boolean(doc.nextReviewDate) && Boolean(doc.version),
+  );
+  const excludeDesign = Boolean(scope?.excludeDesign);
+  const excludeDesignJustified = isJustifiedDesignExclusion({
+    excludeDesign,
+    excludeDesignJustification: scope?.excludeDesignJustification ?? null,
+  });
 
   const controls = (controlsRes.data ?? []) as Array<{ controlType?: string }>;
   const hierarchyTypes = new Set(["ELIMINATION", "SUBSTITUTION", "ENGINEERING", "ADMINISTRATIVE", "PPE"]);
@@ -697,6 +748,8 @@ export async function loadIsoEvidenceSnapshot(
     fireAssessment: countRows(fraRes.data) > 0,
     completedAuditCount: completedAudits.length,
     auditWithIsoClauses,
+    auditCovers45001,
+    auditCovers9001,
     completedReviewCount: reviewRows.filter((row) => row.status === "COMPLETED" || row.status === "APPROVED").length,
     incidentCount: countRows(incidentsRes.data),
     nearMissCount: ((incidentsRes.data ?? []) as Array<{ type?: string }>).filter(
@@ -707,6 +760,12 @@ export async function loadIsoEvidenceSnapshot(
       (row) => row.effectiveness && row.effectiveness !== "NOT_EVALUATED",
     ).length,
     openActionCount: measureRows.filter((row) => row.status !== "DONE").length,
+    processCount: processRes.error ? 0 : countRows(processRes.data),
+    customerFeedbackCount: feedbackRes.error ? 0 : countRows(feedbackRes.data),
+    approvedClauseKeys,
+    documentControlAdequate,
+    excludeDesign,
+    excludeDesignJustified,
   };
 }
 
@@ -744,6 +803,35 @@ export type IsoMatrixRow = {
   autoLevel: IsoClauseStatus["level"];
   autoDetail: string;
   assessment: IsoClauseAssessmentRow | null;
+  documents: IsoLinkedDocument[];
+};
+
+export type IsoLinkedDocument = {
+  id: string;
+  linkId: string;
+  title: string;
+  version: string;
+  status: string;
+  ownerId: string | null;
+  nextReviewDate: Date | null;
+  role: string;
+};
+
+export type IsoProcessRow = {
+  id: string;
+  name: string;
+  purpose: string;
+  ownerId: string | null;
+  inputs: string | null;
+  outputs: string | null;
+  sequence: number;
+};
+
+export type IsoDocumentOption = {
+  id: string;
+  title: string;
+  version: string;
+  status: string;
 };
 
 export type IsoConsultationHub = {
@@ -881,9 +969,10 @@ export async function loadIsoClauseMatrix(
   tenantId: string,
   statuses: IsoClauseStatus[],
 ): Promise<IsoMatrixRow[]> {
-  const [requirements, assessments] = await Promise.all([
+  const [requirements, assessments, documentsByClause] = await Promise.all([
     loadActiveIsoRequirements(tenantId),
     loadIsoClauseAssessments(tenantId),
+    loadIsoClauseDocumentsByClause(tenantId),
   ]);
   const statusByKey = new Map(statuses.map((item) => [item.clause.id, item]));
   const assessmentByReq = new Map(assessments.map((item) => [item.requirementId, item]));
@@ -896,6 +985,7 @@ export async function loadIsoClauseMatrix(
       autoLevel: status?.level ?? "missing",
       autoDetail: status?.detail ?? "Not evaluated",
       assessment: assessmentByReq.get(requirement.id) ?? null,
+      documents: documentsByClause.get(requirement.clauseKey) ?? [],
     };
   });
 }
@@ -1212,5 +1302,208 @@ export async function createMeasuresFromReviewPlan(
     created += 1;
   }
   return created;
+}
+
+export async function loadIsoClauseDocumentsByClause(
+  tenantId: string,
+): Promise<Map<string, IsoLinkedDocument[]>> {
+  const db = getAdminDb();
+  const { data: links, error } = await db
+    .from("IsoClauseDocument")
+    .select("id, clauseKey, documentId, role")
+    .eq("tenantId", tenantId);
+  const map = new Map<string, IsoLinkedDocument[]>();
+  if (error || !links || links.length === 0) return map;
+  const documentIds = [...new Set((links as Array<{ documentId: string }>).map((row) => row.documentId))];
+  const { data: documents } = await db
+    .from("Document")
+    .select("id, title, version, status, ownerId, nextReviewDate")
+    .eq("tenantId", tenantId)
+    .in("id", documentIds);
+  const byId = new Map(
+    ((documents ?? []) as Array<Record<string, unknown>>).map((row) => [String(row.id), row] as const),
+  );
+  for (const link of links as Array<{ id: string; clauseKey: string; documentId: string; role: string }>) {
+    const document = byId.get(link.documentId);
+    if (!document) continue;
+    const list = map.get(link.clauseKey) ?? [];
+    list.push({
+      id: String(document.id),
+      linkId: link.id,
+      title: String(document.title ?? ""),
+      version: String(document.version ?? ""),
+      status: String(document.status ?? ""),
+      ownerId: document.ownerId ? String(document.ownerId) : null,
+      nextReviewDate: parseDate(document.nextReviewDate),
+      role: link.role,
+    });
+    map.set(link.clauseKey, list);
+  }
+  return map;
+}
+
+export async function loadIsoDocumentOptions(tenantId: string): Promise<IsoDocumentOption[]> {
+  const { data } = await getAdminDb()
+    .from("Document")
+    .select("id, title, version, status")
+    .eq("tenantId", tenantId)
+    .order("title", { ascending: true });
+  return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+    id: String(row.id),
+    title: String(row.title ?? ""),
+    version: String(row.version ?? ""),
+    status: String(row.status ?? ""),
+  }));
+}
+
+export async function linkIsoClauseDocument(input: {
+  tenantId: string;
+  documentId: string;
+  requirementId: string;
+  clauseKey: string;
+  role?: string;
+}): Promise<void> {
+  const db = getAdminDb();
+  const { data: document } = await db
+    .from("Document")
+    .select("id")
+    .eq("id", input.documentId)
+    .eq("tenantId", input.tenantId)
+    .maybeSingle();
+  if (!document) {
+    throw { code: "DOCUMENT_NOT_IN_TENANT", message: "That document is not in this organisation." };
+  }
+  const { error } = await db.from("IsoClauseDocument").upsert(
+    {
+      id: createId(),
+      tenantId: input.tenantId,
+      documentId: input.documentId,
+      requirementId: input.requirementId,
+      clauseKey: input.clauseKey,
+      role: input.role ?? "PROCEDURE",
+      updatedAt: nowIso(),
+      createdAt: nowIso(),
+    },
+    { onConflict: "tenantId,documentId,requirementId" },
+  );
+  if (error) {
+    throw { code: "ISO_DOC_LINK_FAILED", message: error.message };
+  }
+}
+
+export async function unlinkIsoClauseDocument(tenantId: string, linkId: string): Promise<void> {
+  const { error } = await getAdminDb()
+    .from("IsoClauseDocument")
+    .delete()
+    .eq("tenantId", tenantId)
+    .eq("id", linkId);
+  if (error) {
+    throw { code: "ISO_DOC_UNLINK_FAILED", message: error.message };
+  }
+}
+
+export async function loadIsoProcesses(tenantId: string): Promise<IsoProcessRow[]> {
+  const { data, error } = await getAdminDb()
+    .from("IsoProcess")
+    .select("*")
+    .eq("tenantId", tenantId)
+    .order("sequence", { ascending: true });
+  if (error) return [];
+  return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+    id: String(row.id),
+    name: String(row.name ?? ""),
+    purpose: String(row.purpose ?? ""),
+    ownerId: row.ownerId ? String(row.ownerId) : null,
+    inputs: row.inputs ? String(row.inputs) : null,
+    outputs: row.outputs ? String(row.outputs) : null,
+    sequence: Number(row.sequence ?? 0),
+  }));
+}
+
+export async function insertIsoProcess(input: {
+  tenantId: string;
+  name: string;
+  purpose: string;
+  ownerId?: string | null;
+  inputs?: string | null;
+  outputs?: string | null;
+}): Promise<IsoProcessRow> {
+  const existing = await loadIsoProcesses(input.tenantId);
+  const row = {
+    id: createId(),
+    tenantId: input.tenantId,
+    name: input.name,
+    purpose: input.purpose,
+    ownerId: input.ownerId ?? null,
+    inputs: input.inputs ?? null,
+    outputs: input.outputs ?? null,
+    sequence: existing.length,
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  };
+  const { data, error } = await getAdminDb().from("IsoProcess").insert(row).select("*").single();
+  if (error || !data) {
+    throw { code: "ISO_PROCESS_CREATE_FAILED", message: error?.message ?? "Could not save the process" };
+  }
+  return {
+    id: String(data.id),
+    name: String(data.name),
+    purpose: String(data.purpose),
+    ownerId: data.ownerId ? String(data.ownerId) : null,
+    inputs: data.inputs ? String(data.inputs) : null,
+    outputs: data.outputs ? String(data.outputs) : null,
+    sequence: Number(data.sequence ?? 0),
+  };
+}
+
+export async function deleteIsoProcess(tenantId: string, id: string): Promise<void> {
+  const { error } = await getAdminDb().from("IsoProcess").delete().eq("tenantId", tenantId).eq("id", id);
+  if (error) {
+    throw { code: "ISO_PROCESS_DELETE_FAILED", message: error.message };
+  }
+}
+
+export async function insertIsoCustomerFeedback(input: {
+  tenantId: string;
+  recordedById: string;
+  summary: string;
+  source?: string;
+  sentiment?: string;
+  customerCompany?: string | null;
+}): Promise<void> {
+  const { error } = await getAdminDb().from("CustomerFeedback").insert({
+    id: createId(),
+    tenantId: input.tenantId,
+    recordedById: input.recordedById,
+    summary: input.summary,
+    source: input.source ?? "OTHER",
+    sentiment: input.sentiment ?? "NEUTRAL",
+    customerCompany: input.customerCompany ?? null,
+    followUpStatus: "NEW",
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  });
+  if (error) {
+    throw { code: "ISO_FEEDBACK_CREATE_FAILED", message: error.message };
+  }
+}
+
+export async function loadIsoCustomerFeedback(tenantId: string): Promise<
+  Array<{ id: string; summary: string; sentiment: string; customerCompany: string | null; recordedAt: Date | null }>
+> {
+  const { data, error } = await getAdminDb()
+    .from("CustomerFeedback")
+    .select("id, summary, sentiment, customerCompany, recordedAt")
+    .eq("tenantId", tenantId)
+    .order("recordedAt", { ascending: false })
+    .limit(20);
+  if (error) return [];
+  return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+    id: String(row.id),
+    summary: String(row.summary ?? ""),
+    sentiment: String(row.sentiment ?? ""),
+    customerCompany: row.customerCompany ? String(row.customerCompany) : null,
+    recordedAt: parseDate(row.recordedAt),
+  }));
 }
 

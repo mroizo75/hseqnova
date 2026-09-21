@@ -20,7 +20,7 @@ describe("ISO IMS pack", () => {
 
   it("ships both ISO 45001 and ISO 9001 clauses with auditor hints", () => {
     assert.ok(ISO_45001_CLAUSES.length >= 20);
-    assert.ok(ISO_9001_CLAUSES.length >= 10);
+    assert.ok(ISO_9001_CLAUSES.length >= 20);
     assert.ok(ALL_ISO_CLAUSES.every((clause) => clause.auditorHint.length > 10));
     assert.ok(auditClauseOptions().some((option) => option.value.startsWith("45001:")));
     assert.ok(auditClauseOptions().some((option) => option.value.startsWith("9001:")));
@@ -37,6 +37,7 @@ describe("ISO IMS pack", () => {
       interestedPartyCount: 2,
       hasScope: true,
       scopeApproved: true,
+      processCount: 2,
     };
     const journey = buildIsoJourney(evaluateIsoClauses(filled));
     assert.equal(journey.mode, "steady");

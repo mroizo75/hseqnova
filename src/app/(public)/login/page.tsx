@@ -83,6 +83,8 @@ export default function LoginPage() {
           router.push("/admin");
         } else if (session.user.isSalesManager || session.user.isSales) {
           router.push("/admin/crm");
+        } else if (session.user.hasEnterpriseAccess && !session.user.tenantId) {
+          router.push("/enterprise");
         } else if (session.user.role === "ANSATT") {
           router.push("/ansatt");
         } else if (session.user.isTavleOnly) {

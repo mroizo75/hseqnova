@@ -91,6 +91,7 @@ export const DASHBOARD_NAV_CONFIG: DashboardNavItemConfig[] = [
   { href: "/dashboard/hseq-cockpit", label: "nav.hseqCockpit", permission: "hseqCockpit", defaultSimple: true },
   { href: "/dashboard/iso", label: "nav.iso", permission: "iso", defaultSimple: true },
   { href: "/dashboard/iso/consultation", label: "nav.isoConsultation", permission: "iso", defaultSimple: false },
+  { href: "/dashboard/iso/processes", label: "nav.isoProcesses", permission: "iso", defaultSimple: false },
   { href: "/dashboard/legal-register", label: "nav.legalRegister", permission: "legalRegister", defaultSimple: true },
   { href: "/dashboard/fire-risk", label: "nav.fireRisk", permission: "fireRisk", defaultSimple: true },
   { href: "/dashboard/environment", label: "nav.environment", permission: "environment", defaultSimple: true },

@@ -42,6 +42,13 @@ export function canSeeOrganisations(user: {
   return Boolean(user.isSuperAdmin || user.isSupport || user.isSalesManager);
 }
 
+export function canProvisionEnterprise(user: {
+  isSuperAdmin?: boolean | null;
+  isSupport?: boolean | null;
+}): boolean {
+  return Boolean(user.isSuperAdmin || user.isSupport);
+}
+
 export function isSalesOnly(user: {
   isSuperAdmin?: boolean | null;
   isSupport?: boolean | null;
@@ -94,6 +101,9 @@ export function canAccessAdminPath(
   }
   if (SUPERADMIN_ONLY_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
     return false;
+  }
+  if (pathname.startsWith("/admin/enterprises")) {
+    return canProvisionEnterprise(user);
   }
   if (user.isSalesManager) {
     return (

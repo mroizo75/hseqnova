@@ -61,6 +61,7 @@ model User {
   /// Superadmin-only: may be invited into other tenants as competent person (MHSWR reg.7).
   canBeExternalCompetentPerson Boolean @default(false)
   lastTenantId  String?
+  lastEnterpriseId String?
   supabaseUserId String? @unique
 
   // Kontaktinformasjon
@@ -95,6 +96,7 @@ model User {
   tenants                         UserTenant[]
   orgChartNodes                   OrgChartNode[]                 @relation("OrgChartNodeUser")
   isoClauseAssessmentsOwned       IsoClauseAssessment[]          @relation("IsoAssessmentOwner")
+  isoProcessesOwned               IsoProcess[]                   @relation("IsoProcessOwner")
   managedUserTenants              UserTenant[]                   @relation("UserTenantManager") // Ansatte denne brukeren er nærmeste leder for
   blogPosts                       BlogPost[] // Blogg-artikler skrevet av bruker
   passwordResetTokens             PasswordResetToken[]
@@ -145,6 +147,9 @@ model User {
   crmDealsOwned                   CrmDeal[]                      @relation("CrmDealOwner")
   crmActivitiesCreated            CrmActivity[]                  @relation("CrmActivityCreatedBy")
   crmTasksAssigned                CrmTask[]                      @relation("CrmTaskAssignedTo")
+  enterpriseUsers                 EnterpriseUser[]
+  enterpriseAdvisorAssignments    EnterpriseAdvisorAssignment[]
+  enterpriseImprovementRequests   EnterpriseImprovementRequest[] @relation("EnterpriseImprovementRequester")
   createdAt                       DateTime                       @default(now())
   updatedAt                       DateTime                       @updatedAt
 
@@ -307,6 +312,8 @@ model Tenant {
   isoLegalRequirements                IsoLegalRequirement[]
   isoChanges                          IsoChange[]
   isoClauseAssessments                IsoClauseAssessment[]
+  isoClauseDocuments                  IsoClauseDocument[]
+  isoProcesses                        IsoProcess[]
   whistleblowings                     Whistleblowing[] // Varslinger
   supportTickets                      SupportTicket[] // Chat/tickets til HMS-representanter
   scheduledReminders                  ScheduledReminder[] // Planlagte påminnelser
@@ -387,6 +394,9 @@ model Tenant {
   riskHistories                       RiskHistory[]
   fireRiskAssessments                 FireRiskAssessment[]
   roleTrainingRequirements            RoleTrainingRequirement[]
+  enterpriseMemberships               EnterpriseMembership[]
+  enterpriseHomeOrgs                  EnterpriseOrganisation[]   @relation("EnterpriseHomeTenant")
+  enterpriseInvites                   EnterpriseInvite[]
 
   // AI Pro add-on (£30/month per tenant)
   aiAddonEnabled                      Boolean                        @default(false)
@@ -1037,6 +1047,8 @@ model Document {
   riskDocumentLinks        RiskDocumentLink[]
   riskControlsEvidence     RiskControl[]             @relation("RiskControlEvidence")
   securityControlDocuments SecurityControlDocument[]
+  enterpriseEvidenceShares EnterpriseEvidenceShare[]
+  isoClauseLinks           IsoClauseDocument[]
 
   @@unique([tenantId, slug]) // Slug må være unik per tenant
   @@index([tenantId])
@@ -1830,10 +1842,12 @@ model Measure {
   projectId             String?
   createdById           String? // Red thread: who created this action
   updatedById           String? // Red thread: who last updated
+  enterpriseImprovementRequestId String?
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
 
   tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  enterpriseImprovementRequest EnterpriseImprovementRequest? @relation(fields: [enterpriseImprovementRequestId], references: [id], onDelete: SetNull)
   risk                Risk?                @relation(fields: [riskId], references: [id])
   incident            Incident?            @relation(fields: [incidentId], references: [id])
   audit               Audit?               @relation(fields: [auditId], references: [id])
@@ -1852,6 +1866,7 @@ model Measure {
   @@index([auditId])
   @@index([goalId])
   @@index([environmentalAspectId])
+  @@index([enterpriseImprovementRequestId])
   @@index([projectId])
   @@index([fireDrillId])
 }
@@ -3332,17 +3347,20 @@ model IsoInterestedParty {
 }
 
 model IsoScope {
-  id            String    @id @default(cuid())
-  tenantId      String    @unique
-  ohAndSScope   String    @db.Text
-  qualityScope  String?   @db.Text
-  inclusions    String?   @db.Text
-  exclusions    String?   @db.Text
-  sites         String?   @db.Text
-  approvedAt    DateTime?
-  approvedById  String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                         String    @id @default(cuid())
+  tenantId                   String    @unique
+  ohAndSScope                String    @db.Text
+  qualityScope               String?   @db.Text
+  inclusions                 String?   @db.Text
+  exclusions                 String?   @db.Text
+  sites                      String?   @db.Text
+  /// ISO 9001:2015 4.3 — only clause 8 requirements may be excluded; 8.3 is the usual SME exclusion.
+  excludeDesign              Boolean   @default(false)
+  excludeDesignJustification String?   @db.Text
+  approvedAt                 DateTime?
+  approvedById               String?
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
@@ -3424,6 +3442,7 @@ model IsoRequirement {
 
   version      IsoStandardVersion    @relation(fields: [versionId], references: [id], onDelete: Cascade)
   assessments  IsoClauseAssessment[]
+  documents    IsoClauseDocument[]
 
   @@unique([versionId, clauseKey])
   @@index([versionId])
@@ -3450,6 +3469,47 @@ model IsoClauseAssessment {
   @@unique([tenantId, requirementId])
   @@index([tenantId])
   @@index([responsibleUserId])
+}
+
+/// ISO 45001/9001 7.5 — controlled documents mapped to a clause. Live modules remain the operational evidence.
+model IsoClauseDocument {
+  id            String   @id @default(cuid())
+  tenantId      String
+  documentId    String
+  requirementId String
+  clauseKey     String
+  role          String   @default("PROCEDURE") // PROCEDURE | POLICY | RECORD | EXTERNAL | FORM
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  document    Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  requirement IsoRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, documentId, requirementId])
+  @@index([tenantId])
+  @@index([clauseKey])
+  @@index([documentId])
+}
+
+/// ISO 9001:2015 4.4 — QMS processes and their interaction.
+model IsoProcess {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  purpose   String   @db.Text
+  ownerId   String?
+  inputs    String?  @db.Text
+  outputs   String?  @db.Text
+  sequence  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner  User?  @relation("IsoProcessOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([ownerId])
 }
 
 // ============================================
@@ -6368,4 +6428,501 @@ enum FireRiskAssessmentStatus {
   COMPLETED
   REVIEW_DUE
   ARCHIVED
+}
+
+// ============================================
+// Enterprise / Group / Portfolio
+// Relationship layer — tenants remain independent.
+// ============================================
+
+enum EnterpriseOrgType {
+  INSURER
+  BROKER
+  MGA
+  CORPORATE_GROUP
+  FRANCHISE
+  CONTRACTOR_NETWORK
+  TRADE_ASSOCIATION
+  OTHER
+}
+
+enum EnterpriseOrgStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum EnterpriseRole {
+  OWNER
+  ADMIN
+  PORTFOLIO_MANAGER
+  HSEQ_MANAGER
+  RISK_MANAGER
+  ADVISOR
+  AUDITOR
+  READ_ONLY
+}
+
+enum EnterpriseRelationshipType {
+  GROUP_SUBSIDIARY
+  INSURED
+  CONTRACTOR
+  FRANCHISEE
+  MEMBER
+  SUPPLY_CHAIN
+  OTHER
+}
+
+enum EnterpriseMembershipStatus {
+  INVITED
+  PENDING
+  ACTIVE
+  SUSPENDED
+  DECLINED
+}
+
+enum EnterpriseVisibilityLevel {
+  NONE
+  STATUS
+  AGGREGATED
+  SHARED_EVIDENCE
+  FULL
+}
+
+enum EnterpriseDomainKey {
+  RISKS
+  RAMS
+  COSHH
+  INCIDENTS
+  INCIDENT_STATS
+  ACTIONS
+  TRAINING
+  INSPECTIONS
+  AUDITS
+  ISO_45001
+  ISO_9001
+  MANAGEMENT_REVIEW
+  DOCUMENTS
+  ACTIVITY
+}
+
+enum EnterpriseAssuranceBand {
+  GREEN
+  AMBER
+  RED
+}
+
+enum EnterpriseTrend {
+  IMPROVING
+  STABLE
+  DETERIORATING
+}
+
+enum EnterpriseAlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum EnterpriseAdvisorScope {
+  ENTERPRISE
+  PORTFOLIO
+  MEMBERSHIP
+}
+
+enum EnterpriseInviteStatus {
+  INVITED
+  ACCEPTED
+  DECLINED
+  ACTIVE
+  EXPIRED
+}
+
+enum EnterpriseImportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum EnterpriseImprovementStatus {
+  REQUESTED
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  DECLINED
+}
+
+model EnterpriseOrganisation {
+  id                 String              @id @default(cuid())
+  name               String
+  slug               String              @unique
+  type               EnterpriseOrgType   @default(OTHER)
+  status             EnterpriseOrgStatus @default(ACTIVE)
+  homeTenantId       String?
+  logoUrl            String?
+  programmeName      String?
+  welcomeText        String?             @db.Text
+  primaryColour      String?
+  onboardingMessage  String?             @db.Text
+  showPoweredBy      Boolean             @default(true)
+  analyticsEnabled   Boolean             @default(false)
+  benchmarkEnabled   Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  homeTenant         Tenant?             @relation("EnterpriseHomeTenant", fields: [homeTenantId], references: [id], onDelete: SetNull)
+  users              EnterpriseUser[]
+  portfolios         EnterprisePortfolio[]
+  standards          EnterpriseStandard[]
+  snapshots          EnterpriseAssuranceSnapshot[]
+  alerts             EnterpriseAlert[]
+  advisorAssignments EnterpriseAdvisorAssignment[]
+  invites            EnterpriseInvite[]
+  importBatches      EnterpriseImportBatch[]
+  statSnapshots      EnterpriseStatSnapshot[]
+  statRollups        EnterpriseStatRollup[]
+
+  @@index([status])
+  @@index([type])
+  @@index([homeTenantId])
+}
+
+model EnterpriseStandard {
+  id           String                         @id @default(cuid())
+  enterpriseId String
+  name         String
+  description  String?                        @db.Text
+  isDefault    Boolean                        @default(false)
+  createdAt    DateTime                       @default(now())
+  updatedAt    DateTime                       @updatedAt
+
+  enterprise   EnterpriseOrganisation         @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
+  requirements EnterpriseStandardRequirement[]
+  portfolios   EnterprisePortfolio[]
+
+  @@index([enterpriseId])
+}
+
+model EnterpriseStandardRequirement {
+  id         String              @id @default(cuid())
+  standardId String
+  domainKey  EnterpriseDomainKey
+  ruleKey    String
+  threshold  Int?
+  label      String
+  createdAt  DateTime            @default(now())
+
+  standard   EnterpriseStandard  @relation(fields: [standardId], references: [id], onDelete: Cascade)
+
+  @@unique([standardId, ruleKey])
+  @@index([standardId])
+}
+
+model EnterprisePortfolio {
+  id           String                  @id @default(cuid())
+  enterpriseId String
+  name         String
+  sector       String?
+  region       String?
+  standardId   String?
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  enterprise   EnterpriseOrganisation  @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
+  standard     EnterpriseStandard?     @relation(fields: [standardId], references: [id], onDelete: SetNull)
+  memberships  EnterpriseMembership[]
+  userScopes   EnterpriseUserPortfolio[]
+  snapshots    EnterpriseAssuranceSnapshot[]
+  alerts       EnterpriseAlert[]
+  invites      EnterpriseInvite[]
+  importBatches EnterpriseImportBatch[]
+  statSnapshots EnterpriseStatSnapshot[]
+  statRollups  EnterpriseStatRollup[]
+
+  @@index([enterpriseId])
+  @@index([standardId])
+}
+
+model EnterpriseUser {
+  id           String                 @id @default(cuid())
+  userId       String
+  enterpriseId String
+  role         EnterpriseRole
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+
+  user         User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enterprise   EnterpriseOrganisation @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
+  portfolios   EnterpriseUserPortfolio[]
+
+  @@unique([userId, enterpriseId])
+  @@index([userId])
+  @@index([enterpriseId])
+}
+
+model EnterpriseUserPortfolio {
+  id               String              @id @default(cuid())
+  enterpriseUserId String
+  portfolioId      String
+
+  enterpriseUser   EnterpriseUser      @relation(fields: [enterpriseUserId], references: [id], onDelete: Cascade)
+  portfolio        EnterprisePortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@unique([enterpriseUserId, portfolioId])
+  @@index([portfolioId])
+}
+
+model EnterpriseMembership {
+  id                    String                      @id @default(cuid())
+  portfolioId           String
+  tenantId              String
+  relationshipType      EnterpriseRelationshipType  @default(OTHER)
+  status                EnterpriseMembershipStatus  @default(PENDING)
+  requiresCompanyConsent Boolean                    @default(true)
+  shareLossStatistics   Boolean                     @default(false)
+  invitedAt             DateTime?
+  acceptedAt            DateTime?
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+
+  portfolio             EnterprisePortfolio         @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  tenant                Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  access                EnterpriseMembershipAccess[]
+  snapshots             EnterpriseAssuranceSnapshot[]
+  alerts                EnterpriseAlert[]
+  evidenceShares        EnterpriseEvidenceShare[]
+  improvementRequests   EnterpriseImprovementRequest[]
+  statSnapshots         EnterpriseStatSnapshot[]
+
+  @@unique([portfolioId, tenantId])
+  @@index([tenantId])
+  @@index([portfolioId, status])
+}
+
+model EnterpriseMembershipAccess {
+  id              String                    @id @default(cuid())
+  membershipId    String
+  domainKey       EnterpriseDomainKey
+  visibilityLevel EnterpriseVisibilityLevel @default(NONE)
+
+  membership      EnterpriseMembership      @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, domainKey])
+  @@index([membershipId])
+}
+
+model EnterpriseAssuranceSnapshot {
+  id             String                   @id @default(cuid())
+  membershipId   String
+  portfolioId    String
+  enterpriseId   String
+  standardId     String?
+  overallPercent Int
+  overallBand    EnterpriseAssuranceBand
+  domainBands    Json
+  activityAt     DateTime?
+  trend          EnterpriseTrend?
+  capturedAt     DateTime                 @default(now())
+
+  membership     EnterpriseMembership     @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  portfolio      EnterprisePortfolio      @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  enterprise     EnterpriseOrganisation   @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
+
+  @@index([membershipId, capturedAt(sort: Desc)])
+  @@index([portfolioId, capturedAt(sort: Desc)])
+  @@index([enterpriseId, overallBand, capturedAt(sort: Desc)])
+}
+
+model EnterpriseAlert {
+  id           String                  @id @default(cuid())
+  enterpriseId String
+  portfolioId  String?
+  membershipId String?
+  type         String
+  severity     EnterpriseAlertSeverity @default(WARNING)
+  title        String
+  summary      String                  @db.Text
+  countValue   Int?
+  acknowledgedAt DateTime?
+  createdAt    DateTime                @default(now())
+
+  enterprise   EnterpriseOrganisation  @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
+  portfolio    EnterprisePortfolio?    @relation(fields: [portfolioId], references: [id], onDelete: SetNull)
+  membership   EnterpriseMembership?   @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+
+  @@index([enterpriseId, createdAt(sort: Desc)])
+  @@index([membershipId])
+}
+
+model EnterpriseEvidenceShare {
+  id            String               @id @default(cuid())
+  membershipId  String
+  documentId    String
+  sharedByUserId String?
+  createdAt     DateTime             @default(now())
+
+  membership    EnterpriseMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  document      Document             @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, documentId])
+  @@index([membershipId])
+}
+
+model EnterpriseImprovementRequest {
+  id                String                       @id @default(cuid())
+  membershipId      String
+  requestedByUserId String?
+  title             String
+  message           String                       @db.Text
+  status            EnterpriseImprovementStatus  @default(REQUESTED)
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
+
+  membership        EnterpriseMembership         @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  requestedBy       User?                        @relation("EnterpriseImprovementRequester", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  measures          Measure[]
+
+  @@index([membershipId])
+}
+
+model EnterpriseAdvisorAssignment {
+  id                   String                 @id @default(cuid())
+  enterpriseId         String
+  userId               String
+  scopeType            EnterpriseAdvisorScope
+  scopeId              String
+  canAssistInWorkspace Boolean                @default(false)
+  createdAt            DateTime               @default(now())
+
+  enterprise           EnterpriseOrganisation @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
+  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([enterpriseId])
+  @@index([userId])
+  @@index([scopeType, scopeId])
+}
+
+model EnterpriseInvite {
+  id               String                     @id @default(cuid())
+  enterpriseId     String
+  portfolioId      String
+  tenantId         String?
+  companyName      String
+  companyNumber    String?
+  contactEmail     String
+  token            String                     @unique
+  status           EnterpriseInviteStatus     @default(INVITED)
+  relationshipType EnterpriseRelationshipType @default(OTHER)
+  createdByUserId  String?
+  createdAt        DateTime                   @default(now())
+  respondedAt      DateTime?
+
+  enterprise       EnterpriseOrganisation     @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
+  portfolio        EnterprisePortfolio        @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  tenant           Tenant?                    @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([enterpriseId])
+  @@index([token])
+  @@index([contactEmail])
+}
+
+model EnterpriseImportBatch {
+  id              String                 @id @default(cuid())
+  enterpriseId    String
+  portfolioId     String?
+  filename        String
+  status          EnterpriseImportStatus @default(PENDING)
+  createdByUserId String?
+  createdAt       DateTime               @default(now())
+  completedAt     DateTime?
+
+  enterprise      EnterpriseOrganisation @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
+  portfolio       EnterprisePortfolio?   @relation(fields: [portfolioId], references: [id], onDelete: SetNull)
+  rows            EnterpriseImportRow[]
+
+  @@index([enterpriseId])
+}
+
+model EnterpriseImportRow {
+  id            String                 @id @default(cuid())
+  batchId       String
+  companyName   String
+  companyNumber String?
+  email         String?
+  portfolioName String?
+  status        EnterpriseInviteStatus @default(INVITED)
+  tenantId      String?
+  error         String?
+
+  batch         EnterpriseImportBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId])
+}
+
+model EnterpriseStatSnapshot {
+  id                   String                     @id @default(cuid())
+  membershipId         String
+  portfolioId          String
+  enterpriseId         String
+  period               String
+  periodType           String
+  industry             String?
+  city                 String?
+  region               String?
+  sizeBand             String?
+  relationshipType     EnterpriseRelationshipType
+  incidentTotal        Int                        @default(0)
+  incidentOpen         Int                        @default(0)
+  nearMissCount        Int                        @default(0)
+  accidentCount        Int                        @default(0)
+  fatalCount           Int                        @default(0)
+  lostTimeCount        Int                        @default(0)
+  riddorCount          Int                        @default(0)
+  firstAidCount        Int                        @default(0)
+  specifiedInjuryCount Int                        @default(0)
+  overSevenDayCount    Int                        @default(0)
+  lostWorkdays         Int                        @default(0)
+  estimatedDamageCost  Float?
+  trir                 Float?
+  ltir                 Float?
+  avgMttrDays          Float?
+  byType               Json
+  bySeverity           Json
+  capturedAt           DateTime                   @default(now())
+
+  membership           EnterpriseMembership       @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  portfolio            EnterprisePortfolio        @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  enterprise           EnterpriseOrganisation     @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, period, periodType])
+  @@index([enterpriseId, period])
+  @@index([portfolioId, period])
+}
+
+model EnterpriseStatRollup {
+  id            String                  @id @default(cuid())
+  enterpriseId  String
+  portfolioId   String?
+  dimension     String
+  dimensionValue String
+  period        String
+  periodType    String
+  companyCount  Int                     @default(0)
+  incidentTotal Int                     @default(0)
+  nearMissCount Int                     @default(0)
+  accidentCount Int                     @default(0)
+  fatalCount    Int                     @default(0)
+  lostTimeCount Int                     @default(0)
+  riddorCount   Int                     @default(0)
+  avgTrir       Float?
+  avgLtir       Float?
+  metrics       Json
+  capturedAt    DateTime                @default(now())
+
+  enterprise    EnterpriseOrganisation  @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
+  portfolio     EnterprisePortfolio?    @relation(fields: [portfolioId], references: [id], onDelete: SetNull)
+
+  @@unique([enterpriseId, portfolioId, dimension, dimensionValue, period, periodType])
+  @@index([enterpriseId, dimension, period])
 }

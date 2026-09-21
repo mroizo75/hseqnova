@@ -73,6 +73,8 @@ export function IsoContextInterview({ scope }: { scope: IsoScopeRow | null }) {
         inclusions: form.get("inclusions"),
         exclusions: form.get("exclusions"),
         sites: form.get("sites"),
+        excludeDesign: form.get("excludeDesign") === "on",
+        excludeDesignJustification: form.get("excludeDesignJustification"),
         approve: true,
       });
     }
@@ -186,8 +188,20 @@ export function IsoContextInterview({ scope }: { scope: IsoScopeRow | null }) {
               <Input id="sites" name="sites" defaultValue={scope?.sites ?? ""} />
               <Label htmlFor="inclusions">Inclusions</Label>
               <Textarea id="inclusions" name="inclusions" rows={2} defaultValue={scope?.inclusions ?? ""} />
-              <Label htmlFor="exclusions">Exclusions (justify)</Label>
+              <Label htmlFor="exclusions">Other exclusions (justify)</Label>
               <Textarea id="exclusions" name="exclusions" rows={2} defaultValue={scope?.exclusions ?? ""} />
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" name="excludeDesign" className="mt-1" defaultChecked={scope?.excludeDesign} />
+                <span>We do not design products or services — exclude ISO 9001 8.3</span>
+              </label>
+              <Label htmlFor="excludeDesignJustification">Why 8.3 does not apply</Label>
+              <Textarea
+                id="excludeDesignJustification"
+                name="excludeDesignJustification"
+                rows={2}
+                defaultValue={scope?.excludeDesignJustification ?? ""}
+                placeholder="e.g. We install to the customer’s design and do not carry out design and development."
+              />
             </>
           ) : null}
           <div className="flex gap-2 pt-2">

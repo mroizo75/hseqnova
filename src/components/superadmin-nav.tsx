@@ -44,6 +44,7 @@ const allNavItems: NavItem[] = [
   { href: "/admin/support", label: "Support", icon: Headphones },
   { href: "/admin/registrations", label: "New registrations", icon: UserPlus },
   { href: "/admin/tenants", label: "Organisations", icon: Building2 },
+  { href: "/admin/enterprises", label: "Enterprise", icon: Shield },
   { href: "/admin/invoices", label: "Invoices", icon: FileText },
   { href: "/admin/legal-references", label: "Legal register", icon: Scale },
   { href: "/admin/newsletter", label: "Newsletter", icon: FileText },

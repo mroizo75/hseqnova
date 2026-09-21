@@ -1,3 +1,5 @@
+import { evaluateAdvisorCompanyInvite } from "@/lib/enterprise-membership";
+
 export const EXTERNAL_CP_INVITE_DENIED =
   "Only HSEQ Nova can authorise an external competent person.";
 
@@ -5,6 +7,9 @@ export type ExistingUserInviteInput = {
   alreadyInThisTenant: boolean;
   otherTenantCount: number;
   canBeExternalCompetentPerson: boolean;
+  companyAdminConfirmed?: boolean;
+  hasActiveMembership?: boolean;
+  hasAdvisorAssignment?: boolean;
 };
 
 export type ExistingUserInviteResult =
@@ -12,11 +17,16 @@ export type ExistingUserInviteResult =
   | { ok: false; status: 403 | 409; error: string };
 
 export function evaluateExistingUserInvite(input: ExistingUserInviteInput): ExistingUserInviteResult {
-  if (input.alreadyInThisTenant) {
-    return { ok: false, status: 409, error: "This person is already a member of this company" };
-  }
-  if (input.otherTenantCount > 0 && !input.canBeExternalCompetentPerson) {
-    return { ok: false, status: 403, error: EXTERNAL_CP_INVITE_DENIED };
+  const result = evaluateAdvisorCompanyInvite({
+    alreadyInThisTenant: input.alreadyInThisTenant,
+    otherTenantCount: input.otherTenantCount,
+    canBeExternalCompetentPerson: input.canBeExternalCompetentPerson,
+    companyAdminConfirmed: Boolean(input.companyAdminConfirmed),
+    hasActiveMembership: Boolean(input.hasActiveMembership),
+    hasAdvisorAssignment: Boolean(input.hasAdvisorAssignment),
+  });
+  if (result.ok === false) {
+    return { ok: false, status: result.status, error: result.error };
   }
   return { ok: true, resetPassword: false };
 }

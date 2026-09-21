@@ -105,6 +105,14 @@ export function IsoClauseMatrix({
                     {effective === "MAJOR_GAP" ? (
                       <p className="text-xs font-medium text-red-700">Major gap — blocks READY</p>
                     ) : null}
+                    {row.documents.some((doc) => doc.status === "APPROVED") ? (
+                      <p className="text-xs text-emerald-800">
+                        {row.documents.filter((doc) => doc.status === "APPROVED").length} approved document
+                        {row.documents.filter((doc) => doc.status === "APPROVED").length === 1 ? "" : "s"}
+                      </p>
+                    ) : row.clause.needsControlledDocument ? (
+                      <p className="text-xs text-amber-800">Needs an approved procedure on this clause</p>
+                    ) : null}
                   </td>
                   <td className="px-3 py-2">{AUTO_LABEL[row.autoLevel]}</td>
                   <td className="px-3 py-2" colSpan={4}>
@@ -154,8 +162,8 @@ export function IsoClauseMatrix({
                         <Button type="submit" size="sm" disabled={busy === row.requirement.id}>
                           Save
                         </Button>
-                        <Link className="text-xs underline underline-offset-2" href={row.clause.href}>
-                          Open
+                        <Link className="text-xs underline underline-offset-2" href={`/dashboard/iso/clauses/${encodeURIComponent(row.clause.id)}`}>
+                          Work this clause
                         </Link>
                       </div>
                     </form>

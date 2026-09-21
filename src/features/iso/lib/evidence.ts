@@ -37,12 +37,20 @@ export type IsoEvidenceSnapshot = {
   fireAssessment: boolean;
   completedAuditCount: number;
   auditWithIsoClauses: boolean;
+  auditCovers45001: boolean;
+  auditCovers9001: boolean;
   completedReviewCount: number;
   incidentCount: number;
   nearMissCount: number;
   whistleblowingCount: number;
   actionsWithEffectiveness: number;
   openActionCount: number;
+  processCount: number;
+  customerFeedbackCount: number;
+  approvedClauseKeys: string[];
+  documentControlAdequate: boolean;
+  excludeDesign: boolean;
+  excludeDesignJustified: boolean;
 };
 
 export type IsoClauseStatus = {
@@ -203,8 +211,12 @@ export function evaluateEvidenceKey(
       };
     case "documents":
       return {
-        level: levelFor(snap.documentCount > 0, false),
-        detail: snap.documentCount > 0 ? `${snap.documentCount} controlled documents` : "Add the first controlled document",
+        level: levelFor(snap.documentControlAdequate, snap.documentCount > 0),
+        detail: snap.documentControlAdequate
+          ? "Controlled documents have owner, version and review date"
+          : snap.documentCount > 0
+            ? "Approve documents and set owner plus next review date (ISO 7.5)"
+            : "Add the first controlled document",
       };
     case "operationalControl":
       return {
@@ -259,15 +271,42 @@ export function evaluateEvidenceKey(
         level: levelFor(snap.interestedPartyCount > 0, false),
         detail: "Customer and interested-party needs are on the register",
       };
+    case "customerSatisfaction":
+      return {
+        level: levelFor(snap.customerFeedbackCount > 0, snap.interestedPartyCount > 0),
+        detail:
+          snap.customerFeedbackCount > 0
+            ? `${snap.customerFeedbackCount} customer feedback records`
+            : "Record the first customer perception (ISO 9001 9.1.2)",
+      };
+    case "processes":
+      return {
+        level: levelFor(snap.processCount >= 2, snap.processCount > 0),
+        detail:
+          snap.processCount >= 2
+            ? `${snap.processCount} QMS processes named`
+            : snap.processCount === 1
+              ? "Add at least one more process so interactions are visible"
+              : "Name the processes that deliver the work (ISO 9001 4.4)",
+      };
+    case "design":
+      return {
+        level: levelFor(snap.excludeDesignJustified || snap.approvedClauseKeys.includes("9001-8.3"), false),
+        detail: snap.excludeDesignJustified
+          ? "Clause 8.3 excluded with written justification (ISO 9001 4.3)"
+          : snap.approvedClauseKeys.includes("9001-8.3")
+            ? "Design records are controlled against 8.3"
+            : "Exclude 8.3 in the approved scope with justification, or attach design records",
+      };
     case "internalAudit":
       return {
-        level: levelFor(snap.completedAuditCount > 0 && snap.auditWithIsoClauses, snap.completedAuditCount > 0),
+        level: levelFor(snap.auditCovers45001 && snap.auditCovers9001, snap.auditWithIsoClauses || snap.completedAuditCount > 0),
         detail:
-          snap.completedAuditCount === 0
-            ? "No completed internal audit"
-            : snap.auditWithIsoClauses
-              ? `${snap.completedAuditCount} completed audits`
-              : "Complete an audit against ISO 45001 or 9001 clauses",
+          snap.auditCovers45001 && snap.auditCovers9001
+            ? "Internal audits cover ISO 45001 and ISO 9001 clauses"
+            : snap.completedAuditCount === 0
+              ? "No completed internal audit"
+              : "Complete internal audit findings against both ISO 45001 and ISO 9001 clauses",
       };
     case "managementReview":
       return {
@@ -391,10 +430,18 @@ export const EMPTY_ISO_SNAPSHOT: IsoEvidenceSnapshot = {
   fireAssessment: false,
   completedAuditCount: 0,
   auditWithIsoClauses: false,
+  auditCovers45001: false,
+  auditCovers9001: false,
   incidentCount: 0,
   nearMissCount: 0,
   whistleblowingCount: 0,
   actionsWithEffectiveness: 0,
   openActionCount: 0,
   completedReviewCount: 0,
+  processCount: 0,
+  customerFeedbackCount: 0,
+  approvedClauseKeys: [],
+  documentControlAdequate: false,
+  excludeDesign: false,
+  excludeDesignJustified: false,
 };

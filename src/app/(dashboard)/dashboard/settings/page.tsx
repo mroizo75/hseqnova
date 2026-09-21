@@ -139,6 +139,13 @@ export default async function SettingsPage({
             currentlyHidden={tenant.setupGuideHidden ?? false}
             isAdmin={isAdmin}
           />
+          {isAdmin ? (
+            <p className="text-sm">
+              <a className="underline" href="/dashboard/settings/connected-organisations">
+                Connected organisations
+              </a>
+            </p>
+          ) : null}
         </TabsContent>
 
         <TabsContent value="visibility" className="space-y-6">

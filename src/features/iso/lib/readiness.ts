@@ -1,5 +1,6 @@
 import { ISO_PHASES, type IsoPhaseId } from "@/features/iso/lib/clauses";
 import type { IsoClauseStatus, IsoCoverageLevel, IsoEvidenceSnapshot } from "@/features/iso/lib/evidence";
+import { missingControlledDocumentClauses } from "@/features/iso/lib/documented-information";
 
 export type IsoAssessedLevel = "COMPLIANT" | "PARTIAL" | "GAP" | "MAJOR_GAP";
 
@@ -135,6 +136,62 @@ export function buildIsoReadiness(input: IsoReadinessInput): IsoReadiness {
           ]
             .filter(Boolean)
             .join(". "),
+    },
+    {
+      id: "document-control",
+      label: "Documented information is controlled (ISO 7.5)",
+      met: input.snapshot.documentControlAdequate,
+      detail: input.snapshot.documentControlAdequate
+        ? "Approved documents have an owner, version and next review date"
+        : "Approve at least one controlled document with an owner and review date — drafts are not evidence",
+    },
+    {
+      id: "clause-procedures",
+      label: "Required procedures are attached to the clauses they support",
+      met: missingControlledDocumentClauses(input.snapshot.approvedClauseKeys).length === 0,
+      detail:
+        missingControlledDocumentClauses(input.snapshot.approvedClauseKeys).length === 0
+          ? "Each clause that needs a procedure has an approved document linked"
+          : `Attach an approved document on: ${missingControlledDocumentClauses(input.snapshot.approvedClauseKeys)
+              .map((clause) => `${clause.standard === "ISO_45001" ? "45001" : "9001"} ${clause.clause}`)
+              .join(", ")}`,
+    },
+    {
+      id: "qms-processes",
+      label: "QMS processes are named (ISO 9001 4.4)",
+      met: input.snapshot.processCount >= 2,
+      detail:
+        input.snapshot.processCount >= 2
+          ? `${input.snapshot.processCount} processes on the register`
+          : "Name at least two processes (for example enquiry-to-delivery and inspection/handover)",
+    },
+    {
+      id: "customer-satisfaction",
+      label: "Customer perception is monitored (ISO 9001 9.1.2)",
+      met: input.snapshot.customerFeedbackCount > 0,
+      detail:
+        input.snapshot.customerFeedbackCount > 0
+          ? `${input.snapshot.customerFeedbackCount} customer feedback records`
+          : "Record customer feedback — praise, complaint or survey — with what you did about it",
+    },
+    {
+      id: "design-scope",
+      label: "ISO 9001 8.3 is excluded with justification, or design records exist",
+      met: input.snapshot.excludeDesignJustified || input.snapshot.approvedClauseKeys.includes("9001-8.3"),
+      detail: input.snapshot.excludeDesignJustified
+        ? "Design and development (8.3) is excluded under 4.3 with a written justification"
+        : input.snapshot.approvedClauseKeys.includes("9001-8.3")
+          ? "Design records are linked to clause 8.3"
+          : "Most contractors exclude 8.3 — tick it on the approved scope and write why",
+    },
+    {
+      id: "both-standards-audit",
+      label: "Internal audit sampled both ISO 45001 and ISO 9001",
+      met: input.snapshot.auditCovers45001 && input.snapshot.auditCovers9001,
+      detail:
+        input.snapshot.auditCovers45001 && input.snapshot.auditCovers9001
+          ? "Completed findings are linked to both standards"
+          : "Complete internal audit findings against ISO 45001 and ISO 9001 clauses",
     },
   ];
 
