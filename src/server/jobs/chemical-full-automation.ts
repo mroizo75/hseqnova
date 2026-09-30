@@ -11,6 +11,7 @@ import { processSDSFromEmail } from "@/lib/email-monitoring";
 import { SupplierSDSManager } from "@/lib/supplier-api";
 import { parseSDSFile } from "@/lib/sds-parser";
 import { getStorage } from "@/lib/storage";
+import { SITE_CONFIG } from "@/lib/seo-config";
 import { createNotification } from "@/server/actions/notification.actions";
 
 /**
@@ -141,7 +142,7 @@ async function sendSDSSuggestionsEmail(
         </ul>
 
         <p>
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://hseqnova.com"}/dashboard/chemicals?filter=suggested-updates" 
+          <a href="${process.env.NEXT_PUBLIC_APP_URL || SITE_CONFIG.url}/dashboard/chemicals?filter=suggested-updates" 
              style="display:inline-block;padding:12px 24px;background:#0066CC;color:white;text-decoration:none;border-radius:6px;margin-top:16px;">
             Se foreslåtte oppdateringer
           </a>

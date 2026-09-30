@@ -8,6 +8,7 @@
 import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { searchSubstanceByCAS } from "@/lib/echa-api";
+import { SITE_CONFIG } from "@/lib/seo-config";
 import { createNotification } from "@/server/actions/notification.actions";
 
 /**
@@ -135,7 +136,7 @@ async function sendCriticalReclassificationAlert(reclass: any) {
           </ol>
 
           <p>
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://hseqnova.com"}/dashboard/chemicals/${chemical.id}" 
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || SITE_CONFIG.url}/dashboard/chemicals/${chemical.id}" 
                style="display:inline-block;padding:12px 24px;background:#dc2626;color:white;text-decoration:none;border-radius:6px;">
               View chemical in HSEQ Nova
             </a>
@@ -240,7 +241,7 @@ export async function checkAgingSDS() {
             </table>
 
             <p>
-              <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://hseqnova.com"}/dashboard/chemicals?filter=aging" 
+              <a href="${process.env.NEXT_PUBLIC_APP_URL || SITE_CONFIG.url}/dashboard/chemicals?filter=aging" 
                  style="display:inline-block;padding:12px 24px;background:#0066CC;color:white;text-decoration:none;border-radius:6px;margin-top:16px;">
                 View all in HSEQ Nova
               </a>
@@ -327,7 +328,7 @@ export async function sendSupplierUpdateRequests() {
             </ol>
 
             <p>
-              <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://hseqnova.com"}/dashboard/chemicals/${chemical.id}" 
+              <a href="${process.env.NEXT_PUBLIC_APP_URL || SITE_CONFIG.url}/dashboard/chemicals/${chemical.id}" 
                  style="display:inline-block;padding:12px 24px;background:#0066CC;color:white;text-decoration:none;border-radius:6px;">
                 Gå til kjemikalie
               </a>

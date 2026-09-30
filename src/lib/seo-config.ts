@@ -2,10 +2,10 @@
  * HSEQ Nova SEO configuration for the UK product.
  */
 
-import { ANNUAL_DISCOUNT_PERCENT, HSEQ_CORE, yearlyPriceGbp } from "@/lib/billing-catalog";
-
 const rawBaseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://hseqnova.co.uk";
-const normalizedBaseUrl = rawBaseUrl.startsWith("http") ? rawBaseUrl : `https://${rawBaseUrl}`;
+const normalizedBaseUrl = (
+  rawBaseUrl.startsWith("http") ? rawBaseUrl : `https://${rawBaseUrl}`
+).replace(/\/+$/, "");
 
 export const SITE_CONFIG = {
   name: "HSEQ Nova",
@@ -113,90 +113,6 @@ export const ORGANIZATION_SCHEMA = {
       },
     ],
   },
-} as const;
-
-export const SOFTWARE_PRODUCT_SCHEMA = {
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  name: "HSEQ Nova",
-  applicationCategory: "BusinessApplication",
-  operatingSystem: "Web",
-  offers: {
-    "@type": "AggregateOffer",
-    priceCurrency: "GBP",
-    lowPrice: "29",
-    highPrice: "152",
-    priceSpecification: {
-      "@type": "UnitPriceSpecification",
-      price: "29",
-      priceCurrency: "GBP",
-      unitText: "MONTH",
-      valueAddedTaxIncluded: false,
-    },
-  },
-  featureList: [
-    "Living health and safety policy",
-    "Digital accident book",
-    "RIDDOR triage",
-    "Risk assessments",
-    "Workplace inspections",
-    "Fire drills",
-    "Training records",
-    "Organisation chart",
-    "RAMS add-on",
-    "COSHH add-on",
-    "CDM 2015 add-on",
-    "Digital safety board add-on",
-  ],
-  description: SITE_CONFIG.description,
-  screenshot: `${SITE_CONFIG.url}/opengraph-image`,
-} as const;
-
-export const FAQ_SCHEMA = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: [
-    {
-      "@type": "Question",
-      name: "What is HSEQ Nova?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "HSEQ Nova is health and safety software for UK employers. It keeps the written policy, digital accident book, RIDDOR triage, risk assessments, workplace inspections, training and fire drills in one system — built around HSWA, MHSWR, RIDDOR, COSHH and CDM.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "How much does HSEQ Nova cost?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: `Core is £${HSEQ_CORE.monthlyPriceGbp} per month excluding VAT, or £${yearlyPriceGbp(HSEQ_CORE.monthlyPriceGbp).toFixed(2)} per year with ${ANNUAL_DISCOUNT_PERCENT}% off, billed per company with unlimited users. RAMS, COSHH, CDM 2015, the digital safety board, audits and environment are optional add-ons. The supplier is in Norway; Stripe Tax applies reverse charge for UK VAT-registered customers.`,
-      },
-    },
-    {
-      "@type": "Question",
-      name: "Does HSEQ Nova replace a competent person?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "No. HSEQ Nova is the system your competent person and managers use. It does not replace the legal duty to appoint competent help under MHSWR regulation 7, and it is not health and safety consultancy.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "Does HSEQ Nova include a digital accident book?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Yes. You log injuries and near misses in a digital accident book. If the event is reportable under RIDDOR 2013, the system flags the correct deadline — without delay for deaths, 10 days for specified injuries, 15 days for over-seven-day injuries.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "Can I add RAMS, COSHH or CDM later?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Yes. Core HSEQ is always on. RAMS, COSHH, CDM 2015, the digital safety board, audits and environment are add-ons you switch on when the work asks for them.",
-      },
-    },
-  ],
 } as const;
 
 // BreadcrumbList for search-result navigation

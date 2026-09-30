@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { PAGE_METADATA, getCanonicalUrl, ROBOTS_CONFIG, SITE_CONFIG } from "@/lib/seo-config";
+import {
+  PAGE_METADATA,
+  getCanonicalUrl,
+  getOpenGraphDefaults,
+  getTwitterDefaults,
+  ROBOTS_CONFIG,
+  SITE_CONFIG,
+} from "@/lib/seo-config";
 import {
   ADDON_PACKS,
   ANNUAL_DISCOUNT_PERCENT,
@@ -15,6 +22,12 @@ export const metadata: Metadata = {
   description: PAGE_METADATA.priser.description,
   alternates: { canonical: getCanonicalUrl("/pricing") },
   robots: ROBOTS_CONFIG,
+  openGraph: getOpenGraphDefaults(
+    PAGE_METADATA.priser.title,
+    PAGE_METADATA.priser.description,
+    "/pricing"
+  ),
+  twitter: getTwitterDefaults(PAGE_METADATA.priser.title, PAGE_METADATA.priser.description),
 };
 
 function formatGbp(amount: number): string {

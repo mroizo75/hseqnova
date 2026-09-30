@@ -5,6 +5,7 @@
 
 import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
+import { SITE_CONFIG } from "@/lib/seo-config";
 import { createNotification } from "@/server/actions/notification.actions";
 
 /**
@@ -103,7 +104,7 @@ export async function checkOutdatedSDS() {
                   ${outdatedChemicals.length > 5 ? `<li>... og ${outdatedChemicals.length - 5} til</li>` : ""}
                 </ul>
                 <p>
-                  <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://hseqnova.com"}/dashboard/chemicals" 
+                  <a href="${process.env.NEXT_PUBLIC_APP_URL || SITE_CONFIG.url}/dashboard/chemicals" 
                      style="display:inline-block;padding:12px 24px;background:#0066CC;color:white;text-decoration:none;border-radius:6px;">
                     View COSHH register
                   </a>
@@ -214,7 +215,7 @@ export async function checkCMRAndSubstitution() {
                   ${dangerousChemicals.length > 5 ? `<li>... og ${dangerousChemicals.length - 5} til</li>` : ""}
                 </ul>
                 <p>
-                  <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://hseqnova.com"}/dashboard/chemicals?filter=high-risk" 
+                  <a href="${process.env.NEXT_PUBLIC_APP_URL || SITE_CONFIG.url}/dashboard/chemicals?filter=high-risk" 
                      style="display:inline-block;padding:12px 24px;background:#ff4444;color:white;text-decoration:none;border-radius:6px;">
                     Gjennomgå farlige kjemikalier
                   </a>

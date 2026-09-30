@@ -1,6 +1,6 @@
 "use client";
 
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
@@ -10,8 +10,6 @@ import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
 import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
-import { TextStyle } from "@tiptap/extension-text-style";
-import { Color } from "@tiptap/extension-color";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -20,24 +18,27 @@ import {
   Italic,
   Underline as UnderlineIcon,
   Strikethrough,
-  Code,
-  Heading1,
   Heading2,
   Heading3,
+  Heading4,
   List,
   ListOrdered,
   Quote,
   Undo,
   Redo,
   Link as LinkIcon,
+  Unlink,
   Image as ImageIcon,
   Table as TableIcon,
   AlignLeft,
   AlignCenter,
   AlignRight,
+  Minus,
   Loader2,
+  type LucideIcon,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface TipTapEditorProps {
@@ -47,56 +48,175 @@ interface TipTapEditorProps {
   className?: string;
 }
 
+type ToolbarButtonProps = {
+  label: string;
+  icon: LucideIcon;
+  onClick: () => void;
+  active?: boolean;
+  disabled?: boolean;
+  busy?: boolean;
+};
+
+function ToolbarButton({ label, icon: Icon, onClick, active, disabled, busy }: ToolbarButtonProps) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      onClick={onClick}
+      disabled={disabled || busy}
+      aria-label={label}
+      aria-pressed={active}
+      title={label}
+      className={cn("h-9 w-9 p-0", active && "bg-muted")}
+    >
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
+    </Button>
+  );
+}
+
+function normaliseLink(raw: string): string | null {
+  const value = raw.trim();
+  if (!value) {
+    return null;
+  }
+  if (/^(https:\/\/|mailto:|tel:|\/|#)/i.test(value)) {
+    return value;
+  }
+  if (/^http:\/\//i.test(value)) {
+    return value.replace(/^http:/i, "https:");
+  }
+  return `https://${value}`;
+}
+
+async function uploadImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch("/api/admin/blog/upload", { method: "POST", body: formData });
+  const body = (await response.json().catch(() => ({}))) as { url?: string; message?: string };
+  if (!response.ok || !body.url) {
+    throw new Error(body.message || "Image upload failed");
+  }
+  return body.url;
+}
+
+function Toolbar({ editor }: { editor: Editor }) {
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  const handleImageUpload = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/jpeg,image/png,image/webp,image/gif";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const alt = window.prompt("Describe the image for screen readers and search engines (alt text):")?.trim();
+      if (!alt) {
+        toast.error("Alt text is required for images");
+        return;
+      }
+      setIsUploadingImage(true);
+      try {
+        const src = await uploadImage(file);
+        editor.chain().focus().setImage({ src, alt }).run();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Image upload failed");
+      } finally {
+        setIsUploadingImage(false);
+      }
+    };
+    input.click();
+  };
+
+  const handleLinkAdd = () => {
+    const previous = editor.getAttributes("link").href as string | undefined;
+    const raw = window.prompt("Link address (https://…, /page or mailto:)", previous ?? "");
+    if (raw === null) return;
+    const href = normaliseLink(raw);
+    if (!href) {
+      editor.chain().focus().unsetLink().run();
+      return;
+    }
+    editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
+  };
+
+  return (
+    <div className="flex flex-wrap gap-1 border-b bg-muted/50 p-2" role="toolbar" aria-label="Formatting">
+      <ToolbarButton label="Bold" icon={Bold} active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} />
+      <ToolbarButton label="Italic" icon={Italic} active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()} />
+      <ToolbarButton label="Underline" icon={UnderlineIcon} active={editor.isActive("underline")} onClick={() => editor.chain().focus().toggleUnderline().run()} />
+      <ToolbarButton label="Strikethrough" icon={Strikethrough} active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()} />
+
+      <Separator orientation="vertical" className="mx-1 h-8" />
+
+      <ToolbarButton label="Heading 2" icon={Heading2} active={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} />
+      <ToolbarButton label="Heading 3" icon={Heading3} active={editor.isActive("heading", { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} />
+      <ToolbarButton label="Heading 4" icon={Heading4} active={editor.isActive("heading", { level: 4 })} onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()} />
+
+      <Separator orientation="vertical" className="mx-1 h-8" />
+
+      <ToolbarButton label="Bulleted list" icon={List} active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()} />
+      <ToolbarButton label="Numbered list" icon={ListOrdered} active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()} />
+      <ToolbarButton label="Quote" icon={Quote} active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()} />
+      <ToolbarButton label="Divider" icon={Minus} onClick={() => editor.chain().focus().setHorizontalRule().run()} />
+
+      <Separator orientation="vertical" className="mx-1 h-8" />
+
+      <ToolbarButton label="Align left" icon={AlignLeft} active={editor.isActive({ textAlign: "left" })} onClick={() => editor.chain().focus().setTextAlign("left").run()} />
+      <ToolbarButton label="Align centre" icon={AlignCenter} active={editor.isActive({ textAlign: "center" })} onClick={() => editor.chain().focus().setTextAlign("center").run()} />
+      <ToolbarButton label="Align right" icon={AlignRight} active={editor.isActive({ textAlign: "right" })} onClick={() => editor.chain().focus().setTextAlign("right").run()} />
+
+      <Separator orientation="vertical" className="mx-1 h-8" />
+
+      <ToolbarButton label="Add link" icon={LinkIcon} active={editor.isActive("link")} onClick={handleLinkAdd} />
+      <ToolbarButton label="Remove link" icon={Unlink} disabled={!editor.isActive("link")} onClick={() => editor.chain().focus().unsetLink().run()} />
+      <ToolbarButton label="Insert image" icon={ImageIcon} busy={isUploadingImage} onClick={handleImageUpload} />
+      <ToolbarButton label="Insert table" icon={TableIcon} onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} />
+
+      <Separator orientation="vertical" className="mx-1 h-8" />
+
+      <ToolbarButton label="Undo" icon={Undo} disabled={!editor.can().undo()} onClick={() => editor.chain().focus().undo().run()} />
+      <ToolbarButton label="Redo" icon={Redo} disabled={!editor.can().redo()} onClick={() => editor.chain().focus().redo().run()} />
+    </div>
+  );
+}
+
 export function TipTapEditor({
   content,
   onChange,
-  placeholder = "Skriv innholdet ditt her...",
+  placeholder = "Write the article…",
   className,
 }: TipTapEditorProps) {
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3],
-        },
+        heading: { levels: [2, 3, 4] },
       }),
-      Image.configure({
-        inline: true,
-        allowBase64: true,
-      }),
+      Image.configure({ inline: false, allowBase64: false }),
       Link.configure({
         openOnClick: false,
-        HTMLAttributes: {
-          class: "text-primary underline cursor-pointer",
-        },
+        autolink: true,
+        HTMLAttributes: { rel: "noopener noreferrer" },
       }),
-      TextAlign.configure({
-        types: ["heading", "paragraph"],
-      }),
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
       Underline,
-      Table.configure({
-        resizable: true,
-      }),
+      Table.configure({ resizable: false }),
       TableRow,
       TableHeader,
       TableCell,
-      TextStyle,
-      Color,
-      Placeholder.configure({
-        placeholder,
-      }),
+      Placeholder.configure({ placeholder }),
     ],
     content,
-    onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
+    onUpdate: ({ editor: current }) => {
+      onChange(current.getHTML());
     },
     editorProps: {
       attributes: {
-        class: "prose prose-sm max-w-none focus:outline-none min-h-[400px] p-4",
+        class: "prose prose-sm sm:prose-base max-w-none focus:outline-none min-h-[420px] p-4",
+        "aria-label": "Article body",
       },
     },
   });
@@ -107,267 +227,22 @@ export function TipTapEditor({
 
   if (!isMounted || !editor) {
     return (
-      <div className={cn("border rounded-lg overflow-hidden", className)}>
-        <div className="bg-muted/50 border-b p-2 h-[52px]" />
-        <div className="bg-background min-h-[400px] p-4 flex items-center justify-center text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin mr-2" />
-          Laster editor...
+      <div className={cn("overflow-hidden rounded-lg border", className)}>
+        <div className="h-[52px] border-b bg-muted/50 p-2" />
+        <div className="flex min-h-[420px] items-center justify-center bg-background p-4 text-muted-foreground">
+          <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+          Loading editor…
         </div>
       </div>
     );
   }
 
-  const handleImageUpload = async () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/jpeg,image/jpg,image/png,image/webp,image/gif";
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-
-      setIsUploadingImage(true);
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const response = await fetch("/api/admin/blog/upload", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!response.ok) {
-          throw new Error("Upload feilet");
-        }
-
-        const data = await response.json();
-        editor.chain().focus().setImage({ src: data.url }).run();
-      } catch (error) {
-        console.error("Image upload error:", error);
-        alert("Bildeopplasting feilet");
-      } finally {
-        setIsUploadingImage(false);
-      }
-    };
-    input.click();
-  };
-
-  const handleLinkAdd = () => {
-    const url = prompt("Skriv inn URL:");
-    if (url) {
-      editor.chain().focus().setLink({ href: url }).run();
-    }
-  };
-
-  const handleTableAdd = () => {
-    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
-  };
-
   return (
-    <div className={cn("border rounded-lg overflow-hidden", className)}>
-      {/* Toolbar */}
-      <div className="bg-muted/50 border-b p-2 flex flex-wrap gap-1">
-        {/* Text Formatting */}
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          className={editor.isActive("bold") ? "bg-muted" : ""}
-        >
-          <Bold className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          className={editor.isActive("italic") ? "bg-muted" : ""}
-        >
-          <Italic className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleUnderline().run()}
-          className={editor.isActive("underline") ? "bg-muted" : ""}
-        >
-          <UnderlineIcon className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-          className={editor.isActive("strike") ? "bg-muted" : ""}
-        >
-          <Strikethrough className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleCode().run()}
-          className={editor.isActive("code") ? "bg-muted" : ""}
-        >
-          <Code className="h-4 w-4" />
-        </Button>
-
-        <Separator orientation="vertical" className="h-8 mx-1" />
-
-        {/* Headings */}
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-          className={editor.isActive("heading", { level: 1 }) ? "bg-muted" : ""}
-        >
-          <Heading1 className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          className={editor.isActive("heading", { level: 2 }) ? "bg-muted" : ""}
-        >
-          <Heading2 className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-          className={editor.isActive("heading", { level: 3 }) ? "bg-muted" : ""}
-        >
-          <Heading3 className="h-4 w-4" />
-        </Button>
-
-        <Separator orientation="vertical" className="h-8 mx-1" />
-
-        {/* Lists */}
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          className={editor.isActive("bulletList") ? "bg-muted" : ""}
-        >
-          <List className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          className={editor.isActive("orderedList") ? "bg-muted" : ""}
-        >
-          <ListOrdered className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          className={editor.isActive("blockquote") ? "bg-muted" : ""}
-        >
-          <Quote className="h-4 w-4" />
-        </Button>
-
-        <Separator orientation="vertical" className="h-8 mx-1" />
-
-        {/* Alignment */}
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().setTextAlign("left").run()}
-          className={editor.isActive({ textAlign: "left" }) ? "bg-muted" : ""}
-        >
-          <AlignLeft className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().setTextAlign("center").run()}
-          className={editor.isActive({ textAlign: "center" }) ? "bg-muted" : ""}
-        >
-          <AlignCenter className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().setTextAlign("right").run()}
-          className={editor.isActive({ textAlign: "right" }) ? "bg-muted" : ""}
-        >
-          <AlignRight className="h-4 w-4" />
-        </Button>
-
-        <Separator orientation="vertical" className="h-8 mx-1" />
-
-        {/* Media & Links */}
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={handleLinkAdd}
-          disabled={!editor.can().setLink({ href: "" })}
-        >
-          <LinkIcon className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={handleImageUpload}
-          disabled={isUploadingImage}
-        >
-          {isUploadingImage ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <ImageIcon className="h-4 w-4" />
-          )}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={handleTableAdd}
-        >
-          <TableIcon className="h-4 w-4" />
-        </Button>
-
-        <Separator orientation="vertical" className="h-8 mx-1" />
-
-        {/* History */}
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().undo().run()}
-          disabled={!editor.can().undo()}
-        >
-          <Undo className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().redo().run()}
-          disabled={!editor.can().redo()}
-        >
-          <Redo className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Editor Content */}
+    <div className={cn("overflow-hidden rounded-lg border", className)}>
+      <Toolbar editor={editor} />
       <div className="bg-background">
         <EditorContent editor={editor} />
       </div>
     </div>
   );
 }
-

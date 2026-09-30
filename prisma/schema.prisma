@@ -3183,6 +3183,7 @@ model BlogPost {
   excerpt    String  @db.Text // Kort beskrivelse (meta description)
   content    String  @db.Text // Markdown eller rich text
   coverImage String? @db.Text // URL til hovedbilde (signerte URLs kan være lange)
+  coverImageAlt String? @db.Text // Required when coverImage is set (accessibility / image SEO)
 
   // SEO
   metaTitle       String? // Custom SEO title (default: title)
@@ -3200,8 +3201,9 @@ model BlogPost {
   scheduledFor DateTime? // Planlagt publisering
 
   // Forfatter
-  authorId String
-  author   User   @relation(fields: [authorId], references: [id])
+  authorId   String
+  author     User    @relation(fields: [authorId], references: [id])
+  authorName String? // Denormalised so public pages never read User
 
   // Analytics
   viewCount Int @default(0)

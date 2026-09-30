@@ -669,16 +669,16 @@
       "badge": "HSE Courses & First Aid",
       "titleLine1": "Competent employees.",
       "titleLine2": "Safer workplace.",
-      "memberStrong": "HMS Nova members",
+      "memberStrong": "HSEQ Nova members",
       "memberTextPrefix": "get",
       "discountStrong": "20% discount",
-      "memberTextSuffix": "on all HSE courses! All courses are certified and follow Labour Inspection Authority requirements - with automatic competence tracking in HMS Nova.",
+      "memberTextSuffix": "on all HSE courses! All courses are certified and follow Labour Inspection Authority requirements - with automatic competence tracking in HSEQ Nova.",
       "ctaPrimary": "Order HSE course",
       "ctaSecondary": "See course catalog",
       "points": {
         "p1": "Approved course provider (ISO 9001)",
         "p2": "Physical, digital, and hybrid solutions",
-        "p3": "Certificates integrated in HMS Nova",
+        "p3": "Certificates integrated in HSEQ Nova",
         "p4": "Specialist in first aid for children and adults"
       },
       "specialist": {
@@ -733,7 +733,7 @@
     },
     "solution": {
       "badge": "The solution",
-      "title": "HMS Nova = Complete course solution + Automatic tracking",
+      "title": "HSEQ Nova = Complete course solution + Automatic tracking",
       "textPrefix": "We deliver",
       "textStrong": "all mandatory HSE courses",
       "textSuffix": "and keep track of who needs what - and when",
@@ -748,7 +748,7 @@
         },
         "step3": {
           "title": "3. Automatic follow-up",
-          "description": "Certificates are added to HMS Nova. You get automatic alerts when courses expire - no manual work."
+          "description": "Certificates are added to HSEQ Nova. You get automatic alerts when courses expire - no manual work."
         }
       }
     },
@@ -762,7 +762,7 @@
         "target": "Target group:",
         "why": "Why:"
       },
-      "orderFromCompany": "Order from HMS Nova AS",
+      "orderFromCompany": "Order from HSEQ Nova AS",
       "order": "Order"
     },
     "toasts": {
@@ -845,7 +845,7 @@
         }
       },
       "memberDiscount": {
-        "title": "HMS Nova members get 20% discount automatically.",
+        "title": "HSEQ Nova members get 20% discount automatically.",
         "description": "Provide your org. no. or member number in the form."
       },
       "submit": {
@@ -1327,7 +1327,7 @@
       "fields": {
         "provider": {
           "label": "Course provider / Organizer",
-          "placeholder": "E.g. Red Cross, HMS Nova, Internal"
+          "placeholder": "E.g. Red Cross, HSEQ Nova, Internal"
         },
         "completedAt": {
           "label": "Completion date"
@@ -1472,7 +1472,7 @@
       "alertTitle": "✅ Reports go directly to {tenantName}",
       "alertDescriptionPrefix": "All reports sent through this link go",
       "only": "only",
-      "alertDescriptionSuffix": "to your company's HSE responsible or management. No other companies or HMS Nova can see these reports.",
+      "alertDescriptionSuffix": "to your company's HSE responsible or management. No other companies or HSEQ Nova can see these reports.",
       "linkLabel": "Your company's whistleblowing link:",
       "howTitle": "💡 How this works:",
       "points": {
@@ -2132,7 +2132,7 @@
   "employeeLogoutButton": {
     "title": "Log out",
     "dialogTitle": "Log out?",
-    "dialogDescription": "Are you sure you want to log out of HMS Nova?",
+    "dialogDescription": "Are you sure you want to log out of HSEQ Nova?",
     "cancel": "Cancel",
     "confirm": "Yes, log out"
   },

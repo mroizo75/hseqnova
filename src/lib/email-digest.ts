@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
+import { SITE_CONFIG } from "@/lib/seo-config";
 import { addDays, subDays, startOfDay, endOfDay, format } from "date-fns";
 import { enGB } from "date-fns/locale/en-GB";
 
@@ -493,13 +494,13 @@ function generateDigestHtml(data: DigestData, type: "DAILY" | "WEEKLY"): string 
   }
 
   html += `
-        <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://www.hseqnova.com"}/dashboard" class="cta">
+        <a href="${process.env.NEXT_PUBLIC_APP_URL || SITE_CONFIG.url}/dashboard" class="cta">
           Go to HSEQ Nova →
         </a>
       </div>
       <div class="footer">
         <p>This is an automated email from HSEQ Nova.</p>
-        <p>You can change your notification preferences in <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://www.hseqnova.com"}/dashboard/settings">settings</a>.</p>
+        <p>You can change your notification preferences in <a href="${process.env.NEXT_PUBLIC_APP_URL || SITE_CONFIG.url}/dashboard/settings">settings</a>.</p>
       </div>
     </body>
     </html>

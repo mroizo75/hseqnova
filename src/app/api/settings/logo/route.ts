@@ -10,6 +10,7 @@ import { authOptions } from "@/lib/auth";
 import { getAdminDb } from "@/lib/supabase/admin";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getPermissions } from "@/lib/permissions";
+import { SITE_CONFIG } from "@/lib/seo-config";
 import type { Role } from "@prisma/client";
 
 const s3 = new S3Client({
@@ -23,7 +24,7 @@ const s3 = new S3Client({
 });
 
 const BUCKET = process.env.R2_BUCKET_NAME ?? process.env.R2_BUCKET ?? process.env.S3_BUCKET ?? "hmsnova";
-const APP_URL = process.env.NEXTAUTH_URL ?? "https://app.hseqnova.com";
+const APP_URL = process.env.NEXTAUTH_URL ?? SITE_CONFIG.url;
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/svg+xml"];
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB

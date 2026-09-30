@@ -18,6 +18,7 @@ import { MultipleStructuredData } from "@/components/seo/structured-data";
 import { HSEQ_CORE } from "@/lib/billing-catalog";
 import { formatGbp } from "@/lib/homepage-content";
 import {
+  getBreadcrumbSchema,
   getCanonicalUrl,
   getOpenGraphDefaults,
   getTwitterDefaults,
@@ -198,7 +199,15 @@ function getStructuredData(): Array<Record<string, unknown>> {
 export default function RiddorPage() {
   return (
     <div className="home-marketing font-marketing">
-      <MultipleStructuredData dataArray={getStructuredData()} />
+      <MultipleStructuredData
+        dataArray={[
+          ...getStructuredData(),
+          getBreadcrumbSchema([
+            { name: "Home", url: "/" },
+            { name: "Accident book and RIDDOR", url: "/riddor" },
+          ]),
+        ]}
+      />
       <Hero />
       <LegalStrip />
       <RiddorCategories />

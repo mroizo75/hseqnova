@@ -6,13 +6,24 @@ import { authOptions } from "@/lib/auth";
 import { getAdminDb } from "@/lib/supabase/admin";
 import { RegisterForm } from "@/features/signup/components/register-form";
 import { resolveTenantProductAccess } from "@/server/queries/billing.queries";
-import { getCanonicalUrl, ROBOTS_CONFIG } from "@/lib/seo-config";
+import {
+  getCanonicalUrl,
+  getOpenGraphDefaults,
+  getTwitterDefaults,
+  ROBOTS_CONFIG,
+} from "@/lib/seo-config";
+
+const pageTitle = "Start your subscription | HSEQ Nova";
+const pageDescription =
+  "Subscribe to HSEQ Nova Core and optional add-ons. Pay by card or Bacs Direct Debit.";
 
 export const metadata: Metadata = {
-  title: "Start HSEQ Nova",
-  description: "Subscribe to HSEQ Nova Core and optional add-ons. Pay by card or Bacs Direct Debit.",
+  title: pageTitle,
+  description: pageDescription,
   alternates: { canonical: getCanonicalUrl("/register") },
   robots: ROBOTS_CONFIG,
+  openGraph: getOpenGraphDefaults(pageTitle, pageDescription, "/register"),
+  twitter: getTwitterDefaults(pageTitle, pageDescription),
 };
 
 export default async function RegisterPage({

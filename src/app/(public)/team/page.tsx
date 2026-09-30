@@ -5,14 +5,24 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Users } from "lucide-react";
 import { getAllTeamMembers } from "@/lib/team";
+import {
+  getCanonicalUrl,
+  getOpenGraphDefaults,
+  getTwitterDefaults,
+  ROBOTS_CONFIG,
+} from "@/lib/seo-config";
+
+const pageTitle = "Our Team | HSEQ Nova";
+const pageDescription =
+  "Meet the team behind HSEQ Nova – HSEQ experts, sales and health & safety leaders helping UK businesses with safety and quality.";
 
 export const metadata: Metadata = {
-  title: "Our Team | HSEQ Nova",
-  description: "Meet the team behind HSEQ Nova – HSEQ experts, sales and health & safety leaders helping UK businesses with safety and quality.",
-  openGraph: {
-    title: "Our Team | HSEQ Nova",
-    description: "Meet the team behind HSEQ Nova – HSEQ experts, sales and health & safety leaders.",
-  },
+  title: pageTitle,
+  description: pageDescription,
+  alternates: { canonical: getCanonicalUrl("/team") },
+  robots: ROBOTS_CONFIG,
+  openGraph: getOpenGraphDefaults(pageTitle, pageDescription, "/team"),
+  twitter: getTwitterDefaults(pageTitle, pageDescription),
 };
 
 export default function TeamPage() {

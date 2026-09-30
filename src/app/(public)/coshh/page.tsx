@@ -21,6 +21,7 @@ import { MultipleStructuredData } from "@/components/seo/structured-data";
 import { ADDON_PACKS, HSEQ_CORE, UK_VAT_PERCENT } from "@/lib/billing-catalog";
 import { formatGbp } from "@/lib/homepage-content";
 import {
+  getBreadcrumbSchema,
   getCanonicalUrl,
   getOpenGraphDefaults,
   getTwitterDefaults,
@@ -177,7 +178,15 @@ function getStructuredData(): Array<Record<string, unknown>> {
 export default function CoshhPage() {
   return (
     <div className="home-marketing font-marketing">
-      <MultipleStructuredData dataArray={getStructuredData()} />
+      <MultipleStructuredData
+        dataArray={[
+          ...getStructuredData(),
+          getBreadcrumbSchema([
+            { name: "Home", url: "/" },
+            { name: "COSHH", url: "/coshh" },
+          ]),
+        ]}
+      />
       <Hero />
       <LegalStrip />
       <LegalDuties />

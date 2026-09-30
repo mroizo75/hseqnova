@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { getAuthContext } from "@/lib/server-authorization";
+import { SITE_CONFIG } from "@/lib/seo-config";
 import { NotificationType, Role } from "@prisma/client";
 import { publishNotification } from "@/lib/redis-pubsub";
 import { sendPushNotificationToUser } from "@/lib/push-notifications";
@@ -22,7 +23,7 @@ interface CreateNotificationInput {
   link?: string;
 }
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://hseqnova.com";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || SITE_CONFIG.url;
 
 function escapeHtml(value: string): string {
   return value

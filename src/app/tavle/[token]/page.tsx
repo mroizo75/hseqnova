@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getAdminDb } from "@/lib/supabase/admin";
+import { SITE_CONFIG } from "@/lib/seo-config";
 import { TavlePublicDisplay } from "@/features/hms-tavle/components/tavle-public-display";
 import { getGuestServiceStats } from "@/features/hms-tavle/lib/gjesteservice-stats";
 import { getTavleLiveData } from "@/features/hms-tavle/lib/tavle-live-data";
@@ -126,7 +127,7 @@ export default async function PublicTavlePage({ params, searchParams }: Props) {
   };
 
   const forceKiosk = kiosk === "1";
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://hseqnova.com";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? SITE_CONFIG.url;
 
   const harTillitspanel = sections.some((s) => s.type === "GJESTESERVICE_STATUS");
   const guestStats = harTillitspanel ? await getGuestServiceStats(tavleRow.id) : null;

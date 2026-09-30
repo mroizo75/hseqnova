@@ -19,6 +19,7 @@ import { MultipleStructuredData } from "@/components/seo/structured-data";
 import { ADDON_PACKS, HSEQ_CORE, UK_VAT_PERCENT } from "@/lib/billing-catalog";
 import { formatGbp } from "@/lib/homepage-content";
 import {
+  getBreadcrumbSchema,
   getCanonicalUrl,
   getOpenGraphDefaults,
   getTwitterDefaults,
@@ -179,7 +180,15 @@ function getJsonLd() {
 export default function DigitalSafetyBoardPage() {
   return (
     <div className="home-marketing font-marketing">
-      <MultipleStructuredData dataArray={getJsonLd()} />
+      <MultipleStructuredData
+        dataArray={[
+          ...getJsonLd(),
+          getBreadcrumbSchema([
+            { name: "Home", url: "/" },
+            { name: "Digital safety board", url: "/digital-safety-board" },
+          ]),
+        ]}
+      />
       <Hero />
       <WhatTheBoard />
       <ThreeModes />

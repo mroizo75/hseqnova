@@ -14,57 +14,55 @@ const s3Client = new S3Client({
 
 const BUCKET_NAME = process.env.R2_BUCKET_NAME || process.env.R2_BUCKET || "hmsnova";
 
+const EXTENSION_BY_TYPE: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
+
+const MAX_BYTES = 5 * 1024 * 1024;
+
+function errorResponse(code: string, message: string, status: number) {
+  return NextResponse.json({ code, message, error: message }, { status });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.isSuperAdmin) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return errorResponse("UNAUTHORISED", "Unauthorised", 401);
     }
 
     const formData = await request.formData();
     const file = formData.get("file");
 
     if (!file || typeof file === "string") {
-      return NextResponse.json(
-        { error: "Ingen fil lastet opp" },
-        { status: 400 }
-      );
+      return errorResponse("NO_FILE", "No file was uploaded", 400);
     }
 
-    // Get file properties
     const fileBuffer = Buffer.from(await file.arrayBuffer());
-    const fileName = file.name || "unknown";
     const fileType = file.type || "application/octet-stream";
-    const fileSize = fileBuffer.length;
+    const extension = EXTENSION_BY_TYPE[fileType];
 
-    // Validate file type
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
-    if (!allowedTypes.includes(fileType)) {
-      return NextResponse.json(
-        { error: "Ugyldig filtype. Kun JPEG, PNG, WebP og GIF er tillatt." },
-        { status: 400 }
-      );
+    if (!extension) {
+      return errorResponse("INVALID_TYPE", "Only JPEG, PNG, WebP and GIF images are allowed", 400);
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024;
-    if (fileSize > maxSize) {
-      return NextResponse.json(
-        { error: "Filen er for stor. Maksimal størrelse er 5MB." },
-        { status: 400 }
-      );
+    if (fileBuffer.length > MAX_BYTES) {
+      return errorResponse("FILE_TOO_LARGE", "The image is too large. The maximum size is 5 MB", 400);
     }
 
-    // Generate unique key
-    const timestamp = Date.now();
-    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
-    const key = `blog/images/${timestamp}-${sanitizedFileName}`;
+    const baseName = (file.name || "image")
+      .replace(/\.[^.]+$/, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "image";
+    const key = `blog/images/${Date.now()}-${baseName}.${extension}`;
 
-    // Upload to R2
     await s3Client.send(
       new PutObjectCommand({
         Bucket: BUCKET_NAME,
@@ -74,7 +72,7 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    // Bruk stabil intern fil-endpoint i stedet for tidsbegrenset signert URL
+    // Stable public route instead of an expiring signed URL (blog/images/* is public in /api/files).
     const url = `/api/files/${key}`;
 
     return NextResponse.json({
@@ -84,9 +82,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("[Blog Upload] Error:", error);
-    return NextResponse.json(
-      { error: "Bildeopplasting feilet" },
-      { status: 500 }
-    );
+    return errorResponse("UPLOAD_FAILED", "Image upload failed", 500);
   }
 }

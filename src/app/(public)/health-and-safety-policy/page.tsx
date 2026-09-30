@@ -20,6 +20,7 @@ import { MultipleStructuredData } from "@/components/seo/structured-data";
 import { HSEQ_CORE, UK_VAT_PERCENT } from "@/lib/billing-catalog";
 import { formatGbp } from "@/lib/homepage-content";
 import {
+  getBreadcrumbSchema,
   getCanonicalUrl,
   getOpenGraphDefaults,
   getTwitterDefaults,
@@ -206,7 +207,15 @@ function getJsonLd() {
 export default function HealthAndSafetyPolicyPage() {
   return (
     <div className="home-marketing font-marketing">
-      <MultipleStructuredData dataArray={getJsonLd()} />
+      <MultipleStructuredData
+        dataArray={[
+          ...getJsonLd(),
+          getBreadcrumbSchema([
+            { name: "Home", url: "/" },
+            { name: "Health and safety policy", url: "/health-and-safety-policy" },
+          ]),
+        ]}
+      />
       <Hero />
       <ThreePartsSection />
       <LivingBenefits />

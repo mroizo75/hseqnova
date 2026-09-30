@@ -29,16 +29,9 @@ export const metadata: Metadata = {
   creator: SITE_CONFIG.name,
   publisher: SITE_CONFIG.name,
   robots: ROBOTS_CONFIG,
-  alternates: {
-    canonical: SITE_CONFIG.url,
-    languages: {
-      "en-GB": SITE_CONFIG.url,
-    },
-  },
   openGraph: {
     type: "website",
     locale: SITE_CONFIG.locale,
-    alternateLocale: ["nn_NO", "en_US"],
     url: SITE_CONFIG.url,
     siteName: SITE_CONFIG.name,
     title: `${SITE_CONFIG.name} - ${SITE_CONFIG.tagline}`,

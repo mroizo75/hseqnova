@@ -1,7 +1,17 @@
+import type { Metadata } from "next";
 import { displayFont, marketingFont } from "@/fonts";
 import { PublicNav } from "@/components/public-nav";
 import { PublicFooter } from "@/components/public-footer";
 import { AskHseqNova } from "@/features/marketing-chat/components/ask-hseq-nova";
+import { SITE_CONFIG } from "@/lib/seo-config";
+
+// Public page titles already end in "| HSEQ Nova"; the root template would append it twice.
+export const metadata: Metadata = {
+  title: {
+    default: `${SITE_CONFIG.name} - ${SITE_CONFIG.tagline}`,
+    template: "%s",
+  },
+};
 
 export default function PublicLayout({
   children,

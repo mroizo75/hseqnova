@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
 import { sendEmail } from "@/lib/email";
+import { SITE_CONFIG } from "@/lib/seo-config";
 import { format, addDays } from "date-fns";
 import { enGB } from "date-fns/locale";
 
@@ -108,7 +109,7 @@ function generateTestEmail(
   userName: string,
   tenantName: string
 ): { subject: string; html: string } {
-  const baseUrl = process.env.NEXTAUTH_URL || "https://www.hseqnova.com";
+  const baseUrl = process.env.NEXTAUTH_URL || SITE_CONFIG.url;
   const tomorrow = format(addDays(new Date(), 1), "EEEE d MMMM yyyy 'at' HH:mm", {
     locale: enGB,
   });

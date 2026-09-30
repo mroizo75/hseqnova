@@ -16,6 +16,7 @@ const PRODUCT_LINKS = [
 
 const COMPANY_LINKS = [
   { href: "/about", label: "About HSEQ Nova" },
+  { href: "/news", label: "News and guidance" },
   { href: "/book-a-demo", label: "Book a demo" },
   { href: "/contact", label: "Contact" },
   { href: "/personvern", label: "Privacy policy" },

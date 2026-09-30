@@ -11,13 +11,14 @@
  */
 
 import { sendEmail } from "@/lib/email";
+import { SITE_CONFIG } from "@/lib/seo-config";
 import { formatPhoneNumber, sendSms } from "@/lib/sms";
 import { notifyUsersByRoles } from "@/server/actions/notification.actions";
 import type { GjesteserviceConfig, GuestPriority, GuestType } from "./gjesteservice-config";
 import { getGuestDictionary, GUEST_TYPE_EMOJI, type GuestLocale } from "./guest-i18n";
 
 const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://hseqnova.com";
+  process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || SITE_CONFIG.url;
 
 /** Roller som håndterer gjestmeldinger i dashboard */
 const GUEST_HANDLER_ROLES = ["ADMIN", "HMS", "LEDER"] as const;

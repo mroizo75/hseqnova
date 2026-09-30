@@ -12,6 +12,7 @@ import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { SITE_CONFIG } from "@/lib/seo-config";
 import { getAdminDb } from "@/lib/supabase/admin";
 import { withAuditLog } from "@/lib/audit-log";
 import { sendEmail } from "@/lib/email";
@@ -158,7 +159,7 @@ async function notifySupportInbox(input: {
   ticketId: string;
   preview: string;
 }) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://hseqnova.com";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || SITE_CONFIG.url;
   const supportInbox = process.env.SUPPORT_EMAIL ?? "support@hseqnova.com";
   const staff = await prisma.user.findMany({
     where: {

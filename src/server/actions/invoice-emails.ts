@@ -2,6 +2,8 @@
  * Email templates for invoicing and trial period
  */
 
+import { SITE_CONFIG } from "@/lib/seo-config";
+
 export function getTrialWelcomeEmail(data: {
   companyName: string;
   trialEndsAt: Date;
@@ -143,7 +145,7 @@ export function getTrialWelcomeEmail(data: {
                     </div>
 
                     <div style="text-align: center; margin: 40px 0 20px;">
-                      <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://hseqnova.com"}/dashboard" 
+                      <a href="${process.env.NEXT_PUBLIC_APP_URL || SITE_CONFIG.url}/dashboard" 
                          style="display: inline-block; padding: 16px 32px; background: linear-gradient(135deg, #2d9c92 0%, #42c6b8 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
                         Log in to HSEQ Nova
                       </a>
@@ -291,7 +293,7 @@ export function getTrialExpiringEmail(data: {
                     </p>
 
                     <div style="text-align: center; margin: 40px 0 20px;">
-                      <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://hseqnova.com"}/dashboard" 
+                      <a href="${process.env.NEXT_PUBLIC_APP_URL || SITE_CONFIG.url}/dashboard" 
                          style="display: inline-block; padding: 16px 32px; background: linear-gradient(135deg, #2d9c92 0%, #42c6b8 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
                         Log in to HSEQ Nova
                       </a>
