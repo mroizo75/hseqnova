@@ -64,6 +64,11 @@ interface EnvConfig {
   OPENAI_API_KEY?: string;
   ANTHROPIC_API_KEY?: string;
 
+  // Google Search Console (optional)
+  GOOGLE_SERVICE_ACCOUNT_EMAIL?: string;
+  GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?: string;
+  GSC_SITE_URL?: string;
+
   // App URL
   NEXT_PUBLIC_APP_URL?: string;
 }

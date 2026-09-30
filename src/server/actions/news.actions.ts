@@ -2,6 +2,8 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { notifySitemapChanged } from "@/lib/google/search-console";
 import { getAdminDb } from "@/lib/supabase/admin";
 import { createId } from "@/lib/ids";
 import { requirePlatformStaff } from "@/lib/require-platform-staff";
@@ -56,6 +58,12 @@ function revalidateNews(paths: string[] = []): void {
   revalidatePath("/llms.txt");
   for (const path of paths) {
     revalidatePath(path);
+  }
+}
+
+function notifyGoogleWhen(affectsPublicSite: boolean): void {
+  if (affectsPublicSite) {
+    after(notifySitemapChanged);
   }
 }
 
@@ -135,6 +143,7 @@ export async function createArticle(input: ArticleInput): Promise<ActionResult<{
 
     const catSlug = await categorySlugFor(columns.categoryId);
     revalidateNews([articlePath(parsed.slug), ...(catSlug ? [categoryPath(catSlug)] : [])]);
+    notifyGoogleWhen(parsed.status === "PUBLISHED");
     return { success: true, data: { id } };
   } catch (error) {
     return toFailure(error, "Could not create the article");
@@ -157,7 +166,7 @@ export async function updateArticle(
     const db = getAdminDb();
     const { data: existing, error: loadError } = await db
       .from("BlogPost")
-      .select("slug, categoryId, authorName")
+      .select("slug, categoryId, authorName, status")
       .eq("id", articleId)
       .maybeSingle();
     if (loadError) {
@@ -193,6 +202,7 @@ export async function updateArticle(
         ...(oldCat ? [categoryPath(oldCat)] : []),
       ]
     );
+    notifyGoogleWhen(parsed.status === "PUBLISHED" || existing.status === "PUBLISHED");
     return { success: true, data: { id: articleId } };
   } catch (error) {
     return toFailure(error, "Could not save the article");
@@ -214,7 +224,7 @@ export async function setArticleStatus(
     const db = getAdminDb();
     const { data: existing, error: loadError } = await db
       .from("BlogPost")
-      .select("slug, publishedAt")
+      .select("slug, publishedAt, status")
       .eq("id", articleId)
       .maybeSingle();
     if (loadError) {
@@ -235,6 +245,7 @@ export async function setArticleStatus(
     }
 
     revalidateNews([articlePath(String(existing.slug)), `/admin/news/${articleId}`]);
+    notifyGoogleWhen(nextStatus === "PUBLISHED" || existing.status === "PUBLISHED");
     return { success: true, data: { id: articleId } };
   } catch (error) {
     return toFailure(error, "Could not change the status");
@@ -249,12 +260,13 @@ export async function deleteArticle(id: string): Promise<ActionResult> {
     }
     const articleId = idSchema.parse(id);
     const db = getAdminDb();
-    const { data: existing } = await db.from("BlogPost").select("slug").eq("id", articleId).maybeSingle();
+    const { data: existing } = await db.from("BlogPost").select("slug, status").eq("id", articleId).maybeSingle();
     const { error } = await db.from("BlogPost").delete().eq("id", articleId);
     if (error) {
       throw { code: "NEWS_DELETE_FAILED", message: error.message };
     }
     revalidateNews(existing?.slug ? [articlePath(String(existing.slug))] : []);
+    notifyGoogleWhen(existing?.status === "PUBLISHED");
     return { success: true };
   } catch (error) {
     return toFailure(error, "Could not delete the article");

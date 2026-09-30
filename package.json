@@ -13,6 +13,7 @@
     "lint": "next lint",
     "test": "tsx --test \"tests/**/*.test.ts*\"",
     "cleanup:logs": "node scripts/cleanup-logs.js",
+    "gsc:check": "tsx scripts/check-search-console.ts",
     "db:generate": "prisma generate",
     "db:sql": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script",
     "db:migrate:gjesteservice": "tsx scripts/migrate-gjesteservice.ts",

@@ -16,6 +16,7 @@ const SUPERADMIN_ONLY_PREFIXES = [
   "/admin/settings",
   "/admin/newsletter",
   "/admin/news",
+  "/admin/seo",
   "/admin/hms-tavle",
 ];
 

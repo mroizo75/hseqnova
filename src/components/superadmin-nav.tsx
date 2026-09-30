@@ -25,6 +25,7 @@ import {
   ListTodo,
   CalendarDays,
   Newspaper,
+  LineChart,
 } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { canAccessAdminPath } from "@/lib/platform-access";
@@ -49,6 +50,7 @@ const allNavItems: NavItem[] = [
   { href: "/admin/invoices", label: "Invoices", icon: FileText },
   { href: "/admin/legal-references", label: "Legal register", icon: Scale },
   { href: "/admin/news", label: "News", icon: Newspaper },
+  { href: "/admin/seo", label: "Search performance", icon: LineChart },
   { href: "/admin/newsletter", label: "Newsletter", icon: FileText },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/settings", label: "Settings", icon: Settings },
