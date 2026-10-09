@@ -1,5 +1,6 @@
 import { getStripe } from "@/lib/stripe";
 import { getAdminDb } from "@/lib/supabase/admin";
+import { stripePaidUntilUnix } from "@/lib/stripe-subscription-access";
 
 function gbVatValue(raw: string): string {
   const compact = raw.replace(/\s+/g, "").toUpperCase();
@@ -123,6 +124,134 @@ export async function addPriceToExistingSubscription(input: {
     price: input.priceId,
     proration_behavior: "create_prorations",
   });
+}
+
+export const ADMIN_ADDON_GRANT_META = "1";
+
+export function isAdminAddonGrantSubscription(metadata: Record<string, string> | null | undefined): boolean {
+  return metadata?.admin_addon_grant === ADMIN_ADDON_GRANT_META;
+}
+
+function paymentMethodIdFromSubscription(subscription: {
+  default_payment_method?: string | { id: string } | null;
+}): string | null {
+  const method = subscription.default_payment_method;
+  if (!method) return null;
+  return typeof method === "string" ? method : method.id;
+}
+
+export async function grantAddonOnStripe(input: {
+  customerId: string;
+  subscriptionId: string;
+  priceId: string;
+  tenantId: string;
+  packId: string;
+  trialMonths: number;
+}): Promise<{ stripeSubscriptionId: string; trialEndsAt: string | null }> {
+  const stripe = getStripe();
+
+  if (input.trialMonths <= 0) {
+    await addPriceToExistingSubscription({
+      subscriptionId: input.subscriptionId,
+      priceId: input.priceId,
+    });
+    return { stripeSubscriptionId: input.subscriptionId, trialEndsAt: null };
+  }
+
+  const parent = await stripe.subscriptions.retrieve(input.subscriptionId, {
+    expand: ["default_payment_method"],
+  });
+  let paymentMethodId = paymentMethodIdFromSubscription(parent);
+  if (!paymentMethodId) {
+    const customer = await stripe.customers.retrieve(input.customerId);
+    if (!("invoice_settings" in customer)) {
+      throw {
+        code: "STRIPE_CUSTOMER_MISSING",
+        message: "Stripe customer is missing. The company must complete checkout first.",
+      };
+    }
+    const invoicePm = customer.invoice_settings?.default_payment_method;
+    paymentMethodId =
+      typeof invoicePm === "string" ? invoicePm : invoicePm && "id" in invoicePm ? invoicePm.id : null;
+  }
+  if (!paymentMethodId) {
+    throw {
+      code: "NO_PAYMENT_METHOD",
+      message:
+        "This company has no card or Direct Debit on file in Stripe. They must complete checkout before a trial can convert to paid.",
+    };
+  }
+
+  const trialEnd = new Date();
+  trialEnd.setMonth(trialEnd.getMonth() + input.trialMonths);
+
+  const created = await stripe.subscriptions.create({
+    customer: input.customerId,
+    items: [{ price: input.priceId }],
+    trial_end: Math.floor(trialEnd.getTime() / 1000),
+    default_payment_method: paymentMethodId,
+    collection_method: parent.collection_method,
+    automatic_tax: { enabled: true },
+    metadata: {
+      tenantId: input.tenantId,
+      packId: input.packId,
+      admin_addon_grant: ADMIN_ADDON_GRANT_META,
+    },
+  });
+
+  return {
+    stripeSubscriptionId: created.id,
+    trialEndsAt: new Date(trialEnd).toISOString(),
+  };
+}
+
+export async function revokeAdminGrantedAddonOnStripe(input: {
+  customerId: string;
+  packId: string;
+  priceIds: string[];
+  mainSubscriptionId?: string | null;
+}): Promise<{ endsAt: string }> {
+  const stripe = getStripe();
+  const nowIso = new Date().toISOString();
+  const list = await stripe.subscriptions.list({
+    customer: input.customerId,
+    status: "all",
+    limit: 20,
+  });
+
+  const grant = list.data.find(
+    (row) =>
+      isAdminAddonGrantSubscription(row.metadata) &&
+      row.metadata?.packId === input.packId &&
+      (row.status === "trialing" || row.status === "active"),
+  );
+
+  if (grant) {
+    if (grant.status === "trialing") {
+      await stripe.subscriptions.cancel(grant.id);
+      return { endsAt: nowIso };
+    }
+    const updated = await stripe.subscriptions.update(grant.id, {
+      cancel_at_period_end: true,
+      expand: ["items.data"],
+    });
+    const until = stripePaidUntilUnix(updated);
+    return { endsAt: until ? new Date(until * 1000).toISOString() : nowIso };
+  }
+
+  if (input.mainSubscriptionId) {
+    const subscription = await stripe.subscriptions.retrieve(input.mainSubscriptionId, {
+      expand: ["items.data"],
+    });
+    const item = subscription.items.data.find((si) => input.priceIds.includes(si.price.id));
+    if (item) {
+      await stripe.subscriptionItems.del(item.id, { proration_behavior: "none" });
+    }
+    const until = stripePaidUntilUnix(subscription);
+    return { endsAt: until ? new Date(until * 1000).toISOString() : nowIso };
+  }
+
+  return { endsAt: nowIso };
 }
 
 export async function createBillingPortalSession(input: {

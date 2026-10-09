@@ -6,11 +6,13 @@ import {
   activateAddonPackForTenant,
   activatePaidSignup,
   applyStripeSubscriptionAccess,
+  cancelAddonPackImmediately,
   loadEnabledBillingModuleKeys,
   syncLiveStripeSubscription,
   upsertSubscriptionTotal,
 } from "@/server/queries/billing.queries";
 import { isVoluntaryCancel, shouldKeepAccessAfterCancel } from "@/lib/stripe-subscription-access";
+import { isAdminAddonGrantSubscription } from "@/lib/stripe-billing";
 import { parseSignupCheckoutMetadata } from "@/lib/signup-checkout";
 import Stripe from "stripe";
 
@@ -135,40 +137,75 @@ async function processEvent(event: Stripe.Event): Promise<void> {
   if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.created") {
     const subscription = event.data.object as Stripe.Subscription;
     const customerId = stripeRefId(subscription.customer);
-    const isLive =
-      subscription.status === "active" ||
-      subscription.status === "trialing" ||
-      subscription.status === "past_due";
-    if (customerId && isLive) {
-      await db
-        .from("Tenant")
-        .update({ stripeSubscriptionId: subscription.id, updatedAt: new Date().toISOString() })
-        .eq("stripeCustomerId", customerId);
-      if (shouldKeepAccessAfterCancel(subscription)) {
+    const grantPackId = subscription.metadata?.packId;
+    const grantTenantId = subscription.metadata?.tenantId;
+    if (isAdminAddonGrantSubscription(subscription.metadata) && grantPackId && grantTenantId) {
+      const trialEndUnix =
+        "trial_end" in subscription && typeof subscription.trial_end === "number"
+          ? subscription.trial_end
+          : null;
+      if (subscription.status === "trialing") {
+        await activateAddonPackForTenant({
+          tenantId: grantTenantId,
+          packId: grantPackId,
+          status: "TRIAL",
+          endsAt: trialEndUnix ? new Date(trialEndUnix * 1000).toISOString() : null,
+        });
+      } else if (subscription.status === "active" || subscription.status === "past_due") {
+        await activateAddonPackForTenant({
+          tenantId: grantTenantId,
+          packId: grantPackId,
+          status: "ACTIVE",
+        });
+        const enabled = await loadEnabledBillingModuleKeys(grantTenantId);
+        await upsertSubscriptionTotal(grantTenantId, enabled);
+      } else if (subscription.status === "canceled" || subscription.status === "unpaid") {
+        await cancelAddonPackImmediately({ tenantId: grantTenantId, packId: grantPackId });
+        const enabled = await loadEnabledBillingModuleKeys(grantTenantId);
+        await upsertSubscriptionTotal(grantTenantId, enabled);
+      }
+    } else {
+      const isLive =
+        subscription.status === "active" ||
+        subscription.status === "trialing" ||
+        subscription.status === "past_due";
+      if (customerId && isLive) {
+        await db
+          .from("Tenant")
+          .update({ stripeSubscriptionId: subscription.id, updatedAt: new Date().toISOString() })
+          .eq("stripeCustomerId", customerId);
+        if (shouldKeepAccessAfterCancel(subscription)) {
+          await applyStripeSubscriptionAccess({ stripeCustomerId: customerId, subscription });
+        } else {
+          await syncLiveStripeSubscription({
+            stripeCustomerId: customerId,
+            subscriptionId: subscription.id,
+            subscription,
+          });
+        }
+      } else if (customerId) {
         await applyStripeSubscriptionAccess({ stripeCustomerId: customerId, subscription });
-      } else {
-        await syncLiveStripeSubscription({
-          stripeCustomerId: customerId,
+      }
+
+      if (subscription.status === "active") {
+        await handleSignupFromMetadata(subscription.metadata, {
+          customerId,
           subscriptionId: subscription.id,
-          subscription,
         });
       }
-    } else if (customerId) {
-      await applyStripeSubscriptionAccess({ stripeCustomerId: customerId, subscription });
-    }
-
-    if (subscription.status === "active") {
-      await handleSignupFromMetadata(subscription.metadata, {
-        customerId,
-        subscriptionId: subscription.id,
-      });
     }
   }
 
   if (event.type === "customer.subscription.deleted") {
     const subscription = event.data.object as Stripe.Subscription;
     const customerId = stripeRefId(subscription.customer);
-    if (customerId) {
+    const grantPackId = subscription.metadata?.packId;
+    const grantTenantId = subscription.metadata?.tenantId;
+    if (isAdminAddonGrantSubscription(subscription.metadata) && grantPackId && grantTenantId) {
+      await cancelAddonPackImmediately({ tenantId: grantTenantId, packId: grantPackId });
+      const enabled = await loadEnabledBillingModuleKeys(grantTenantId);
+      await upsertSubscriptionTotal(grantTenantId, enabled);
+    } else if (customerId) {
       await applyStripeSubscriptionAccess({ stripeCustomerId: customerId, subscription });
     }
   }

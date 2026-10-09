@@ -20,6 +20,8 @@ import { TenantOfferCard } from "@/features/admin/components/tenant-offer-card";
 import { IndustryPackageActions } from "@/features/admin/components/industry-package-actions";
 import { GdprExportButton } from "@/features/admin/components/gdpr-export-button";
 import { HandbookTemplateImport } from "@/features/admin/components/handbook-template-import";
+import { TenantAddonGrantCard } from "@/features/admin/components/tenant-addon-grant-card";
+import { loadTenantPackEntitlements } from "@/server/queries/billing.queries";
 import { 
   ArrowLeft,
   Building2, 
@@ -63,6 +65,7 @@ async function TenantDetails({ id }: { id: string }) {
   const lastManagementReview = tenant.managementReviews?.[0];
   const packageStatusResult = await getTenantIndustryPackageStatus(tenant.id);
   const packageStatus = packageStatusResult.success ? packageStatusResult.data : null;
+  const packEntitlements = await loadTenantPackEntitlements(tenant.id);
 
   return (
     <div className="space-y-6">
@@ -278,6 +281,12 @@ async function TenantDetails({ id }: { id: string }) {
               </CardContent>
             </Card>
           )}
+
+          <TenantAddonGrantCard
+            tenantId={tenant.id}
+            hasStripeSubscription={Boolean(tenant.stripeSubscriptionId && tenant.stripeCustomerId)}
+            entitlements={packEntitlements}
+          />
 
           {/* Recent Invoices - kun superadmin */}
           {isSuperAdmin && tenant.invoices.length > 0 && (

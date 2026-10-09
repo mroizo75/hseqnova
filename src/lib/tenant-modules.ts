@@ -57,6 +57,25 @@ export const NAV_PERMISSION_TO_MODULE_KEY: Record<string, ModuleKey> = {
   environment: "environment",
 };
 
+export type TenantModuleLiveStatus = "ACTIVE" | "TRIAL" | "PENDING_CANCEL" | "CANCELLED" | "PAST_DUE";
+
+export function isLiveTenantModule(row: {
+  status: string | null;
+  endsAt?: string | Date | null;
+}): boolean {
+  const status = (row.status ?? "").toUpperCase();
+  const endsAtMs = row.endsAt ? new Date(row.endsAt).getTime() : null;
+  const expired = endsAtMs !== null && !Number.isNaN(endsAtMs) && endsAtMs <= Date.now();
+
+  if (status === "PENDING_CANCEL") {
+    return !expired;
+  }
+  if (status === "TRIAL") {
+    return !expired;
+  }
+  return status === "ACTIVE";
+}
+
 export function isCoreModule(moduleKey: string): boolean {
   return CORE_SET.has(moduleKey);
 }

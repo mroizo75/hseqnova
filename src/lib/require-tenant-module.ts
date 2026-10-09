@@ -1,6 +1,6 @@
 import { getRequiredTenantContext } from "@/lib/tenant-context";
 import { getAdminDb } from "@/lib/supabase/admin";
-import { isCoreModule, tenantHasModule } from "@/lib/tenant-modules";
+import { isCoreModule, isLiveTenantModule, tenantHasModule } from "@/lib/tenant-modules";
 
 export class ModuleNotEntitledError extends Error {
   readonly code = "MODULE_NOT_ENTITLED";
@@ -13,13 +13,13 @@ export class ModuleNotEntitledError extends Error {
 async function loadEnabledModuleKeys(tenantId: string): Promise<string[]> {
   const { data, error } = await getAdminDb()
     .from("TenantModule")
-    .select("moduleKey")
+    .select("moduleKey, status, endsAt")
     .eq("tenantId", tenantId)
-    .in("status", ["ACTIVE", "TRIAL"]);
+    .in("status", ["ACTIVE", "TRIAL", "PENDING_CANCEL"]);
   if (error) {
     throw { code: "MODULE_LOOKUP_FAILED", message: error.message };
   }
-  return (data ?? []).map((row) => String(row.moduleKey));
+  return (data ?? []).filter((row) => isLiveTenantModule(row)).map((row) => String(row.moduleKey));
 }
 
 export async function requireTenantModule(moduleKey: string): Promise<void> {

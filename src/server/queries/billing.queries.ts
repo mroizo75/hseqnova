@@ -1,8 +1,16 @@
 import { getAdminDb } from "@/lib/supabase/admin";
 import { createId } from "@/lib/ids";
-import { getAddonPack, billedTotalGbp, type AddonPack, type BillingInterval } from "@/lib/billing-catalog";
+import {
+  ADDON_PACKS,
+  billedTotalGbp,
+  getAddonPack,
+  isAddonPackActive,
+  type AddonPack,
+  type BillingInterval,
+} from "@/lib/billing-catalog";
 import { getStripe } from "@/lib/stripe";
 import { needsPaymentGate, parseSignupCheckoutMetadata } from "@/lib/signup-checkout";
+import { isLiveTenantModule } from "@/lib/tenant-modules";
 import {
   coverageStillActive,
   isPaidCancelPeriodExpired,
@@ -28,12 +36,8 @@ export async function loadEnabledBillingModuleKeys(tenantId: string): Promise<st
   if (error) {
     throw { code: "MODULE_LOOKUP_FAILED", message: error.message };
   }
-  const now = new Date().toISOString();
   return (data ?? [])
-    .filter((row) => {
-      if (row.status === "PENDING_CANCEL" && row.endsAt && row.endsAt < now) return false;
-      return true;
-    })
+    .filter((row) => isLiveTenantModule(row))
     .map((row) => String(row.moduleKey));
 }
 
@@ -41,6 +45,8 @@ async function upsertTenantModule(input: {
   tenantId: string;
   moduleKey: string;
   stripePriceId?: string | null;
+  status?: "ACTIVE" | "TRIAL";
+  endsAt?: string | null;
 }): Promise<void> {
   const db = getAdminDb();
   const { data: existing, error: lookupError } = await db
@@ -54,13 +60,15 @@ async function upsertTenantModule(input: {
   }
 
   const now = nowIso();
+  const status = input.status ?? "ACTIVE";
+  const endsAt = status === "TRIAL" ? (input.endsAt ?? null) : null;
   if (existing?.id) {
     const { error } = await db
       .from("TenantModule")
       .update({
-        status: "ACTIVE",
+        status,
         stripePriceId: input.stripePriceId ?? null,
-        endsAt: null,
+        endsAt,
         updatedAt: now,
       })
       .eq("id", existing.id);
@@ -74,10 +82,10 @@ async function upsertTenantModule(input: {
     id: createId(),
     tenantId: input.tenantId,
     moduleKey: input.moduleKey,
-    status: "ACTIVE",
+    status,
     stripePriceId: input.stripePriceId ?? null,
     startsAt: now,
-    endsAt: null,
+    endsAt,
     createdAt: now,
     updatedAt: now,
   });
@@ -144,6 +152,8 @@ export async function activateAddonPackForTenant(input: {
   tenantId: string;
   packId: string;
   stripePriceId?: string | null;
+  status?: "ACTIVE" | "TRIAL";
+  endsAt?: string | null;
 }): Promise<AddonPack> {
   const pack = getAddonPack(input.packId);
   if (!pack) {
@@ -155,6 +165,8 @@ export async function activateAddonPackForTenant(input: {
       tenantId: input.tenantId,
       moduleKey,
       stripePriceId: input.stripePriceId,
+      status: input.status,
+      endsAt: input.endsAt,
     });
   }
 
@@ -162,6 +174,91 @@ export async function activateAddonPackForTenant(input: {
     await activateSafetyBoardSubscription(input.tenantId, pack.monthlyPriceGbp);
   }
 
+  return pack;
+}
+
+export type TenantPackEntitlement = {
+  packId: string;
+  name: string;
+  monthlyPriceGbp: number;
+  status: "off" | "ACTIVE" | "TRIAL" | "PENDING_CANCEL";
+  endsAt: string | null;
+};
+
+export async function loadTenantPackEntitlements(tenantId: string): Promise<TenantPackEntitlement[]> {
+  const { data, error } = await getAdminDb()
+    .from("TenantModule")
+    .select("moduleKey, status, endsAt")
+    .eq("tenantId", tenantId);
+  if (error) {
+    throw { code: "MODULE_LOOKUP_FAILED", message: error.message };
+  }
+  const rows = data ?? [];
+  const liveKeys = rows.filter((row) => isLiveTenantModule(row)).map((row) => String(row.moduleKey));
+
+  return ADDON_PACKS.map((pack) => {
+    const entitlementRows = rows.filter((row) => pack.moduleKeys.includes(String(row.moduleKey)));
+    const lead = entitlementRows[0];
+    const live = isAddonPackActive(liveKeys, pack);
+    const rawStatus = String(lead?.status ?? "").toUpperCase();
+    let status: TenantPackEntitlement["status"] = "off";
+    if (live && rawStatus === "TRIAL") status = "TRIAL";
+    else if (live && rawStatus === "PENDING_CANCEL") status = "PENDING_CANCEL";
+    else if (live) status = "ACTIVE";
+    return {
+      packId: pack.id,
+      name: pack.name,
+      monthlyPriceGbp: pack.monthlyPriceGbp,
+      status,
+      endsAt: lead?.endsAt ? String(lead.endsAt) : null,
+    };
+  });
+}
+
+export async function markAddonPackEnding(input: {
+  tenantId: string;
+  packId: string;
+  endsAt: string;
+}): Promise<AddonPack> {
+  const pack = getAddonPack(input.packId);
+  if (!pack) {
+    throw { code: "UNKNOWN_ADDON", message: "Unknown add-on pack" };
+  }
+  const db = getAdminDb();
+  const now = nowIso();
+  for (const moduleKey of pack.moduleKeys) {
+    const { error } = await db
+      .from("TenantModule")
+      .update({ status: "PENDING_CANCEL", endsAt: input.endsAt, updatedAt: now })
+      .eq("tenantId", input.tenantId)
+      .eq("moduleKey", moduleKey);
+    if (error) {
+      throw { code: "MODULE_UPDATE_FAILED", message: error.message };
+    }
+  }
+  return pack;
+}
+
+export async function cancelAddonPackImmediately(input: {
+  tenantId: string;
+  packId: string;
+}): Promise<AddonPack> {
+  const pack = getAddonPack(input.packId);
+  if (!pack) {
+    throw { code: "UNKNOWN_ADDON", message: "Unknown add-on pack" };
+  }
+  const db = getAdminDb();
+  const now = nowIso();
+  for (const moduleKey of pack.moduleKeys) {
+    const { error } = await db
+      .from("TenantModule")
+      .update({ status: "CANCELLED", endsAt: now, updatedAt: now })
+      .eq("tenantId", input.tenantId)
+      .eq("moduleKey", moduleKey);
+    if (error) {
+      throw { code: "MODULE_UPDATE_FAILED", message: error.message };
+    }
+  }
   return pack;
 }
 
