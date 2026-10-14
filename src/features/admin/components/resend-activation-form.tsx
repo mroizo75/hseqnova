@@ -34,16 +34,16 @@ export function ResendActivationForm({ tenantId, defaultEmail }: ResendActivatio
 
     if (result.success) {
       toast({
-        title: "✅ Aktiverings-e-post sendt",
-        description: "Brukeren vil motta påloggingsinformasjon",
+        title: "Activation email sent",
+        description: "They will receive sign-in details",
       });
       router.refresh();
       (e.target as HTMLFormElement).reset();
     } else {
       toast({
         variant: "destructive",
-        title: "❌ Feil",
-        description: result.error || "Noe gikk galt",
+        title: "Could not send",
+        description: result.error || "Something went wrong",
       });
     }
 
@@ -53,7 +53,7 @@ export function ResendActivationForm({ tenantId, defaultEmail }: ResendActivatio
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="adminEmail">Admin e-post *</Label>
+        <Label htmlFor="adminEmail">Admin email *</Label>
         <Input
           id="adminEmail"
           name="adminEmail"
@@ -66,24 +66,24 @@ export function ResendActivationForm({ tenantId, defaultEmail }: ResendActivatio
       </div>
 
       <div>
-        <Label htmlFor="adminPassword">Nytt passord *</Label>
+        <Label htmlFor="adminPassword">New password *</Label>
         <Input
           id="adminPassword"
           name="adminPassword"
           type="password"
-          placeholder="Minst 8 tegn"
+          placeholder="At least 8 characters"
           minLength={8}
           required
           disabled={isLoading}
         />
         <p className="text-xs text-muted-foreground mt-1">
-          Dette passordet vil bli sendt til brukeren
+          This password is sent in the email
         </p>
       </div>
 
       <Button type="submit" disabled={isLoading} className="w-full">
         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Send aktivering
+        Send activation
       </Button>
     </form>
   );

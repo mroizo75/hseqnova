@@ -43,16 +43,17 @@ export function HandbookTemplateImport({
     tenantIndustry ?? "",
   );
   const [variables, setVariables] = useState<Record<string, string>>({
-    bedriftsnavn: tenantName,
-    orgNummer: orgNumber ?? "",
-    dagligLeder: adminName ?? "",
-    hmsAnsvarlig: "",
-    verneombud: "",
-    brannvernleder: "",
-    adresse: "",
-    bransje:
+    companyName: tenantName,
+    companyNumber: orgNumber ?? "",
+    managingDirector: adminName ?? "",
+    competentPerson: "",
+    safetyRepresentative: "",
+    fireMarshal: "",
+    firstAider: "",
+    address: "",
+    industry:
       templates.find((t) => t.industry === tenantIndustry)?.name.replace(
-        "HMS-hånbok – ",
+        "Health & Safety Policy — ",
         "",
       ) ?? "",
   });
@@ -75,12 +76,12 @@ export function HandbookTemplateImport({
       if (res.success) {
         setResult({
           success: true,
-          message: `${res.sectionsUpdated} seksjoner oppdatert med bransjemal`,
+          message: `${res.sectionsUpdated} sections updated with the industry policy template`,
         });
       } else {
         setResult({
           success: false,
-          message: res.error ?? "Ukjent feil",
+          message: res.error ?? "Unknown error",
         });
       }
     });
@@ -95,16 +96,16 @@ export function HandbookTemplateImport({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <BookOpen className="h-5 w-5" />
-          HMS-hånbok oppsett
+          Health and safety policy
         </CardTitle>
         <CardDescription>
-          Importer en ferdig bransjemal med lovkrav, kompetansekrav og prosedyrer
-          tilpasset bedriften.
+          Import a living H&amp;S policy template (HSWA s.2(3)) with statement,
+          organisation and arrangements for this organisation.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label>Velg bransjemal</Label>
+          <Label>Industry template</Label>
           <Select
             value={selectedTemplate}
             onValueChange={(value) => {
@@ -112,14 +113,14 @@ export function HandbookTemplateImport({
               const tpl = templates.find((t) => t.industry === value);
               if (tpl) {
                 updateVariable(
-                  "bransje",
-                  tpl.name.replace("HMS-hånbok – ", ""),
+                  "industry",
+                  tpl.name.replace("Health & Safety Policy — ", ""),
                 );
               }
             }}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Velg bransje..." />
+              <SelectValue placeholder="Select industry…" />
             </SelectTrigger>
             <SelectContent>
               {templates.map((tpl) => (
@@ -128,7 +129,7 @@ export function HandbookTemplateImport({
                     <span>{tpl.name}</span>
                     {tpl.industry === tenantIndustry && (
                       <Badge variant="secondary" className="text-xs">
-                        Anbefalt
+                        Suggested
                       </Badge>
                     )}
                   </div>
@@ -140,61 +141,61 @@ export function HandbookTemplateImport({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label htmlFor="bedriftsnavn">Bedriftsnavn</Label>
+            <Label htmlFor="companyName">Organisation name</Label>
             <Input
-              id="bedriftsnavn"
-              value={variables.bedriftsnavn}
-              onChange={(e) => updateVariable("bedriftsnavn", e.target.value)}
+              id="companyName"
+              value={variables.companyName}
+              onChange={(e) => updateVariable("companyName", e.target.value)}
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="orgNummer">Org.nummer</Label>
+            <Label htmlFor="companyNumber">Company number</Label>
             <Input
-              id="orgNummer"
-              value={variables.orgNummer}
-              onChange={(e) => updateVariable("orgNummer", e.target.value)}
+              id="companyNumber"
+              value={variables.companyNumber}
+              onChange={(e) => updateVariable("companyNumber", e.target.value)}
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="dagligLeder">Daglig leder</Label>
+            <Label htmlFor="managingDirector">Managing director</Label>
             <Input
-              id="dagligLeder"
-              value={variables.dagligLeder}
-              onChange={(e) => updateVariable("dagligLeder", e.target.value)}
+              id="managingDirector"
+              value={variables.managingDirector}
+              onChange={(e) => updateVariable("managingDirector", e.target.value)}
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="hmsAnsvarlig">HMS-ansvarlig</Label>
+            <Label htmlFor="competentPerson">Competent person</Label>
             <Input
-              id="hmsAnsvarlig"
-              value={variables.hmsAnsvarlig}
-              onChange={(e) => updateVariable("hmsAnsvarlig", e.target.value)}
+              id="competentPerson"
+              value={variables.competentPerson}
+              onChange={(e) => updateVariable("competentPerson", e.target.value)}
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="verneombud">Verneombud</Label>
+            <Label htmlFor="safetyRepresentative">Safety representative</Label>
             <Input
-              id="verneombud"
-              value={variables.verneombud}
-              onChange={(e) => updateVariable("verneombud", e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="brannvernleder">Brannvernleder</Label>
-            <Input
-              id="brannvernleder"
-              value={variables.brannvernleder}
+              id="safetyRepresentative"
+              value={variables.safetyRepresentative}
               onChange={(e) =>
-                updateVariable("brannvernleder", e.target.value)
+                updateVariable("safetyRepresentative", e.target.value)
               }
             />
           </div>
-          <div className="col-span-2 space-y-1.5">
-            <Label htmlFor="adresse">Adresse</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="fireMarshal">Fire marshal</Label>
             <Input
-              id="adresse"
-              value={variables.adresse}
-              onChange={(e) => updateVariable("adresse", e.target.value)}
+              id="fireMarshal"
+              value={variables.fireMarshal}
+              onChange={(e) => updateVariable("fireMarshal", e.target.value)}
+            />
+          </div>
+          <div className="col-span-2 space-y-1.5">
+            <Label htmlFor="address">Address</Label>
+            <Input
+              id="address"
+              value={variables.address}
+              onChange={(e) => updateVariable("address", e.target.value)}
             />
           </div>
         </div>
@@ -222,12 +223,12 @@ export function HandbookTemplateImport({
           ) : (
             <Upload className="mr-2 h-4 w-4" />
           )}
-          Importer bransjemal til HMS-håndboken
+          Import policy template
         </Button>
 
         <p className="text-xs text-muted-foreground">
-          Importerer innhold som et nytt utkast (draft). Bedriften må
-          godkjenne og signere versjonen selv.
+          Imports as a new draft. The organisation must approve and sign the
+          version themselves.
         </p>
       </CardContent>
     </Card>

@@ -34,16 +34,16 @@ export function UpdateAdminEmailForm({ tenantId, currentEmail }: UpdateAdminEmai
 
     if (result.success) {
       toast({
-        title: "✅ Admin-e-post oppdatert",
-        description: `Ny e-post: ${newEmail}`,
+        title: "Admin email updated",
+        description: `New email: ${newEmail}`,
       });
       router.refresh();
       (e.target as HTMLFormElement).reset();
     } else {
       toast({
         variant: "destructive",
-        title: "❌ Feil",
-        description: result.error || "Noe gikk galt",
+        title: "Could not update",
+        description: result.error || "Something went wrong",
       });
     }
 
@@ -53,7 +53,7 @@ export function UpdateAdminEmailForm({ tenantId, currentEmail }: UpdateAdminEmai
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="currentEmail">Nåværende e-post</Label>
+        <Label htmlFor="currentEmail">Current email</Label>
         <Input
           id="currentEmail"
           value={currentEmail}
@@ -63,12 +63,12 @@ export function UpdateAdminEmailForm({ tenantId, currentEmail }: UpdateAdminEmai
       </div>
 
       <div>
-        <Label htmlFor="newEmail">Ny e-postadresse *</Label>
+        <Label htmlFor="newEmail">New email *</Label>
         <Input
           id="newEmail"
           name="newEmail"
           type="email"
-          placeholder="ny-admin@example.com"
+          placeholder="admin@example.com"
           required
           disabled={isLoading}
         />
@@ -76,7 +76,7 @@ export function UpdateAdminEmailForm({ tenantId, currentEmail }: UpdateAdminEmai
 
       <Button type="submit" disabled={isLoading} className="w-full">
         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Oppdater e-post
+        Update email
       </Button>
     </form>
   );

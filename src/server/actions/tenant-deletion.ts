@@ -51,7 +51,14 @@ export async function permanentlyDeleteTenant(tenantId: string): Promise<Deletio
         .neq("tenantId", tenantId);
 
       if (count === 0) {
-        // User only belongs to this tenant — delete them
+        const { data: user } = await db
+          .from("User")
+          .select("id, isSuperAdmin, isSupport")
+          .eq("id", userId)
+          .maybeSingle();
+        if (user?.isSuperAdmin || user?.isSupport) {
+          continue;
+        }
         await db.from("User").delete().eq("id", userId);
         usersRemoved++;
       }

@@ -9,7 +9,7 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 import { sendEmail } from "@/lib/email";
-import { deleteTenantFiles } from "@/lib/storage";
+import { permanentlyDeleteTenant } from "@/server/actions/tenant-deletion";
 import { RiskCategory } from "@prisma/client";
 import { getBindingPrice } from "@/lib/subscription";
 import { provisionIndustryPackage } from "@/server/actions/industry-provision.actions";
@@ -27,20 +27,20 @@ import { syncCrmFromTenant } from "@/features/crm/lib/sync-from-tenant";
 // Valideringsskjemaer
 const updateTenantSchema = z.object({
   tenantId: z.string(),
-  name: z.string().min(2, "Navn må være minst 2 tegn"),
-  slug: z.string().min(2, "Slug må være minst 2 tegn").regex(/^[a-z0-9-]+$/, "Slug kan kun inneholde små bokstaver, tall og bindestrek"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  slug: z.string().min(2, "Slug must be at least 2 characters").regex(/^[a-z0-9-]+$/, "Slug may only contain lowercase letters, numbers and hyphens"),
   orgNumber: z.string().optional(),
   address: z.string().optional(),
   postalCode: z.string().optional(),
   city: z.string().optional(),
   contactPerson: z.string().optional(),
-  contactEmail: z.string().email("Ugyldig e-postadresse").optional(),
+  contactEmail: z.string().email("Invalid email address").optional(),
   contactPhone: z.string().optional(),
-  employeeCount: z.number().int().positive("Antall ansatte må være positivt").optional(),
+  employeeCount: z.number().int().positive("Employee count must be a positive number").optional(),
   industry: z
     .string()
     .optional()
-    .refine((value) => !value || isSupportedIndustry(value), "Ugyldig bransje"),
+    .refine((value) => !value || isSupportedIndustry(value), "Invalid industry"),
   notes: z.string().optional(),
   hmsAnnualPlanEnabled: z.boolean().optional(),
   managementReviewFrequencyMonths: z
@@ -1345,10 +1345,6 @@ export async function createTenant(input: z.infer<typeof createTenantSchema>) {
   }
 }
 
-/**
- * Slett tenant permanent (inkludert alle filer i R2 Cloud)
- * ADVARSEL: Denne operasjonen kan ikke angres!
- */
 export async function deleteTenant(tenantId: string, confirmationText: string) {
   try {
     const privilegedUser = await requireSuperAdmin();
@@ -1356,104 +1352,55 @@ export async function deleteTenant(tenantId: string, confirmationText: string) {
       return { success: false, error: "Only superadmin can delete organisations" };
     }
 
-    // Hent tenant først for å verifisere navn
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      include: {
-        _count: {
-          select: {
-            users: true,
-            documents: true,
-            incidents: true,
-            risks: true,
-            trainings: true,
-            audits: true,
-            goals: true,
-            chemicals: true,
-            formTemplates: true,
-            invoices: true,
-          },
-        },
-      },
-    });
+    const db = getAdminDb();
+    const { data: tenant, error } = await db
+      .from("Tenant")
+      .select("id, name, status, registrationType")
+      .eq("id", tenantId)
+      .maybeSingle();
 
-    if (!tenant) {
+    if (error || !tenant) {
       return { success: false, error: "Organisation not found" };
     }
 
-    // SIKKERHET: Verifiser at confirmationText matcher tenant.name
     if (confirmationText !== tenant.name) {
-      return { 
-        success: false, 
-        error: `Confirmation failed. Enter the organisation name exactly: "${tenant.name}"` 
-      };
-    }
-
-    // SIKKERHET: Bare tillat sletting hvis status er CANCELLED eller SUSPENDED
-    if (tenant.status === "ACTIVE" || tenant.status === "TRIAL") {
       return {
         success: false,
-        error: "Cannot delete an active organisation. Change status to CANCELLED or SUSPENDED first.",
+        error: `Confirmation failed. Enter the organisation name exactly: "${tenant.name}"`,
       };
     }
 
-    console.log(`[DELETE TENANT] Starter sletting av tenant: ${tenant.name} (${tenantId})`);
-    console.log(`[DELETE TENANT] Antall relaterte records:`, tenant._count);
+    const isDemo = tenant.registrationType === "DEMO";
+    if (!isDemo && (tenant.status === "ACTIVE" || tenant.status === "TRIAL")) {
+      return {
+        success: false,
+        error: "Cannot delete an active organisation. Change status to CANCELLED or SUSPENDED first, or delete a demo workspace.",
+      };
+    }
 
-    const tenantUserLinks = await prisma.userTenant.findMany({
-      where: { tenantId },
-      select: { userId: true },
-    });
-    const candidateUserIds = Array.from(new Set(tenantUserLinks.map((link) => link.userId)));
+    const result = await permanentlyDeleteTenant(tenantId);
 
-    // Steg 1: Slett alle filer i R2 Cloud
-    console.log(`[DELETE TENANT] Sletter filer fra R2 Cloud...`);
-    const fileResult = await deleteTenantFiles(tenantId);
-    console.log(`[DELETE TENANT] R2 Cloud: ${fileResult.deleted} filer slettet, ${fileResult.errors} feil`);
-
-    // Steg 2: Slett tenant + opprydding av bruker-kontoer som blir stående uten tenant
-    console.log(`[DELETE TENANT] Sletter tenant fra database...`);
-    const deleteResult = await prisma.$transaction(async (tx) => {
-      await tx.tenant.delete({
-        where: { id: tenantId },
-      });
-
-      if (candidateUserIds.length === 0) {
-        return { deletedUsers: 0 };
-      }
-
-      const deletedUsers = await tx.user.deleteMany({
-        where: {
-          id: { in: candidateUserIds },
-          isSuperAdmin: false,
-          isSupport: false,
-          tenants: {
-            none: {},
-          },
-        },
-      });
-
-      return { deletedUsers: deletedUsers.count };
-    });
-
-    console.log(`[DELETE TENANT] ✅ Tenant slettet: ${tenant.name}`);
-    console.log(`[DELETE TENANT] ✅ Slettet ${deleteResult.deletedUsers} fristilte brukerkontoer`);
+    if (isDemo) {
+      await db.from("Tenant").delete().eq("id", tenantId);
+    }
 
     revalidatePath("/admin/tenants");
+    revalidatePath("/admin/tenants/demo");
     revalidatePath("/admin/registrations");
 
     return {
       success: true,
-      message: `Organisation "${tenant.name}" and all associated data has been permanently deleted. ${fileResult.deleted} files removed from R2 Cloud. ${deleteResult.deletedUsers} user accounts were also deleted.`,
-      filesDeleted: fileResult.deleted,
-      fileErrors: fileResult.errors,
-      usersDeleted: deleteResult.deletedUsers,
+      message: isDemo
+        ? `Demo workspace “${result.tenantName}” has been deleted. ${result.filesDeleted} files removed. ${result.usersRemoved} user accounts were also deleted.`
+        : `Organisation “${result.tenantName}” and associated data have been removed. ${result.filesDeleted} files removed. ${result.usersRemoved} user accounts were also deleted.`,
+      filesDeleted: result.filesDeleted,
+      fileErrors: result.fileErrors,
+      usersDeleted: result.usersRemoved,
     };
-  } catch (error) {
-    console.error("Delete tenant error:", error);
-    return { 
-      success: false, 
-      error: "Could not delete organisation. See server log for details." 
+  } catch {
+    return {
+      success: false,
+      error: "Could not delete organisation. See server log for details.",
     };
   }
 }

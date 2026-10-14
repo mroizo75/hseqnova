@@ -15,7 +15,7 @@ export function GdprExportButton({ tenantId }: GdprExportButtonProps) {
     setLoading(true);
     try {
       const res = await fetch(`/api/admin/tenants/${tenantId}/export`);
-      if (!res.ok) throw new Error("Eksport feilet");
+      if (!res.ok) throw new Error("Export failed");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -39,7 +39,7 @@ export function GdprExportButton({ tenantId }: GdprExportButtonProps) {
       ) : (
         <Download className="mr-2 h-4 w-4" />
       )}
-      Eksporter all data (GDPR)
+      Export all data (UK GDPR)
     </Button>
   );
 }

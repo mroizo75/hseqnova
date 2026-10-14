@@ -70,8 +70,8 @@ export function TenantActivityTimeline({ tenantId, activities }: TenantActivityT
     } else {
       toast({
         variant: "destructive",
-        title: "Kunne ikke lagre aktivitet",
-        description: result.error || "Noe gikk galt. Prøv igjen.",
+        title: "Could not save activity",
+        description: result.error || "Something went wrong. Try again.",
       });
     }
   };
@@ -169,12 +169,12 @@ export function TenantActivityTimeline({ tenantId, activities }: TenantActivityT
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="activity-note">Notat</Label>
+            <Label htmlFor="activity-note">Note</Label>
             <Textarea
               id="activity-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="F.eks. 2026-02-09 – Ringte kontaktperson, avtalt demo neste uke, tilbud sendes innen fredag."
+              placeholder="e.g. 9 Feb 2026 — Called the contact, demo next week, proposal to follow by Friday."
               rows={3}
               disabled={isSubmitting}
             />
@@ -183,22 +183,22 @@ export function TenantActivityTimeline({ tenantId, activities }: TenantActivityT
           <div className="flex justify-end">
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Lagre aktivitet
+              Save activity
             </Button>
           </div>
         </form>
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-muted-foreground">Historikk</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">History</h3>
             <p className="text-xs text-muted-foreground">
-              Viser de {activities.length} siste aktivitetene
+              Showing the latest {activities.length} activities
             </p>
           </div>
 
           {activities.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Ingen registrerte aktiviteter ennå. Legg inn første aktivitet over.
+              No activities yet. Add the first one above.
             </p>
           ) : (
             <div className="space-y-3">
@@ -224,7 +224,7 @@ export function TenantActivityTimeline({ tenantId, activities }: TenantActivityT
                             month: "short",
                             year: "numeric",
                           })}{" "}
-                          kl.{" "}
+                          at{" "}
                           {createdAt.toLocaleTimeString("en-GB", {
                             hour: "2-digit",
                             minute: "2-digit",

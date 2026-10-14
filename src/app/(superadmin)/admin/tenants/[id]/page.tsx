@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { authOptions } from "@/lib/auth";
 import { loadAdminTenantDetails } from "@/server/queries/admin.queries";
 import {
-  getTenantIndustryPackageStatus,
   toggleTenantStatus,
 } from "@/server/actions/tenant.actions";
 import { EditTenantForm } from "@/features/admin/components/edit-tenant-form";
@@ -17,19 +16,15 @@ import { ResendActivationForm } from "@/features/admin/components/resend-activat
 import { DeleteTenantDialog } from "@/features/admin/components/delete-tenant-dialog";
 import { TenantActivityTimeline } from "@/features/admin/components/tenant-activity-timeline";
 import { TenantOfferCard } from "@/features/admin/components/tenant-offer-card";
-import { IndustryPackageActions } from "@/features/admin/components/industry-package-actions";
 import { GdprExportButton } from "@/features/admin/components/gdpr-export-button";
 import { HandbookTemplateImport } from "@/features/admin/components/handbook-template-import";
 import { TenantAddonGrantCard } from "@/features/admin/components/tenant-addon-grant-card";
 import { loadTenantPackEntitlements } from "@/server/queries/billing.queries";
+import { isDemoRegistration } from "@/lib/demo-access";
 import { 
   ArrowLeft,
-  Building2, 
   Calendar, 
-  Mail, 
-  Phone, 
   Users, 
-  MapPin,
   Clock,
   CheckCircle2,
   AlertCircle,
@@ -37,7 +32,6 @@ import {
   ShieldAlert,
   TrendingUp,
   CreditCard,
-  Boxes,
 } from "lucide-react";
 import { format } from "date-fns";
 import { enGB } from "date-fns/locale/en-GB";
@@ -63,9 +57,8 @@ async function TenantDetails({ id }: { id: string }) {
   const adminUser = tenant.users.find((ut) => ut.role === "ADMIN")?.user;
   const hasSubscription = !!tenant.subscription;
   const lastManagementReview = tenant.managementReviews?.[0];
-  const packageStatusResult = await getTenantIndustryPackageStatus(tenant.id);
-  const packageStatus = packageStatusResult.success ? packageStatusResult.data : null;
   const packEntitlements = await loadTenantPackEntitlements(tenant.id);
+  const isDemo = isDemoRegistration(tenant.registrationType as string | null);
 
   return (
     <div className="space-y-6">
@@ -98,6 +91,7 @@ async function TenantDetails({ id }: { id: string }) {
             {tenant.status === "CANCELLED" && <AlertCircle className="h-3 w-3 mr-1" />}
             {tenant.status}
           </Badge>
+          {isDemo ? <Badge variant="outline">Demo</Badge> : null}
         </div>
       </div>
 
@@ -112,7 +106,7 @@ async function TenantDetails({ id }: { id: string }) {
                   <Users className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-2xl font-bold">{tenant._count.users}</p>
-                    <p className="text-xs text-muted-foreground">Brukere</p>
+                    <p className="text-xs text-muted-foreground">Users</p>
                   </div>
                 </div>
               </CardContent>
@@ -123,7 +117,7 @@ async function TenantDetails({ id }: { id: string }) {
                   <FileText className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-2xl font-bold">{tenant._count.documents}</p>
-                    <p className="text-xs text-muted-foreground">Dokumenter</p>
+                    <p className="text-xs text-muted-foreground">Documents</p>
                   </div>
                 </div>
               </CardContent>
@@ -134,7 +128,7 @@ async function TenantDetails({ id }: { id: string }) {
                   <ShieldAlert className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-2xl font-bold">{tenant._count.incidents}</p>
-                    <p className="text-xs text-muted-foreground">Avvik</p>
+                    <p className="text-xs text-muted-foreground">Accident book</p>
                   </div>
                 </div>
               </CardContent>
@@ -145,7 +139,7 @@ async function TenantDetails({ id }: { id: string }) {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-2xl font-bold">{tenant._count.risks}</p>
-                    <p className="text-xs text-muted-foreground">Risikoer</p>
+                    <p className="text-xs text-muted-foreground">Risks</p>
                   </div>
                 </div>
               </CardContent>
@@ -156,9 +150,9 @@ async function TenantDetails({ id }: { id: string }) {
           {isSuperAdmin && (
             <Card>
               <CardHeader>
-                <CardTitle>Bedriftsinformasjon</CardTitle>
+                <CardTitle>Organisation details</CardTitle>
                 <CardDescription>
-                  Grunnleggende informasjon om bedriften
+                  Company name, contact and industry
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -167,48 +161,48 @@ async function TenantDetails({ id }: { id: string }) {
             </Card>
           )}
 
-          {/* Årlig HMS-plan / Ledelsens gjennomgang */}
+          {/* Annual H&S plan / management review */}
           <Card>
             <CardHeader>
-              <CardTitle>Årlig HMS-plan</CardTitle>
+              <CardTitle>Annual H&S plan</CardTitle>
               <CardDescription>
-                Konfigurasjon for årlig HMS-plan og ledelsens gjennomgang for denne bedriften
+                Annual plan and management review for this organisation
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-3 gap-4">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground uppercase">
-                    Årlig HMS-plan
+                    Annual H&S plan
                   </p>
                   <p className="mt-1 font-medium">
-                    {tenant.hmsAnnualPlanEnabled ? "Aktivert" : "Deaktivert"}
+                    {tenant.hmsAnnualPlanEnabled ? "Enabled" : "Disabled"}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs font-medium text-muted-foreground uppercase">
-                    Frekvens ledelsens gjennomgang
+                    Management review frequency
                   </p>
                   <p className="mt-1 font-medium">
-                    Hver {tenant.managementReviewFrequencyMonths} måned
-                    {tenant.managementReviewFrequencyMonths !== 1 ? "er" : ""}
+                    Every {tenant.managementReviewFrequencyMonths} month
+                    {tenant.managementReviewFrequencyMonths !== 1 ? "s" : ""}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs font-medium text-muted-foreground uppercase">
-                    Siste gjennomgang
+                    Last review
                   </p>
                   <p className="mt-1 font-medium">
                     {lastManagementReview
                       ? format(new Date(lastManagementReview.reviewDate), "d. MMM yyyy", { locale: enGB })
-                      : "Ingen registrert"}
+                      : "None recorded"}
                   </p>
                 </div>
               </div>
               {lastManagementReview && (
                 <p className="text-xs text-muted-foreground">
-                  Neste anbefalte ledelsens gjennomgang beregnes automatisk ut fra valgt frekvens
-                  og brukes i varslingsmotoren for denne tenanten.
+                  The next recommended management review is calculated from this frequency
+                  and used in reminders for this organisation.
                 </p>
               )}
             </CardContent>
@@ -225,9 +219,9 @@ async function TenantDetails({ id }: { id: string }) {
           {hasSubscription && (
             <Card>
               <CardHeader>
-                <CardTitle>Abonnement</CardTitle>
+                <CardTitle>Subscription</CardTitle>
                 <CardDescription>
-                  Abonnementsinformasjon og fakturering
+                  Billing and subscription
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -240,12 +234,12 @@ async function TenantDetails({ id }: { id: string }) {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">
-                      Pris
+                      Price
                     </label>
                     <p className="font-medium mt-1 text-primary">
-                      {tenant.subscription.price.toLocaleString("en-GB")} kr
+                      £{tenant.subscription.price.toLocaleString("en-GB")}
                       <span className="text-sm text-muted-foreground">
-                        /{tenant.subscription.billingInterval === "YEARLY" ? "år" : "mnd"}
+                        /{tenant.subscription.billingInterval === "YEARLY" ? "year" : "month"}
                       </span>
                     </p>
                   </div>
@@ -266,7 +260,7 @@ async function TenantDetails({ id }: { id: string }) {
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-muted-foreground" />
                       <label className="text-sm font-medium text-muted-foreground">
-                        Periode utløper
+                        Period ends
                       </label>
                     </div>
                     <p className="font-medium mt-1">
@@ -292,9 +286,9 @@ async function TenantDetails({ id }: { id: string }) {
           {isSuperAdmin && tenant.invoices.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Siste fakturaer</CardTitle>
+                <CardTitle>Recent invoices</CardTitle>
                 <CardDescription>
-                  De {tenant.invoices.length} siste fakturaene
+                  The latest {tenant.invoices.length} invoices
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -308,7 +302,7 @@ async function TenantDetails({ id }: { id: string }) {
                         <CreditCard className="h-4 w-4 text-muted-foreground" />
                         <div>
                           <p className="font-medium">
-                            {invoice.amount.toLocaleString("en-GB")} kr
+                            £{invoice.amount.toLocaleString("en-GB")}
                           </p>
                           <p className="text-sm text-muted-foreground">
                             {new Date(invoice.createdAt).toLocaleDateString("en-GB")}
@@ -337,9 +331,9 @@ async function TenantDetails({ id }: { id: string }) {
           {isSuperAdmin && (
             <Card>
               <CardHeader>
-                <CardTitle>Brukere ({tenant.users.length})</CardTitle>
+                <CardTitle>Users ({tenant.users.length})</CardTitle>
                 <CardDescription>
-                  Alle brukere tilknyttet denne bedriften
+                  People linked to this organisation
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -350,19 +344,19 @@ async function TenantDetails({ id }: { id: string }) {
                       className="flex items-center justify-between p-3 border rounded-lg"
                     >
                       <div>
-                        <p className="font-medium">{userTenant.user.name || "Ukjent"}</p>
+                        <p className="font-medium">{userTenant.user.name || "Unknown"}</p>
                         <p className="text-sm text-muted-foreground">
                           {userTenant.user.email}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Opprettet: {new Date(userTenant.user.createdAt).toLocaleDateString("en-GB")}
+                          Created: {new Date(userTenant.user.createdAt).toLocaleDateString("en-GB")}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
                         {userTenant.user.emailVerified && (
                           <Badge variant="outline" className="text-green-600">
                             <CheckCircle2 className="h-3 w-3 mr-1" />
-                            Verifisert
+                            Verified
                           </Badge>
                         )}
                         <Badge variant="secondary">{userTenant.role}</Badge>
@@ -380,13 +374,13 @@ async function TenantDetails({ id }: { id: string }) {
           {/* Timeline */}
           <Card>
             <CardHeader>
-              <CardTitle>Tidslinje</CardTitle>
+              <CardTitle>Timeline</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-start gap-3">
                 <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium">Registrert</p>
+                  <p className="text-sm font-medium">Registered</p>
                   <p className="text-xs text-muted-foreground">
                     {new Date(tenant.createdAt).toLocaleDateString("en-GB", {
                       day: "2-digit",
@@ -403,7 +397,7 @@ async function TenantDetails({ id }: { id: string }) {
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium">Aktivert</p>
+                    <p className="text-sm font-medium">Activated</p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(tenant.onboardingCompletedAt).toLocaleDateString("en-GB", {
                         day: "2-digit",
@@ -421,7 +415,7 @@ async function TenantDetails({ id }: { id: string }) {
                 <div className="flex items-start gap-3">
                   <Clock className="h-4 w-4 text-muted-foreground mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium">Prøveperiode utløper</p>
+                    <p className="text-sm font-medium">{isDemo ? "Demo ends" : "Trial ends"}</p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(tenant.trialEndsAt).toLocaleDateString("en-GB", {
                         day: "2-digit",
@@ -439,9 +433,9 @@ async function TenantDetails({ id }: { id: string }) {
           {isSuperAdmin && adminUser && (
             <Card>
               <CardHeader>
-                <CardTitle>Endre admin e-post</CardTitle>
+                <CardTitle>Change admin email</CardTitle>
                 <CardDescription>
-                  Oppdater e-postadressen til admin-brukeren
+                  Update the administrator’s sign-in email
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -457,9 +451,9 @@ async function TenantDetails({ id }: { id: string }) {
           {isSuperAdmin && (
             <Card>
               <CardHeader>
-                <CardTitle>Send aktivering på nytt</CardTitle>
+                <CardTitle>Resend activation</CardTitle>
                 <CardDescription>
-                  Send ny aktiverings-e-post med påloggingsinformasjon
+                  Send a new email with sign-in details
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -471,89 +465,7 @@ async function TenantDetails({ id }: { id: string }) {
             </Card>
           )}
 
-          {/* Status Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Boxes className="h-4 w-4" />
-                Bransjepakke-status
-              </CardTitle>
-              <CardDescription>
-                Oversikt over hva som er provisionert for valgt bransje
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {!packageStatusResult.success && (
-                <p className="text-sm text-destructive">{packageStatusResult.error}</p>
-              )}
-
-              {packageStatus?.hasPackage === false && (
-                <p className="text-sm text-muted-foreground">
-                  Ingen definert bransjepakke for denne tenanten
-                  {packageStatus.industryLabel ? ` (${packageStatus.industryLabel})` : ""}.
-                </p>
-              )}
-
-              {packageStatus?.hasPackage && (
-                <div className="space-y-3">
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Bransje: </span>
-                    <span className="font-medium">{packageStatus.industryLabel}</span>
-                  </div>
-
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span>Risikovurdering-forslag</span>
-                      <Badge variant="outline">
-                        {packageStatus.sections.risks.existing}/{packageStatus.sections.risks.expected}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>SJA-maler</span>
-                      <Badge variant="outline">
-                        {packageStatus.sections.sjaTemplates.existing}/{packageStatus.sections.sjaTemplates.expected}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Vernerunde-maler</span>
-                      <Badge variant="outline">
-                        {packageStatus.sections.inspectionTemplates.existing}/{packageStatus.sections.inspectionTemplates.expected}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Opplæringsmaler</span>
-                      <Badge variant="outline">
-                        {packageStatus.sections.courses.existing}/{packageStatus.sections.courses.expected}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Lovreferanser</span>
-                      <Badge variant="outline">
-                        {packageStatus.sections.legalReferences.existing}/{packageStatus.sections.legalReferences.expected}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Enkel mobilmeny</span>
-                      <Badge variant="outline">
-                        {packageStatus.sections.simpleMenu.existing}/{packageStatus.sections.simpleMenu.expected}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <IndustryPackageActions
-                    tenantId={tenant.id}
-                    hasPackage={packageStatus.hasPackage}
-                  />
-
-                  <p className="text-xs text-muted-foreground">
-                    Provisionering er idempotent og oppretter kun manglende elementer.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* HMS-hånbok oppsett */}
+          {/* Health and safety policy setup */}
           <HandbookTemplateImport
             tenantId={tenant.id}
             tenantName={tenant.name}
@@ -566,9 +478,9 @@ async function TenantDetails({ id }: { id: string }) {
           {isSuperAdmin && (
             <Card>
               <CardHeader>
-                <CardTitle>Dataeksport (GDPR)</CardTitle>
+                <CardTitle>Data export (UK GDPR)</CardTitle>
                 <CardDescription>
-                  Last ned all data for denne bedriften iht. GDPR art. 20
+                  Download this organisation’s data under UK GDPR article 20
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -581,9 +493,9 @@ async function TenantDetails({ id }: { id: string }) {
           {isSuperAdmin && (
             <Card className="border-destructive/50">
               <CardHeader>
-                <CardTitle className="text-destructive">Administrer status</CardTitle>
+                <CardTitle className="text-destructive">Manage status</CardTitle>
                 <CardDescription>
-                  Endre bedriftens status
+                  Activate, suspend or cancel this organisation
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -594,7 +506,7 @@ async function TenantDetails({ id }: { id: string }) {
                   }}>
                     <Button type="submit" variant="default" className="w-full">
                       <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Aktiver bedrift
+                      Activate organisation
                     </Button>
                   </form>
                 )}
@@ -605,7 +517,7 @@ async function TenantDetails({ id }: { id: string }) {
                   }}>
                     <Button type="submit" variant="outline" className="w-full">
                       <AlertCircle className="h-4 w-4 mr-2" />
-                      Suspender bedrift
+                      Suspend organisation
                     </Button>
                   </form>
                 )}
@@ -616,7 +528,7 @@ async function TenantDetails({ id }: { id: string }) {
                   }}>
                     <Button type="submit" variant="destructive" className="w-full">
                       <AlertCircle className="h-4 w-4 mr-2" />
-                      Kanseller bedrift
+                      Cancel organisation
                     </Button>
                   </form>
                 )}
@@ -628,9 +540,11 @@ async function TenantDetails({ id }: { id: string }) {
           {isSuperAdmin && (
             <Card className="border-destructive">
               <CardHeader>
-                <CardTitle className="text-destructive">Fare-sone</CardTitle>
+                <CardTitle className="text-destructive">Danger zone</CardTitle>
                 <CardDescription>
-                  Slett bedrift og alle tilhørende data permanent
+                  {isDemo
+                    ? "Permanently delete this demo workspace and its data"
+                    : "Permanently delete this organisation and its data"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -638,6 +552,7 @@ async function TenantDetails({ id }: { id: string }) {
                   tenantId={tenant.id}
                   tenantName={tenant.name}
                   tenantStatus={tenant.status}
+                  isDemo={isDemo}
                   counts={{
                     users: tenant._count.users,
                     documents: tenant._count.documents,
@@ -645,9 +560,9 @@ async function TenantDetails({ id }: { id: string }) {
                     risks: tenant._count.risks,
                   }}
                 />
-                {(tenant.status === "ACTIVE" || tenant.status === "TRIAL") && (
+                {!isDemo && (tenant.status === "ACTIVE" || tenant.status === "TRIAL") && (
                   <p className="text-xs text-muted-foreground mt-2">
-                    Endre status til SUSPENDED eller CANCELLED for sletting
+                    Change status to SUSPENDED or CANCELLED before deleting a paid organisation.
                   </p>
                 )}
               </CardContent>
@@ -667,7 +582,7 @@ export default async function TenantDetailsPage({ params }: PageProps) {
       fallback={
         <Card>
           <CardContent className="p-12 text-center">
-            <p className="text-muted-foreground">Laster detaljer...</p>
+            <p className="text-muted-foreground">Loading details…</p>
           </CardContent>
         </Card>
       }

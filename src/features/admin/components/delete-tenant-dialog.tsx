@@ -24,6 +24,7 @@ interface DeleteTenantDialogProps {
   tenantId: string;
   tenantName: string;
   tenantStatus: "ACTIVE" | "TRIAL" | "SUSPENDED" | "CANCELLED";
+  isDemo?: boolean;
   counts: {
     users: number;
     documents: number;
@@ -36,6 +37,7 @@ export function DeleteTenantDialog({
   tenantId,
   tenantName,
   tenantStatus,
+  isDemo = false,
   counts,
 }: DeleteTenantDialogProps) {
   const router = useRouter();
@@ -44,15 +46,16 @@ export function DeleteTenantDialog({
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmText, setConfirmText] = useState("");
 
-  const canDelete = tenantStatus === "CANCELLED" || tenantStatus === "SUSPENDED";
+  const canDelete = isDemo || tenantStatus === "CANCELLED" || tenantStatus === "SUSPENDED";
   const isConfirmed = confirmText === tenantName;
+  const title = isDemo ? "Delete demo workspace" : "Delete organisation permanently";
 
   async function handleDelete() {
     if (!isConfirmed) {
       toast({
         variant: "destructive",
-        title: "❌ Bekreftelse mangler",
-        description: `Skriv inn bedriftsnavnet nøyaktig: "${tenantName}"`,
+        title: "Confirmation missing",
+        description: `Type the organisation name exactly: "${tenantName}"`,
       });
       return;
     }
@@ -63,7 +66,7 @@ export function DeleteTenantDialog({
 
     if (result.success) {
       toast({
-        title: "✅ Bedrift slettet",
+        title: isDemo ? "Demo deleted" : "Organisation deleted",
         description: result.message,
       });
       setIsOpen(false);
@@ -72,7 +75,7 @@ export function DeleteTenantDialog({
     } else {
       toast({
         variant: "destructive",
-        title: "❌ Kunne ikke slette bedrift",
+        title: "Could not delete",
         description: result.error,
       });
       setIsDeleting(false);
@@ -82,47 +85,47 @@ export function DeleteTenantDialog({
   return (
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogTrigger asChild>
-        <Button
-          variant="destructive"
-          disabled={!canDelete}
-          className="w-full"
-        >
+        <Button variant="destructive" disabled={!canDelete} className="w-full">
           <Trash2 className="h-4 w-4 mr-2" />
-          Slett bedrift permanent
+          {isDemo ? "Delete demo" : "Delete organisation permanently"}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent className="max-w-2xl">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2 text-destructive">
             <AlertTriangle className="h-5 w-5" />
-            Slett bedrift permanent
+            {title}
           </AlertDialogTitle>
           <AlertDialogDescription className="space-y-4">
             <div className="text-base font-semibold text-foreground">
-              Er du helt sikker på at du vil slette "{tenantName}"?
+              Delete “{tenantName}”? This cannot be undone.
             </div>
 
-            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 space-y-2">
-              <p className="font-semibold text-destructive">⚠️ ADVARSEL: Denne handlingen kan ikke angres!</p>
-              <p className="text-sm">Dette vil permanent slette:</p>
-              <ul className="text-sm list-disc list-inside space-y-1 ml-2">
-                <li><strong>{counts.users}</strong> brukere</li>
-                <li><strong>{counts.documents}</strong> dokumenter</li>
-                <li><strong>{counts.incidents}</strong> avvik</li>
-                <li><strong>{counts.risks}</strong> risikovurderinger</li>
-                <li>Alle skjemaer, opplæring, revisjoner og mål</li>
-                <li>Alle fakturaer og betalingshistorikk</li>
-                <li><strong>Alle filer lagret i R2 Cloud</strong></li>
+            <div className="space-y-2 rounded-lg border border-destructive/20 bg-destructive/10 p-4">
+              <p className="font-semibold text-destructive">This permanently removes:</p>
+              <ul className="ml-2 list-inside list-disc space-y-1 text-sm">
+                <li>
+                  <strong>{counts.users}</strong> users
+                </li>
+                <li>
+                  <strong>{counts.documents}</strong> documents
+                </li>
+                <li>
+                  <strong>{counts.incidents}</strong> accident book entries
+                </li>
+                <li>
+                  <strong>{counts.risks}</strong> risk assessments
+                </li>
+                <li>Procedures, training, audits and related records</li>
+                <li>Invoices and stored files</li>
               </ul>
             </div>
 
             {!canDelete && (
-              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
-                <p className="text-sm font-semibold">
-                  ⚠️ Kan ikke slette aktive bedrifter
-                </p>
-                <p className="text-sm mt-1">
-                  Endre status til "SUSPENDED" eller "CANCELLED" før sletting.
+              <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-4">
+                <p className="text-sm font-semibold">Cannot delete an active organisation</p>
+                <p className="mt-1 text-sm">
+                  Change status to SUSPENDED or CANCELLED first. Demo workspaces can be deleted while they are still on trial.
                 </p>
               </div>
             )}
@@ -130,7 +133,7 @@ export function DeleteTenantDialog({
             {canDelete && (
               <div className="space-y-2 pt-4">
                 <Label htmlFor="confirmText" className="text-base">
-                  Skriv inn bedriftsnavnet for å bekrefte sletting:
+                  Type the organisation name to confirm:
                 </Label>
                 <Input
                   id="confirmText"
@@ -140,17 +143,12 @@ export function DeleteTenantDialog({
                   disabled={isDeleting}
                   className="font-mono"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Skriv inn: <code className="bg-muted px-1 py-0.5 rounded">{tenantName}</code>
-                </p>
               </div>
             )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>
-            Avbryt
-          </AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={(e) => {
               e.preventDefault();
@@ -160,11 +158,10 @@ export function DeleteTenantDialog({
             className="bg-destructive hover:bg-destructive/90"
           >
             {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Ja, slett permanent
+            Yes, delete permanently
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   );
 }
-
