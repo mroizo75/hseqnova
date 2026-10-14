@@ -29,8 +29,14 @@ export default async function CrmDemosPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Demos</h1>
-        <p className="text-muted-foreground">Bookings from the public calendar</p>
+        <h1 className="text-3xl font-bold">Demo bookings</h1>
+        <p className="text-muted-foreground">
+          Meetings booked from the public calendar. To give a company a login and try the product, create a{" "}
+          <Link className="underline" href="/admin/tenants/demo">
+            demo workspace
+          </Link>
+          .
+        </p>
       </div>
       <Card>
         <CardHeader>

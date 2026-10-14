@@ -26,6 +26,7 @@ import {
   CalendarDays,
   Newspaper,
   LineChart,
+  MonitorPlay,
 } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { canAccessAdminPath } from "@/lib/platform-access";
@@ -42,10 +43,11 @@ const allNavItems: NavItem[] = [
   { href: "/admin/crm/pipeline", label: "Pipeline", icon: Kanban },
   { href: "/admin/crm/companies", label: "Companies", icon: Building2 },
   { href: "/admin/crm/tasks", label: "Tasks", icon: ListTodo },
-  { href: "/admin/crm/demos", label: "Demos", icon: CalendarDays },
+  { href: "/admin/crm/demos", label: "Demo bookings", icon: CalendarDays },
   { href: "/admin/support", label: "Support", icon: Headphones },
   { href: "/admin/registrations", label: "New registrations", icon: UserPlus },
   { href: "/admin/tenants", label: "Organisations", icon: Building2 },
+  { href: "/admin/tenants/demo", label: "Demo workspace", icon: MonitorPlay },
   { href: "/admin/enterprises", label: "Enterprise", icon: Shield },
   { href: "/admin/invoices", label: "Invoices", icon: FileText },
   { href: "/admin/legal-references", label: "Legal register", icon: Scale },
