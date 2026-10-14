@@ -13,6 +13,7 @@ import {
 import { EditTenantForm } from "@/features/admin/components/edit-tenant-form";
 import { UpdateAdminEmailForm } from "@/features/admin/components/update-admin-email-form";
 import { ResendActivationForm } from "@/features/admin/components/resend-activation-form";
+import { ResendDemoEmailButton } from "@/features/admin/components/resend-demo-email-button";
 import { DeleteTenantDialog } from "@/features/admin/components/delete-tenant-dialog";
 import { TenantActivityTimeline } from "@/features/admin/components/tenant-activity-timeline";
 import { TenantOfferCard } from "@/features/admin/components/tenant-offer-card";
@@ -447,13 +448,26 @@ async function TenantDetails({ id }: { id: string }) {
             </Card>
           )}
 
-          {/* Resend Activation - kun superadmin */}
-          {isSuperAdmin && (
+          {isSuperAdmin && isDemo && (
             <Card>
               <CardHeader>
-                <CardTitle>Resend activation</CardTitle>
+                <CardTitle>Demo login email</CardTitle>
                 <CardDescription>
-                  Send a new email with sign-in details
+                  Sends sign-in details and a new temporary password to the contact
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResendDemoEmailButton tenantId={tenant.id} />
+              </CardContent>
+            </Card>
+          )}
+
+          {isSuperAdmin && !isDemo && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Send login email</CardTitle>
+                <CardDescription>
+                  Generates a temporary password and emails sign-in details
                 </CardDescription>
               </CardHeader>
               <CardContent>

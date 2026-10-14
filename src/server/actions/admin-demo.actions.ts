@@ -13,9 +13,7 @@ import { parseSignupAddonIds } from "@/lib/signup-checkout";
 import { DEMO_DURATION_DAYS, DEMO_REGISTRATION_TYPE, demoEndsAt } from "@/lib/demo-access";
 import { normalizeIndustryValue } from "@/lib/industry-packages";
 import { activateAddonPackForTenant } from "@/server/queries/billing.queries";
-import { sendEmail } from "@/lib/email";
-import { sendUserInvitationEmail } from "@/lib/email-service";
-import { appBaseUrl } from "@/lib/signup-checkout";
+import { sendDemoWorkspaceWelcomeEmail } from "@/lib/demo-workspace-email";
 import { syncCrmFromTenant } from "@/features/crm/lib/sync-from-tenant";
 
 const createDemoSchema = z.object({
@@ -189,52 +187,140 @@ export async function createDemoOrganisation(input: z.infer<typeof createDemoSch
       }
     }
 
-    await sendUserInvitationEmail({
-      to: email,
-      userName: validated.contactPerson,
-      userEmail: email,
-      tempPassword: password,
-      companyName: validated.name,
-      invitedByName: staff.name || "HSEQ Nova",
-    });
+    const packNames = [
+      "HSEQ Nova Core",
+      ...addonIds.map((id) => ADDON_PACKS.find((pack) => pack.id === id)?.name ?? id),
+    ];
 
-    const loginUrl = `${appBaseUrl()}/login`;
-    const endsLabel = new Date(trialEndsAt).toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-    const packNames = ["HSEQ Nova Core", ...addonIds.map((id) => ADDON_PACKS.find((pack) => pack.id === id)?.name ?? id)];
-    await sendEmail({
-      to: email,
-      subject: `Your ${validated.demoDays}-day HSEQ Nova demo`,
-      html: `<p>Hello ${validated.contactPerson},</p>
-<p>You have ${validated.demoDays} days of demo access to HSEQ Nova for <strong>${validated.name}</strong>, ending on <strong>${endsLabel}</strong>.</p>
-<p>Included in this demo: ${packNames.join(", ")}.</p>
-<p>Sign in at <a href="${loginUrl}">${loginUrl}</a> with the login details in the invitation email. If you want to keep the workspace, subscribe from Settings or the subscribe page before the demo ends. Stripe will then start billing Core plus the add-ons you choose.</p>
-<p>HSEQ Nova</p>`,
-    });
+    try {
+      await sendDemoWorkspaceWelcomeEmail({
+        to: email,
+        contactName: validated.contactPerson,
+        companyName: validated.name,
+        password,
+        demoDays: validated.demoDays,
+        endsAt: new Date(trialEndsAt),
+        packNames,
+      });
+    } catch (error: unknown) {
+      return {
+        success: false as const,
+        error: `Demo workspace was created, but the login email could not be sent: ${errorMessage(error, "email provider error")}. Open the organisation and use “Send login email”.`,
+        tenantId,
+        trialEndsAt,
+        emailSent: false as const,
+      };
+    }
 
-    await syncCrmFromTenant(
-      {
-        id: tenantId,
-        name: validated.name,
-        companyNumber: validated.companyNumber,
-        contactPerson: validated.contactPerson,
-        contactEmail: email,
-        contactPhone: validated.contactPhone,
-        industry,
-        status: "TRIAL",
-        onboardingStatus: "ADMIN_CREATED",
-        notes: `Demo ${validated.demoDays} days`,
-      },
-      { source: "MANUAL", stage: "DEMO", ownerId: staff.id },
-    );
+    try {
+      await syncCrmFromTenant(
+        {
+          id: tenantId,
+          name: validated.name,
+          companyNumber: validated.companyNumber,
+          contactPerson: validated.contactPerson,
+          contactEmail: email,
+          contactPhone: validated.contactPhone,
+          industry,
+          status: "TRIAL",
+          onboardingStatus: "ADMIN_CREATED",
+          notes: `Demo ${validated.demoDays} days`,
+        },
+        { source: "MANUAL", stage: "DEMO", ownerId: staff.id },
+      );
+    } catch {
+      // Workspace and email already succeeded.
+    }
 
     revalidatePath("/admin/tenants");
     revalidatePath("/admin/crm");
-    return { success: true as const, tenantId, trialEndsAt };
+    return {
+      success: true as const,
+      tenantId,
+      trialEndsAt,
+      emailSent: true as const,
+      email,
+    };
   } catch (error: unknown) {
     return { success: false as const, error: errorMessage(error, "Could not create the demo workspace") };
+  }
+}
+
+export async function resendDemoWorkspaceEmail(tenantId: string) {
+  try {
+    const staff = await requirePlatformStaff();
+    if (!staff || !canSeeOrganisations(staff)) {
+      return { success: false as const, error: "Only platform staff can send demo login emails" };
+    }
+
+    const db = getAdminDb();
+    const { data: tenant, error: tenantError } = await db
+      .from("Tenant")
+      .select("id, name, contactPerson, contactEmail, trialEndsAt, registrationType, notes")
+      .eq("id", tenantId)
+      .maybeSingle();
+    if (tenantError || !tenant) {
+      return { success: false as const, error: "Organisation not found" };
+    }
+    if (tenant.registrationType !== DEMO_REGISTRATION_TYPE) {
+      return { success: false as const, error: "This is not a demo workspace" };
+    }
+
+    const email = String(tenant.contactEmail || "").trim().toLowerCase();
+    if (!email) {
+      return { success: false as const, error: "The demo has no contact email" };
+    }
+
+    const { data: membership, error: membershipError } = await db
+      .from("UserTenant")
+      .select("userId")
+      .eq("tenantId", tenantId)
+      .eq("role", "ADMIN")
+      .limit(1)
+      .maybeSingle();
+    if (membershipError || !membership?.userId) {
+      return { success: false as const, error: "No admin user on this demo" };
+    }
+
+    const password = temporaryPassword();
+    const hashed = await bcrypt.hash(password, 10);
+    const now = nowIso();
+    const { error: userError } = await db
+      .from("User")
+      .update({ password: hashed, emailVerified: now, updatedAt: now })
+      .eq("id", membership.userId);
+    if (userError) {
+      throw { code: "USER_UPDATE_FAILED", message: userError.message };
+    }
+
+    const notes = String(tenant.notes ?? "");
+    const demoDaysMatch = notes.match(/Demo workspace \((\d+) days\)/);
+    const demoDays = demoDaysMatch ? Number(demoDaysMatch[1]) : 7;
+    const packIds = notes
+      .split("Packs:")[1]
+      ?.split(".")[0]
+      ?.split(",")
+      .map((value) => value.trim())
+      .filter((value) => value && value !== "core") ?? [];
+    const packNames = [
+      "HSEQ Nova Core",
+      ...packIds.map((id) => ADDON_PACKS.find((pack) => pack.id === id)?.name ?? id),
+    ];
+    const endsAt = tenant.trialEndsAt ? new Date(String(tenant.trialEndsAt)) : demoEndsAt(demoDays);
+
+    await sendDemoWorkspaceWelcomeEmail({
+      to: email,
+      contactName: String(tenant.contactPerson || "there"),
+      companyName: String(tenant.name),
+      password,
+      demoDays,
+      endsAt,
+      packNames,
+    });
+
+    revalidatePath(`/admin/tenants/${tenantId}`);
+    return { success: true as const, email };
+  } catch (error: unknown) {
+    return { success: false as const, error: errorMessage(error, "Could not send the demo login email") };
   }
 }

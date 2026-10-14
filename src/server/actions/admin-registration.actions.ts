@@ -2,14 +2,13 @@
 
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getAdminDb } from "@/lib/supabase/admin";
 import { createId } from "@/lib/ids";
-import { sendUserInvitationEmail } from "@/lib/email-service";
 import { sendEmail } from "@/lib/email";
+import { generateTemporaryPassword, sendLoginDetailsEmail } from "@/lib/login-details-email";
 import { appBaseUrl } from "@/lib/signup-checkout";
 import { markCrmDealLostForTenant, syncCrmFromTenant } from "@/features/crm/lib/sync-from-tenant";
 
@@ -53,10 +52,6 @@ function errorMessage(error: unknown, fallback: string): string {
 
 function nowIso(): string {
   return new Date().toISOString();
-}
-
-function temporaryPassword(): string {
-  return `Hn-${randomBytes(6).toString("base64url")}`;
 }
 
 async function requireStaff(): Promise<{ id: string; name: string | null; email: string }> {
@@ -242,7 +237,6 @@ const activateSchema = z.object({
   tenantId: z.string().min(1),
   adminEmail: z.string().email(),
   adminName: z.string().min(2),
-  adminPassword: z.string().min(8),
   notes: z.string().optional(),
 });
 
@@ -278,7 +272,8 @@ export async function activateTenant(input: z.infer<typeof activateSchema>) {
       throw { code: "USER_LOOKUP_FAILED", message: userError.message };
     }
 
-    const hashed = await bcrypt.hash(validated.adminPassword, 10);
+    const password = generateTemporaryPassword();
+    const hashed = await bcrypt.hash(password, 10);
     let userId = existingUser?.id ? String(existingUser.id) : createId();
 
     if (existingUser?.id) {
@@ -352,32 +347,45 @@ export async function activateTenant(input: z.infer<typeof activateSchema>) {
       throw { code: "TENANT_UPDATE_FAILED", message: tenantUpdateError.message };
     }
 
-    await sendUserInvitationEmail({
-      to: email,
-      userName: validated.adminName,
-      userEmail: email,
-      tempPassword: validated.adminPassword,
-      companyName: String(tenant.name),
-      invitedByName: staff.name || "HSEQ Nova",
-    });
+    try {
+      await sendLoginDetailsEmail({
+        to: email,
+        userName: validated.adminName,
+        userEmail: email,
+        password,
+        companyName: String(tenant.name),
+        invitedByName: staff.name || "HSEQ Nova",
+      });
+    } catch (error: unknown) {
+      return {
+        success: false as const,
+        error: `Company was activated, but the login email could not be sent: ${errorMessage(error, "email provider error")}. Use “Send login email” on the organisation page.`,
+        tenantId: validated.tenantId,
+        emailSent: false as const,
+      };
+    }
 
-    await syncCrmFromTenant(
-      {
-        id: validated.tenantId,
-        name: String(tenant.name),
-        contactPerson: validated.adminName,
-        contactEmail: email,
-        status: "ACTIVE",
-        onboardingStatus: "ADMIN_CREATED",
-        notes: validated.notes?.trim() || null,
-      },
-      { source: "WEBSITE", stage: "WON" },
-    );
+    try {
+      await syncCrmFromTenant(
+        {
+          id: validated.tenantId,
+          name: String(tenant.name),
+          contactPerson: validated.adminName,
+          contactEmail: email,
+          status: "ACTIVE",
+          onboardingStatus: "ADMIN_CREATED",
+          notes: validated.notes?.trim() || null,
+        },
+        { source: "WEBSITE", stage: "WON" },
+      );
+    } catch {
+      // Login email already sent.
+    }
 
     revalidatePath("/admin/registrations");
     revalidatePath(`/admin/registrations/${validated.tenantId}`);
     revalidatePath("/admin/crm");
-    return { success: true as const };
+    return { success: true as const, emailSent: true as const, email };
   } catch (error: unknown) {
     return { success: false as const, error: errorMessage(error, "Could not activate the company") };
   }
@@ -483,7 +491,7 @@ export async function resendWelcomeEmail(input: { tenantId: string; userEmail: s
       return { success: false as const, error: "That user is not on this company" };
     }
 
-    const password = temporaryPassword();
+    const password = generateTemporaryPassword();
     const hashed = await bcrypt.hash(password, 10);
     const { error: updateError } = await db
       .from("User")
@@ -493,11 +501,11 @@ export async function resendWelcomeEmail(input: { tenantId: string; userEmail: s
       throw { code: "USER_UPDATE_FAILED", message: updateError.message };
     }
 
-    await sendUserInvitationEmail({
+    await sendLoginDetailsEmail({
       to: email,
       userName: (user.name as string | null) || "there",
       userEmail: email,
-      tempPassword: password,
+      password,
       companyName: String(tenant.name),
       invitedByName: staff.name || "HSEQ Nova",
     });

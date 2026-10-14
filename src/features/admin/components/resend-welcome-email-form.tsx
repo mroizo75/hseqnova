@@ -15,69 +15,42 @@ interface ResendWelcomeEmailFormProps {
 export function ResendWelcomeEmailForm({
   tenantId,
   userEmail,
-  userName,
 }: ResendWelcomeEmailFormProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
   async function handleResend() {
-    if (!confirm(`Send nytt passord til ${userEmail}?`)) {
-      return;
-    }
-
     setLoading(true);
+    const result = await resendWelcomeEmail({
+      tenantId,
+      userEmail,
+    });
+    setLoading(false);
 
-    try {
-      console.log("📧 Resending welcome email to:", userEmail);
-      const result = await resendWelcomeEmail({
-        tenantId,
-        userEmail,
+    if (result.success) {
+      toast({
+        title: "Login email sent",
+        description: `A generated password has been sent to ${userEmail}`,
       });
-      console.log("📧 Result:", result);
-
-      if (result.success) {
-        alert("✅ E-post sendt til " + userEmail + "!");
-        toast({
-          title: "✅ E-post sendt!",
-          description: `Nytt passord er sendt til ${userEmail}`,
-        });
-      } else {
-        alert("❌ Feil: " + (result.error || "Kunne ikke sende e-post"));
-        toast({
-          variant: "destructive",
-          title: "❌ Feil",
-          description: result.error || "Kunne ikke sende e-post",
-        });
-      }
-    } catch (error) {
-      console.error("Resend email error:", error);
-      alert("❌ Systemfeil ved sending av e-post");
+    } else {
       toast({
         variant: "destructive",
-        title: "❌ Systemfeil",
-        description: "En uventet feil oppstod",
+        title: "Could not send",
+        description: result.error || "Could not send the email",
       });
-    } finally {
-      setLoading(false);
     }
   }
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={handleResend}
-      disabled={loading}
-    >
+    <Button variant="outline" size="sm" onClick={handleResend} disabled={loading}>
       {loading ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : (
         <>
           <Mail className="h-4 w-4 mr-2" />
-          Send nytt passord
+          Generate password and send
         </>
       )}
     </Button>
   );
 }
-

@@ -57,12 +57,22 @@ export function CreateDemoOrganisationForm() {
     });
     setLoading(false);
     if (!result.success) {
+      if ("tenantId" in result && result.tenantId) {
+        toast({
+          variant: "destructive",
+          title: "Demo created — email not sent",
+          description: result.error,
+        });
+        router.push(`/admin/tenants/${result.tenantId}`);
+        router.refresh();
+        return;
+      }
       toast({ variant: "destructive", title: "Could not create demo", description: result.error });
       return;
     }
     toast({
       title: "Demo workspace created",
-      description: `Login details have been emailed. Access ends ${new Date(result.trialEndsAt).toLocaleDateString("en-GB")}.`,
+      description: `Login details sent to ${result.email}. Access ends ${new Date(result.trialEndsAt).toLocaleDateString("en-GB")}.`,
     });
     router.push(`/admin/tenants/${result.tenantId}`);
     router.refresh();

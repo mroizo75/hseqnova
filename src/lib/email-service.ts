@@ -5,6 +5,8 @@
 
 import { Resend } from "resend";
 import { getPrivilegedRoleLabel, PrivilegedRole } from "./privileged-users";
+import { sendLoginDetailsEmail } from "@/lib/login-details-email";
+import { sendEmail } from "@/lib/email";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -38,145 +40,15 @@ export async function sendUserInvitationEmail({
   companyName,
   invitedByName,
 }: SendUserInvitationEmailParams) {
-  try {
-    const loginUrl = `${BASE_URL}/login`;
-    const logoUrl = `${BASE_URL}/logo-nova.png`;
-
-    const html = `
-<!DOCTYPE html>
-<html lang="en-GB">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>You have been invited to HSEQ Nova</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden;">
-          <tr>
-            <td style="background: linear-gradient(135deg, #2d9c92 0%, #3db88a 100%); padding: 40px 40px 30px; text-align: center;">
-              <img src="${logoUrl}" alt="HSEQ Nova" style="max-width: 180px; height: auto; margin-bottom: 20px;" />
-              <h1 style="color: #ffffff; font-size: 28px; margin: 0; font-weight: 600; letter-spacing: -0.5px;">
-                Welcome to HSEQ Nova
-              </h1>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 40px;">
-              <p style="color: #1a1a1a; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                Hello <strong>${userName}</strong>,
-              </p>
-              <p style="color: #1a1a1a; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                <strong>${invitedByName}</strong> at <strong>${companyName}</strong> has invited you to HSEQ Nova.
-              </p>
-              <p style="color: #1a1a1a; font-size: 16px; line-height: 1.6; margin: 0 0 30px;">
-                This is the company’s health, safety, environment and quality system: accident book, health and safety policy, inspections, training and related records.
-              </p>
-              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f0fdf4; border-left: 4px solid #3db88a; border-radius: 4px; margin: 30px 0;">
-                <tr>
-                  <td style="padding: 20px;">
-                    <h3 style="color: #1a1a1a; font-size: 16px; margin: 0 0 15px; font-weight: 600;">
-                      Sign-in details
-                    </h3>
-                    <table cellpadding="0" cellspacing="0" style="width: 100%; font-size: 14px;">
-                      <tr>
-                        <td style="color: #666; padding: 4px 0; width: 40%;">Email</td>
-                        <td style="color: #1a1a1a; padding: 4px 0; font-weight: 600;">${userEmail}</td>
-                      </tr>
-                      <tr>
-                        <td style="color: #666; padding: 4px 0;">Temporary password</td>
-                        <td style="color: #1a1a1a; padding: 4px 0;">
-                          <code style="background-color: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-family: monospace; font-weight: 600;">${tempPassword}</code>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
-                <tr>
-                  <td align="center">
-                    <a href="${loginUrl}" style="display: inline-block; background-color: #3db88a; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: 600; font-size: 16px;">
-                      Sign in
-                    </a>
-                  </td>
-                </tr>
-              </table>
-              <p style="color: #666; font-size: 14px; text-align: center; margin: 20px 0;">
-                Or paste this link into your browser:<br/>
-                <a href="${loginUrl}" style="color: #2d9c92; text-decoration: none;">${loginUrl}</a>
-              </p>
-              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px; margin: 30px 0;">
-                <tr>
-                  <td style="padding: 20px;">
-                    <h3 style="color: #1a1a1a; font-size: 16px; margin: 0 0 10px; font-weight: 600;">
-                      Change your password
-                    </h3>
-                    <p style="color: #666; font-size: 14px; margin: 0 0 10px; line-height: 1.6;">
-                      After you sign in, go to <strong>Settings → Profile</strong> and set a password of your own.
-                    </p>
-                    <p style="color: #666; font-size: 14px; margin: 0; line-height: 1.6;">
-                      If you were not expecting this invitation, tell your company administrator.
-                    </p>
-                  </td>
-                </tr>
-              </table>
-              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border-radius: 6px; padding: 20px; margin-top: 30px;">
-                <tr>
-                  <td>
-                    <p style="color: #1a1a1a; font-size: 14px; margin: 0 0 10px; font-weight: 600;">
-                      Need help?
-                    </p>
-                    <p style="color: #666; font-size: 14px; margin: 0; line-height: 1.6;">
-                      <a href="mailto:hello@hseqnova.co.uk" style="color: #2d9c92; text-decoration: none;">hello@hseqnova.co.uk</a>
-                    </p>
-                  </td>
-                </tr>
-              </table>
-              <p style="color: #1a1a1a; font-size: 16px; line-height: 1.6; margin: 30px 0 0;">
-                Kind regards,<br/>
-                <strong>HSEQ Nova</strong>
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td style="background-color: #f9fafb; padding: 30px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
-              <p style="color: #9ca3af; font-size: 12px; margin: 0 0 10px; line-height: 1.5;">
-                HSEQ Nova — health, safety, environment and quality software for the UK
-              </p>
-              <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                <a href="${BASE_URL}" style="color: #2d9c92; text-decoration: none;">hseqnova.co.uk</a>
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-    `;
-
-    const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: [to],
-      subject: `You have been invited to HSEQ Nova — ${companyName}`,
-      html: html,
-    });
-
-    if (error) {
-      console.error("Resend error:", error);
-      throw new Error(`Failed to send email: ${error.message}`);
-    }
-
-    console.log(`✅ Invitation email sent to ${to}:`, data?.id);
-    return { success: true, messageId: data?.id };
-  } catch (error) {
-    console.error("Send invitation email error:", error);
-    throw error;
-  }
+  await sendLoginDetailsEmail({
+    to,
+    userName,
+    userEmail,
+    password: tempPassword,
+    companyName,
+    invitedByName,
+  });
+  return { success: true as const };
 }
 
 export async function sendExistingUserAddedToCompanyEmail({
@@ -202,15 +74,11 @@ export async function sendExistingUserAddedToCompanyEmail({
   <p>Kind regards,<br/>HSEQ Nova</p>
 </body>
 </html>`;
-  const { error } = await resend.emails.send({
-    from: FROM_EMAIL,
-    to: [to],
+  await sendEmail({
+    to,
     subject: `You have been added to ${companyName} in HSEQ Nova`,
     html,
   });
-  if (error) {
-    throw { code: "EMAIL_SEND_FAILED", message: error.message };
-  }
   return { success: true as const };
 }
 

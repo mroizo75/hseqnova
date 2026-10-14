@@ -9,6 +9,7 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 import { sendEmail } from "@/lib/email";
+import { generateTemporaryPassword, sendLoginDetailsEmail } from "@/lib/login-details-email";
 import { permanentlyDeleteTenant } from "@/server/actions/tenant-deletion";
 import { RiskCategory } from "@prisma/client";
 import { getBindingPrice } from "@/lib/subscription";
@@ -59,8 +60,7 @@ const updateAdminEmailSchema = z.object({
 
 const resendActivationSchema = z.object({
   tenantId: z.string(),
-  adminEmail: z.string().email(),
-  adminPassword: z.string().min(8, "Passord må være minst 8 tegn"),
+  adminEmail: z.string().email().optional(),
 });
 
 const createTenantSchema = z.object({
@@ -1077,138 +1077,114 @@ export async function updateTenantAdminEmail(input: z.infer<typeof updateAdminEm
   }
 }
 
-/**
- * Send aktivering på nytt
- */
 export async function resendActivationEmail(input: z.infer<typeof resendActivationSchema>) {
   try {
+    const privilegedUser = await requireSuperAdmin();
+    if (!privilegedUser) {
+      return { success: false, error: "Only superadmin can send activation emails" };
+    }
+
     const validated = resendActivationSchema.parse(input);
+    const db = getAdminDb();
+    const now = new Date().toISOString();
 
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: validated.tenantId },
-    });
-
-    if (!tenant) {
+    const { data: tenant, error: tenantError } = await db
+      .from("Tenant")
+      .select("id, name, contactPerson, contactEmail")
+      .eq("id", validated.tenantId)
+      .maybeSingle();
+    if (tenantError || !tenant) {
       return { success: false, error: "Organisation not found" };
     }
 
-    // Finn eller opprett admin-bruker
-    let user = await prisma.user.findUnique({
-      where: { email: validated.adminEmail },
-      include: {
-        tenants: {
-          where: {
-            tenantId: validated.tenantId,
-          },
-        },
-      },
-    });
-
-    const hashedPassword = await bcrypt.hash(validated.adminPassword, 10);
-
-    if (!user) {
-      // Opprett ny bruker
-      user = await prisma.user.create({
-        data: {
-          email: validated.adminEmail,
-          name: tenant.contactPerson || "Admin",
-          password: hashedPassword,
-          emailVerified: new Date(),
-          tenants: {
-            create: {
-              tenantId: validated.tenantId,
-              role: "ADMIN",
-            },
-          },
-        },
-        include: {
-          tenants: {
-            where: {
-              tenantId: validated.tenantId,
-            },
-          },
-        },
-      });
-    } else if (user.tenants.length === 0) {
-      // Koble eksisterende bruker til tenant
-      await prisma.userTenant.create({
-        data: {
-          userId: user.id,
-          tenantId: validated.tenantId,
-          role: "ADMIN",
-        },
-      });
-
-      // Oppdater passord
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          password: hashedPassword,
-          emailVerified: new Date(),
-        },
-      });
-    } else {
-      // Oppdater eksisterende bruker
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          password: hashedPassword,
-          emailVerified: new Date(),
-        },
-      });
+    const email = (validated.adminEmail || String(tenant.contactEmail || "")).trim().toLowerCase();
+    if (!email) {
+      return { success: false, error: "No admin email on this organisation" };
     }
 
-    // Send aktiverings-e-post med klartekst-passord
-    await sendEmail({
-      to: validated.adminEmail,
-      subject: `Welcome to HSEQ Nova — ${tenant.name}`,
-      html: `
-        <h1>Welcome to HSEQ Nova!</h1>
-        <p>Your organisation, <strong>${tenant.name}</strong>, is now active.</p>
-        
-        <h2>Sign-in details</h2>
-        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <p style="margin: 0 0 10px 0;">
-            <strong>URL:</strong> <a href="${process.env.NEXT_PUBLIC_APP_URL}/login">${process.env.NEXT_PUBLIC_APP_URL}/login</a>
-          </p>
-          <p style="margin: 0 0 10px 0;">
-            <strong>Email:</strong> ${validated.adminEmail}
-          </p>
-          <p style="margin: 0;">
-            <strong>Password:</strong> <code style="background-color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 16px;">${validated.adminPassword}</code>
-          </p>
-        </div>
+    const password = generateTemporaryPassword();
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-        <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;">
-          <p style="margin: 0; font-size: 14px;">
-            <strong>⚠️ Important:</strong> We recommend that you change this password after your first sign-in. 
-            You can do this under "My Profile" once signed in.
-          </p>
-        </div>
+    const { data: existingUser, error: userLookupError } = await db
+      .from("User")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+    if (userLookupError) {
+      throw { code: "USER_LOOKUP_FAILED", message: userLookupError.message };
+    }
 
-        <p>You now have access to the system and can start using HSEQ Nova.</p>
-        
-        <p style="margin-top: 20px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/login" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
-            Sign in now
-          </a>
-        </p>
+    const userId = existingUser?.id ? String(existingUser.id) : createId();
+    if (existingUser?.id) {
+      const { error } = await db
+        .from("User")
+        .update({
+          name: tenant.contactPerson || "Admin",
+          password: hashedPassword,
+          emailVerified: now,
+          lastTenantId: validated.tenantId,
+          updatedAt: now,
+        })
+        .eq("id", userId);
+      if (error) {
+        throw { code: "USER_UPDATE_FAILED", message: error.message };
+      }
+    } else {
+      const { error } = await db.from("User").insert({
+        id: userId,
+        email,
+        name: tenant.contactPerson || "Admin",
+        password: hashedPassword,
+        emailVerified: now,
+        preferredLocale: "en-GB",
+        lastTenantId: validated.tenantId,
+        createdAt: now,
+        updatedAt: now,
+      });
+      if (error) {
+        throw { code: "USER_CREATE_FAILED", message: error.message };
+      }
+    }
 
-        <p style="margin-top: 30px; color: #666; font-size: 14px;">
-          If you have any questions, contact us at support@hseqnova.com
-        </p>
-        
-        <p>Kind regards,<br/>The HSEQ Nova Team</p>
-      `,
+    const { data: membership, error: membershipError } = await db
+      .from("UserTenant")
+      .select("id")
+      .eq("userId", userId)
+      .eq("tenantId", validated.tenantId)
+      .maybeSingle();
+    if (membershipError) {
+      throw { code: "MEMBERSHIP_LOOKUP_FAILED", message: membershipError.message };
+    }
+    if (!membership?.id) {
+      const { error } = await db.from("UserTenant").insert({
+        id: createId(),
+        userId,
+        tenantId: validated.tenantId,
+        role: "ADMIN",
+        createdAt: now,
+        updatedAt: now,
+      });
+      if (error) {
+        throw { code: "MEMBERSHIP_CREATE_FAILED", message: error.message };
+      }
+    }
+
+    await sendLoginDetailsEmail({
+      to: email,
+      userName: String(tenant.contactPerson || "there"),
+      userEmail: email,
+      password,
+      companyName: String(tenant.name),
     });
 
     revalidatePath(`/admin/tenants/${validated.tenantId}`);
-
-    return { success: true };
+    return { success: true, email };
   } catch (error) {
-    console.error("Resend activation error:", error);
     if (error instanceof ZodError) {
       return { success: false, error: error.issues[0].message };
+    }
+    if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
+      return { success: false, error: error.message };
     }
     return { success: false, error: "Could not send activation email" };
   }
