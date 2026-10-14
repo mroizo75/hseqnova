@@ -46,12 +46,17 @@ export default async function TenantsPage() {
             )}
           </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/tenants/new">
-            <Plus className="mr-2 h-4 w-4" />
-            New organisation
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline" className="bg-transparent">
+            <Link href="/admin/tenants/demo">Create demo</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/admin/tenants/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New organisation
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Card>

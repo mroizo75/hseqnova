@@ -12,6 +12,8 @@ import { DashboardProviders } from "@/components/dashboard-providers";
 import { OfflineSyncBannerWrapper } from "@/components/offline-sync-banner-wrapper";
 import { resolveTenantProductAccess } from "@/server/queries/billing.queries";
 import { getEnabledModuleKeys } from "@/lib/require-tenant-module";
+import { isDemoRegistration } from "@/lib/demo-access";
+import { DemoAccessBanner } from "@/features/admin/components/demo-access-banner";
 
 export default async function DashboardLayout({
   children,
@@ -37,21 +39,25 @@ export default async function DashboardLayout({
   const tenantId = user.tenantId ?? null;
   let isTavleOnly = false;
   let enabledModules: string[] = [];
+  let demoEndsAt: string | null = null;
 
   if (tenantId) {
     const { data: tenant } = await getAdminDb()
       .from("Tenant")
-      .select("id, isTavleOnly, onboardingStatus, stripeSubscriptionId, stripeCustomerId, status")
+      .select("id, isTavleOnly, onboardingStatus, stripeSubscriptionId, stripeCustomerId, status, registrationType, trialEndsAt")
       .eq("id", tenantId)
       .maybeSingle();
     const access = tenant ? await resolveTenantProductAccess(tenant) : "ok";
     if (access === "pay") {
-      redirect("/register?pay=1");
+      redirect(isDemoRegistration(tenant?.registrationType as string | null) ? "/subscribe" : "/register?pay=1");
     }
     if (access === "suspended") {
       redirect("/suspended");
     }
     isTavleOnly = Boolean(tenant?.isTavleOnly);
+    if (isDemoRegistration(tenant?.registrationType as string | null) && tenant?.trialEndsAt) {
+      demoEndsAt = String(tenant.trialEndsAt);
+    }
     try {
       enabledModules = await getEnabledModuleKeys(tenantId);
     } catch {
@@ -84,6 +90,7 @@ export default async function DashboardLayout({
           <div className="min-w-0 w-full">
             <AppBreadcrumbs />
             <OfflineSyncBannerWrapper />
+            {demoEndsAt ? <DemoAccessBanner trialEndsAt={demoEndsAt} /> : null}
             {children}
           </div>
         </main>

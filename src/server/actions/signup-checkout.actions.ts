@@ -20,6 +20,7 @@ import {
   resolveSignupPriceIds,
 } from "@/lib/signup-checkout";
 import { syncCrmFromTenant } from "@/features/crm/lib/sync-from-tenant";
+import { isDemoRegistration } from "@/lib/demo-access";
 
 const signupSchema = z.object({
   companyName: z.string().trim().min(2, "Company name must be at least 2 characters").max(120),
@@ -80,6 +81,8 @@ async function checkoutUrl(input: {
   addonIds: AddonPackId[];
   billingMethod: "CARD" | "DIRECT_DEBIT";
   billingInterval: "month" | "year";
+  cancelUrl?: string;
+  successUrl?: string;
 }): Promise<string> {
   const { priceIds, missing } = resolveSignupPriceIds(input.addonIds, input.billingInterval);
   if (missing.length > 0) {
@@ -96,8 +99,8 @@ async function checkoutUrl(input: {
     tenantId: input.tenantId,
     priceIds,
     billingMethod: input.billingMethod,
-    successUrl: `${base}/login?checkout=success`,
-    cancelUrl: `${base}/register?cancelled=1`,
+    successUrl: input.successUrl ?? `${base}/login?checkout=success`,
+    cancelUrl: input.cancelUrl ?? `${base}/register?cancelled=1`,
     metadata,
   });
   return url;
@@ -394,6 +397,54 @@ export async function resumeSelfServeCheckout(input: {
     return { success: true, url };
   } catch (error: unknown) {
     return { success: false, error: errorMessage(error, "Could not resume checkout") };
+  }
+}
+
+export async function startDemoConversionCheckout(input: {
+  addonIds: string[];
+  billingMethod: "CARD" | "DIRECT_DEBIT";
+  billingInterval?: "month" | "year";
+}): Promise<{ success: true; url: string } | { success: false; error: string }> {
+  try {
+    const auth = await getAuthContext();
+    if (!auth) {
+      return { success: false, error: "Sign in to subscribe" };
+    }
+    if (auth.role !== "ADMIN") {
+      return { success: false, error: "Only a company administrator can subscribe" };
+    }
+
+    const { data: tenant, error } = await getAdminDb()
+      .from("Tenant")
+      .select("id, registrationType, status, stripeSubscriptionId, onboardingStatus")
+      .eq("id", auth.tenantId)
+      .maybeSingle();
+    if (error) {
+      throw { code: "TENANT_LOOKUP_FAILED", message: error.message };
+    }
+    if (!tenant) {
+      return { success: false, error: "Company not found" };
+    }
+    const convertible =
+      isDemoRegistration(tenant.registrationType as string | null) || needsPaymentGate(tenant);
+    if (!convertible || tenant.status === "ACTIVE") {
+      return { success: false, error: "This company is not on a demo or unpaid signup" };
+    }
+
+    const addonIds = parseSignupAddonIds(input.addonIds);
+    const billingInterval = parseSignupBillingInterval(input.billingInterval);
+    const base = appBaseUrl();
+    const url = await checkoutUrl({
+      tenantId: tenant.id as string,
+      addonIds,
+      billingMethod: input.billingMethod,
+      billingInterval,
+      cancelUrl: `${base}/subscribe?cancelled=1`,
+      successUrl: `${base}/login?checkout=success`,
+    });
+    return { success: true, url };
+  } catch (error: unknown) {
+    return { success: false, error: errorMessage(error, "Could not start checkout") };
   }
 }
 

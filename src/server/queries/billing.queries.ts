@@ -11,6 +11,7 @@ import {
 import { getStripe } from "@/lib/stripe";
 import { needsPaymentGate, parseSignupCheckoutMetadata } from "@/lib/signup-checkout";
 import { isLiveTenantModule } from "@/lib/tenant-modules";
+import { isDemoAccessExpired } from "@/lib/demo-access";
 import {
   coverageStillActive,
   isPaidCancelPeriodExpired,
@@ -611,8 +612,11 @@ export async function resolveTenantProductAccess(tenant: {
   onboardingStatus?: string | null;
   stripeSubscriptionId?: string | null;
   stripeCustomerId?: string | null;
+  registrationType?: string | null;
+  trialEndsAt?: string | Date | null;
 }): Promise<TenantProductAccess> {
-  if (!needsPaymentGate(tenant) && tenant.status !== "SUSPENDED") {
+  const demoExpired = isDemoAccessExpired(tenant);
+  if (!needsPaymentGate(tenant) && !demoExpired && tenant.status !== "SUSPENDED") {
     return "ok";
   }
 
@@ -660,6 +664,21 @@ export async function resolveTenantProductAccess(tenant: {
         stripeSubscriptionId: tenant.stripeSubscriptionId ?? null,
       });
     }
+    return "ok";
+  }
+
+  if (demoExpired) {
+    if (!paidNow) return "pay";
+    const signup = parseSignupCheckoutMetadata(
+      (coverage.source as { metadata?: Record<string, string> } | null)?.metadata,
+    );
+    await activatePaidSignup({
+      tenantId: tenant.id,
+      addonIds: signup?.addonIds ?? [],
+      stripeCustomerId: tenant.stripeCustomerId,
+      stripeSubscriptionId: tenant.stripeSubscriptionId ?? (coverage.source as { id?: string } | null)?.id,
+      billingInterval: signup?.billingInterval,
+    });
     return "ok";
   }
 

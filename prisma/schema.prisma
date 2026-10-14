@@ -747,6 +747,7 @@ model CrmTask {
 enum RegistrationType {
   STANDARD // Vanlig: registrer-bedrift → superadmin aktiverer → 14 dager → betaling
   FREE_14_DAY // Gratis HMS: selvbetjent, 14 dager, vannmerkede dokumenter, deretter 300 kr/mnd eller deaktivering
+  DEMO // Superadmin demo workspace: time-limited access, then Stripe checkout
 }
 
 // ═══════════════════════════════════════════════════════════════

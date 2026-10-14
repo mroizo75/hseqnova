@@ -15,6 +15,8 @@ import {
   getEmployeeWidgetsFromLockedConfig,
   getEmployeeBottomNavItems,
 } from "@/features/dashboard/lib/employee-widget-registry";
+import { resolveTenantProductAccess } from "@/server/queries/billing.queries";
+import { isDemoRegistration } from "@/lib/demo-access";
 
 export default async function EmployeeLayout({
   children,
@@ -37,12 +39,21 @@ export default async function EmployeeLayout({
     session.user.tenantId
       ? db
           .from("Tenant")
-          .select("timeRegistrationEnabled, dashboardLocked, lockedDashboardConfig, ruhModuleEnabled")
+          .select("id, timeRegistrationEnabled, dashboardLocked, lockedDashboardConfig, ruhModuleEnabled, status, onboardingStatus, stripeSubscriptionId, stripeCustomerId, registrationType, trialEndsAt")
           .eq("id", session.user.tenantId)
           .maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
   const tenant = tenantResult.data;
+  if (tenant) {
+    const access = await resolveTenantProductAccess(tenant);
+    if (access === "pay") {
+      redirect(isDemoRegistration(tenant.registrationType as string | null) ? "/subscribe" : "/register?pay=1");
+    }
+    if (access === "suspended") {
+      redirect("/suspended");
+    }
+  }
 
   let allWidgets = tenant?.dashboardLocked && tenant.lockedDashboardConfig
     ? getEmployeeWidgetsFromLockedConfig(tenant.lockedDashboardConfig as Array<{ id: string }>)

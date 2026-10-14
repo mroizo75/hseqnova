@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { getAdminDb } from "@/lib/supabase/admin";
 import { resolveTenantProductAccess } from "@/server/queries/billing.queries";
+import { isDemoRegistration } from "@/lib/demo-access";
 import { SuspendedView } from "./suspended-view";
 
 export default async function SuspendedPage() {
@@ -12,7 +13,7 @@ export default async function SuspendedPage() {
   if (tenantId) {
     const { data: tenant } = await getAdminDb()
       .from("Tenant")
-      .select("id, status, onboardingStatus, stripeSubscriptionId, stripeCustomerId")
+      .select("id, status, onboardingStatus, stripeSubscriptionId, stripeCustomerId, registrationType, trialEndsAt")
       .eq("id", tenantId)
       .maybeSingle();
     const access = tenant ? await resolveTenantProductAccess(tenant) : "suspended";
@@ -20,7 +21,7 @@ export default async function SuspendedPage() {
       redirect("/dashboard");
     }
     if (access === "pay") {
-      redirect("/register?pay=1");
+      redirect(isDemoRegistration(tenant.registrationType as string | null) ? "/subscribe" : "/register?pay=1");
     }
   }
 
