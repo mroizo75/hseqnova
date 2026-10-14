@@ -192,8 +192,9 @@ export async function createDemoOrganisation(input: z.infer<typeof createDemoSch
       ...addonIds.map((id) => ADDON_PACKS.find((pack) => pack.id === id)?.name ?? id),
     ];
 
+    let messageId: string;
     try {
-      await sendDemoWorkspaceWelcomeEmail({
+      const sent = await sendDemoWorkspaceWelcomeEmail({
         to: email,
         contactName: validated.contactPerson,
         companyName: validated.name,
@@ -202,6 +203,7 @@ export async function createDemoOrganisation(input: z.infer<typeof createDemoSch
         endsAt: new Date(trialEndsAt),
         packNames,
       });
+      messageId = sent.messageId;
     } catch (error: unknown) {
       return {
         success: false as const,
@@ -240,6 +242,7 @@ export async function createDemoOrganisation(input: z.infer<typeof createDemoSch
       trialEndsAt,
       emailSent: true as const,
       email,
+      resendId: messageId,
     };
   } catch (error: unknown) {
     return { success: false as const, error: errorMessage(error, "Could not create the demo workspace") };
@@ -308,7 +311,7 @@ export async function resendDemoWorkspaceEmail(tenantId: string) {
     ];
     const endsAt = tenant.trialEndsAt ? new Date(String(tenant.trialEndsAt)) : demoEndsAt(demoDays);
 
-    await sendDemoWorkspaceWelcomeEmail({
+    const sent = await sendDemoWorkspaceWelcomeEmail({
       to: email,
       contactName: String(tenant.contactPerson || "there"),
       companyName: String(tenant.name),
@@ -319,7 +322,7 @@ export async function resendDemoWorkspaceEmail(tenantId: string) {
     });
 
     revalidatePath(`/admin/tenants/${tenantId}`);
-    return { success: true as const, email };
+    return { success: true as const, email, resendId: sent.messageId };
   } catch (error: unknown) {
     return { success: false as const, error: errorMessage(error, "Could not send the demo login email") };
   }

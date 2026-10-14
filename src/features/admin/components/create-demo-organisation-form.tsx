@@ -72,7 +72,7 @@ export function CreateDemoOrganisationForm() {
     }
     toast({
       title: "Demo workspace created",
-      description: `Login details sent to ${result.email}. Access ends ${new Date(result.trialEndsAt).toLocaleDateString("en-GB")}.`,
+      description: `Login details sent to ${result.email}. Resend id ${result.resendId}. Access ends ${new Date(result.trialEndsAt).toLocaleDateString("en-GB")}.`,
     });
     router.push(`/admin/tenants/${result.tenantId}`);
     router.refresh();

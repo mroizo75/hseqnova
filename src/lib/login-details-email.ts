@@ -24,7 +24,7 @@ export async function sendLoginDetailsEmail(input: {
   password: string;
   companyName: string;
   invitedByName?: string;
-}): Promise<void> {
+}): Promise<{ messageId: string }> {
   const loginUrl = `${appBaseUrl()}/login`;
   const name = escapeHtml(input.userName);
   const company = escapeHtml(input.companyName);
@@ -32,7 +32,7 @@ export async function sendLoginDetailsEmail(input: {
   const password = escapeHtml(input.password);
   const invitedBy = escapeHtml(input.invitedByName || "HSEQ Nova");
 
-  await sendEmail({
+  const sent = await sendEmail({
     to: input.to,
     subject: `Your HSEQ Nova sign-in details — ${input.companyName}`,
     replyTo: `${SITE_CONFIG.contactName} <${SITE_CONFIG.contactEmail}>`,
@@ -71,4 +71,5 @@ export async function sendLoginDetailsEmail(input: {
 </body>
 </html>`,
   });
+  return { messageId: sent.messageId };
 }

@@ -22,7 +22,7 @@ export function ResendDemoEmailButton({ tenantId }: { tenantId: string }) {
     }
     toast({
       title: "Login email sent",
-      description: `Sent to ${result.email} with a new temporary password.`,
+      description: `Sent to ${result.email}. Resend id ${result.resendId}.`,
     });
     router.refresh();
   }

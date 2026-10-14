@@ -1,15 +1,9 @@
 /**
- * Email utility - wrapper for email service
- * Re-exports sendEmail from email-service for compatibility
+ * Sends mail through Resend. The API client is created per call so the
+ * key is read at send time (Next.js can evaluate this module before .env loads).
  */
 
 import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM_EMAIL =
-  process.env.RESEND_FROM_EMAIL ??
-  process.env.RESEND_FROM ??
-  "HSEQ Nova <hello@hseqnova.co.uk>";
 
 interface SendEmailParams {
   to: string;
@@ -23,32 +17,54 @@ interface SendEmailParams {
   }>;
 }
 
-/**
- * Generic email sender.
- * From is always the verified Resend domain. replyTo routes customer replies
- * to the salesperson's mailbox (Namecheap) without sending as that address.
- */
-export async function sendEmail({ to, subject, html, replyTo, attachments }: SendEmailParams) {
-  try {
-    const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: [to],
-      subject,
-      html,
-      ...(replyTo ? { replyTo } : {}),
-      ...(attachments?.length ? { attachments } : {}),
-    });
-
-    if (error) {
-      console.error("Resend error:", error);
-      throw new Error(`Failed to send email: ${error.message}`);
-    }
-
-    console.log(`✅ Email sent to ${to}:`, data?.id);
-    return { success: true, messageId: data?.id };
-  } catch (error) {
-    console.error("Send email error:", error);
-    throw error;
+function resendApiKey(): string {
+  const key = process.env.RESEND_API_KEY?.trim();
+  if (!key) {
+    throw {
+      code: "EMAIL_NOT_CONFIGURED",
+      message: "RESEND_API_KEY is not set. No email was sent.",
+    };
   }
+  return key;
 }
 
+function fromAddress(): string {
+  const from =
+    process.env.RESEND_FROM_EMAIL?.trim() || process.env.RESEND_FROM?.trim();
+  if (!from) {
+    throw {
+      code: "EMAIL_FROM_MISSING",
+      message: "RESEND_FROM is not set. No email was sent.",
+    };
+  }
+  return from;
+}
+
+export async function sendEmail({ to, subject, html, replyTo, attachments }: SendEmailParams) {
+  const resend = new Resend(resendApiKey());
+  const { data, error } = await resend.emails.send({
+    from: fromAddress(),
+    to: [to],
+    subject,
+    html,
+    ...(replyTo ? { replyTo } : {}),
+    ...(attachments?.length ? { attachments } : {}),
+  });
+
+  if (error) {
+    throw {
+      code: "EMAIL_SEND_FAILED",
+      message: error.message || "Resend rejected the email",
+    };
+  }
+
+  if (!data?.id) {
+    throw {
+      code: "EMAIL_NO_ID",
+      message:
+        "Resend did not return an email id. The API key may belong to another Resend account, or the From address is not verified.",
+    };
+  }
+
+  return { success: true as const, messageId: data.id };
+}

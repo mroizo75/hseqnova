@@ -20,7 +20,7 @@ export async function sendDemoWorkspaceWelcomeEmail(input: {
   demoDays: number;
   endsAt: Date;
   packNames: string[];
-}): Promise<void> {
+}): Promise<{ messageId: string }> {
   const loginUrl = `${appBaseUrl()}/login`;
   const endsLabel = input.endsAt.toLocaleDateString("en-GB", {
     day: "numeric",
@@ -33,7 +33,7 @@ export async function sendDemoWorkspaceWelcomeEmail(input: {
   const email = escapeHtml(input.to);
   const password = escapeHtml(input.password);
 
-  await sendEmail({
+  const sent = await sendEmail({
     to: input.to,
     subject: `Your ${input.demoDays}-day HSEQ Nova demo — sign-in details`,
     replyTo: `${SITE_CONFIG.contactName} <${SITE_CONFIG.contactEmail}>`,
@@ -73,4 +73,5 @@ export async function sendDemoWorkspaceWelcomeEmail(input: {
 </body>
 </html>`,
   });
+  return { messageId: sent.messageId };
 }
