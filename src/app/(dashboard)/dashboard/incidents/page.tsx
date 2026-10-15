@@ -152,7 +152,7 @@ export default async function IncidentsPage() {
           <CardTitle>{t("allIncidents")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <IncidentTabs incidents={incidents} />
+          <IncidentTabs incidents={incidents} canShare={canReadAll} />
         </CardContent>
       </Card>
 

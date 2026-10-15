@@ -11,6 +11,7 @@ import { PageHelpDialog } from "@/components/dashboard/page-help-dialog";
 import { helpContent } from "@/lib/help-content";
 import { getPermissions } from "@/lib/permissions";
 import { RiskAssessmentDeleteButton } from "@/features/risks/components/risk-assessment-delete-button";
+import { ShareRecordButton } from "@/features/sharing/components/share-record-button";
 import { getTranslations } from "next-intl/server";
 import {
   loadRiskAssessmentsForList,
@@ -38,6 +39,7 @@ export default async function RisksPage() {
 
   const permissions = getPermissions(context.role);
   const canDeleteRiskAssessments = permissions.canDeleteRisks;
+  const canShareRiskAssessments = permissions.canCreateRisks;
 
   const [riskAssessments, risks, aiEnabled] = await Promise.all([
     loadRiskAssessmentsForList(context.tenantId),
@@ -183,6 +185,14 @@ export default async function RisksPage() {
                             {t("annualAssessments.riskPoints", { count: a._count.risks })}
                           </span>
                         </Link>
+                        {canShareRiskAssessments && (
+                          <ShareRecordButton
+                            recordType="RISK_ASSESSMENT"
+                            recordId={a.id}
+                            recordTitle={a.title}
+                            appearance="icon"
+                          />
+                        )}
                         {canDeleteRiskAssessments && (
                           <RiskAssessmentDeleteButton
                             assessmentId={a.id}

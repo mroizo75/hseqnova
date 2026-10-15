@@ -7,6 +7,7 @@ import Link from "next/link";
 import { FileText, Download, Edit, Clock, CheckCircle2, Calendar, User, Tag } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { DocumentSignatureSection } from "@/features/documents/components/document-signature-section";
+import { ShareRecordButton } from "@/features/sharing/components/share-record-button";
 import { loadDocumentDetail } from "@/server/queries/documents.queries";
 
 function formatDate(date: Date | string | null | undefined, locale: string, fallback: string) {
@@ -93,6 +94,9 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
           </div>
         </div>
         <div className="flex gap-2">
+          {(permissions.canCreateDocuments || permissions.canApproveDocuments) && (
+            <ShareRecordButton recordType="DOCUMENT" recordId={document.id} recordTitle={document.title} />
+          )}
           {permissions.canCreateDocuments && (
             <Button variant="outline" asChild className="bg-transparent">
               <Link href={`/dashboard/documents/${document.id}/edit`}>

@@ -13,9 +13,10 @@ type IncidentWithRelations = Incident & {
 
 interface IncidentTabsProps {
   incidents: IncidentWithRelations[];
+  canShare?: boolean;
 }
 
-export function IncidentTabs({ incidents }: IncidentTabsProps) {
+export function IncidentTabs({ incidents, canShare = false }: IncidentTabsProps) {
   const [tab, setTab] = useState<"ALL" | "ACCIDENT_BOOK" | "OTHER">("ALL");
 
   const { accidentBook, otherRecords } = useMemo(() => {
@@ -52,7 +53,7 @@ export function IncidentTabs({ incidents }: IncidentTabsProps) {
         </TabsTrigger>
       </TabsList>
       <TabsContent value={tab} className="mt-4">
-        <IncidentList incidents={displayedIncidents} />
+        <IncidentList incidents={displayedIncidents} canShare={canShare} />
       </TabsContent>
     </Tabs>
   );

@@ -31,6 +31,7 @@ import {
   isAccidentBookType,
 } from "@/lib/incident-uk-handling";
 import { RiddorReportButton } from "@/features/incidents/components/riddor-report-button";
+import { ShareRecordButton } from "@/features/sharing/components/share-record-button";
 import { AiIncidentAnalysis } from "@/features/incidents/components/ai-incident-analysis";
 import { hasAiAddon } from "@/lib/ai-gate";
 
@@ -123,6 +124,13 @@ export default async function IncidentDetailPage({ params }: { params: Promise<{
             </Link>
           </Button>
           <div className="flex items-center gap-2">
+            {canReadAll && (
+              <ShareRecordButton
+                recordType="INCIDENT"
+                recordId={incident.id}
+                recordTitle={incident.title}
+              />
+            )}
             <IncidentPDFExport
               incidentId={incident.id}
               avviksnummer={incident.avviksnummer}

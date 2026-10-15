@@ -32,16 +32,29 @@ const statusColors: Record<RiskControlStatus, string> = {
 };
 
 const statusLabels: Record<RiskControlStatus, string> = {
-  ACTIVE: "Aktiv",
-  NEEDS_IMPROVEMENT: "Trenger forbedring",
-  RETIRED: "Avviklet",
+  ACTIVE: "Active",
+  NEEDS_IMPROVEMENT: "Needs improvement",
+  RETIRED: "Retired",
 };
 
 const effectivenessLabels: Record<RiskControlEffectiveness, string> = {
-  EFFECTIVE: "Effektiv",
-  PARTIAL: "Delvis",
-  INEFFECTIVE: "Ikke effektiv",
-  NOT_TESTED: "Ikke testet",
+  EFFECTIVE: "Effective",
+  PARTIAL: "Partial",
+  INEFFECTIVE: "Ineffective",
+  NOT_TESTED: "Not tested",
+};
+
+const controlTypeLabels: Record<RiskControlType, string> = {
+  ELIMINATION: "Elimination",
+  SUBSTITUTION: "Substitution",
+  ENGINEERING: "Engineering",
+  ADMINISTRATIVE: "Administrative",
+  PPE: "PPE",
+  PREVENTIVE: "Preventive",
+  DETECTIVE: "Detective",
+  CORRECTIVE: "Corrective",
+  DIRECTIONAL: "Directive",
+  COMPENSATING: "Compensating",
 };
 
 type ControlUpdatePayload = Partial<{
@@ -83,13 +96,13 @@ export function RiskControlList({ riskId, controls }: RiskControlListProps) {
       if (!result.success) {
         toast({
           variant: "destructive",
-          title: "Feil",
-          description: result.error || "Kunne ikke oppdatere kontroll",
+          title: "Could not update",
+          description: result.error || "The control could not be updated.",
         });
       } else {
         toast({
-          title: "✅ Kontroll oppdatert",
-          description: "Kontrollen er oppdatert i registeret",
+          title: "Control updated",
+          description: "The control has been updated.",
         });
       }
     });
@@ -102,13 +115,13 @@ export function RiskControlList({ riskId, controls }: RiskControlListProps) {
       if (!result.success) {
         toast({
           variant: "destructive",
-          title: "Feil",
-          description: result.error || "Kunne ikke slette kontroll",
+          title: "Could not remove",
+          description: result.error || "The control could not be removed.",
         });
       } else {
         toast({
-          title: "Kontroll fjernet",
-          description: "Kontrollen er fjernet fra registeret",
+          title: "Control removed",
+          description: "The control has been removed from this risk.",
         });
       }
     });
@@ -117,7 +130,7 @@ export function RiskControlList({ riskId, controls }: RiskControlListProps) {
   if (controls.length === 0) {
     return (
       <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-        Ingen kontroller er registrert for denne risikoen ennå.
+        No controls are recorded for this risk yet.
       </div>
     );
   }
@@ -127,13 +140,13 @@ export function RiskControlList({ riskId, controls }: RiskControlListProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Kontroll</TableHead>
+            <TableHead>Control</TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Effekt</TableHead>
-            <TableHead>Neste test</TableHead>
-            <TableHead>Eier</TableHead>
-            <TableHead className="text-right">Handling</TableHead>
+            <TableHead>Effect</TableHead>
+            <TableHead>Next test</TableHead>
+            <TableHead>Owner</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -147,22 +160,20 @@ export function RiskControlList({ riskId, controls }: RiskControlListProps) {
                   )}
                   {control.evidenceDocument && (
                     <p className="text-xs text-blue-600">
-                      Evidens: {control.evidenceDocument.title ?? "Dokument"}
+                      Evidence: {control.evidenceDocument.title ?? "Document"}
                     </p>
                   )}
                 </div>
               </TableCell>
               <TableCell className="text-sm">
-                {control.controlType === "PREVENTIVE" && "Forebyggende"}
-                {control.controlType === "DETECTIVE" && "Detekterende"}
-                {control.controlType === "CORRECTIVE" && "Korrigerende"}
-                {control.controlType === "DIRECTIONAL" && "Styrende"}
-                {control.controlType === "COMPENSATING" && "Kompenserende"}
+                {controlTypeLabels[control.controlType] ?? control.controlType}
                 {control.frequency && (
-                  <p className="text-xs text-muted-foreground">Frekvens: {control.frequency.toLowerCase()}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Frequency: {control.frequency.toLowerCase().replace(/_/g, " ")}
+                  </p>
                 )}
                 {control.monitoringMethod && (
-                  <p className="text-xs text-muted-foreground">Metode: {control.monitoringMethod}</p>
+                  <p className="text-xs text-muted-foreground">Method: {control.monitoringMethod}</p>
                 )}
               </TableCell>
               <TableCell>
@@ -211,12 +222,12 @@ export function RiskControlList({ riskId, controls }: RiskControlListProps) {
                     {format(new Date(control.nextTestDate), "dd. MMM yyyy", { locale: enGB })}
                     {control.lastTestedAt && (
                       <p className="text-xs text-muted-foreground">
-                        Sist testet {format(new Date(control.lastTestedAt), "dd.MM.yyyy", { locale: enGB })}
+                        Last tested {format(new Date(control.lastTestedAt), "dd MMM yyyy", { locale: enGB })}
                       </p>
                     )}
                   </>
                 ) : (
-                  <span className="text-muted-foreground text-xs">Ikke planlagt</span>
+                  <span className="text-muted-foreground text-xs">Not scheduled</span>
                 )}
               </TableCell>
               <TableCell className="text-sm">

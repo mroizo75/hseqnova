@@ -24,7 +24,7 @@ export function RiskAssessmentDeleteButton({
 
   const handleDelete = async () => {
     const confirmed = confirm(
-      `Slette risikovurdering "${assessmentTitle}"?\n\nDette sletter også koblingen til risikopunktene i vurderingen.`
+      `Delete risk assessment "${assessmentTitle}"?\n\nThis also removes the link from the risk items in the assessment.`
     );
     if (!confirmed) {
       return;
@@ -36,14 +36,14 @@ export function RiskAssessmentDeleteButton({
       if (!result.success) {
         toast({
           variant: "destructive",
-          title: "Kunne ikke slette risikovurdering",
-          description: result.error || "Ukjent feil",
+          title: "Could not delete the risk assessment",
+          description: result.error || "Unknown error",
         });
         return;
       }
 
       toast({
-        title: "Risikovurdering slettet",
+        title: "Risk assessment deleted",
       });
       router.refresh();
     } finally {
@@ -59,7 +59,7 @@ export function RiskAssessmentDeleteButton({
       className="text-destructive hover:text-destructive"
       onClick={handleDelete}
       disabled={disabled || isDeleting}
-      title="Slett risikovurdering"
+      title="Delete risk assessment"
     >
       {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
     </Button>

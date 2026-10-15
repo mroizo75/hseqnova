@@ -100,7 +100,12 @@ export default async function DocumentsPage() {
         </Card>
       </div>
 
-      <DocumentList documents={documents} tenantId={auth.tenantId} currentUserId={auth.userId} />
+      <DocumentList
+        documents={documents}
+        tenantId={auth.tenantId}
+        currentUserId={auth.userId}
+        canShare={canManageDocuments}
+      />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { RiskAssessmentItemList } from "@/features/risks/components/risk-assessm
 import { RiskAssessmentComplianceCard } from "@/features/risks/components/risk-assessment-compliance-card";
 import { getPermissions } from "@/lib/permissions";
 import { RiskAssessmentDeleteButton } from "@/features/risks/components/risk-assessment-delete-button";
+import { ShareRecordButton } from "@/features/sharing/components/share-record-button";
 import { RiskAssessmentTitleEditor } from "@/features/risks/components/risk-assessment-title-editor";
 import { AiRiskGeneratorWrapper } from "@/features/risks/components/ai-risk-generator-wrapper";
 import { IndustryRiskStarter } from "@/features/risks/components/industry-risk-starter";
@@ -83,12 +84,21 @@ export default async function RiskAssessmentPage({
               canEdit={canEditAssessmentTitle}
             />
           </div>
-          {canDeleteRiskAssessments && (
-            <RiskAssessmentDeleteButton
-              assessmentId={assessment.id}
-              assessmentTitle={assessment.title}
-            />
-          )}
+          <div className="flex items-center gap-2">
+            {canEditAssessmentTitle && (
+              <ShareRecordButton
+                recordType="RISK_ASSESSMENT"
+                recordId={assessment.id}
+                recordTitle={assessment.title}
+              />
+            )}
+            {canDeleteRiskAssessments && (
+              <RiskAssessmentDeleteButton
+                assessmentId={assessment.id}
+                assessmentTitle={assessment.title}
+              />
+            )}
+          </div>
         </div>
         <p className="text-muted-foreground">
           Systematic risk assessment under MHSWR 1999 and HSWA 1974.

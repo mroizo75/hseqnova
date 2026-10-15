@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Eye, Trash2, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { ShareRecordButton } from "@/features/sharing/components/share-record-button";
 import Link from "next/link";
 import { deleteIncident } from "@/server/actions/incident.actions";
 import {
@@ -40,9 +41,10 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
 interface IncidentListProps {
   incidents: (Incident & { measures: Measure[]; risk?: { id: string; title: string; category: string | null } | null })[];
+  canShare?: boolean;
 }
 
-export function IncidentList({ incidents }: IncidentListProps) {
+export function IncidentList({ incidents, canShare = false }: IncidentListProps) {
   const t = useTranslations("dashboardIncidentList");
   const router = useRouter();
   const { toast } = useToast();
@@ -227,6 +229,14 @@ export function IncidentList({ incidents }: IncidentListProps) {
                         <Eye className="h-4 w-4" />
                       </Link>
                     </Button>
+                    {canShare && (
+                      <ShareRecordButton
+                        recordType="INCIDENT"
+                        recordId={incident.id}
+                        recordTitle={incident.title}
+                        appearance="icon"
+                      />
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
@@ -325,12 +335,20 @@ export function IncidentList({ incidents }: IncidentListProps) {
                   </div>
 
                   <div className="flex gap-2 pt-2 border-t">
-                    <Button variant="outline" size="sm" className="flex-1" asChild>
+                    <Button variant="outline" size="sm" className="flex-1 bg-transparent" asChild>
                       <Link href={detailHref} onClick={(event) => event.stopPropagation()}>
                         <Eye className="h-4 w-4 mr-2" />
                         {t("actions.viewDetails")}
                       </Link>
                     </Button>
+                    {canShare && (
+                      <ShareRecordButton
+                        recordType="INCIDENT"
+                        recordId={incident.id}
+                        recordTitle={incident.title}
+                        appearance="icon"
+                      />
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"

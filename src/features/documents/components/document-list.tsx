@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocale, useTranslations } from "next-intl";
+import { ShareRecordButton } from "@/features/sharing/components/share-record-button";
 
 type DocumentWithMeta = Document & {
   owner?: {
@@ -37,6 +38,7 @@ interface DocumentListProps {
   documents: DocumentWithMeta[];
   tenantId: string;
   currentUserId?: string;
+  canShare?: boolean;
 }
 
 const statusVariants: Record<string, "default" | "secondary" | "destructive"> = {
@@ -52,7 +54,7 @@ const formatDate = (value: string | Date | null | undefined, locale: string) => 
   return date.toLocaleDateString("en-GB");
 };
 
-export function DocumentList({ documents, tenantId, currentUserId }: DocumentListProps) {
+export function DocumentList({ documents, tenantId, currentUserId, canShare = false }: DocumentListProps) {
   const t = useTranslations("dashboardDocumentsList");
   const locale = useLocale();
   const router = useRouter();
@@ -291,6 +293,14 @@ export function DocumentList({ documents, tenantId, currentUserId }: DocumentLis
               <TableCell>{formatDate(doc.createdAt, locale)}</TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
+                  {canShare && (
+                    <ShareRecordButton
+                      recordType="DOCUMENT"
+                      recordId={doc.id}
+                      recordTitle={doc.title}
+                      appearance="icon"
+                    />
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -468,6 +478,13 @@ export function DocumentList({ documents, tenantId, currentUserId }: DocumentLis
                 </div>
 
                 <div className="flex flex-col gap-2 pt-2 border-t">
+                  {canShare && (
+                    <ShareRecordButton
+                      recordType="DOCUMENT"
+                      recordId={doc.id}
+                      recordTitle={doc.title}
+                    />
+                  )}
                   <div className="flex gap-2">
                     <Button
                       variant="outline"

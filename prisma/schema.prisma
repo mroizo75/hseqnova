@@ -6929,3 +6929,27 @@ model EnterpriseStatRollup {
   @@unique([enterpriseId, portfolioId, dimension, dimensionValue, period, periodType])
   @@index([enterpriseId, dimension, period])
 }
+
+/// One-time copy of a risk assessment, incident or document into another organisation.
+model RecordShare {
+  id                 String    @id
+  token              String    @unique
+  sourceTenantId     String
+  recordType         String
+  recordId           String
+  title              String
+  createdById        String
+  recipientEmail     String?
+  note               String?   @db.Text
+  payload            Json
+  sourceFileKey      String?
+  expiresAt          DateTime
+  revokedAt          DateTime?
+  importedAt         DateTime?
+  importedByTenantId String?
+  importedRecordId   String?
+  createdAt          DateTime  @default(now())
+
+  @@index([sourceTenantId])
+  @@index([recordType, recordId])
+}

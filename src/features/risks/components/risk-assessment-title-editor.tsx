@@ -49,8 +49,8 @@ export function RiskAssessmentTitleEditor({
     if (trimmed.length < 3) {
       toast({
         variant: "destructive",
-        title: "Ugyldig tittel",
-        description: "Tittel må være minst 3 tegn.",
+        title: "Title is too short",
+        description: "The title must be at least 3 characters.",
       });
       return;
     }
@@ -66,16 +66,16 @@ export function RiskAssessmentTitleEditor({
         setTitle(trimmed);
         setEditing(false);
         toast({
-          title: "Tittel oppdatert",
-          description: "Risikovurderingen har ny tittel.",
+          title: "Title updated",
+          description: "The risk assessment has a new title.",
           className: "bg-green-50 border-green-200",
         });
         router.refresh();
       } else {
-        toast({ variant: "destructive", title: "Feil", description: result.error });
+        toast({ variant: "destructive", title: "Could not save", description: result.error });
       }
     } catch {
-      toast({ variant: "destructive", title: "Feil", description: "Kunne ikke lagre" });
+      toast({ variant: "destructive", title: "Could not save", description: "Try again." });
     } finally {
       setLoading(false);
     }
@@ -91,7 +91,7 @@ export function RiskAssessmentTitleEditor({
         <h1 className="text-3xl font-bold">{title}</h1>
         <Button type="button" variant="outline" size="sm" className="shrink-0 mt-1" onClick={startEdit}>
           <Pencil className="mr-1.5 h-3.5 w-3.5" />
-          Endre tittel
+          Change title
         </Button>
       </div>
     );
@@ -100,23 +100,23 @@ export function RiskAssessmentTitleEditor({
   return (
     <div className="space-y-3 max-w-2xl">
       <div className="space-y-2">
-        <Label htmlFor="assessment-title-edit">Tittel på risikovurdering</Label>
+        <Label htmlFor="assessment-title-edit">Risk assessment title</Label>
         <Input
           id="assessment-title-edit"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           maxLength={200}
           disabled={loading}
-          placeholder="F.eks. Risikovurdering 2026"
+          placeholder="e.g. Risk assessment 2026"
         />
       </div>
       <div className="flex flex-wrap gap-2">
         <Button type="button" onClick={handleSave} disabled={loading}>
-          {loading ? "Lagrer…" : "Lagre tittel"}
+          {loading ? "Saving…" : "Save title"}
         </Button>
         <Button type="button" variant="ghost" onClick={cancelEdit} disabled={loading}>
           <X className="mr-1.5 h-3.5 w-3.5" />
-          Avbryt
+          Cancel
         </Button>
       </div>
     </div>
