@@ -30,6 +30,8 @@ const nextConfig: NextConfig = {
     ];
 
     return [
+      // Social quiz (Netlify). Temporary while the video is live; sign-ups stay on Make.
+      { source: "/talks", destination: "https://hseqnova-talks.netlify.app", permanent: false },
       { source: "/priser", destination: "/pricing", permanent: true },
       { source: "/registrer-bedrift", destination: "/register", permanent: true },
       { source: "/registrer-bedrift/:path*", destination: "/register", permanent: true },

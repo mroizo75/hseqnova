@@ -14,6 +14,7 @@ const STATIC_PATHS: Array<{ path: string; priority: number; changeFrequency: Cha
   { path: "/pricing", priority: 0.9, changeFrequency: "weekly" },
   { path: "/register", priority: 0.9, changeFrequency: "monthly" },
   { path: "/book-a-demo", priority: 0.9, changeFrequency: "weekly" },
+  { path: "/free-safety-check", priority: 0.8, changeFrequency: "monthly" },
   { path: "/digital-safety-board", priority: 0.9, changeFrequency: "weekly" },
   { path: "/health-safety-software", priority: 0.8, changeFrequency: "monthly" },
   { path: "/health-and-safety-policy", priority: 0.8, changeFrequency: "monthly" },

@@ -185,6 +185,12 @@ export const PAGE_METADATA = {
     description: "Pick a day and time for a 30-minute HSEQ Nova demo. Add it to Google, Outlook or Apple Calendar, or download an ICS file.",
     keywords: "book HSEQ Nova demo, health and safety software demo UK, HSEQ product walkthrough",
   },
+  safetyCheck: {
+    title: "Free Workplace Safety Check | HSEQ Nova",
+    description:
+      "A three-minute workplace safety check for UK employers. Score your arrangements out of 100 across construction, manufacturing, office, care or transport.",
+    keywords: "free health and safety check, workplace safety self-assessment UK, HSEQ score",
+  },
 } as const;
 
 // Open Graph defaults

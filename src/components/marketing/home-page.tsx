@@ -12,6 +12,7 @@ import {
   Siren,
   Users,
 } from "lucide-react";
+import { IndustryCarousel } from "@/components/marketing/industry-carousel";
 import { Button } from "@/components/ui/button";
 import { ADDON_PACKS, ANNUAL_DISCOUNT_PERCENT, HSEQ_CORE, yearlyPriceGbp } from "@/lib/billing-catalog";
 import { formatGbp, HOME_FAQS } from "@/lib/homepage-content";
@@ -218,8 +219,8 @@ function Hero() {
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/80">
             One system for the accident book, RIDDOR, your written policy, inspections and
-            fire drills. Built around UK duties — so the weekly HSEQ job is easier to finish,
-            not harder to file.
+            fire drills. The same duties apply in a salon, a kitchen, a hotel and on site —
+            so the weekly HSEQ job is easier to finish, not harder to file.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button
@@ -246,24 +247,9 @@ function Hero() {
           </p>
         </div>
 
-        <div className="relative">
-          <div className="relative overflow-hidden rounded-sm border border-white/10 shadow-2xl">
-            <Image
-              src="/images/hero-site-board.jpg"
-              alt="UK construction site with a digital safety board at the gate"
-              width={1280}
-              height={720}
-              className="aspect-[16/10] w-full object-cover"
-              priority
-            />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-5">
-              <p className="text-sm font-medium">Digital safety board on the gate</p>
-              <p className="text-xs text-white/75">
-                Induction, first aiders and F10 — without names on a public screen.
-              </p>
-            </div>
-          </div>
-          <div className="absolute -bottom-6 -left-2 right-6 rounded-sm border border-[hsl(var(--home-rule))] bg-[hsl(var(--home-ticket))] p-5 text-[hsl(var(--home-ink))] shadow-lg sm:right-auto sm:w-72">
+        <div>
+          <IndustryCarousel />
+          <div className="relative z-10 mt-4 w-full max-w-xs rounded-sm border border-[hsl(var(--home-rule))] bg-[hsl(var(--home-ticket))] p-5 text-[hsl(var(--home-ink))] shadow-lg">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-800">
               Core · unlimited users
             </p>
@@ -279,7 +265,6 @@ function Hero() {
           </div>
         </div>
       </div>
-          <div className="h-28 sm:h-20" />
     </section>
   );
 }

@@ -88,6 +88,7 @@ HSEQ Nova is health and safety software for UK employers. It is a system, not co
 CONTACT
 Sales: ${SITE_CONFIG.contactName}, ${SITE_CONFIG.contactPhone}, ${SITE_CONFIG.contactEmail}.
 Book a 30-minute demo: ${SITE_CONFIG.url}/book-a-demo (Mon–Fri 09:00–17:00 UK, skip 12:00–13:00).
+Free workplace safety check (indicative only, not an audit): ${SITE_CONFIG.url}/free-safety-check
 Start checkout: ${SITE_CONFIG.url}/register
 Pricing page: ${SITE_CONFIG.url}/pricing
 

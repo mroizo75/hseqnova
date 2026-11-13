@@ -14,6 +14,7 @@ const KEY_PAGES = [
   { path: "/pricing", title: "Pricing", note: "Per company, unlimited users, GBP excluding VAT" },
   { path: "/about", title: "About HSEQ Nova", note: "" },
   { path: "/contact", title: "Contact", note: "" },
+  { path: "/free-safety-check", title: "Free workplace safety check", note: "Indicative self-assessment out of 100. Not an audit or a certificate." },
   { path: "/news", title: "News and guidance", note: "Articles on UK health and safety duties" },
 ];
 
