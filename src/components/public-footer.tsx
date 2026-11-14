@@ -8,6 +8,7 @@ const PRODUCT_LINKS = [
   { href: "/pricing", label: "Pricing" },
   { href: "/riddor", label: "Accident book & RIDDOR" },
   { href: "/rams", label: "RAMS" },
+  { href: "/training", label: "Training" },
   { href: "/coshh", label: "COSHH" },
   { href: "/digital-safety-board", label: "Digital safety board" },
   { href: "/health-and-safety-policy", label: "Living H&S policy" },

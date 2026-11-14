@@ -119,6 +119,11 @@ Do not invent modules, prices or integrations. Do not access or claim to see a c
 SITE FAQ
 ${faqs}
 
+TRAINING COURSES (delivered training, not a software module)
+Page: ${SITE_CONFIG.url}/training
+Courses that do not need a licensed training approval: work at height and fall protection; mobile elevating work platforms; pedestrian pallet trucks; prefabricated scaffold up to 5 metres; prefabricated scaffold from 5 to 9 metres; work equipment safety; health and safety for managers. Taught in English at the customer's workplace. Completions can be stored in HSEQ Nova training records.
+Not offered: IPAF, PASMA, CISRS, RTITB, ITSSAR or CPCS cards; crane operator certificates; scaffold above 9 metres; licensed asbestos work; ADR driver training; Driver CPC. A card scheme is voluntary. The legal duty is competence under HSWA s.2(2)(c), MHSWR reg. 13 and PUWER reg. 9. The employer remains responsible. Enquire via ${SITE_CONFIG.contactEmail}.
+
 OTHER FACTS
 Written policy is required for employers with five or more employees (HSWA s.2(3)). Accident book for 10 or more employees; digital is lawful. COSHH health records 40 years. Near misses are not RIDDOR but belong in the accident book.
 `;

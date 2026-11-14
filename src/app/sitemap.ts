@@ -20,6 +20,7 @@ const STATIC_PATHS: Array<{ path: string; priority: number; changeFrequency: Cha
   { path: "/health-and-safety-policy", priority: 0.8, changeFrequency: "monthly" },
   { path: "/riddor", priority: 0.8, changeFrequency: "monthly" },
   { path: "/rams", priority: 0.8, changeFrequency: "monthly" },
+  { path: "/training", priority: 0.8, changeFrequency: "monthly" },
   { path: "/coshh", priority: 0.8, changeFrequency: "monthly" },
   { path: NEWS_BASE_PATH, priority: 0.8, changeFrequency: "daily" },
   { path: "/about", priority: 0.6, changeFrequency: "monthly" },
