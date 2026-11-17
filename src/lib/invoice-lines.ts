@@ -4,6 +4,49 @@ export type InvoiceLineInput = {
   unitAmount: number;
 };
 
+export type InvoiceCustomerInput = {
+  email: string;
+  addressLine1: string;
+  city: string;
+  postcode: string;
+  vatNumber: string | null;
+  purchaseOrderNumber: string | null;
+};
+
+export function requireInvoiceCustomer(input: {
+  email: string;
+  addressLine1: string;
+  city: string;
+  postcode: string;
+  vatNumber?: string | null;
+  purchaseOrderNumber?: string | null;
+}): InvoiceCustomerInput {
+  const email = input.email.trim();
+  const addressLine1 = input.addressLine1.trim();
+  const city = input.city.trim();
+  const postcode = input.postcode.trim().toUpperCase();
+  const vatNumber = input.vatNumber?.replace(/\s+/g, "").toUpperCase() || null;
+  const purchaseOrderNumber = input.purchaseOrderNumber?.trim() || null;
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw { code: "INVOICE_EMAIL_MISSING", message: "Enter an invoice email" };
+  }
+  if (!addressLine1) {
+    throw { code: "INVOICE_ADDRESS_MISSING", message: "Enter the first line of the invoice address" };
+  }
+  if (!city) {
+    throw { code: "INVOICE_ADDRESS_MISSING", message: "Enter the invoice city" };
+  }
+  if (postcode.length < 2) {
+    throw { code: "INVOICE_ADDRESS_MISSING", message: "Enter the invoice postcode" };
+  }
+  if (vatNumber && !/^GB\d{9}(\d{3})?$/.test(vatNumber.startsWith("GB") ? vatNumber : `GB${vatNumber}`)) {
+    throw { code: "VAT_NUMBER_REJECTED", message: "Enter a GB VAT number, for example GB123456789" };
+  }
+
+  return { email, addressLine1, city, postcode, vatNumber, purchaseOrderNumber };
+}
+
 const DAY_MS = 86_400_000;
 
 export function defaultInvoiceDueDate(now = new Date()): string {

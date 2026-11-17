@@ -75,7 +75,7 @@ export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStat
     });
 
     if (!invoice) {
-      return { success: false, error: "Faktura ikke funnet" };
+      return { success: false, error: "Invoice not found" };
     }
 
     await prisma.$transaction(async (tx) => {
@@ -98,7 +98,7 @@ export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStat
     revalidatePath("/admin/invoices");
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke oppdatere status" };
+      return { success: false, error: "Could not update the status" };
   }
 }
 
@@ -112,11 +112,11 @@ export async function deleteInvoice(invoiceId: string) {
     });
 
     if (!invoice) {
-      return { success: false, error: "Faktura ikke funnet" };
+      return { success: false, error: "Invoice not found" };
     }
 
     if (invoice.stripeInvoiceId) {
-      return { success: false, error: "Kan ikke slette fakturaer synkronisert med Fiken" };
+      return { success: false, error: "Invoices sent through Stripe cannot be deleted" };
     }
 
     await prisma.invoice.delete({ where: { id: invoiceId } });
@@ -124,7 +124,7 @@ export async function deleteInvoice(invoiceId: string) {
     revalidatePath("/admin/invoices");
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message || "Kunne ikke slette faktura" };
+      return { success: false, error: "Could not delete the invoice" };
   }
 }
 
@@ -375,7 +375,7 @@ export async function markInvoiceAsPaid(invoiceId: string) {
     });
 
     if (!invoice) {
-      return { success: false, error: "Faktura ikke funnet" };
+      return { success: false, error: "Invoice not found" };
     }
 
     // Oppdater faktura og reaktiver tenant

@@ -90,7 +90,7 @@ function getPresetRange(preset: PeriodPreset): { from: string; to: string; label
       };
     }
     default:
-      return { from: "", to: "", label: "egendefinert" };
+      return { from: "", to: "", label: "custom" };
   }
 }
 
@@ -120,13 +120,13 @@ export function InvoiceExportPanel({ history, exportedInvoiceIds }: InvoiceExpor
     try {
       const url = `/api/admin/invoices/export?from=${from}&to=${to}&label=${encodeURIComponent(label)}`;
       const response = await fetch(url);
-      if (!response.ok) throw new Error("Eksport feilet");
+      if (!response.ok) throw new Error("Export failed");
 
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = downloadUrl;
-      a.download = `HMS-Nova-fakturaer-${label}.xlsx`;
+      a.download = `hseq-nova-invoices-${label}.xlsx`;
       a.click();
       window.URL.revokeObjectURL(downloadUrl);
       router.refresh();
@@ -141,26 +141,25 @@ export function InvoiceExportPanel({ history, exportedInvoiceIds }: InvoiceExpor
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5" />
-            Eksporter til Excel
+            Export to Excel
           </CardTitle>
           <CardDescription>
-            Last ned fakturaer som Excel-fil formatert for manuell registrering i Fiken.
-            Inkluderer bedrift, org.nr, beløp, mva, forfallsdato og beskrivelse.
+            Download invoices as an Excel file for the accounts. Includes the organisation, company number, amount, VAT, due date and description.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Periode</Label>
+            <Label>Period</Label>
             <Select value={preset} onValueChange={(v) => setPreset(v as PeriodPreset)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="this_month">Denne måneden</SelectItem>
-                <SelectItem value="last_month">Forrige måned</SelectItem>
-                <SelectItem value="this_week">Denne uken</SelectItem>
-                <SelectItem value="last_week">Forrige uke</SelectItem>
-                <SelectItem value="custom">Egendefinert</SelectItem>
+                <SelectItem value="this_month">This month</SelectItem>
+                <SelectItem value="last_month">Last month</SelectItem>
+                <SelectItem value="this_week">This week</SelectItem>
+                <SelectItem value="last_week">Last week</SelectItem>
+                <SelectItem value="custom">Custom</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -168,7 +167,7 @@ export function InvoiceExportPanel({ history, exportedInvoiceIds }: InvoiceExpor
           {preset === "custom" && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs">Fra</Label>
+                <Label className="text-xs">From</Label>
                 <Input
                   type="date"
                   value={customFrom}
@@ -176,7 +175,7 @@ export function InvoiceExportPanel({ history, exportedInvoiceIds }: InvoiceExpor
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Til</Label>
+                <Label className="text-xs">To</Label>
                 <Input
                   type="date"
                   value={customTo}
@@ -192,7 +191,7 @@ export function InvoiceExportPanel({ history, exportedInvoiceIds }: InvoiceExpor
             className="w-full"
           >
             <Download className="mr-2 h-4 w-4" />
-            {isDownloading ? "Laster ned…" : "Last ned Excel"}
+            {isDownloading ? "Downloading…" : "Download Excel"}
           </Button>
         </CardContent>
       </Card>
@@ -201,26 +200,26 @@ export function InvoiceExportPanel({ history, exportedInvoiceIds }: InvoiceExpor
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CalendarRange className="h-5 w-5" />
-            Nedlastingshistorikk
+            Download history
           </CardTitle>
           <CardDescription>
-            Oversikt over tidligere eksporter. Fakturaer som allerede er lastet ned markeres i tabellen.
+            Earlier exports. Invoices that have already been downloaded are marked in the table.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {history.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">
-              Ingen eksporter ennå
+              No exports yet
             </p>
           ) : (
             <div className="max-h-[300px] overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Periode</TableHead>
-                    <TableHead className="text-right">Antall</TableHead>
-                    <TableHead className="text-right">Beløp</TableHead>
-                    <TableHead>Dato</TableHead>
+                    <TableHead>Period</TableHead>
+                    <TableHead className="text-right">Count</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Date</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -231,7 +230,7 @@ export function InvoiceExportPanel({ history, exportedInvoiceIds }: InvoiceExpor
                       </TableCell>
                       <TableCell className="text-right">{item.invoiceCount}</TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {item.totalAmount.toLocaleString("no-NO")} kr
+                        £{item.totalAmount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {format(new Date(item.createdAt), "dd.MM.yy HH:mm")}
@@ -253,7 +252,7 @@ export function InvoiceExportedBadge({ invoiceId, exportedIds }: { invoiceId: st
   return (
     <Badge variant="outline" className="gap-1 text-green-700 border-green-300 bg-green-50">
       <Check className="h-3 w-3" />
-      Eksportert
+      Exported
     </Badge>
   );
 }

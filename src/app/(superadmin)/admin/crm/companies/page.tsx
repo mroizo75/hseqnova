@@ -17,12 +17,21 @@ import {
 import { CRM_SOURCE_LABELS, CRM_STAGE_LABELS, formatGbp } from "@/features/crm/lib/labels";
 import type { CrmSource, CrmDealStage } from "@/features/crm/lib/types";
 
-export default async function CrmCompaniesPage() {
+export default async function CrmCompaniesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const staff = await requirePlatformStaff();
   if (!staff || !isSalesStaff(staff)) {
     redirect("/admin");
   }
   const companies = await loadCrmCompanies(staff);
+  const params = await searchParams;
+  const pageSize = 20;
+  const pageCount = Math.max(1, Math.ceil(companies.length / pageSize));
+  const page = Math.min(pageCount, Math.max(1, Number(params.page) || 1));
+  const visible = companies.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div className="space-y-6">
@@ -44,6 +53,9 @@ export default async function CrmCompaniesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Company</TableHead>
+                <TableHead>Industry</TableHead>
+                <TableHead>City</TableHead>
+                <TableHead>Employees</TableHead>
                 <TableHead>Source</TableHead>
                 <TableHead>Owner</TableHead>
                 <TableHead>Open deal</TableHead>
@@ -53,21 +65,27 @@ export default async function CrmCompaniesPage() {
             <TableBody>
               {companies.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     No companies yet
                   </TableCell>
                 </TableRow>
               ) : (
-                companies.map((company) => (
+                visible.map((company) => (
                   <TableRow key={company.id}>
                     <TableCell>
-                      <Link href={`/admin/crm/companies/${company.id}`} className="font-medium hover:underline">
+                      <Link
+                        href={company.tenantId ? `/admin/tenants/${company.tenantId}` : `/admin/crm/companies/${company.id}`}
+                        className="font-medium hover:underline"
+                      >
                         {company.name}
                       </Link>
                       {company.companyNumber && (
                         <p className="text-xs text-muted-foreground">{company.companyNumber}</p>
                       )}
                     </TableCell>
+                    <TableCell>{company.industry || "—"}</TableCell>
+                    <TableCell>{company.city || "—"}</TableCell>
+                    <TableCell>{company.employeeCount ?? "—"}</TableCell>
                     <TableCell>
                       {CRM_SOURCE_LABELS[company.source as CrmSource] ?? company.source}
                     </TableCell>
@@ -84,7 +102,7 @@ export default async function CrmCompaniesPage() {
                     </TableCell>
                     <TableCell>
                       {company.tenantId ? (
-                        <Badge variant="secondary">Registered</Badge>
+                        <Badge variant="secondary">Open organisation</Badge>
                       ) : (
                         <span className="text-muted-foreground">Prospect</span>
                       )}
@@ -94,6 +112,23 @@ export default async function CrmCompaniesPage() {
               )}
             </TableBody>
           </Table>
+          <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+            <p>
+              {companies.length === 0
+                ? "No companies"
+                : `${(page - 1) * pageSize + 1}–${Math.min(companies.length, page * pageSize)} of ${companies.length}`}
+            </p>
+            <div className="flex gap-2">
+              <Button asChild variant="outline" size="sm" disabled={page <= 1}>
+                <Link href={page <= 1 ? "/admin/crm/companies" : `/admin/crm/companies?page=${page - 1}`}>Previous</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm" disabled={page >= pageCount}>
+                <Link href={page >= pageCount ? `/admin/crm/companies?page=${page}` : `/admin/crm/companies?page=${page + 1}`}>
+                  Next
+                </Link>
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

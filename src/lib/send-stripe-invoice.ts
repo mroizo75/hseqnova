@@ -6,6 +6,8 @@ import {
   daysUntilInvoiceDue,
   invoiceLineSummary,
   poundsToPence,
+  requireInvoiceCustomer,
+  type InvoiceCustomerInput,
   type InvoiceLineInput,
 } from "@/lib/invoice-lines";
 
@@ -25,20 +27,6 @@ export type SentStripeInvoice = {
   purchaseOrderNumber: string | null;
 };
 
-type BillingTenant = {
-  id: string;
-  name: string;
-  invoiceEmail: string | null;
-  contactEmail: string | null;
-  purchaseOrderNumber: string | null;
-  invoiceAddress: string | null;
-  invoicePostalCode: string | null;
-  invoiceCity: string | null;
-  address: string | null;
-  postalCode: string | null;
-  city: string | null;
-};
-
 function stripeMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
     return error.message;
@@ -46,28 +34,22 @@ function stripeMessage(error: unknown): string {
   return "Stripe could not send the invoice";
 }
 
-function recipientEmail(tenant: BillingTenant): string {
-  const email = (tenant.invoiceEmail || tenant.contactEmail || "").trim();
-  if (!email) {
-    throw {
-      code: "INVOICE_EMAIL_MISSING",
-      message: "Add an invoice email on the company before sending",
-    };
+async function customerIdForTenant(tenantId: string): Promise<string> {
+  try {
+    return await createOrGetStripeCustomer(tenantId);
+  } catch (cause) {
+    if (!/no such customer/i.test(stripeMessage(cause))) {
+      throw cause;
+    }
+    const { error } = await getAdminDb()
+      .from("Tenant")
+      .update({ stripeCustomerId: null, updatedAt: new Date().toISOString() })
+      .eq("id", tenantId);
+    if (error) {
+      throw { code: "TENANT_UPDATE_FAILED", message: error.message };
+    }
+    return createOrGetStripeCustomer(tenantId);
   }
-  return email;
-}
-
-function customerAddress(tenant: BillingTenant): Stripe.AddressParam | null {
-  const line1 = (tenant.invoiceAddress || tenant.address || "").trim();
-  const city = (tenant.invoiceCity || tenant.city || "").trim();
-  const postalCode = (tenant.invoicePostalCode || tenant.postalCode || "").trim();
-  if (!line1 && !postalCode) return null;
-  return {
-    line1: line1 || undefined,
-    city: city || undefined,
-    postal_code: postalCode || undefined,
-    country: "GB",
-  };
 }
 
 async function discardDraft(stripe: Stripe, invoiceId: string): Promise<void> {
@@ -87,12 +69,12 @@ export async function sendDetailedStripeInvoice(input: {
   dueDate: string;
   note?: string;
   lines: InvoiceLineInput[];
+  customer: InvoiceCustomerInput;
 }): Promise<SentStripeInvoice> {
+  const customer = requireInvoiceCustomer(input.customer);
   const { data: tenant, error } = await getAdminDb()
     .from("Tenant")
-    .select(
-      "id, name, invoiceEmail, contactEmail, purchaseOrderNumber, invoiceAddress, invoicePostalCode, invoiceCity, address, postalCode, city",
-    )
+    .select("id, name")
     .eq("id", input.tenantId)
     .maybeSingle();
   if (error) {
@@ -102,32 +84,49 @@ export async function sendDetailedStripeInvoice(input: {
     throw { code: "TENANT_NOT_FOUND", message: "Company not found" };
   }
 
-  const billingTenant = tenant as BillingTenant;
-  const email = recipientEmail(billingTenant);
+  const now = new Date().toISOString();
+  const { error: saveError } = await getAdminDb()
+    .from("Tenant")
+    .update({
+      invoiceEmail: customer.email,
+      invoiceAddress: customer.addressLine1,
+      invoiceCity: customer.city,
+      invoicePostalCode: customer.postcode,
+      vatNumber: customer.vatNumber,
+      purchaseOrderNumber: customer.purchaseOrderNumber,
+      updatedAt: now,
+    })
+    .eq("id", input.tenantId);
+  if (saveError) {
+    throw { code: "TENANT_UPDATE_FAILED", message: saveError.message };
+  }
+
   const daysUntilDue = daysUntilInvoiceDue(input.dueDate);
   const description = invoiceLineSummary(input.lines);
-  const purchaseOrder = billingTenant.purchaseOrderNumber?.trim() || null;
   const note = input.note?.trim() || "";
-  const address = customerAddress(billingTenant);
-
   const stripe = getStripe();
-  const customerId = await createOrGetStripeCustomer(input.tenantId);
-  const customer = (await stripe.customers.retrieve(customerId)) as Stripe.Customer | Stripe.DeletedCustomer;
-  if (!("address" in customer)) {
-    throw { code: "STRIPE_CUSTOMER_MISSING", message: "Stripe customer was deleted. Try again." };
-  }
-  if (!address && !customer.address?.country) {
-    throw {
-      code: "INVOICE_ADDRESS_MISSING",
-      message: "Add an invoice address on the company. Stripe needs it to calculate VAT.",
-    };
-  }
-
+  const customerId = await customerIdForTenant(input.tenantId);
   await stripe.customers.update(customerId, {
-    email,
-    name: billingTenant.name,
-    ...(address ? { address } : {}),
+    email: customer.email,
+    name: tenant.name as string,
+    address: {
+      line1: customer.addressLine1,
+      city: customer.city,
+      postal_code: customer.postcode,
+      country: "GB",
+    },
   });
+  if (customer.vatNumber) {
+    const value = customer.vatNumber.startsWith("GB") ? customer.vatNumber : `GB${customer.vatNumber}`;
+    try {
+      await stripe.customers.createTaxId(customerId, { type: "gb_vat", value });
+    } catch (cause) {
+      const message = stripeMessage(cause);
+      if (!/already/i.test(message)) {
+        throw { code: "VAT_NUMBER_REJECTED", message: "Stripe rejected the VAT number. Use a GB VAT number, for example GB123456789." };
+      }
+    }
+  }
 
   let invoiceId: string | null = null;
   let sent = false;
@@ -143,8 +142,8 @@ export async function sendDetailedStripeInvoice(input: {
       description: description.slice(0, 500),
       footer: note ? note.slice(0, 500) : undefined,
       metadata: { tenantId: input.tenantId, source: "admin_invoice" },
-      ...(purchaseOrder
-        ? { custom_fields: [{ name: "Purchase order", value: purchaseOrder.slice(0, 140) }] }
+      ...(customer.purchaseOrderNumber
+        ? { custom_fields: [{ name: "Purchase order", value: customer.purchaseOrderNumber.slice(0, 140) }] }
         : {}),
     });
     invoiceId = draft.id;
@@ -181,7 +180,7 @@ export async function sendDetailedStripeInvoice(input: {
         : new Date(`${input.dueDate}T00:00:00.000Z`).toISOString(),
       description,
       livemode: invoice.livemode,
-      purchaseOrderNumber: purchaseOrder,
+      purchaseOrderNumber: customer.purchaseOrderNumber,
     };
   } catch (cause) {
     if (invoiceId && !sent) {

@@ -140,7 +140,7 @@ export async function loadCrmCompanies(staff: PlatformStaff) {
   const db = getAdminDb();
   let query = db
     .from("CrmOrganisation")
-    .select("id, name, companyNumber, industry, tenantId, ownerId, source, createdAt")
+    .select("id, name, companyNumber, industry, employeeCount, city, tenantId, ownerId, source, createdAt")
     .order("updatedAt", { ascending: false });
   const ownerId = ownerScope(staff);
   if (ownerId) {
@@ -179,6 +179,8 @@ export async function loadCrmCompanies(staff: PlatformStaff) {
     name: String(row.name),
     companyNumber: (row.companyNumber as string | null) ?? null,
     industry: (row.industry as string | null) ?? null,
+    employeeCount: (row.employeeCount as number | null) ?? null,
+    city: (row.city as string | null) ?? null,
     tenantId: (row.tenantId as string | null) ?? null,
     ownerId: (row.ownerId as string | null) ?? null,
     owner: row.ownerId ? owners.get(String(row.ownerId)) ?? null : null,

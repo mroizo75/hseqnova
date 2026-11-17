@@ -928,8 +928,10 @@ export async function createTenantActivity(input: z.infer<typeof createTenantAct
  */
 export async function updateTenant(input: z.infer<typeof updateTenantSchema>) {
   try {
-    const superAdmin = await requireSuperAdmin();
-    if (!superAdmin) return { success: false, error: "Only superadmin has access" };
+    const staff = await requirePrivilegedUser();
+    if (!staff?.isSuperAdmin && !staff?.isSupport) {
+      return { success: false, error: "Only support or a superadmin can edit an organisation" };
+    }
 
     const validated = updateTenantSchema.parse(input);
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -48,12 +49,12 @@ interface InvoiceWithTenant {
 type FilterTab = "ALL" | InvoiceStatus;
 
 const TABS: { value: FilterTab; label: string }[] = [
-  { value: "ALL", label: "Alle" },
-  { value: "PENDING", label: "Ikke sendt" },
-  { value: "SENT", label: "Sendt" },
-  { value: "OVERDUE", label: "Forfalt" },
-  { value: "PAID", label: "Betalt" },
-  { value: "CANCELLED", label: "Kansellert" },
+  { value: "ALL", label: "All" },
+  { value: "PENDING", label: "Not sent" },
+  { value: "SENT", label: "Sent" },
+  { value: "OVERDUE", label: "Overdue" },
+  { value: "PAID", label: "Paid" },
+  { value: "CANCELLED", label: "Cancelled" },
 ];
 
 function getDaysUntilDue(dueDate: Date): number {
@@ -64,7 +65,7 @@ function getDaysUntilDue(dueDate: Date): number {
 
 function DueDateCell({ dueDate, status }: { dueDate: Date; status: InvoiceStatus }) {
   const days = getDaysUntilDue(dueDate);
-  const formatted = new Date(dueDate).toLocaleDateString("no-NO");
+  const formatted = new Date(dueDate).toLocaleDateString("en-GB");
 
   if (status === "PAID" || status === "CANCELLED") {
     return <span className="text-muted-foreground">{formatted}</span>;
@@ -74,7 +75,7 @@ function DueDateCell({ dueDate, status }: { dueDate: Date; status: InvoiceStatus
     return (
       <span className="text-destructive font-medium">
         {formatted}
-        <span className="block text-xs">{Math.abs(days)} dager over forfall</span>
+        <span className="block text-xs">{Math.abs(days)} days overdue</span>
       </span>
     );
   }
@@ -83,7 +84,7 @@ function DueDateCell({ dueDate, status }: { dueDate: Date; status: InvoiceStatus
     return (
       <span className="text-orange-600 font-medium">
         {formatted}
-        <span className="block text-xs">{days} dager igjen</span>
+        <span className="block text-xs">{days} days left</span>
       </span>
     );
   }
@@ -119,12 +120,12 @@ export function InvoiceTable({ invoices, exportedInvoiceIds = [] }: InvoiceTable
     setDeletingId(id);
     const result = await deleteInvoice(id);
     if (result.success) {
-      toast({ title: "Faktura slettet" });
+      toast({ title: "Invoice deleted" });
       router.refresh();
     } else {
       toast({
         variant: "destructive",
-        title: "Feil",
+        title: "Could not delete invoice",
         description: result.error,
       });
     }
@@ -135,7 +136,7 @@ export function InvoiceTable({ invoices, exportedInvoiceIds = [] }: InvoiceTable
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle>Fakturaer ({filtered.length})</CardTitle>
+          <CardTitle>Invoices ({filtered.length})</CardTitle>
         </div>
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FilterTab)}>
           <TabsList>
@@ -155,21 +156,21 @@ export function InvoiceTable({ invoices, exportedInvoiceIds = [] }: InvoiceTable
       <CardContent>
         {filtered.length === 0 ? (
           <p className="text-center text-muted-foreground py-8">
-            Ingen fakturaer i denne kategorien
+            No invoices in this view
           </p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Fakturanr</TableHead>
-                <TableHead>Bedrift</TableHead>
-                <TableHead>Beskrivelse</TableHead>
-                <TableHead className="text-right">Beløp</TableHead>
-                <TableHead>Forfallsdato</TableHead>
-                <TableHead>Betalt dato</TableHead>
+                <TableHead>Invoice no.</TableHead>
+                <TableHead>Organisation</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Due date</TableHead>
+                <TableHead>Paid date</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Periode</TableHead>
-                <TableHead>Eksport</TableHead>
+                <TableHead>Period</TableHead>
+                <TableHead>Export</TableHead>
                 <TableHead className="w-[50px]" />
               </TableRow>
             </TableHeader>
@@ -190,7 +191,9 @@ export function InvoiceTable({ invoices, exportedInvoiceIds = [] }: InvoiceTable
                   </TableCell>
                   <TableCell>
                     <div>
-                      <span className="font-medium">{invoice.tenant.name}</span>
+                      <Link href={`/admin/tenants/${invoice.tenantId}`} className="font-medium hover:underline">
+                        {invoice.tenant.name}
+                      </Link>
                       {(invoice.tenant.invoiceEmail || invoice.tenant.contactEmail) && (
                         <span className="block text-xs text-muted-foreground">
                           {invoice.tenant.invoiceEmail || invoice.tenant.contactEmail}
@@ -202,14 +205,14 @@ export function InvoiceTable({ invoices, exportedInvoiceIds = [] }: InvoiceTable
                     {invoice.description || "-"}
                   </TableCell>
                   <TableCell className="text-right font-medium tabular-nums">
-                    {invoice.amount.toLocaleString("no-NO")} kr
+                    £{invoice.amount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </TableCell>
                   <TableCell>
                     <DueDateCell dueDate={invoice.dueDate} status={invoice.status} />
                   </TableCell>
                   <TableCell className="text-sm">
                     {invoice.paidDate
-                      ? new Date(invoice.paidDate).toLocaleDateString("no-NO")
+                      ? new Date(invoice.paidDate).toLocaleDateString("en-GB")
                       : "-"}
                   </TableCell>
                   <TableCell>
@@ -225,7 +228,7 @@ export function InvoiceTable({ invoices, exportedInvoiceIds = [] }: InvoiceTable
                     {exportedInvoiceIds.includes(invoice.id) && (
                       <Badge variant="outline" className="gap-1 text-green-700 border-green-300 bg-green-50 text-[10px]">
                         <Check className="h-3 w-3" />
-                        Lastet ned
+                        Exported
                       </Badge>
                     )}
                   </TableCell>
@@ -243,7 +246,7 @@ export function InvoiceTable({ invoices, exportedInvoiceIds = [] }: InvoiceTable
                           onClick={() => handleDelete(invoice.id)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          {invoice.stripeInvoiceId ? "Synkronisert (kan ikke slettes)" : "Slett faktura"}
+                          {invoice.stripeInvoiceId ? "Sent with Stripe" : "Delete invoice"}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

@@ -52,6 +52,7 @@ export const metadata = {
 async function TenantDetails({ id }: { id: string }) {
   const session = await getServerSession(authOptions);
   const isSuperAdmin = Boolean(session?.user?.isSuperAdmin);
+  const canEditOrganisation = Boolean(session?.user?.isSuperAdmin || session?.user?.isSupport);
   const tenant = await loadAdminTenantDetails(id);
 
   if (!tenant) {
@@ -159,8 +160,8 @@ async function TenantDetails({ id }: { id: string }) {
             </Card>
           </div>
 
-          {/* Tenant Info - kun synlig for superadmin */}
-          {isSuperAdmin && (
+          {/* Organisation details — support and superadmin */}
+          {canEditOrganisation && (
             <Card>
               <CardHeader>
                 <CardTitle>Organisation details</CardTitle>
@@ -300,13 +301,21 @@ async function TenantDetails({ id }: { id: string }) {
               <CardHeader>
                 <CardTitle>Send invoice</CardTitle>
                 <CardDescription>
-                  Stripe emails a VAT invoice with these lines and a link to pay.
+                  Fill in the billing details Stripe needs. A customer is created if this company does not have one yet.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <SendInvoiceForm
                   tenantId={tenant.id}
-                  recipientEmail={(tenant.invoiceEmail as string | null) || (tenant.contactEmail as string | null)}
+                  hasStripeCustomer={Boolean(tenant.stripeCustomerId)}
+                  customer={{
+                    email: (tenant.invoiceEmail as string | null) || (tenant.contactEmail as string | null) || "",
+                    addressLine1: (tenant.invoiceAddress as string | null) || (tenant.address as string | null) || "",
+                    city: (tenant.invoiceCity as string | null) || (tenant.city as string | null) || "",
+                    postcode: (tenant.invoicePostalCode as string | null) || (tenant.postalCode as string | null) || "",
+                    vatNumber: (tenant.vatNumber as string | null) || "",
+                    purchaseOrderNumber: (tenant.purchaseOrderNumber as string | null) || "",
+                  }}
                   defaultDueDate={defaultInvoiceDueDate()}
                 />
               </CardContent>

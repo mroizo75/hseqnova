@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,50 @@ export type InvoiceTenantOption = {
   name: string;
   invoiceEmail: string | null;
   contactEmail: string | null;
+  invoiceAddress: string | null;
+  address: string | null;
+  invoiceCity: string | null;
+  city: string | null;
+  invoicePostalCode: string | null;
+  postalCode: string | null;
+  vatNumber: string | null;
+  purchaseOrderNumber: string | null;
+  stripeCustomerId: string | null;
 };
+
+type CustomerDraft = {
+  email: string;
+  addressLine1: string;
+  city: string;
+  postcode: string;
+  vatNumber: string;
+  purchaseOrderNumber: string;
+};
+
+function customerDraft(source?: {
+  invoiceEmail?: string | null;
+  contactEmail?: string | null;
+  email?: string | null;
+  invoiceAddress?: string | null;
+  address?: string | null;
+  addressLine1?: string | null;
+  invoiceCity?: string | null;
+  city?: string | null;
+  invoicePostalCode?: string | null;
+  postalCode?: string | null;
+  postcode?: string | null;
+  vatNumber?: string | null;
+  purchaseOrderNumber?: string | null;
+} | null): CustomerDraft {
+  return {
+    email: source?.email || source?.invoiceEmail || source?.contactEmail || "",
+    addressLine1: source?.addressLine1 || source?.invoiceAddress || source?.address || "",
+    city: source?.invoiceCity || source?.city || "",
+    postcode: source?.postcode || source?.invoicePostalCode || source?.postalCode || "",
+    vatNumber: source?.vatNumber || "",
+    purchaseOrderNumber: source?.purchaseOrderNumber || "",
+  };
+}
 
 type DraftLine = {
   key: string;
@@ -53,19 +96,22 @@ function money(pounds: number): string {
 interface SendInvoiceFormProps {
   defaultDueDate: string;
   tenantId?: string;
-  recipientEmail?: string | null;
+  hasStripeCustomer?: boolean;
+  customer?: CustomerDraft;
   tenants?: InvoiceTenantOption[];
 }
 
 export function SendInvoiceForm({
   defaultDueDate,
   tenantId,
-  recipientEmail,
+  hasStripeCustomer = false,
+  customer,
   tenants,
 }: SendInvoiceFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [selectedTenantId, setSelectedTenantId] = useState(tenantId ?? "");
+  const [billTo, setBillTo] = useState<CustomerDraft>(customer ?? customerDraft());
   const [dueDate, setDueDate] = useState(defaultDueDate);
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<DraftLine[]>([blankLine()]);
@@ -74,7 +120,12 @@ export function SendInvoiceForm({
 
   const locked = Boolean(tenantId);
   const selected = tenants?.find((tenant) => tenant.id === selectedTenantId);
-  const email = locked ? recipientEmail : selected?.invoiceEmail || selected?.contactEmail || null;
+  const creatingCustomer = locked ? !hasStripeCustomer : !selected?.stripeCustomerId;
+
+  useEffect(() => {
+    if (locked) return;
+    setBillTo(customerDraft(selected));
+  }, [locked, selected]);
 
   const total = useMemo(() => {
     return lines.reduce((sum, line) => {
@@ -93,14 +144,6 @@ export function SendInvoiceForm({
     event.preventDefault();
     if (!selectedTenantId) {
       toast({ variant: "destructive", title: "Choose a company" });
-      return;
-    }
-    if (!email) {
-      toast({
-        variant: "destructive",
-        title: "No invoice email",
-        description: "Add an invoice email on the company before sending.",
-      });
       return;
     }
 
@@ -124,6 +167,14 @@ export function SendInvoiceForm({
       dueDate,
       note: note.trim() || undefined,
       lines: parsedLines,
+      customer: {
+        email: billTo.email,
+        addressLine1: billTo.addressLine1,
+        city: billTo.city,
+        postcode: billTo.postcode,
+        vatNumber: billTo.vatNumber || undefined,
+        purchaseOrderNumber: billTo.purchaseOrderNumber || undefined,
+      },
     });
     setSubmitting(false);
 
@@ -141,7 +192,7 @@ export function SendInvoiceForm({
     toast({
       title: result.livemode ? "Invoice sent" : "Invoice created in test mode",
       description: result.livemode
-        ? `Stripe emailed ${email}.`
+        ? `Stripe emailed ${billTo.email}.`
         : "Stripe does not email invoices in test mode. Open the invoice to collect payment.",
     });
     router.refresh();
@@ -156,7 +207,7 @@ export function SendInvoiceForm({
         </p>
         <p className="text-sm text-muted-foreground">
           {sent.livemode
-            ? `Stripe emailed the invoice to ${email}.`
+            ? `Stripe emailed the invoice to ${billTo.email}.`
             : "Stripe does not email invoices in test mode. Use the payment page below."}
         </p>
         {sent.warning ? <p className="text-sm text-destructive">{sent.warning}</p> : null}
@@ -186,13 +237,7 @@ export function SendInvoiceForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {locked ? (
-        <div>
-          <Label>Recipient</Label>
-          <p className="mt-1 text-sm font-medium">{email || "No email on file"}</p>
-          <p className="text-xs text-muted-foreground">Sent to the invoice email, or the contact if none is set.</p>
-        </div>
-      ) : (
+      {locked ? null : (
         <div className="space-y-2">
           <Label>Company</Label>
           <Select value={selectedTenantId} onValueChange={setSelectedTenantId}>
@@ -207,15 +252,82 @@ export function SendInvoiceForm({
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">
-            {selectedTenantId
-              ? email
-                ? `Stripe will email ${email}.`
-                : "This company has no invoice email."
-              : "Stripe emails the invoice and hosts the payment page."}
-          </p>
         </div>
       )}
+
+      <div className="space-y-3 rounded-lg border p-4">
+        <div>
+          <p className="text-sm font-medium">Bill to</p>
+          <p className="text-xs text-muted-foreground">
+            {creatingCustomer
+              ? "Stripe has no customer for this company yet. These details create one and are saved on the company."
+              : "Stripe emails this address. Saving updates the customer in Stripe."}
+            {" "}Country is the United Kingdom.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="invoice-email">Invoice email</Label>
+            <Input
+              id="invoice-email"
+              type="email"
+              value={billTo.email}
+              onChange={(event) => setBillTo((current) => ({ ...current, email: event.target.value }))}
+              required
+              disabled={submitting}
+            />
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="invoice-address">Address</Label>
+            <Input
+              id="invoice-address"
+              value={billTo.addressLine1}
+              onChange={(event) => setBillTo((current) => ({ ...current, addressLine1: event.target.value }))}
+              required
+              disabled={submitting}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="invoice-city">City</Label>
+            <Input
+              id="invoice-city"
+              value={billTo.city}
+              onChange={(event) => setBillTo((current) => ({ ...current, city: event.target.value }))}
+              required
+              disabled={submitting}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="invoice-postcode">Postcode</Label>
+            <Input
+              id="invoice-postcode"
+              value={billTo.postcode}
+              onChange={(event) => setBillTo((current) => ({ ...current, postcode: event.target.value }))}
+              required
+              disabled={submitting}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="invoice-vat">VAT number (optional)</Label>
+            <Input
+              id="invoice-vat"
+              value={billTo.vatNumber}
+              onChange={(event) => setBillTo((current) => ({ ...current, vatNumber: event.target.value }))}
+              placeholder="GB123456789"
+              disabled={submitting}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="invoice-po">Purchase order (optional)</Label>
+            <Input
+              id="invoice-po"
+              value={billTo.purchaseOrderNumber}
+              onChange={(event) => setBillTo((current) => ({ ...current, purchaseOrderNumber: event.target.value }))}
+              disabled={submitting}
+            />
+          </div>
+        </div>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
@@ -318,9 +430,9 @@ export function SendInvoiceForm({
       </div>
 
       <div className="flex justify-end">
-        <Button type="submit" disabled={submitting || !email}>
+        <Button type="submit" disabled={submitting || (!locked && !selectedTenantId)}>
           {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-          Send invoice
+          {creatingCustomer ? "Create customer and send" : "Send invoice"}
         </Button>
       </div>
     </form>

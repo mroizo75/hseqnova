@@ -147,6 +147,7 @@ model User {
   crmDealsOwned                   CrmDeal[]                      @relation("CrmDealOwner")
   crmActivitiesCreated            CrmActivity[]                  @relation("CrmActivityCreatedBy")
   crmTasksAssigned                CrmTask[]                      @relation("CrmTaskAssignedTo")
+  trainingEngagementsOwned        TrainingEngagement[]           @relation("TrainingEngagementOwner")
   enterpriseUsers                 EnterpriseUser[]
   enterpriseAdvisorAssignments    EnterpriseAdvisorAssignment[]
   enterpriseImprovementRequests   EnterpriseImprovementRequest[] @relation("EnterpriseImprovementRequester")
@@ -658,6 +659,7 @@ model CrmOrganisation {
   deals    CrmDeal[]
   activities CrmActivity[]
   tasks    CrmTask[]
+  trainingEngagements TrainingEngagement[]
 
   @@index([ownerId])
   @@index([name])
@@ -699,6 +701,7 @@ model CrmDeal {
   tenantOffer  TenantOffer?    @relation(fields: [tenantOfferId], references: [id], onDelete: SetNull)
   activities   CrmActivity[]
   tasks        CrmTask[]
+  trainingEngagements TrainingEngagement[]
 
   @@index([organisationId])
   @@index([ownerId])
@@ -737,6 +740,7 @@ model CrmTask {
   organisation CrmOrganisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
   deal         CrmDeal?        @relation(fields: [dealId], references: [id], onDelete: SetNull)
   assignedTo   User            @relation("CrmTaskAssignedTo", fields: [assignedToId], references: [id], onDelete: Restrict)
+  trainingEngagement TrainingEngagement?
 
   @@index([assignedToId])
   @@index([dueAt])
@@ -6952,4 +6956,62 @@ model RecordShare {
 
   @@index([sourceTenantId])
   @@index([recordType, recordId])
+}
+
+model PlatformSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+enum TrainingEngagementStatus {
+  ENQUIRY
+  INVOICED
+  PAID
+  CANCELLED
+}
+
+model TrainingEngagement {
+  id                     String                   @id
+  organisationId         String
+  dealId                 String?
+  ownerId                String?
+  courseKey              String
+  courseTitle            String
+  delegateCount          Int
+  preferredDate          DateTime?                @db.Date
+  courseDate             DateTime?                @db.Date
+  validityMonths         Int
+  validUntil             DateTime?
+  followUpAt             DateTime?
+  followUpTaskId         String?                  @unique
+  unitPriceGbp           Float?
+  status                 TrainingEngagementStatus @default(ENQUIRY)
+  dealCreatedForTraining Boolean                  @default(false)
+  stripeCustomerId       String?
+  stripeInvoiceId        String?                  @unique
+  hostedInvoiceUrl       String?
+  invoiceEmail           String?
+  invoiceAddress         String?
+  invoiceCity            String?
+  invoicePostcode        String?
+  vatNumber              String?
+  purchaseOrderNumber    String?
+  siteNotes              String?                  @db.Text
+  contactName            String
+  contactEmail           String
+  contactPhone           String?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+
+  organisation CrmOrganisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  deal         CrmDeal?        @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  owner        User?           @relation("TrainingEngagementOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  followUpTask CrmTask?        @relation(fields: [followUpTaskId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId])
+  @@index([ownerId])
+  @@index([status])
+  @@index([followUpAt])
+  @@index([contactEmail])
 }

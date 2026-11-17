@@ -14,11 +14,11 @@ import { updateInvoiceStatus } from "@/server/actions/invoice.actions";
 import type { InvoiceStatus } from "@prisma/client";
 
 const STATUS_CONFIG: Record<InvoiceStatus, { label: string; className: string }> = {
-  PENDING: { label: "Ikke sendt", className: "text-muted-foreground" },
-  SENT: { label: "Sendt", className: "text-blue-600" },
-  PAID: { label: "Betalt", className: "text-green-600" },
-  OVERDUE: { label: "Forfalt", className: "text-destructive" },
-  CANCELLED: { label: "Kansellert", className: "text-muted-foreground line-through" },
+  PENDING: { label: "Not sent", className: "text-muted-foreground" },
+  SENT: { label: "Sent", className: "text-blue-600" },
+  PAID: { label: "Paid", className: "text-green-600" },
+  OVERDUE: { label: "Overdue", className: "text-destructive" },
+  CANCELLED: { label: "Cancelled", className: "text-muted-foreground line-through" },
 };
 
 interface InvoiceStatusSelectProps {
@@ -38,12 +38,12 @@ export function InvoiceStatusSelect({ invoiceId, currentStatus }: InvoiceStatusS
     const result = await updateInvoiceStatus(invoiceId, newStatus as InvoiceStatus);
 
     if (result.success) {
-      toast({ title: `Status endret til ${STATUS_CONFIG[newStatus as InvoiceStatus].label}` });
+      toast({ title: `Status changed to ${STATUS_CONFIG[newStatus as InvoiceStatus].label}` });
       router.refresh();
     } else {
       toast({
         variant: "destructive",
-        title: "Feil",
+        title: "Could not update status",
         description: result.error,
       });
     }

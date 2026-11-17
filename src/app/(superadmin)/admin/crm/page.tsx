@@ -31,6 +31,9 @@ export default async function CrmDashboardPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" className="bg-transparent">
+            <Link href="/admin/crm/training">Training</Link>
+          </Button>
+          <Button asChild variant="outline" className="bg-transparent">
             <Link href="/admin/crm/demos">Demos</Link>
           </Button>
           <Button asChild>

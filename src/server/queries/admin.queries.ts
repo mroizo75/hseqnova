@@ -297,6 +297,7 @@ export type AdminTenantListItem = {
   name: string;
   slug: string;
   orgNumber: string | null;
+  contactEmail: string | null;
   status: string;
   subscription: { plan: string; price: number; billingInterval: string } | null;
   offers: Array<{ status: string }>;
@@ -316,7 +317,7 @@ export async function loadAdminTenants(): Promise<AdminTenantListItem[]> {
 
   const { data: tenants, error } = await db
     .from("Tenant")
-    .select("id, name, slug, orgNumber, status, createdAt, registrationType, trialEndsAt, stripeSubscriptionId, stripeCustomerId")
+    .select("id, name, slug, orgNumber, contactEmail, invoiceEmail, status, createdAt, registrationType, trialEndsAt, stripeSubscriptionId, stripeCustomerId")
     .order("createdAt", { ascending: false });
   throwIf(error, "TENANT_LIST_FAILED");
 
@@ -325,6 +326,8 @@ export async function loadAdminTenants(): Promise<AdminTenantListItem[]> {
     name: string;
     slug: string;
     orgNumber: string | null;
+    contactEmail: string | null;
+    invoiceEmail: string | null;
     status: string;
     registrationType: string | null;
     trialEndsAt: string | null;
@@ -427,6 +430,7 @@ export async function loadAdminTenants(): Promise<AdminTenantListItem[]> {
         name: row.name,
         slug: row.slug,
         orgNumber: row.orgNumber,
+        contactEmail: row.invoiceEmail || row.contactEmail,
         status: row.status,
         subscription: subByTenant.get(row.id) ?? null,
         offers: offerByTenant.get(row.id) ? [offerByTenant.get(row.id)!] : [],
@@ -447,6 +451,7 @@ export async function loadAdminTenants(): Promise<AdminTenantListItem[]> {
     name: tenant.name,
     slug: tenant.slug,
     orgNumber: tenant.orgNumber,
+    contactEmail: tenant.contactEmail,
     status: tenant.status,
     subscription: tenant.subscription,
     offers: tenant.offers,
@@ -595,8 +600,8 @@ export async function loadAdminInvoices() {
     db.from("Invoice").select("*").order("dueDate", { ascending: false }).limit(200),
     db
       .from("Tenant")
-      .select("id, name, invoiceEmail, contactEmail")
-      .in("status", ["ACTIVE", "TRIAL"])
+      .select("id, name, invoiceEmail, contactEmail, invoiceAddress, address, invoiceCity, city, invoicePostalCode, postalCode, vatNumber, purchaseOrderNumber, stripeCustomerId")
+      .in("status", ["ACTIVE", "TRIAL", "SUSPENDED"])
       .order("name", { ascending: true }),
     db.from("InvoiceExport").select("*").order("createdAt", { ascending: false }).limit(20),
   ]);
@@ -639,6 +644,15 @@ export async function loadAdminInvoices() {
       name: string;
       invoiceEmail: string | null;
       contactEmail: string | null;
+      invoiceAddress: string | null;
+      address: string | null;
+      invoiceCity: string | null;
+      city: string | null;
+      invoicePostalCode: string | null;
+      postalCode: string | null;
+      vatNumber: string | null;
+      purchaseOrderNumber: string | null;
+      stripeCustomerId: string | null;
     }>,
     exportHistory: (exportsRes.data ?? []).map((row) => ({
       ...row,

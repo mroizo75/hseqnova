@@ -104,10 +104,10 @@ export default async function InvoicesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats.totalUnpaid.toLocaleString("en-GB")}
+              £{stats.totalUnpaid.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-muted-foreground">
-              Paid: {stats.totalPaid.toLocaleString("en-GB")}
+              Paid: £{stats.totalPaid.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </CardContent>
         </Card>

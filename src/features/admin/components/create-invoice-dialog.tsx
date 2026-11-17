@@ -33,7 +33,7 @@ export function CreateInvoiceDialog({ tenants, defaultDueDate }: CreateInvoiceDi
         <DialogHeader>
           <DialogTitle>Send invoice</DialogTitle>
           <DialogDescription>
-            Stripe emails a VAT invoice with these lines and a link to pay.
+            Stripe creates the customer when this company does not have one, then emails the invoice.
           </DialogDescription>
         </DialogHeader>
         {open ? <SendInvoiceForm tenants={tenants} defaultDueDate={defaultDueDate} /> : null}

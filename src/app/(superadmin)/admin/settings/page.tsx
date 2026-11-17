@@ -4,6 +4,8 @@ import { SystemSettingsForm } from "@/features/admin/components/system-settings-
 import { EmailSettingsForm } from "@/features/admin/components/email-settings-form";
 import { StorageSettingsForm } from "@/features/admin/components/storage-settings-form";
 import { PaymentSettingsForm } from "@/features/admin/components/payment-settings-form";
+import { TrainingFollowUpSettingForm } from "@/features/training-sales/components/training-follow-up-setting-form";
+import { getTrainingFollowUpMonths } from "@/server/queries/training-sales.queries";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -16,6 +18,7 @@ export default async function AdminSettingsPage() {
   if (!user?.isSuperAdmin) {
     redirect("/admin");
   }
+  const trainingFollowUpMonths = await getTrainingFollowUpMonths();
   return (
     <div className="space-y-6">
       <div>
@@ -31,6 +34,7 @@ export default async function AdminSettingsPage() {
           <TabsTrigger value="email">Email</TabsTrigger>
           <TabsTrigger value="storage">Storage</TabsTrigger>
           <TabsTrigger value="payment">Payment</TabsTrigger>
+          <TabsTrigger value="training">Training</TabsTrigger>
         </TabsList>
 
         <TabsContent value="system">
@@ -85,6 +89,20 @@ export default async function AdminSettingsPage() {
             </CardHeader>
             <CardContent>
               <PaymentSettingsForm />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="training">
+          <Card>
+            <CardHeader>
+              <CardTitle>Training renewals</CardTitle>
+              <CardDescription>
+                How many months before a competence record expires the CRM tasks sales to contact the customer. The minimum is 4 months.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TrainingFollowUpSettingForm months={trainingFollowUpMonths} />
             </CardContent>
           </Card>
         </TabsContent>

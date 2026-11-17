@@ -13,6 +13,7 @@ import {
 } from "@/server/queries/billing.queries";
 import { isVoluntaryCancel, shouldKeepAccessAfterCancel } from "@/lib/stripe-subscription-access";
 import { isAdminAddonGrantSubscription } from "@/lib/stripe-billing";
+import { markTrainingEngagementPaid } from "@/server/queries/training-sales.queries";
 import { parseSignupCheckoutMetadata } from "@/lib/signup-checkout";
 import Stripe from "stripe";
 
@@ -254,6 +255,12 @@ async function processEvent(event: Stripe.Event): Promise<void> {
         .update({ status: "ACTIVE", suspendedAt: null, updatedAt: now })
         .eq("stripeCustomerId", customerId)
         .eq("status", "SUSPENDED");
+    }
+    if (invoice.metadata?.source === "training") {
+      await markTrainingEngagementPaid({
+        stripeInvoiceId: invoice.id,
+        engagementId: invoice.metadata.engagementId ?? null,
+      });
     }
   }
 }

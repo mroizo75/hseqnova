@@ -7,8 +7,8 @@ import {
   ClipboardList,
   GraduationCap,
   HardHat,
-  Mail,
 } from "lucide-react";
+import { TRAINING_COURSES as COURSES } from "@/features/training-sales/lib/catalogue";
 import { Button } from "@/components/ui/button";
 import { MultipleStructuredData } from "@/components/seo/structured-data";
 import {
@@ -34,98 +34,6 @@ export const metadata: Metadata = {
   openGraph: getOpenGraphDefaults(PAGE_TITLE, PAGE_DESCRIPTION, "/training"),
   twitter: getTwitterDefaults(PAGE_TITLE, PAGE_DESCRIPTION),
 };
-
-const ENQUIRY_MAIL = `mailto:${SITE_CONFIG.contactEmail}?subject=${encodeURIComponent("Training enquiry")}`;
-
-const COURSES = [
-  {
-    title: "Work at height and fall protection",
-    audience: "Anyone who works where a fall could cause injury, and the people who plan that work.",
-    law: "Work at Height Regulations 2005; PPE at Work Regulations 1992",
-    topics: [
-      "Planning the task and choosing collective protection before personal equipment",
-      "Forces, fall distances and the limits of a harness system",
-      "Selecting, fitting and using personal fall-protection equipment",
-      "Storage, maintenance and pre-use inspection",
-      "Tool tethering, so dropped objects are controlled",
-      "Rescue planning if someone is left suspended",
-      "Ladders and stepladders, including when they are the wrong choice",
-    ],
-  },
-  {
-    title: "Mobile elevating work platforms",
-    audience: "People who will operate a specific MEWP, and those who supervise that work.",
-    law: "PUWER 1998 reg. 9; LOLER 1998; Work at Height Regulations 2005",
-    topics: [
-      "How the machine is built and how it moves",
-      "Stability, ground conditions and outriggers",
-      "Operating limits, wind and overhead hazards",
-      "Vertical platforms, boom lifts and vehicle-mounted platforms — matched to the machine in use",
-      "Pre-use checks, faults and how to report them",
-      "Safe use, including rescue from the platform",
-    ],
-  },
-  {
-    title: "Pedestrian pallet trucks",
-    audience: "People who move loads with a pedestrian pallet truck in a warehouse, yard or shop.",
-    law: "PUWER 1998 reg. 9",
-    topics: [
-      "How the truck works and what it is rated to carry",
-      "Pre-use checks",
-      "Load handling, stacking and travelling with a load",
-      "Pedestrians, ramps, dock edges and other traffic",
-      "Common causes of pallet-truck accidents",
-    ],
-  },
-  {
-    title: "Prefabricated scaffold, up to 5 metres",
-    audience: "People who erect, alter or dismantle prefabricated system scaffold up to 5 metres.",
-    law: "Work at Height Regulations 2005; PUWER 1998",
-    topics: [
-      "When prefabricated scaffold is the right access method",
-      "Components, ties and a stable foundation",
-      "Erecting, altering and dismantling in sequence",
-      "Inspection before use and after alteration",
-      "Stopping the work when the scaffold is incomplete",
-    ],
-  },
-  {
-    title: "Prefabricated scaffold, 5 to 9 metres",
-    audience: "People who already work on lower scaffold and will erect, alter or dismantle up to 9 metres.",
-    law: "Work at Height Regulations 2005; PUWER 1998",
-    topics: [
-      "The extra stability and tying demands above 5 metres",
-      "Erecting, altering and dismantling in sequence",
-      "Edge protection and safe loading of the platform",
-      "Inspection and handover before anyone else uses it",
-      "What this course does not cover: scaffold above 9 metres",
-    ],
-  },
-  {
-    title: "Work equipment safety",
-    audience: "New starters and anyone who uses work equipment. Often taken before a machine-specific course.",
-    law: "HSWA 1974 s.2(2)(c); MHSWR 1999 reg. 13; PUWER 1998",
-    topics: [
-      "What the employer must provide: information, instruction, training and supervision",
-      "Accidents, responsibility and what follows an injury",
-      "The environment around the job",
-      "Rules for using work equipment safely",
-      "Recognising hazardous-goods marks. This is awareness only, not ADR driver training",
-    ],
-  },
-  {
-    title: "Health and safety for managers",
-    audience: "Line managers and supervisors who organise the work and the people who do it.",
-    law: "HSWA 1974 s.2; MHSWR 1999",
-    topics: [
-      "The employer’s duties and what a manager is expected to do day to day",
-      "Risk assessment and the arrangements that sit under the policy",
-      "Competence: who needs training, and how you know it is still current",
-      "Investigating incidents and acting on what they show",
-      "Consulting the people who do the work",
-    ],
-  },
-] as const;
 
 const NOT_OFFERED = [
   "IPAF, PASMA, CISRS, RTITB, ITSSAR or CPCS cards",
@@ -274,10 +182,10 @@ function Hero() {
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button asChild size="lg" className="h-12 bg-emerald-400 text-emerald-950 hover:bg-emerald-300">
-              <a href={ENQUIRY_MAIL}>
-                Ask about a course
-                <Mail className="h-4 w-4" />
-              </a>
+              <Link href="/training/enquire">
+                Book a course
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </Button>
             <Button
               asChild
@@ -361,10 +269,10 @@ function Catalogue() {
             </ul>
             <div className="mt-6">
               <Button asChild variant="outline" className="bg-transparent">
-                <a href={`${ENQUIRY_MAIL}&body=${encodeURIComponent(`Course: ${course.title}\n`)}`}>
-                  Enquire about this course
+                <Link href={`/training/enquire?course=${course.key}`}>
+                  Book this course
                   <ArrowRight className="h-4 w-4" />
-                </a>
+                </Link>
               </Button>
             </div>
           </article>
@@ -473,15 +381,16 @@ function FinalCta() {
               Tell us the machine, the height and the people
             </h2>
             <p className="mt-4 max-w-xl text-white/75">
-              We will confirm which course fits, where it can be held, and how
-              the completions are written into your training records.
+              We will confirm which course fits, where it can be held, and send
+              the invoice. Before the competence record expires we contact you
+              so the refresher is booked while people are still in date.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg" className="h-12 bg-emerald-400 text-emerald-950 hover:bg-emerald-300">
-                <a href={ENQUIRY_MAIL}>
-                  Email {SITE_CONFIG.contactName}
+                <Link href="/training/enquire">
+                  Book training
                   <ArrowRight className="h-4 w-4" />
-                </a>
+                </Link>
               </Button>
               <Button
                 asChild
