@@ -11,14 +11,13 @@ import {
 import { getStripe } from "@/lib/stripe";
 import { needsPaymentGate, parseSignupCheckoutMetadata } from "@/lib/signup-checkout";
 import { isLiveTenantModule } from "@/lib/tenant-modules";
-import { isDemoAccessExpired } from "@/lib/demo-access";
+import { billingMark, decideProductAccess, type BillingMark, type PaymentSnapshot } from "@/lib/product-access";
 import {
   coverageStillActive,
   isPaidCancelPeriodExpired,
   isVoluntaryCancel,
   paidUntilFromInvoice,
   shouldKeepAccessAfterCancel,
-  shouldRestoreSuspendedTenant,
   stripePaidUntilUnix,
   stripePeriodStartUnix,
   type StripePeriodSource,
@@ -604,6 +603,31 @@ export async function suspendExpiredCancelledSubscriptions(): Promise<number> {
   return ended;
 }
 
+function paymentSnapshot(coverage: {
+  until: number | null;
+  source: StripePeriodSource | null;
+}): PaymentSnapshot {
+  return {
+    stripeStatus: coverage.source?.status ?? null,
+    paidUntilUnix: coverage.until,
+    cancelAtPeriodEnd: Boolean(coverage.source?.cancel_at_period_end),
+  };
+}
+
+export async function assessTenantBilling(tenant: {
+  status?: string | null;
+  registrationType?: string | null;
+  trialEndsAt?: string | Date | null;
+  stripeSubscriptionId?: string | null;
+  stripeCustomerId?: string | null;
+}): Promise<BillingMark> {
+  const coverage = await loadStripePaidCoverage({
+    stripeCustomerId: tenant.stripeCustomerId,
+    stripeSubscriptionId: tenant.stripeSubscriptionId,
+  });
+  return billingMark(tenant, paymentSnapshot(coverage));
+}
+
 export type TenantProductAccess = "ok" | "pay" | "suspended";
 
 export async function resolveTenantProductAccess(tenant: {
@@ -615,36 +639,16 @@ export async function resolveTenantProductAccess(tenant: {
   registrationType?: string | null;
   trialEndsAt?: string | Date | null;
 }): Promise<TenantProductAccess> {
-  const demoExpired = isDemoAccessExpired(tenant);
-  if (!needsPaymentGate(tenant) && !demoExpired && tenant.status !== "SUSPENDED") {
-    return "ok";
-  }
-
-  const db = getAdminDb();
-  const { data: local } = await db
-    .from("Subscription")
-    .select("cancelAtPeriodEnd, currentPeriodEnd")
-    .eq("tenantId", tenant.id)
-    .maybeSingle();
-
   const coverage = await loadStripePaidCoverage({
     stripeCustomerId: tenant.stripeCustomerId,
     stripeSubscriptionId: tenant.stripeSubscriptionId,
   });
-
-  const localState = local
-    ? {
-        cancelAtPeriodEnd: Boolean(local.cancelAtPeriodEnd),
-        currentPeriodEnd: (local.currentPeriodEnd as string | null) ?? null,
-      }
-    : null;
-
-  const paidNow =
-    shouldRestoreSuspendedTenant(localState, coverage.source, Date.now(), coverage.until) ||
-    (coverage.source?.status === "active" || coverage.source?.status === "trialing");
+  const access = decideProductAccess(tenant, paymentSnapshot(coverage));
+  if (access !== "ok") {
+    return access;
+  }
 
   if (needsPaymentGate(tenant)) {
-    if (!paidNow) return "pay";
     const signup = parseSignupCheckoutMetadata(
       (coverage.source as { metadata?: Record<string, string> } | null)?.metadata,
     );
@@ -660,49 +664,11 @@ export async function resolveTenantProductAccess(tenant: {
         cancelAtPeriodEnd: true,
         status: "ACTIVE",
         currentPeriodEnd: periodIsoFromUnix(coverage.until) ?? addDaysIso(32),
-        currentPeriodStart: periodIsoFromUnix(coverage.source ? stripePeriodStartUnix(coverage.source) : null),
+        currentPeriodStart: periodIsoFromUnix(stripePeriodStartUnix(coverage.source)),
         stripeSubscriptionId: tenant.stripeSubscriptionId ?? null,
       });
     }
-    return "ok";
   }
 
-  if (demoExpired) {
-    if (!paidNow) return "pay";
-    const signup = parseSignupCheckoutMetadata(
-      (coverage.source as { metadata?: Record<string, string> } | null)?.metadata,
-    );
-    await activatePaidSignup({
-      tenantId: tenant.id,
-      addonIds: signup?.addonIds ?? [],
-      stripeCustomerId: tenant.stripeCustomerId,
-      stripeSubscriptionId: tenant.stripeSubscriptionId ?? (coverage.source as { id?: string } | null)?.id,
-      billingInterval: signup?.billingInterval,
-    });
-    return "ok";
-  }
-
-  if (tenant.status !== "SUSPENDED") return "ok";
-
-  if (!shouldRestoreSuspendedTenant(localState, coverage.source, Date.now(), coverage.until)) {
-    return "suspended";
-  }
-
-  const now = nowIso();
-  const { error } = await db
-    .from("Tenant")
-    .update({ status: "ACTIVE", suspendedAt: null, updatedAt: now })
-    .eq("id", tenant.id)
-    .eq("status", "SUSPENDED");
-  if (error) {
-    throw { code: "TENANT_UPDATE_FAILED", message: error.message };
-  }
-  await syncLocalSubscriptionAccess(tenant.id, {
-    cancelAtPeriodEnd: true,
-    status: "ACTIVE",
-    currentPeriodEnd: periodIsoFromUnix(coverage.until) ?? localState?.currentPeriodEnd ?? addDaysIso(32),
-    currentPeriodStart: coverage.source ? periodIsoFromUnix(stripePeriodStartUnix(coverage.source)) : null,
-    stripeSubscriptionId: tenant.stripeSubscriptionId ?? null,
-  });
   return "ok";
 }

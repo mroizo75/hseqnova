@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateInvoiceDialog } from "@/features/admin/components/create-invoice-dialog";
 import { InvoiceTable } from "@/features/admin/components/invoice-table";
 import { InvoiceExportPanel } from "@/features/admin/components/invoice-export-panel";
+import { defaultInvoiceDueDate } from "@/lib/invoice-lines";
 
 export const dynamic = "force-dynamic";
 
@@ -48,10 +49,10 @@ export default async function InvoicesPage() {
         <div>
           <h1 className="text-3xl font-bold">Invoices</h1>
           <p className="text-muted-foreground">
-            Invoicing and Excel export
+            Send a Stripe invoice and export what has been billed
           </p>
         </div>
-        <CreateInvoiceDialog tenants={tenants} />
+        <CreateInvoiceDialog tenants={tenants} defaultDueDate={defaultInvoiceDueDate()} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-5">

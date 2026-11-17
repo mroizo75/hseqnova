@@ -45,7 +45,10 @@ export default async function EmployeeLayout({
       : Promise.resolve({ data: null }),
   ]);
   const tenant = tenantResult.data;
-  if (tenant) {
+  const isPlatformStaff = Boolean(
+    session.user.isSuperAdmin || session.user.isSupport || session.user.isSales || session.user.isSalesManager,
+  );
+  if (tenant && !isPlatformStaff) {
     const access = await resolveTenantProductAccess(tenant);
     if (access === "pay") {
       redirect(isDemoRegistration(tenant.registrationType as string | null) ? "/subscribe" : "/register?pay=1");

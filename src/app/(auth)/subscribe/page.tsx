@@ -33,16 +33,24 @@ export default async function SubscribePage({
 
   const { data: tenant } = await getAdminDb()
     .from("Tenant")
-    .select("id, name, registrationType, trialEndsAt, status")
+    .select("id, name, registrationType, trialEndsAt, status, onboardingStatus, stripeSubscriptionId, stripeCustomerId")
     .eq("id", tenantId)
     .maybeSingle();
   if (!tenant) {
     redirect("/login");
   }
 
+  const { resolveTenantProductAccess } = await import("@/server/queries/billing.queries");
+  const access = await resolveTenantProductAccess(tenant);
   const demo = isDemoRegistration(tenant.registrationType as string | null);
-  if (!demo && tenant.status === "ACTIVE") {
+  if (access === "ok" && !demo) {
     redirect("/dashboard");
+  }
+  if (access === "suspended") {
+    redirect("/suspended");
+  }
+  if (access === "pay" && !demo) {
+    redirect("/register?pay=1");
   }
 
   const params = await searchParams;

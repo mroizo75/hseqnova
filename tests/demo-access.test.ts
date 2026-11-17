@@ -16,7 +16,7 @@ describe("admin demo access", () => {
     );
   });
 
-  it("expires a demo after trialEndsAt unless the tenant is ACTIVE", () => {
+  it("expires a demo after trialEndsAt even when the tenant is ACTIVE", () => {
     const past = new Date(Date.now() - 86_400_000).toISOString();
     assert.equal(
       isDemoAccessExpired({ registrationType: "DEMO", status: "TRIAL", trialEndsAt: past }),
@@ -24,7 +24,7 @@ describe("admin demo access", () => {
     );
     assert.equal(
       isDemoAccessExpired({ registrationType: "DEMO", status: "ACTIVE", trialEndsAt: past }),
-      false,
+      true,
     );
   });
 

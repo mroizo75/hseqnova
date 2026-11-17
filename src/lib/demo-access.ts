@@ -13,7 +13,6 @@ export function isDemoAccessExpired(tenant: {
   status?: string | null;
 }): boolean {
   if (!isDemoRegistration(tenant.registrationType)) return false;
-  if (tenant.status === "ACTIVE") return false;
   if (!tenant.trialEndsAt) return false;
   return new Date(tenant.trialEndsAt).getTime() <= Date.now();
 }

@@ -20,7 +20,9 @@ import { TenantOfferCard } from "@/features/admin/components/tenant-offer-card";
 import { GdprExportButton } from "@/features/admin/components/gdpr-export-button";
 import { HandbookTemplateImport } from "@/features/admin/components/handbook-template-import";
 import { TenantAddonGrantCard } from "@/features/admin/components/tenant-addon-grant-card";
-import { loadTenantPackEntitlements } from "@/server/queries/billing.queries";
+import { SendInvoiceForm } from "@/features/admin/components/send-invoice-form";
+import { defaultInvoiceDueDate } from "@/lib/invoice-lines";
+import { assessTenantBilling, loadTenantPackEntitlements } from "@/server/queries/billing.queries";
 import { isDemoRegistration } from "@/lib/demo-access";
 import { 
   ArrowLeft,
@@ -60,6 +62,13 @@ async function TenantDetails({ id }: { id: string }) {
   const lastManagementReview = tenant.managementReviews?.[0];
   const packEntitlements = await loadTenantPackEntitlements(tenant.id);
   const isDemo = isDemoRegistration(tenant.registrationType as string | null);
+  const billing = await assessTenantBilling({
+    status: tenant.status as string | null,
+    registrationType: tenant.registrationType as string | null,
+    trialEndsAt: tenant.trialEndsAt as string | null,
+    stripeSubscriptionId: tenant.stripeSubscriptionId as string | null,
+    stripeCustomerId: tenant.stripeCustomerId as string | null,
+  });
 
   return (
     <div className="space-y-6">
@@ -93,6 +102,9 @@ async function TenantDetails({ id }: { id: string }) {
             {tenant.status}
           </Badge>
           {isDemo ? <Badge variant="outline">Demo</Badge> : null}
+          <Badge variant={billing === "paid" ? "default" : billing === "demo" ? "secondary" : "destructive"}>
+            {billing === "paid" ? "Paid" : billing === "demo" ? "Demo" : "Unpaid"}
+          </Badge>
         </div>
       </div>
 
@@ -283,6 +295,24 @@ async function TenantDetails({ id }: { id: string }) {
             entitlements={packEntitlements}
           />
 
+          {isSuperAdmin && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Send invoice</CardTitle>
+                <CardDescription>
+                  Stripe emails a VAT invoice with these lines and a link to pay.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SendInvoiceForm
+                  tenantId={tenant.id}
+                  recipientEmail={(tenant.invoiceEmail as string | null) || (tenant.contactEmail as string | null)}
+                  defaultDueDate={defaultInvoiceDueDate()}
+                />
+              </CardContent>
+            </Card>
+          )}
+
           {/* Recent Invoices - kun superadmin */}
           {isSuperAdmin && tenant.invoices.length > 0 && (
             <Card>
@@ -305,6 +335,9 @@ async function TenantDetails({ id }: { id: string }) {
                           <p className="font-medium">
                             £{invoice.amount.toLocaleString("en-GB")}
                           </p>
+                          {invoice.description ? (
+                            <p className="text-sm text-muted-foreground whitespace-pre-line">{invoice.description}</p>
+                          ) : null}
                           <p className="text-sm text-muted-foreground">
                             {new Date(invoice.createdAt).toLocaleDateString("en-GB")}
                           </p>

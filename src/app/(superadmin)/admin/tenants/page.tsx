@@ -26,11 +26,9 @@ export default async function TenantsPage() {
   const isSuperAdmin = Boolean(session?.user?.isSuperAdmin);
   const tenants = await loadAdminTenants();
 
-  const activeCount = tenants.filter((tenant) => tenant.status === "ACTIVE").length;
-  const trialCount = tenants.filter((tenant) => tenant.status === "TRIAL").length;
-  const inactiveCount = tenants.filter(
-    (tenant) => tenant.activity.level === "inactive" && tenant.status === "ACTIVE",
-  ).length;
+  const activeCount = tenants.filter((tenant) => tenant.billing === "paid").length;
+  const trialCount = tenants.filter((tenant) => tenant.billing === "demo").length;
+  const unpaidCount = tenants.filter((tenant) => tenant.billing === "unpaid").length;
 
   return (
     <div className="space-y-6">
@@ -38,10 +36,10 @@ export default async function TenantsPage() {
         <div>
           <h1 className="text-3xl font-bold">Organisations</h1>
           <p className="text-muted-foreground">
-            {tenants.length} organisations • {activeCount} active • {trialCount} trial
-            {inactiveCount > 0 && (
+            {tenants.length} organisations • {activeCount} paid • {trialCount} demo
+            {unpaidCount > 0 && (
               <span className="font-medium text-destructive">
-                {" "}• {inactiveCount} inactive
+                {" "}• {unpaidCount} unpaid
               </span>
             )}
           </p>
@@ -73,6 +71,7 @@ export default async function TenantsPage() {
                 <TableRow>
                   <TableHead>Organisation</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Billing</TableHead>
                   {isSuperAdmin && <TableHead>Agreement</TableHead>}
                   {isSuperAdmin && <TableHead>Subscription</TableHead>}
                   {isSuperAdmin && <TableHead className="text-center">Users</TableHead>}
@@ -109,13 +108,24 @@ export default async function TenantsPage() {
                         {tenant.status}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          tenant.billing === "paid"
+                            ? "default"
+                            : tenant.billing === "demo"
+                            ? "secondary"
+                            : "destructive"
+                        }
+                      >
+                        {tenant.billing === "paid" ? "Paid" : tenant.billing === "demo" ? "Demo" : "Unpaid"}
+                      </Badge>
+                    </TableCell>
                     {isSuperAdmin && (
                       <TableCell>
                         {(() => {
                           const latestOffer = tenant.offers[0];
-                          const isAccepted =
-                            latestOffer?.status === "ACCEPTED" ||
-                            (tenant.status === "ACTIVE" && !latestOffer);
+                          const isAccepted = latestOffer?.status === "ACCEPTED";
                           if (isAccepted) {
                             return (
                               <Badge

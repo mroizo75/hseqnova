@@ -40,8 +40,9 @@ export default async function DashboardLayout({
   let isTavleOnly = false;
   let enabledModules: string[] = [];
   let demoEndsAt: string | null = null;
+  const isPlatformStaff = Boolean(user.isSuperAdmin || user.isSupport || user.isSales || user.isSalesManager);
 
-  if (tenantId) {
+  if (tenantId && !isPlatformStaff) {
     const { data: tenant } = await getAdminDb()
       .from("Tenant")
       .select("id, isTavleOnly, onboardingStatus, stripeSubscriptionId, stripeCustomerId, status, registrationType, trialEndsAt")

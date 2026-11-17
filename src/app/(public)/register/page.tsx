@@ -39,7 +39,7 @@ export default async function RegisterPage({
   if (tenantId) {
     const { data } = await getAdminDb()
       .from("Tenant")
-      .select("id, onboardingStatus, stripeSubscriptionId, stripeCustomerId, status")
+      .select("id, onboardingStatus, stripeSubscriptionId, stripeCustomerId, status, registrationType, trialEndsAt")
       .eq("id", tenantId)
       .maybeSingle();
     const access = data ? await resolveTenantProductAccess(data) : "pay";

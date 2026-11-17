@@ -357,31 +357,28 @@ export async function resumeSelfServeCheckout(input: {
     }
     const billingInterval = parseSignupBillingInterval(input.billingInterval);
 
-    const unpaid = await findUnpaidTenantForUser(auth.userId);
-    if (!unpaid || unpaid.id !== auth.tenantId) {
-      if (!unpaid) {
-        return { success: false, error: "This company does not have an unpaid signup" };
-      }
-    }
-
-    const tenantId = unpaid?.id ?? auth.tenantId;
     const { data: tenant, error } = await getAdminDb()
       .from("Tenant")
-      .select("id, onboardingStatus, stripeSubscriptionId, status")
-      .eq("id", tenantId)
+      .select("id, onboardingStatus, stripeSubscriptionId, stripeCustomerId, status, registrationType, trialEndsAt")
+      .eq("id", auth.tenantId)
       .maybeSingle();
     if (error) {
       throw { code: "TENANT_LOOKUP_FAILED", message: error.message };
     }
-    if (!tenant || !needsPaymentGate(tenant)) {
-      return { success: false, error: "This company does not have an unpaid signup" };
+    if (!tenant) {
+      return { success: false, error: "This company does not have an unpaid subscription" };
+    }
+    const { resolveTenantProductAccess } = await import("@/server/queries/billing.queries");
+    const access = await resolveTenantProductAccess(tenant);
+    if (access !== "pay") {
+      return { success: false, error: "This company does not have an unpaid subscription" };
     }
 
     const { error: updateError } = await getAdminDb()
       .from("Tenant")
       .update({
-        ...reopenUnpaidSignupPayload(nowIso()),
         billingMethod: input.billingMethod,
+        updatedAt: nowIso(),
       })
       .eq("id", tenant.id);
     if (updateError) {
@@ -427,7 +424,7 @@ export async function startDemoConversionCheckout(input: {
     }
     const convertible =
       isDemoRegistration(tenant.registrationType as string | null) || needsPaymentGate(tenant);
-    if (!convertible || tenant.status === "ACTIVE") {
+    if (!convertible) {
       return { success: false, error: "This company is not on a demo or unpaid signup" };
     }
 

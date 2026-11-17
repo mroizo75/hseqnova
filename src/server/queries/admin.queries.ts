@@ -1,4 +1,5 @@
 import { getAdminDb } from "@/lib/supabase/admin";
+import { assessTenantBilling } from "@/server/queries/billing.queries";
 import { OPEN_DEAL_STAGES } from "@/features/crm/lib/types";
 import {
   buildAttentionQueue,
@@ -306,6 +307,7 @@ export type AdminTenantListItem = {
   userCount: number;
   riskCount: number;
   activity: ReturnType<typeof activityLevel>;
+  billing: "paid" | "unpaid" | "demo";
 };
 
 export async function loadAdminTenants(): Promise<AdminTenantListItem[]> {
@@ -314,7 +316,7 @@ export async function loadAdminTenants(): Promise<AdminTenantListItem[]> {
 
   const { data: tenants, error } = await db
     .from("Tenant")
-    .select("id, name, slug, orgNumber, status, createdAt")
+    .select("id, name, slug, orgNumber, status, createdAt, registrationType, trialEndsAt, stripeSubscriptionId, stripeCustomerId")
     .order("createdAt", { ascending: false });
   throwIf(error, "TENANT_LIST_FAILED");
 
@@ -324,6 +326,10 @@ export async function loadAdminTenants(): Promise<AdminTenantListItem[]> {
     slug: string;
     orgNumber: string | null;
     status: string;
+    registrationType: string | null;
+    trialEndsAt: string | null;
+    stripeSubscriptionId: string | null;
+    stripeCustomerId: string | null;
   }>;
   if (rows.length === 0) return [];
 
@@ -405,7 +411,7 @@ export async function loadAdminTenants(): Promise<AdminTenantListItem[]> {
   const recentDocuments = countBy(documentsRes.data);
   const riskCounts = countBy(risksRes.data);
 
-  return rows
+  const listed = rows
     .filter((row) => (membersByTenant.get(row.id) ?? []).length > 0)
     .map((row) => {
       const memberIds = membersByTenant.get(row.id) ?? [];
@@ -431,8 +437,28 @@ export async function loadAdminTenants(): Promise<AdminTenantListItem[]> {
         userCount: memberIds.length,
         riskCount: riskCounts.get(row.id) ?? 0,
         activity: activityLevel(lastLogin, incidents, documents),
+        source: row,
       };
     });
+
+  const marks = await Promise.all(listed.map((tenant) => assessTenantBilling(tenant.source)));
+  return listed.map((tenant, index) => ({
+    id: tenant.id,
+    name: tenant.name,
+    slug: tenant.slug,
+    orgNumber: tenant.orgNumber,
+    status: tenant.status,
+    subscription: tenant.subscription,
+    offers: tenant.offers,
+    overdueInvoiceCount: tenant.overdueInvoiceCount,
+    lastLogin: tenant.lastLogin,
+    recentIncidents: tenant.recentIncidents,
+    recentDocuments: tenant.recentDocuments,
+    userCount: tenant.userCount,
+    riskCount: tenant.riskCount,
+    activity: tenant.activity,
+    billing: marks[index] ?? "unpaid",
+  }));
 }
 
 export async function loadAdminTenantOptions() {
@@ -567,7 +593,11 @@ export async function loadAdminInvoices() {
   const db = getAdminDb();
   const [invoicesRes, tenantsRes, exportsRes] = await Promise.all([
     db.from("Invoice").select("*").order("dueDate", { ascending: false }).limit(200),
-    db.from("Tenant").select("id, name").in("status", ["ACTIVE", "TRIAL"]).order("name", { ascending: true }),
+    db
+      .from("Tenant")
+      .select("id, name, invoiceEmail, contactEmail")
+      .in("status", ["ACTIVE", "TRIAL"])
+      .order("name", { ascending: true }),
     db.from("InvoiceExport").select("*").order("createdAt", { ascending: false }).limit(20),
   ]);
   throwIf(invoicesRes.error, "INVOICE_LIST_FAILED");
@@ -604,7 +634,12 @@ export async function loadAdminInvoices() {
         invoiceEmail: (tenantById.get(row.tenantId as string)?.invoiceEmail as string | null | undefined) ?? null,
       },
     })),
-    tenants: (tenantsRes.data ?? []) as Array<{ id: string; name: string }>,
+    tenants: (tenantsRes.data ?? []) as Array<{
+      id: string;
+      name: string;
+      invoiceEmail: string | null;
+      contactEmail: string | null;
+    }>,
     exportHistory: (exportsRes.data ?? []).map((row) => ({
       ...row,
       periodStart: new Date(row.periodStart as string),
