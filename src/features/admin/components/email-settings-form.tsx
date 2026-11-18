@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Send, AlertTriangle } from "lucide-react";
+import { Save, Send } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export function EmailSettingsForm() {
@@ -15,13 +15,10 @@ export function EmailSettingsForm() {
   const [testLoading, setTestLoading] = useState(false);
 
   const currentSettings = {
-    resendApiKey: process.env.RESEND_API_KEY || "re_***************",
     fromEmail: "noreply@hseqnova.com",
     fromName: "HSEQ Nova",
     replyToEmail: "support@hseqnova.com",
   };
-
-  const isConfigured = !!process.env.RESEND_API_KEY;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -54,38 +51,9 @@ export function EmailSettingsForm() {
 
   return (
     <div className="space-y-6">
-      {!isConfigured && (
-        <div className="flex items-start gap-3 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-          <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
-          <div className="space-y-1">
-            <p className="font-medium text-yellow-900">
-              E-post ikke konfigurert
-            </p>
-            <p className="text-sm text-yellow-800">
-              Legg til RESEND_API_KEY i .env-filen for å aktivere e-postfunksjonalitet.
-              Registrer deg på{" "}
-              <a
-                href="https://resend.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline font-medium"
-              >
-                resend.com
-              </a>
-            </p>
-          </div>
-        </div>
-      )}
-
       <div className="flex items-center gap-2">
         <Label>Status:</Label>
-        {isConfigured ? (
-          <Badge className="bg-green-100 text-green-800 border-green-200">
-            Konfigurert
-          </Badge>
-        ) : (
-          <Badge variant="secondary">Ikke konfigurert</Badge>
-        )}
+        <Badge variant="secondary">Nøkkelen ligger kun på serveren</Badge>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -94,12 +62,14 @@ export function EmailSettingsForm() {
           <Input
             id="resendApiKey"
             type="password"
-            defaultValue={currentSettings.resendApiKey}
-            disabled={loading}
-            placeholder="re_..."
+            value=""
+            readOnly
+            disabled
+            placeholder="Ikke tilgjengelig i nettleseren"
+            autoComplete="off"
           />
           <p className="text-sm text-muted-foreground">
-            API-nøkkel fra Resend dashboard
+            Nøkkelen settes i servermiljøet og vises aldri her.
           </p>
         </div>
 
@@ -149,7 +119,7 @@ export function EmailSettingsForm() {
           <Button
             type="button"
             variant="outline"
-            disabled={testLoading || !isConfigured}
+            disabled={testLoading}
             onClick={handleTestEmail}
           >
             <Send className="mr-2 h-4 w-4" />
